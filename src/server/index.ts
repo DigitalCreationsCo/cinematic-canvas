@@ -13,8 +13,9 @@ import express, { Express, type Request, Response, NextFunction } from "express"
 import http from "node:http";
 
 import * as trpcExpress from '@trpc/server/adapters/express';
+import { TRPCError } from '@trpc/server';
 import { IEventBus } from "#shared/messaging/event-bus.types.js";
-import { createAppRouter, createContext } from "#shared/app-router/index.js";
+import { createAppRouter, createCallerFactory, createContext } from "#shared/app-router/index.js";
 import { contextMiddleware } from "#server/middleware/context.js";
 import { initLogger } from "#shared/logger/index.js";
 import { getPool, initializeDatabase } from "#shared/db/index.js";
@@ -83,13 +84,57 @@ export async function initializeServer(
   // All route handlers receive their dependencies (including the eventBus)
   // through the router factory – no global PubSub clients inside routes.
 
+  const appRouter = createAppRouter({
+    eventBus,
+    eventsRouter: createEventsRouter({ eventBus }),
+    chatRouter: createChatRouter({ eventBus }),
+  });
+
   app.use(
     '/trpc',
     trpcExpress.createExpressMiddleware({
-      router: createAppRouter({ eventBus, eventsRouter: createEventsRouter({ eventBus }), chatRouter: createChatRouter({ eventBus }) }),
+      router: appRouter,
       createContext,
     }),
   );
+
+  // ── createCallerFactory-based HTTP endpoint for storyblocks ──────────────
+  // Uses createCallerFactory to directly invoke the storyblocks.create
+  // procedure without going through the full tRPC HTTP middleware.
+  // Authorized via x-api-key header (validated by the apiKeyProcedure middleware).
+  //
+  // POST /api/storyblocks
+  // Content-Type: application/json
+  //
+  // Body: { projectId: string, blocks: Array<{ index, title, content, dialogue, happenedAt, isNotable }> }
+  // Headers: x-api-key: <your-api-key>
+
+  const createCaller = createCallerFactory(appRouter);
+
+  app.post("/api/storyblocks", express.json({ limit: "10mb" }), async (req, res) => {
+    try {
+      const ctx = await createContext({
+        req,
+        res,
+        info: { connectionParams: {} },
+      });
+      const caller = createCaller(ctx);
+      const result = await caller.storyblocks.create(req.body);
+      res.json(result);
+    } catch (err) {
+      if (err instanceof TRPCError) {
+        console.error(`[Server] Storyblocks API error (${err.code}):`, err.message);
+        res.status(500).json({
+          error: err.message,
+          code: err.code,
+        });
+      } else {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error("[Server] Storyblocks API unexpected error:", message);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    }
+  });
 
   app.post('/api/upload-audio', express.json({ limit: '50mb' }), async (req, res) => {
     try {

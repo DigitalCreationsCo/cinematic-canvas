@@ -70,11 +70,19 @@ export const createContext = async ({
     user = authUser;
   }
 
+  const apiKey =
+    typeof req.headers["x-api-key"] === "string"
+      ? req.headers["x-api-key"]
+      : typeof connectionParams["x-api-key"] === "string"
+        ? connectionParams["x-api-key"]
+        : undefined;
+
   return {
     user,
     teamId: headerTeamId,
     worldId: headerWorldId,
     projectId: headerProjectId,
+    apiKey,
     headers: req.headers,
   };
 }
@@ -96,6 +104,7 @@ const t = initTRPC.context<Context>().create({
 
 export const router = t.router;
 export const procedure = t.procedure;
+export const { createCallerFactory } = t;
 
 interface RecordCacheMembership {
   isMemberDbResult: boolean;
@@ -182,3 +191,31 @@ const requireTeam = t.middleware(async ({ ctx, next }) => {
 
 export const protectedProcedure = t.procedure.use(isAuthed);
 export const teamProcedure = protectedProcedure.use(requireTeam);
+
+/**
+ * API-key-guarded procedure — validates request against STORYBLOCKS_API_KEY env var.
+ * Suitable for external service integrations that don't have a user session.
+ */
+const requireApiKey = t.middleware(async ({ ctx, next }) => {
+  const configuredKey = process.env.STORYBLOCKS_API_KEY;
+  if (!configuredKey) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "API key authentication is not configured (STORYBLOCKS_API_KEY is not set).",
+    });
+  }
+  if (!ctx.apiKey || ctx.apiKey !== configuredKey) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Invalid or missing API key. Provide it via the x-api-key header.",
+    });
+  }
+  return next({
+    ctx: {
+      ...ctx,
+      apiKey: ctx.apiKey,
+    },
+  });
+});
+
+export const apiKeyProcedure = t.procedure.use(requireApiKey);

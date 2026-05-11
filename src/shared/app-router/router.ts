@@ -6,7 +6,7 @@
 // publication is done via the injected IEventBus.
 // ─────────────────────────────────────────────────────────────────────────────
 import { z } from "zod";
-import { router, protectedProcedure, teamProcedure } from "#shared/app-router/trpc.js";
+import { router, protectedProcedure, teamProcedure, apiKeyProcedure } from "#shared/app-router/trpc.js";
 import { generateId } from "#shared/utils/id.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { WorldRepository } from "#shared/services/world-repository.js";
@@ -31,6 +31,7 @@ import type { ActiveJobRecord } from "#shared/services/job-control-plane.js";
 import { ACTIVE_JOB_STATES, jobPayloadSchemas } from "#shared/types/job.types.js";
 import { IEventBus } from "#shared/messaging/event-bus.types.js";
 import { TRPCError } from "@trpc/server";
+import { callTRPCProcedure } from "@trpc/server";
 import { Storage } from "@google-cloud/storage";
 import { AssetKey, GuidanceLevel } from "#shared/types/assets.types.js";
 import { CharacterAttributes } from "#shared/types/character.types.js";
@@ -1715,6 +1716,74 @@ export function createAppRouter(deps: RouterDependencies) {
           });
         }
       }),
+    }),
+
+    // ════════════════════════════════════════════════════════════════════════
+    // STORYBLOCKS
+    // ════════════════════════════════════════════════════════════════════════
+
+    storyblocks: router({
+      /**
+       * Create narrative blocks (storyblocks) for a project.
+       *
+       * Authorized via API key (x-api-key header) — intended for external
+       * services or automated pipelines that do not have a user session.
+       * Accepts a batch of blocks scoped to a single projectId.
+       */
+      create: apiKeyProcedure
+        .input(
+          z.object({
+            projectId: z.string().min(1, "projectId is required"),
+            blocks: z
+              .array(
+                z.object({
+                  index: z.number().int(),
+                  title: z.string(),
+                  content: z.string().min(1, "Block content is required"),
+                  dialogue: z.string().optional().default(""),
+                  happenedAt: z.number().describe("Unix timestamp in milliseconds"),
+                  isNotable: z.boolean().default(false),
+                }),
+              )
+              .min(1, "At least one block is required"),
+          }),
+        )
+        .mutation(async ({ input }) => {
+          try {
+            const { projectId, blocks: blocksToCreate } = input;
+
+            const insertedBlocks = await db
+              .insert(schema.blocks)
+              .values(
+                blocksToCreate.map((block) => ({
+                  projectId,
+                  index: block.index,
+                  title: block.title,
+                  content: block.content,
+                  dialogue: block.dialogue,
+                  happenedAt: new Date(block.happenedAt),
+                  isNotable: block.isNotable,
+                })),
+              )
+              .returning();
+
+            console.log(
+              `[Router] Created ${insertedBlocks.length} storyblocks for project ${projectId}.`,
+            );
+
+            return {
+              success: true as const,
+              count: insertedBlocks.length,
+              blocks: insertedBlocks,
+            };
+          } catch (err) {
+            console.error("[Router] Failed to create storyblocks:", err);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to create storyblocks.",
+            });
+          }
+        }),
     }),
 
     // ════════════════════════════════════════════════════════════════════════
