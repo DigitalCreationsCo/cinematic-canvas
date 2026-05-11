@@ -2,8 +2,15 @@ import React, { useCallback, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { Button } from "#client/components/ui/button.js";
 import { Input } from "#client/components/ui/input.js";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "#client/components/ui/card.js";
-import { Loader } from '#client/components/Loader.js';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "#client/components/ui/card.js";
+import { Loader } from "#client/components/Loader.js";
 
 interface LandingProps {
   onContinue: () => void;
@@ -12,15 +19,15 @@ interface LandingProps {
 const Landing: React.FC<LandingProps> = React.memo(({ onContinue }) => (
   <div className="min-h-screen text-foreground flex flex-col md:items-center md:justify-center p-8">
     <div className="w-full text-center space-y-2">
-      <h1 className="text-[4rem] md:text-[6rem] lg:text-[13rem] font-heading antialiased tracking-wide mx-auto font-black uppercase leading-[1.1em]">
-        Cinematic <em>Canvas</em>
+      <h1 className="text-[4rem] md:text-[6rem] lg:text-[13rem] font-rough antialiased tracking-wide mx-auto uppercase leading-[1.1em]">
+        Cinematic Canvas
       </h1>
       <p className="text-xl text-muted-foreground font-sans">
         Build your world. Tell your stories.
       </p>
       <Button
         size="lg"
-        className="place-self-center mx-auto uppercase font-heading tracking-wide max-w-md w-full mt-12 text-lg h-14"
+        className="place-self-center mx-auto uppercase font-heading tracking-wide max-w-xs w-full mt-12 text-lg h-14"
         onClick={onContinue}
       >
         Start
@@ -70,13 +77,13 @@ export const AuthScreen: React.FC = () => {
         const { error } =
           mode === "login"
             ? await supabase.auth.signInWithPassword({
-              email,
-              password,
-            })
+                email,
+                password,
+              })
             : await supabase.auth.signUp({
-              email,
-              password,
-            });
+                email,
+                password,
+              });
 
         if (error) throw error;
       } catch (err: any) {
@@ -100,7 +107,9 @@ export const AuthScreen: React.FC = () => {
             {mode === "login" ? "Welcome Back" : "Create Account"}
           </CardTitle>
           <CardDescription>
-            {mode === "login" ? "Enter your credentials to continue" : "Sign up to start building worlds"}
+            {mode === "login"
+              ? "Enter your credentials to continue"
+              : "Sign up to start building worlds"}
           </CardDescription>
         </CardHeader>
 
@@ -151,7 +160,9 @@ export const AuthScreen: React.FC = () => {
             onClick={toggleMode}
             className="text-sm text-muted-foreground"
           >
-            {mode === "login" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+            {mode === "login"
+              ? "Don't have an account? Sign up"
+              : "Already have an account? Sign in"}
           </Button>
         </CardFooter>
       </Card>
