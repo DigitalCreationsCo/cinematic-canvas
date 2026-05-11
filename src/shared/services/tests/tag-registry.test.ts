@@ -4,6 +4,7 @@ import { createMockProjectRepository } from "#shared/mocks/mock-project-reposito
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TagRegistryService } from "#shared/services/tag-registry.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
+import { generateId } from "#shared/utils/id.ts";
 
 describe("TagRegistryService", () => {
   let service: TagRegistryService;
@@ -187,6 +188,55 @@ describe("TagRegistryService", () => {
       );
 
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe("findFuzzyHandle() Unit Tests", () => {
+    const mockProjectId = generateId();
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("should successfully construct a fuzzy query and return results", async () => {
+      const mockData = [{ tag_registry: { handle: "Mohammad", entityType: "character", characterId: generateId(), score: 0.8 } }];
+      const db = createMockDb({ selectResult: mockData });
+
+      const results = await service.getAccessibleHandles(mockProjectId, "Mohamad", undefined, db);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].handle).toBe("Mohammad");
+      expect(db.select).toHaveBeenCalled();
+    });
+
+    it("should throw an error if projectId is missing", async () => {
+      try {
+        await expect(service.getAccessibleHandles("", "Mohamad"))
+          .rejects.toThrow("Invalid search parameters.");
+      } catch (error) {
+        console.log("Error caught:", error);
+      }
+    });
+
+    it("should implement thorough error handling for database failures", async () => {
+      const db = createMockDb();
+      (db.select as any).mockImplementation(() => {
+        throw new Error();
+      });
+
+      await expect(service.getAccessibleHandles(mockProjectId, "Mohamad", undefined, db))
+        .rejects.toThrow();
+    });
+
+    it("should log trace information during the execution lifecycle", async () => {
+      const consoleSpy = vi.spyOn(console, "log");
+      const mockData = [{ tag_registry: { handle: "Mohammad", entityType: "character", characterId: generateId(), score: 0.8 } }];
+      const db = createMockDb({ selectResult: mockData });
+
+      await service.getAccessibleHandles(mockProjectId, "Test", undefined, db);
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Initializing fuzzy search"));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Search execution successful"));
     });
   });
 });

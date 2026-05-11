@@ -101,15 +101,28 @@ export class TagRegistryService {
 
   /**
    * Get a handle by its name.
+   * We first attempt an exact match (highest performance, zero ambiguity). If no record is found, we fall back to a trigram similarity search.
    */
   async getHandle(handle: string, tx: typeof db = db): Promise<TagRegistryEntry | null> {
     if (!tx) throw new Error("Database not initialized");
+    const normalized = this.normalizeHandle(handle);
 
-    const normalizedHandle = this.normalizeHandle(handle);
+    // 1. Attempt Exact Match (O(log N) via Primary Key)
+    const [exactEntry] = await tx.select().from(tagRegistry)
+      .where(eq(tagRegistry.handle, normalized))
+      .limit(1);
 
-    const [entry] = await tx.select().from(tagRegistry).where(eq(tagRegistry.handle, normalizedHandle)).limit(1);
+    if (exactEntry) return exactEntry as TagRegistryEntry;
 
-    return (entry ?? null) as TagRegistryEntry | null;
+    // 2. Fallback: Fuzzy Match (Utilizes GIN Index)
+    // The '%' operator filters by the similarity threshold (default 0.3)
+    const [fuzzyEntry] = await tx.select()
+      .from(tagRegistry)
+      .where(sql`${tagRegistry.handle} % ${normalized}`)
+      .orderBy(sql`similarity(${tagRegistry.handle}, ${normalized}) DESC`)
+      .limit(1);
+
+    return (fuzzyEntry ?? null) as TagRegistryEntry | null;
   }
 
   async getHandlesForProject(projectId: string, tx: typeof db = db): Promise<TagRegistryEntry[]> {
@@ -120,67 +133,92 @@ export class TagRegistryService {
     return results as TagRegistryEntry[];
   }
 
-  async getAccessibleHandles(projectId: string, userId: string, tx: DbTransaction = db): Promise<MentionSuggestion[]> {
-    if (!tx) throw new Error("Database not initialized");
-
+  /**
+   * Retrieves and hydrates entity handles accessible to a specific user within a project context.
+   * * @description
+   * This method performs a multi-stage resolution:
+   * 1. Identifies the world associated with the project.
+   * 2. Executes a fuzzy search (if searchQuery is provided) or a full fetch of accessible handles.
+   * 3. Filters results based on two permission tiers:
+   * - Project-level: All handles explicitly assigned to the current projectId.
+   * - World-level: Project-less handles assigned to the parent world, provided the user 
+   * has an entry in worldAccessGrants.
+   * 4. Hydrates display metadata (name, avatar) for each matched entity.
+   *
+   * @param {string} projectId - The UUID of the project currently being accessed.
+   * @param {string} userId - The UUID of the user requesting handles (used for world-access verification).
+   * @param {string} [searchQuery] - Optional string for partial/fuzzy handle matching.
+   * @param {DbTransaction} [tx=db] - Optional database transaction or client instance.
+   * * @returns {Promise<MentionSuggestion[]>} A collection of hydrated suggestion objects for the UI.
+   * @throws {Error} If the database client is uninitialized or the transaction fails.
+   */
+  async getAccessibleHandles(
+    projectId: string,
+    userId: string,
+    searchQuery?: string, // New optional param for "as-you-type" suggestions
+    tx: DbTransaction = db
+  ): Promise<MentionSuggestion[]> {
     const suggestions: MentionSuggestion[] = [];
+    console.log("Initializing fuzzy search");
 
     await tx.transaction(async (innerTx) => {
-      const projectRecord = await innerTx
+      // Determine the worldId for scoping
+      const [projectRecord] = await innerTx
         .select({ worldId: projects.worldId })
         .from(projects)
         .where(eq(projects.id, projectId))
         .limit(1);
 
-      const projectHandles = await innerTx.select().from(tagRegistry).where(eq(tagRegistry.projectId, projectId));
+      const worldId = projectRecord?.worldId;
 
-      for (const entry of projectHandles) {
-        const entityType = entry.entityType as EntityMentionableType;
+      // Build the base search condition
+      const searchFilter = searchQuery
+        ? sql`${tagRegistry.handle} % ${this.normalizeHandle(searchQuery)}`
+        : sql`TRUE`;
+
+      // Unified query for Project and Accessible World handles
+      const accessibleHandles = await innerTx.select().from(tagRegistry)
+        .leftJoin(
+          schema.worldAccessGrants,
+          and(
+            eq(schema.worldAccessGrants.worldId, tagRegistry.worldId),
+            eq(schema.worldAccessGrants.userId, userId)
+          )
+        )
+        .where(
+          and(
+            searchFilter,
+            or(
+              eq(tagRegistry.projectId, projectId),
+              and(
+                eq(tagRegistry.worldId, worldId || ""),
+                isNull(tagRegistry.projectId),
+                sql`${schema.worldAccessGrants.id} IS NOT NULL`
+              )
+            )
+          )
+        )
+        .orderBy(searchQuery ? sql`similarity(${tagRegistry.handle}, ${searchQuery}) DESC` : tagRegistry.handle)
+        .limit(25);
+
+      // Hydration logic remains similar but benefits from the filtered subset
+      for (const { tag_registry: entry } of accessibleHandles) {
         const entityId = entry.characterId || entry.locationId || entry.propId;
         if (!entityId) continue;
-        const entityData = await this.getEntityDisplayData(entityId, entityType, innerTx);
+
+        const entityData = await this.getEntityDisplayData(entityId, entry.entityType, innerTx);
         suggestions.push({
           handle: entry.handle,
           displayName: entityData.displayName,
-          entityType,
+          entityType: entry.entityType,
           avatarUrl: entityData.avatarUrl,
-          scope: "project",
+          scope: entry.projectId === projectId ? "project" : "world",
           isOrphaned: !entityData.exists,
         });
       }
-
-      if (projectRecord.length > 0 && projectRecord[0].worldId) {
-        const worldId = projectRecord[0].worldId;
-
-        const worldHandles = await innerTx
-          .select()
-          .from(tagRegistry)
-          .where(and(eq(tagRegistry.worldId, worldId), isNull(tagRegistry.projectId)));
-
-        const worldAccess = await innerTx
-          .select()
-          .from(schema.worldAccessGrants)
-          .where(and(eq(schema.worldAccessGrants.worldId, worldId), eq(schema.worldAccessGrants.userId, userId)))
-          .limit(1);
-
-        if (worldAccess.length > 0 || projectHandles.some((h) => h.worldId === worldId)) {
-          for (const entry of worldHandles) {
-            const entityType = entry.entityType;
-            const entityId = entry.characterId || entry.locationId || entry.propId;
-            if (!entityId) continue;
-            const entityData = await this.getEntityDisplayData(entityId, entityType, innerTx);
-            suggestions.push({
-              handle: entry.handle,
-              displayName: entityData.displayName,
-              entityType,
-              avatarUrl: entityData.avatarUrl,
-              scope: "world",
-              isOrphaned: !entityData.exists,
-            });
-          }
-        }
-      }
     });
+
+    console.log("Search execution successful");
 
     return suggestions;
   }
@@ -380,14 +418,14 @@ export class TagRegistryService {
       const baseEntity =
         r.entityType === "character"
           ? mapCharacterWithAssetsToDomainCharacter({
-              ...r.character!,
-              assets: registry,
-            })
+            ...r.character!,
+            assets: registry,
+          })
           : r.entityType === "location"
             ? mapLocationWithAssetsToDomainLocation({
-                ...r.location!,
-                assets: registry,
-              })
+              ...r.location!,
+              assets: registry,
+            })
             : mapPropWithAssetsToDomainProp({ ...r.prop!, assets: registry });
 
       if (!baseEntity) {

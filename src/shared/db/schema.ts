@@ -13,10 +13,9 @@ import {
   unique,
   serial,
 } from "drizzle-orm/pg-core";
-import { generateId } from "#shared/utils/id.js";
 import { sql } from "drizzle-orm";
+import { generateId } from "../utils/id.js";
 import { nullableJsonb, nullableText, optionalUUID, tsvector } from "./schema.utils.js";
-
 
 export const users = pgTable("users", {
   id: uuid("id").notNull().primaryKey(), // Using Supabase auth.users.id which is a UUID
@@ -160,10 +159,7 @@ export const scenes = pgTable(
     lighting: jsonb("lighting").notNull(),
     // Script Supervisor Links
     continuityNotes: text("continuity_notes").array().default([]).notNull(),
-    characterReferenceIds: text("character_reference_ids")
-      .array()
-      .default([])
-      .notNull(),
+    characterReferenceIds: text("character_reference_ids").array().default([]).notNull(),
     locationReferenceId: text("location_reference_id").notNull(),
     locationId: uuid("location_id")
       .references(() => locations.id, { onDelete: "cascade" })
@@ -224,8 +220,7 @@ export const locations = pgTable(
     name: text("name").notNull(),
     type: text("type").notNull(),
     mood: text("mood").notNull(),
-    lightingConditions: jsonb("lighting_conditions")
-      .notNull(),
+    lightingConditions: jsonb("lighting_conditions").notNull(),
     timeOfDay: text("time_of_day").notNull(),
     weather: text("weather").notNull(),
     colorPalette: jsonb("color_palette").notNull(),
@@ -262,15 +257,9 @@ export const projects = pgTable(
     audioAnalysis: nullableJsonb("audio_analysis"),
     status: text("status").default("pending").notNull(),
     currentSceneIndex: integer("current_scene_index").default(0).notNull(),
-    forceRegenerateSceneIds: text("force_regenerate_scene_ids")
-      .array()
-      .default([])
-      .notNull(),
+    forceRegenerateSceneIds: text("force_regenerate_scene_ids").array().default([]).notNull(),
     generationRules: text("generation_rules").array().default([]).notNull(),
-    generationRulesHistory: jsonb("generation_rules_history")
-      .$type<string[][]>()
-      .default([])
-      .notNull(),
+    generationRulesHistory: jsonb("generation_rules_history").$type<string[][]>().default([]).notNull(),
     guidanceLevel: integer("guidance_level").default(2).notNull(),
     // SAC fork repository (created when project is forked from a licensed world)
     sacForkRepoId: text("sac_fork_repo_id"),
@@ -292,8 +281,12 @@ export const jobs = pgTable(
       .references(() => projects.id, { onDelete: "cascade" })
       .notNull(),
     worldId: optionalUUID("world_id").references(() => worlds.id, { onDelete: "no action" }),
-    teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
-    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     type: text("type").notNull(),
     state: text("state").default("PENDING").notNull(),
     payload: nullableJsonb("payload"),
@@ -331,10 +324,7 @@ export const jobs = pgTable(
       .where(sql`state = 'RUNNING'`),
 
     // 3. Operational: Composite index for general lookups
-    projectCreatedIdx: index("idx_project_created").on(
-      table.projectId,
-      table.state,
-    ),
+    projectCreatedIdx: index("idx_project_created").on(table.projectId, table.state),
 
     // 4. Monitoring: Fast recovery of stale jobs
     stateIdx: index("idx_jobs_state_updated").on(table.state, table.updatedAt),
@@ -344,10 +334,8 @@ export const jobs = pgTable(
 export const scenesToCharacters = pgTable(
   "scenes_to_characters",
   {
-    sceneId: uuid("scene_id")
-      .references(() => scenes.id, { onDelete: "set null" }),
-    characterId: uuid("character_id")
-      .references(() => characters.id, { onDelete: "set null" }),
+    sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" }),
+    characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" }),
   },
   (t) => [primaryKey({ columns: [t.sceneId, t.characterId] })],
 );
@@ -395,9 +383,7 @@ export const assetEntries = pgTable(
      * Autonomous setBest calls will not override best while this is set.
      * Only cleared when the user explicitly changes their feedback.
      */
-    bestLockedByFeedback: boolean("best_locked_by_feedback")
-      .default(false)
-      .notNull(),
+    bestLockedByFeedback: boolean("best_locked_by_feedback").default(false).notNull(),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -406,21 +392,10 @@ export const assetEntries = pgTable(
     // Ensure exactly one entry per asset key per entity
     unq_project_asset: uniqueIndex("idx_unq_project_asset")
       .on(t.projectId, t.assetKey)
-      .where(
-        sql`scene_id IS NULL AND character_id IS NULL AND location_id IS NULL AND file_id IS NULL`,
-      ),
-    unq_scene_asset: uniqueIndex("idx_unq_scene_asset").on(
-      t.sceneId,
-      t.assetKey,
-    ),
-    unq_char_asset: uniqueIndex("idx_unq_char_asset").on(
-      t.characterId,
-      t.assetKey,
-    ),
-    unq_loc_asset: uniqueIndex("idx_unq_loc_asset").on(
-      t.locationId,
-      t.assetKey,
-    ),
+      .where(sql`scene_id IS NULL AND character_id IS NULL AND location_id IS NULL AND file_id IS NULL`),
+    unq_scene_asset: uniqueIndex("idx_unq_scene_asset").on(t.sceneId, t.assetKey),
+    unq_char_asset: uniqueIndex("idx_unq_char_asset").on(t.characterId, t.assetKey),
+    unq_loc_asset: uniqueIndex("idx_unq_loc_asset").on(t.locationId, t.assetKey),
     unq_file_asset: uniqueIndex("idx_unq_file_asset").on(t.fileId, t.assetKey),
 
     // Performance indexes for entity lookups
@@ -458,8 +433,7 @@ export const assetVersions = pgTable(
 
     type: text("type").notNull(),
 
-    metadata: jsonb("metadata")
-      .$defaultFn(() => ({})),
+    metadata: jsonb("metadata").$defaultFn(() => ({})),
     /** Nullable — only present after user rates this version. */
     userFeedback: jsonb("user_feedback"),
     startedAt: timestamp("started_at").notNull(),
@@ -467,30 +441,20 @@ export const assetVersions = pgTable(
   },
   (t) => ({
     // Ensure version uniqueness per entry
-    unq_version_seq: uniqueIndex("idx_unq_asset_version_seq").on(
-      t.assetEntryId,
-      t.version,
-    ),
+    unq_version_seq: uniqueIndex("idx_unq_asset_version_seq").on(t.assetEntryId, t.version),
 
     // Performance index for version history queries
-    idx_history_lookup: index("idx_asset_history_lookup").on(
-      t.assetEntryId,
-      t.version,
-    ),
+    idx_history_lookup: index("idx_asset_history_lookup").on(t.assetEntryId, t.version),
 
     // Composite index for best version queries (commonly used in JOINs)
     idx_entry_version: index("idx_entry_version").on(t.assetEntryId, t.version),
   }),
 );
 
-
 export const mediaObjects = pgTable("media_objects", {
   data: text("data").primaryKey(),
   refCount: integer("ref_count").default(0).notNull(),
-  status: text("status")
-    .$type<"active" | "pending_deletion">()
-    .default("active")
-    .notNull(),
+  status: text("status").$type<"active" | "pending_deletion">().default("active").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastReferencedAt: timestamp("last_referenced_at").defaultNow().notNull(),
 });
@@ -559,10 +523,7 @@ export const canvasNodeLayouts = pgTable(
   },
   (t) => ({
     // One layout row per (context, entity) pair
-    constraintUniqueContextEntity: unique("unq_context_entity").on(
-      t.idContext,
-      t.idEntity,
-    ),
+    constraintUniqueContextEntity: unique("unq_context_entity").on(t.idContext, t.idEntity),
     // Fast lookup of all nodes for a canvas context
     idxContext: index("idx_canvas_layouts_context").on(t.idContext),
   }),
@@ -594,11 +555,16 @@ export const worldAccessGrants = pgTable(
   }),
 );
 
-
 export const props = pgTable("props", {
-  id: uuid("id").notNull().primaryKey().$defaultFn(() => generateId()),
-  projectId: uuid("project_id").references(() => projects.id).notNull(),
-  worldId: optionalUUID("world_id").references(() => worlds.id, { // Null if Project-scoped
+  id: uuid("id")
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  projectId: uuid("project_id")
+    .references(() => projects.id)
+    .notNull(),
+  worldId: optionalUUID("world_id").references(() => worlds.id, {
+    // Null if Project-scoped
     onDelete: "no action",
   }),
   referenceId: text("reference_id").notNull(),
@@ -609,60 +575,73 @@ export const props = pgTable("props", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const tagRegistry = pgTable("tag_registry", {
-  handle: text("handle").primaryKey(), // The unique @handle
-  entityType: text("entity_type").$type<'character' | 'location' | 'prop'>().notNull(),
+export const tagRegistry = pgTable(
+  "tag_registry",
+  {
+    handle: text("handle").primaryKey(),
+    entityType: text("entity_type").$type<"character" | "location" | "prop">().notNull(),
 
-  characterId: uuid("character_id").references(() => characters.id, {
-    onDelete: "no action",
-  }),
-  locationId: uuid("location_id").references(() => locations.id, {
-    onDelete: "no action",
-  }),
-  propId: uuid("prop_id").references(() => props.id, {
-    onDelete: "no action",
-  }),
+    characterId: uuid("character_id").references(() => characters.id, {
+      onDelete: "no action",
+    }),
+    locationId: uuid("location_id").references(() => locations.id, {
+      onDelete: "no action",
+    }),
+    propId: uuid("prop_id").references(() => props.id, {
+      onDelete: "no action",
+    }),
 
-  worldId: optionalUUID("world_id").references(() => worlds.id, { // Null if Project-scoped
-    onDelete: "no action",
+    worldId: uuid("world_id").references(() => worlds.id, {
+      onDelete: "no action",
+    }),
+    projectId: uuid("project_id").references(() => projects.id),
+  },
+  (t) => ({
+    idxScope: index("idx_tag_scope").on(t.projectId, t.worldId),
+    // Ensure your Drizzle schema includes the GIN index with the gin_trgm_ops operator class, otherwise, these sql fragments will default to slow sequential scans
+    idxHandleFuzzy: index("idx_tag_handle_fuzzy")
+      .using("gin", sql`${t.handle} gin_trgm_ops`),
   }),
-  projectId: uuid("project_id").references(() => projects.id),
-}, (t) => ({
-  idxScope: index("idx_tag_scope").on(t.projectId, t.worldId),
-}));
+);
 
 export const entityVersionPins = pgTable("entity_version_pins", {
-  projectId: uuid("project_id").notNull().references(() => projects.id),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id),
   entityId: uuid("entity_id").notNull(),
   // Maps AssetKey (e.g., 'description') to a specific version number
   pinnedVersions: jsonb("pinned_versions").notNull(),
 });
 
-export const blocks = pgTable("blocks", {
-  id: uuid("id")
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => generateId()),
-  index: integer("index").notNull(),
-  projectId: uuid("project_id")
-    .notNull()
-    .references(() => projects.id, { onUpdate: 'cascade', onDelete: "cascade" }),
-  title: text("title"),
-  content: text("content").notNull(),
-  dialogue: text("dialogue"),
-  imageUrl: text("image_url"),
-  searchVector: tsvector("search_vector").generatedAlwaysAs(
-    (): any => sql`to_tsvector('english', ${blocks.content})`
-  ),
-  isNotable: boolean("is_notable").default(false).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  happenedAt: timestamp("happened_at", { withTimezone: true }),
-}, (table) => {
-  return {
-    idxBlocksProjectId: index("idx_blocks_project_id").on(table.projectId),
-    idxBlocksSearch: index("idx_blocks_search").using("gin", table.searchVector),
-  };
-});
+export const blocks = pgTable(
+  "blocks",
+  {
+    id: uuid("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => generateId()),
+    index: integer("index").notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onUpdate: "cascade", onDelete: "cascade" }),
+    title: text("title"),
+    content: text("content").notNull(),
+    dialogue: text("dialogue"),
+    imageUrl: text("image_url"),
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      (): any => sql`to_tsvector('english', ${blocks.content})`,
+    ),
+    isNotable: boolean("is_notable").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    happenedAt: timestamp("happened_at", { withTimezone: true }),
+  },
+  (table) => {
+    return {
+      idxBlocksProjectId: index("idx_blocks_project_id").on(table.projectId),
+      idxBlocksSearch: index("idx_blocks_search").using("gin", table.searchVector),
+    };
+  },
+);
 
 export const lore = pgTable("lore", {
   id: uuid("id")
@@ -671,7 +650,7 @@ export const lore = pgTable("lore", {
     .$defaultFn(() => generateId()),
   projectId: uuid("project_id")
     .notNull()
-    .references(() => projects.id, { onUpdate: 'cascade', onDelete: "no action" }),
+    .references(() => projects.id, { onUpdate: "cascade", onDelete: "no action" }),
   content: text("content").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -683,45 +662,53 @@ export const lore = pgTable("lore", {
 // Project-scoped AI chat with user attribution
 // ============================================================================
 
-export const conversations = pgTable("conversations", {
-  id: uuid("id")
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => generateId()),
-  projectId: uuid("project_id")
-    .references(() => projects.id, { onDelete: "cascade" })
-    .notNull(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "no action" }),
-  title: text("title").notNull().default("New Conversation"),
-  contextSummary: nullableText("context_summary"),
-  tokenCount: integer("token_count").default(0).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-}, (t) => ({
-  idxProjectId: index("idx_conversations_project").on(t.projectId),
-  idxUserId: index("idx_conversations_user").on(t.userId),
-}));
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: uuid("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => generateId()),
+    projectId: uuid("project_id")
+      .references(() => projects.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "no action" }),
+    title: text("title").notNull().default("New Conversation"),
+    contextSummary: nullableText("context_summary"),
+    tokenCount: integer("token_count").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    idxProjectId: index("idx_conversations_project").on(t.projectId),
+    idxUserId: index("idx_conversations_user").on(t.userId),
+  }),
+);
 
-export const messages = pgTable("messages", {
-  id: uuid("id")
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => generateId()),
-  conversationId: uuid("conversation_id")
-    .references(() => conversations.id, { onDelete: "cascade" })
-    .notNull(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "no action" }),
-  role: text("role").notNull(),
-  content: text("content").notNull(),
-  isComplete: boolean("is_complete").default(true).notNull(),
-  tokenCount: integer("token_count").default(0).notNull(),
-  metadata: jsonb("metadata").default({}).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-}, (t) => ({
-  idxConversationId: index("idx_messages_conversation").on(t.conversationId),
-  idxCreatedAt: index("idx_messages_created").on(t.createdAt),
-}));
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => generateId()),
+    conversationId: uuid("conversation_id")
+      .references(() => conversations.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "no action" }),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    isComplete: boolean("is_complete").default(true).notNull(),
+    tokenCount: integer("token_count").default(0).notNull(),
+    metadata: jsonb("metadata").default({}).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    idxConversationId: index("idx_messages_conversation").on(t.conversationId),
+    idxCreatedAt: index("idx_messages_created").on(t.createdAt),
+  }),
+);
