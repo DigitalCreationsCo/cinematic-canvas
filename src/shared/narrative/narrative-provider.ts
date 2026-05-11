@@ -43,10 +43,41 @@ export class NarrativeProvider implements BaseNarrativeProvider {
     }));
   }
 
-  async getHybridSearchCandidates(projectId: string, query: string, limit: number): Promise<HybridCandidate<Block>[]> {
-    const matchedBlocks = this.db.$with("matched_blocks").as(
+  // Public overloads
+  async getHybridSearchCandidates(
+    projectId: string,
+    query: string,
+    limit: number,
+  ): Promise<HybridCandidate<Block>[]>;
+  async getHybridSearchCandidates(
+    projectId: string,
+    queries: string[],
+    limit: number,
+  ): Promise<Map<string, HybridCandidate<Block>[]>>;
+  async getHybridSearchCandidates(
+    projectId: string,
+    queryOrQueries: string | string[],
+    limit: number,
+  ): Promise<HybridCandidate<Block>[] | Map<string, HybridCandidate<Block>[]>> {
+    if (Array.isArray(queryOrQueries)) {
+      return this.batchHybridSearch(projectId, queryOrQueries, limit);
+    }
+    const map = await this.batchHybridSearch(projectId, [queryOrQueries], limit);
+    return map.get(queryOrQueries) ?? [];
+  }
+
+  // Single DB round-trip for N queries via UNION ALL
+  private async batchHybridSearch(
+    projectId: string,
+    queries: string[],
+    limit: number,
+  ): Promise<Map<string, HybridCandidate<Block>[]>> {
+    if (queries.length === 0) return new Map();
+
+    const subqueries = queries.map((q) =>
       this.db
         .select({
+          queryTag: sql<string>`${q}::text`.as("query_tag"),
           id: blocks.id,
           index: blocks.index,
           projectId: blocks.projectId,
@@ -55,60 +86,62 @@ export class NarrativeProvider implements BaseNarrativeProvider {
           imageUrl: blocks.imageUrl,
           isNotable: blocks.isNotable,
           createdAt: blocks.createdAt,
-          rawTsRank: sql<number>`ts_rank(${blocks.searchVector}, plainto_tsquery('english', ${query}))`.as("raw_ts_rank"),
+          rawTsRank: sql<number>`ts_rank(${blocks.searchVector}, plainto_tsquery('english', ${q}))`.as("raw_ts_rank"),
         })
         .from(blocks)
         .where(
           and(
             eq(blocks.projectId, projectId),
-            sql`${blocks.searchVector} @@ plainto_tsquery('english', ${query})`
-          )
-        )
+            sql`${blocks.searchVector} @@ plainto_tsquery('english', ${q})`,
+          ),
+        ),
     );
 
-    // 2. Define the second CTE: max_ts
-    const maxTs = this.db.$with("max_ts").as(
-      this.db
-        .select({
-          maxRank: sql<number>`COALESCE(MAX(${matchedBlocks.rawTsRank}), 1)`.as("max_rank"),
-        })
-        .from(matchedBlocks)
-    );
+    const [first, ...rest] = subqueries;
+    if (!first) return new Map();
 
-    // 3. Final Selection
-    const result = await this.db
-      .with(matchedBlocks, maxTs)
-      .select({
-        // Spread the matched blocks
-        block: {
-          id: matchedBlocks.id,
-          index: matchedBlocks.index,
-          projectId: matchedBlocks.projectId,
-          title: matchedBlocks.title,
-          content: matchedBlocks.content,
-          imageUrl: matchedBlocks.imageUrl,
-          isNotable: matchedBlocks.isNotable,
-          createdAt: matchedBlocks.createdAt,
-        },
-        // Calculate Hybrid Search Scores
-        scoreKeywordSparse: sql<number>`COALESCE(${matchedBlocks.rawTsRank} / NULLIF(${maxTs.maxRank}, 0), 0)`.as("score_keyword_sparse"),
-      })
-      .from(matchedBlocks)
-      .innerJoin(maxTs, sql`true`)
-      .orderBy(sql`score_keyword_sparse DESC`)
-      .limit(limit);
+    // Single DB call
+    const rows = await rest.reduce((acc, q) => acc.unionAll(q) as any, first);
 
-    // 4. Transform to your desired output shape
-    return result.map((row) => ({
-      block: {
-        ...row.block,
-        index: row.block.index,
-        isNotable: row.block.isNotable ?? false,
-        happenedAt: row.block.createdAt ? new Date(row.block.createdAt).getTime() : 0,
-      },
-      scoreKeywordSparse: Number(row.scoreKeywordSparse) || 0,
-      scoreVectorDense: 0,
-    }));
+    // Group by originating query
+    const grouped = new Map<string, typeof rows>();
+    for (const row of rows) {
+      const bucket = grouped.get(row.queryTag) ?? [];
+      bucket.push(row);
+      grouped.set(row.queryTag, bucket);
+    }
+
+    // Normalise scores within each group, sort, cap at limit
+    const result = new Map<string, HybridCandidate<Block>[]>();
+    for (const [query, group] of grouped) {
+      const maxRank = Math.max(...group.map((r) => r.rawTsRank), 1);
+      const candidates: HybridCandidate<Block>[] = group
+        .map((row) => ({
+          block: {
+            id: row.id,
+            index: row.index,
+            projectId: row.projectId,
+            title: row.title,
+            content: row.content,
+            imageUrl: row.imageUrl,
+            isNotable: row.isNotable ?? false,
+            createdAt: row.createdAt ?? null,
+            happenedAt: row.createdAt ? new Date(row.createdAt).getTime() : 0,
+          },
+          scoreKeywordSparse: row.rawTsRank / maxRank,
+          scoreVectorDense: 0,
+        }))
+        .sort((a, b) => b.scoreKeywordSparse - a.scoreKeywordSparse)
+        .slice(0, limit);
+      result.set(query, candidates);
+    }
+
+    // Guarantee every requested query has an entry, even if FTS returned no rows
+    for (const q of queries) {
+      if (!result.has(q)) result.set(q, []);
+    }
+
+    return result;
   }
 
   async getNotableEvents(projectId: string): Promise<Block[]> {
