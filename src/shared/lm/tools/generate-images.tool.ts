@@ -6,17 +6,19 @@ import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 import { getExecutionMode, imageMimeType } from "#shared/config.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { GenerateBatchImagesParameters, Modality, UserMessage, ReferenceImageInputs } from "#shared/lm/provider.js";
+import { GenerateBatchImagesParameters, Modality, UserMessage } from "#shared/lm/provider.js";
 import { toMessagesFromReferenceImages } from "#shared/lm/params.js";
 
-const GenerateImagesInput = z.object({ requests: z.array(z.object({
-    id: z.string(),
-    prompt: z.string(),
-    referenceImages: z.any().optional(),
-    aspectRatio: z.string(),
-    startingVersion: z.number(),
-    count: z.number().optional(),
-})) });
+const GenerateImagesInput = z.object({
+    requests: z.array(z.object({
+        id: z.string(),
+        prompt: z.string(),
+        referenceImages: z.any().optional(),
+        aspectRatio: z.string(),
+        startingVersion: z.number(),
+        count: z.number().optional(),
+    }))
+});
 
 export type GenerateImagesInput = z.input<typeof GenerateImagesInput>;
 

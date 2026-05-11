@@ -58,7 +58,7 @@ export interface ParseLocationsToolDeps {
 
 class ParseLocationsTool extends StructuredTool<typeof ParseLocationsInput> {
   name = "parse_locations";
-  description = "Parses plain text and extracts location attributes.";
+  description = "Analyze the following text and extract location information.";
   schema = ParseLocationsInput;
 
   private readonly context: ParseLocationsToolDeps["context"];

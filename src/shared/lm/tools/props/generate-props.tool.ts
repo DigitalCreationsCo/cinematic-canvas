@@ -7,6 +7,10 @@ import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { PropAttributes, PropBase, PropWithAssets } from "#shared/types/workflow.types.js";
 import { UploadResult } from "#shared/types/base.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
+import {
+  GeneratePropImagesTool,
+  GeneratePropImagesInput,
+} from "#shared/lm/tools/props/generate-prop-images.tool.js";
 
 // ============================================================================
 // SCHEMA
@@ -86,7 +90,7 @@ async function run(
   generationRules: string[],
   attempt: number,
   context: ToolContext<TextModelController> & { projectRepository: ProjectRepository },
-  imagesTool: { run: (input: any) => Promise<any[]> },
+  imagesTool: GeneratePropImagesTool,
   insertProps: (props: Array<PropAttributes & { projectId: string }>) => Promise<InsertedPropRef[]>,
 ): Promise<GeneratePropsResult[]> {
   const { projectId, traceId } = context;
@@ -176,7 +180,7 @@ async function run(
   // ── Step 5: Trigger images via imagesTool ──────────────────────────────
   if (insertedRefs.length > 0) {
     try {
-      const imageInput = {
+      const imageInput: GeneratePropImagesInput = {
         props: insertedRefs.map((ref) => {
           const attrResult = successes.find((s) => s.id === ref.id);
           return {
@@ -191,14 +195,14 @@ async function run(
 
       const imageResults = await imagesTool.run(imageInput);
 
-      const imageFailures = imageResults.filter((r: any) => !r.success);
+      const imageFailures = imageResults.filter((r) => !r.success);
       if (imageFailures.length > 0) {
         console.error(`${traceId}: Image generation failed for ${imageFailures.length} prop(s)`, imageFailures);
       }
 
       console.log(
         `${traceId}: Image generation complete. ` +
-          `succeeded=${imageResults.filter((r: any) => r.success).length} ` +
+          `succeeded=${imageResults.filter((r) => r.success).length} ` +
           `failed=${imageFailures.length}`,
       );
     } catch (e) {
@@ -221,8 +225,10 @@ export interface GeneratePropsToolDeps {
   /**
    * Images tool instance injected by the owning agent.
    * Used internally to generate images for successfully generated props.
+   * The same instance continues to be available externally through the agent
+   * for standalone GENERATE_PROP_IMAGES commands.
    */
-  imagesTool: { run: (input: any) => Promise<any[]> };
+  imagesTool: GeneratePropImagesTool;
   /**
    * Callback that persists the generated prop attributes to the database.
    * Typically wraps createInsertPropsTool(...).run().
@@ -243,7 +249,7 @@ class GeneratePropsTool extends StructuredTool<typeof GeneratePropsInput> {
   schema = GeneratePropsInput;
 
   private readonly context: GeneratePropsToolDeps["context"];
-  private readonly imagesTool: GeneratePropsToolDeps["imagesTool"];
+  private readonly imagesTool: GeneratePropImagesTool;
   private readonly insertProps: GeneratePropsToolDeps["insertProps"];
 
   constructor(deps: GeneratePropsToolDeps, params?: ToolParams) {

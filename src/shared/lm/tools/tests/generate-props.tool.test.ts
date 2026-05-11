@@ -29,6 +29,51 @@ describe("GeneratePropsTool", () => {
     };
   });
 
+  it("should persist description assets before triggering image generation", async () => {
+    const propId = generateId();
+    const mockInsert = vi.fn().mockResolvedValue([{ id: propId, name: "Plasma Sword" }]);
+
+    // Mock internal generateEntityAttributes via the tool's context/provider
+    // (Assuming implementation similar to Characters)
+
+    vi.mocked(generateEntityAttributes).mockResolvedValue([
+      {
+        success: true,
+        id: propId,
+        data: {
+          name: "Plasma Sword",
+          description: "A glowing energy blade that hums with power",
+          type: "weapon",
+          referenceId: "prop_sword",
+          version: 1,
+        },
+        entityType: "prop",
+      },
+    ]);
+
+    const tool = createGeneratePropsTool({
+      context: mockContext,
+      imagesTool: mockImagesTool,
+      insertProps: mockInsert
+    });
+
+    await tool.run({
+      props: [{ id: propId, name: "Plasma Sword" }] as any,
+      generationRules: ["glowing edges"],
+      attempt: 1
+    });
+
+    expect(mockContext.saveAssets).toHaveBeenCalledWith(
+      expect.anything(),
+      ["description"],
+      "text",
+      expect.anything(),
+      expect.anything(),
+      true
+    );
+    expect(mockInsert).toHaveBeenCalled();
+  });
+
   // ==========================================================================
   // Full pipeline success
   // ==========================================================================

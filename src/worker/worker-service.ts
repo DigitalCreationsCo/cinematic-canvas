@@ -88,6 +88,7 @@ import {
   createGenerateLocationImagesTool,
   createGenerateCharactersTool,
   createGenerateLocationsTool,
+  createGeneratePropImagesTool,
   createGeneratePropsTool,
   createInsertCharactersTool,
   createInsertLocationsTool,
@@ -2247,14 +2248,14 @@ export class WorkerService {
 
                     if (entityType === "character") {
                       const typedEntities = entities as GenerateCharacterEntity[];
-                      const inputs = typedEntities.map((e) => ({
+                      const characters = typedEntities.map((e) => ({
                         ...e.data,
                         images: e.images,
                       }));
 
                       const characterAttributesResults = await createGenerateCharactersTool({
                         context: toolContext,
-                      }).run(inputs);
+                      }).run({ characters });
 
                       // --- 🔍 DEBUG VISIBILITY: GENERATE CHARACTERS ---
                       const charFailures = characterAttributesResults.filter((r) => r.success === false);
@@ -2274,12 +2275,12 @@ export class WorkerService {
 
                     if (entityType === "location") {
                       const typedEntities = entities as GenerateLocationEntity[];
-                      const inputs = typedEntities.map((e) => ({
+                      const locations = typedEntities.map((e) => ({
                         ...e.data,
                         images: e.images,
                       }));
                       const locationAttributesResults = await createGenerateLocationsTool({ context: toolContext }).run(
-                        inputs,
+                        { locations },
                       );
 
                       const locFailures = locationAttributesResults.filter((r) => r.success === false);
@@ -2299,13 +2300,13 @@ export class WorkerService {
 
                     if (entityType === "prop") {
                       const typedEntities = entities as GeneratePropEntity[];
-                      const inputs = typedEntities.map((e) => ({
+                      const props = typedEntities.map((e) => ({
                         ...e.data,
                         images: e.images,
                       }));
                       const propAttributesResults = await createGeneratePropsTool({
                         context: toolContext,
-                      }).run(inputs);
+                      }).run({ props });
 
                       const propFailures = propAttributesResults.filter((r) => r.success === false);
                       if (propFailures.length > 0) {
@@ -2340,14 +2341,14 @@ export class WorkerService {
                 await Promise.all(
                   (["character", "location", "prop"] as const).map(async (entityType) => {
                     if (entityType === "character") {
-                      const success = createEntitiesResults
+                      const charactersGenerated = createEntitiesResults
                         .filter((e) => e.entityType === "character")
                         .map((e: any) => ({ ...e.data, projectId }));
-                      if (!success.length) return [];
+                      if (!charactersGenerated.length) return [];
 
                       const insertResults = await createInsertCharactersTool({
                         context: toolContext,
-                      }).run(success);
+                      }).run({ characters: charactersGenerated });
 
                       const insertFailures = insertResults.filter((r: any) => r.success === false);
                       if (insertFailures.length > 0) {
@@ -2358,14 +2359,14 @@ export class WorkerService {
                     }
 
                     if (entityType === "location") {
-                      const success = createEntitiesResults
+                      const locationsGenerated = createEntitiesResults
                         .filter((e) => e.entityType === "location")
                         .map((e: any) => ({ ...e.data, projectId }));
-                      if (!success.length) return [];
+                      if (!locationsGenerated.length) return [];
 
                       const insertResults = await createInsertLocationsTool({
                         context: toolContext,
-                      }).run(success);
+                      }).run({ locations: locationsGenerated });
 
                       const insertFailures = insertResults.filter((r: any) => r.success === false);
                       if (insertFailures.length > 0) {
@@ -2375,14 +2376,14 @@ export class WorkerService {
                       return insertResults;
                     }
                     if (entityType === "prop") {
-                      const success = createEntitiesResults
+                      const propsGenerated = createEntitiesResults
                         .filter((e) => e.entityType === "prop")
                         .map((e: any) => ({ ...e.data, projectId }));
-                      if (!success.length) return [];
+                      if (!propsGenerated.length) return [];
 
                       const insertResults = await createInsertPropsTool({
                         context: toolContext,
-                      }).run(success);
+                      }).run({ props: propsGenerated });
 
                       const insertFailures = insertResults.filter((r: any) => r.success === false);
                       if (insertFailures.length > 0) {

@@ -32,6 +32,70 @@ describe("GenerateScenesTool", () => {
     };
   });
 
+  it("should handle Verbose Scene Inputs and emit ENTITY_CREATED", async () => {
+    const sceneId = generateId();
+    const generatedAttr = {
+      sceneIndex: 0,
+      name: "The Great Escape",
+      description: "A thrilling escape scene",
+      mood: "tense",
+      shotType: "Medium Close-Up",
+      cameraAngle: "Eye Level",
+      cameraMovement: "Static",
+      transitionType: "None",
+      composition: { "Subject Placement": "Center" },
+      startTime: 0,
+      endTime: 5,
+      duration: 5,
+      type: "narrative",
+      lyrics: "",
+      musicalDescription: "",
+      musicChange: "None",
+      intensity: "high",
+      tempo: "fast",
+      audioEvidence: "",
+      transientImpact: "sharp",
+      audioSync: "Mood Sync",
+      lighting: { quality: { hardness: "Soft", colorTemperature: "Neutral", intensity: "Medium" } },
+      characterReferenceIds: [],
+      locationReferenceId: "loc_test",
+      continuityNotes: [],
+      version: 1,
+    };
+
+    vi.mocked(generateEntityAttributes).mockResolvedValue([
+      { success: true, id: sceneId, data: generatedAttr, entityType: "scene" },
+    ]);
+
+    const mockInsert = vi.fn().mockResolvedValue([{ id: sceneId, name: "The Great Escape" }]);
+    mockContext.projectRepository.getEntities.mockResolvedValue([
+      { entity: { id: sceneId, name: "The Great Escape", assets: {} }, entityType: "scene" },
+    ]);
+
+    const tool = createGenerateScenesTool({
+      context: mockContext,
+      imagesTool: mockImagesTool,
+      insertScenes: mockInsert
+    });
+
+    const sceneInput = [{
+      partial: { name: "The Great Escape", slug: "scene-1", id: sceneId },
+      images: []
+    }];
+
+    await tool.run({ scenes: sceneInput as any });
+
+    // Verify Scene-specific persistence logic
+    expect(mockInsert).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ name: "The Great Escape" })
+    ]));
+
+    // Ensure the image tool is called to generate storyboards for the new scene
+    expect(mockImagesTool.run).toHaveBeenCalledWith(expect.objectContaining({
+      scenes: expect.arrayContaining([expect.objectContaining({ id: sceneId })])
+    }));
+  });
+
   // ==========================================================================
   // Full pipeline success
   // ==========================================================================

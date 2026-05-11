@@ -59,7 +59,7 @@ export interface ParseCharactersToolDeps {
 
 class ParseCharactersTool extends StructuredTool<typeof ParseCharactersInput> {
   name = "parse_characters";
-  description = "Analyze the following text and extract ALL distinct characters mentioned.";
+  description = "Parses plain text and extracts character attributes.";
   schema = ParseCharactersInput;
 
   private readonly context: ParseCharactersToolDeps["context"];

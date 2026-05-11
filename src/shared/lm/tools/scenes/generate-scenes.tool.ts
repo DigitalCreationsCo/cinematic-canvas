@@ -6,8 +6,7 @@ import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attri
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { SceneAttributes } from "#shared/types/scene.types.js";
-import { GenerateSceneInputVerbose, SceneWithAssets } from "#shared/types/workflow.types.js";
-import { UploadResult } from "#shared/types/base.types.js";
+import { GenerateSceneInputVerbose } from "#shared/types/workflow.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
 // ============================================================================
@@ -80,7 +79,7 @@ type InsertedSceneRef = { id: string; name: string };
 // ============================================================================
 
 async function run(
-  inputs: z.infer<typeof GenerateSceneInputVerbose>[],
+  inputs: z.input<typeof GenerateSceneInputVerbose>[],
   generationRules: string[],
   attempt: number,
   context: ToolContext<TextModelController> & { projectRepository: ProjectRepository },

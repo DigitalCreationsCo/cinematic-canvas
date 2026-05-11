@@ -35,6 +35,43 @@ describe("GenerateLocationsTool", () => {
     };
   });
 
+  it("should execute the full location pipeline successfully", async () => {
+    const inputLocations = [{ id: generateId(), name: "Cyberpunk Bar" }];
+    const generatedAttr = { name: "Cyberpunk Bar", description: "Neon-soaked dive", version: 1 };
+    const insertedRefs = [{ id: inputLocations[0].id, name: "Cyberpunk Bar" }];
+
+    vi.mocked(generateEntityAttributes).mockResolvedValue([
+      { success: true, id: inputLocations[0].id, data: generatedAttr }
+    ]);
+
+    const insertLocations = vi.fn().mockResolvedValue(insertedRefs);
+
+    // 3. Mock Repository entity fetch for ENTITY_CREATED
+    mockProjectRepository.getEntities.mockResolvedValue([{ entityType: 'location', entity: { ...generatedAttr, id: insertedRefs[0].id } }]);
+
+    const consoleSpy = vi.spyOn(console, "log");
+    const tool = createGenerateLocationsTool({
+      context: mockContext,
+      imagesTool: mockImagesTool,
+      insertLocations
+    });
+
+    const results = await tool.run({
+      locations: inputLocations as any,
+      generationRules: ["high quality"],
+      attempt: 1
+    });
+
+    expect(insertLocations).toHaveBeenCalledWith([expect.objectContaining({ name: "Cyberpunk Bar" })]);
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(`Inserted ${insertedRefs.length} location(s) into DB`));
+    expect(mockContext.saveAssets).toHaveBeenCalled();
+    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
+    expect(mockImagesTool.run).toHaveBeenCalledWith(expect.objectContaining({
+      locations: [expect.objectContaining({ id: insertedRefs[0].id })]
+    }));
+    expect(results[0].success).toBe(true);
+  });
+
   // ==========================================================================
   // Full pipeline success
   // ==========================================================================

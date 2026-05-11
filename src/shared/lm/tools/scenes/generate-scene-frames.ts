@@ -1,4 +1,7 @@
 // #shared/lm/tools/generate-scene-frames.ts
+import { z } from "zod";
+import { StructuredTool, ToolParams } from "@langchain/core/tools";
+import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 import { aspectRatios } from "#shared/config.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ReferenceImageInputs } from "#shared/lm/provider.js";
@@ -235,4 +238,161 @@ export async function generateSceneFrames(
 
   // Finalise: fetch entities, enrich results, emit ENTITY_UPDATED
   return finaliseResults(results, context);
+}
+
+// ============================================================================
+// TOOL — wraps generateSceneFrames for use as the imagesTool in
+// GenerateScenesTool.  Accepts the simple { scenes, generationRules, attempt }
+// input shape and internally fetches scene entities, builds prompt text, and
+// dispatches to the core generateSceneFrames function.
+// ============================================================================
+
+/** Tool-level prompt builder — uses scene metadata + generation rules. */
+function buildSceneFramePrompt(
+  sceneName: string,
+  sceneDescription: string | undefined,
+  framePosition: "start" | "end",
+  generationRules: string[],
+): string {
+  const desc = sceneDescription ?? sceneName;
+  const rules = generationRules.length > 0 ? `\nGeneration rules:\n${generationRules.join("\n")}` : "";
+
+  if (framePosition === "start") {
+    return `Scene: ${sceneName}\nDescription: ${desc}${rules}\n\nGenerate the establishing shot for the start of this scene.`;
+  }
+  return `Scene: ${sceneName}\nDescription: ${desc}${rules}\n\nGenerate the concluding shot for the end of this scene.`;
+}
+
+// ============================================================================
+// DEPS
+// ============================================================================
+
+export interface GenerateSceneFramesToolDeps {
+  context: ToolContext<TextModelController> & {
+    /** Required for fetching scene entities from DB */
+    projectRepository: ProjectRepository;
+  };
+}
+
+// ============================================================================
+// INPUT SCHEMA
+// ============================================================================
+
+const GenerateSceneFramesToolInput = z.object({
+  scenes: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      version: z.number(),
+    }),
+  ),
+  generationRules: z.array(z.string()).default([]),
+  attempt: z.number().default(1),
+});
+
+// ============================================================================
+// TOOL CLASS
+// _call() is the LangChain string interface.
+// run()   is the programmatic interface — matches the { run: (input) => any[] }
+//         contract expected by GenerateScenesTool.imagesTool.
+// ============================================================================
+
+export class GenerateSceneFramesTool extends StructuredTool<typeof GenerateSceneFramesToolInput> {
+  name = "generate_scene_frames";
+  description = "Generates scene start and end frame images based on scene attributes.";
+  schema = GenerateSceneFramesToolInput;
+
+  private readonly context: GenerateSceneFramesToolDeps["context"];
+
+  constructor(deps: GenerateSceneFramesToolDeps, params?: ToolParams) {
+    super(params);
+    this.context = deps.context;
+  }
+
+  /** LangChain tool interface — returns serialised JSON string. */
+  async _call(
+    input: z.infer<typeof GenerateSceneFramesToolInput>,
+    _runManager?: CallbackManagerForToolRun,
+  ): Promise<string> {
+    const { traceId } = this.context;
+    console.log(`${traceId}: GenerateSceneFramesTool invoked. scenes: ${input.scenes.length}`);
+
+    const results = await this.generateFrames(input);
+
+    return JSON.stringify({
+      summary: {
+        total: results.length,
+        succeeded: results.filter((r) => r.success).length,
+        failed: results.filter((r) => !r.success).length,
+      },
+      results: results.map((r) => ({
+        success: r.success,
+        id: r.id,
+        sceneId: (r as any).sceneId,
+        framePosition: (r as any).framePosition,
+        ...(r.success
+          ? { output: r.outputs?.[0]?.uri, metadata: r.metadata }
+          : { error: r.error?.message }),
+      })),
+    });
+  }
+
+  /**
+   * Programmatic interface for direct tool-to-tool calls.
+   *
+   * Input:  { scenes: [{id, name, version}], generationRules?, attempt? }
+   * Output: SceneFrameGenerationResult[] (matching the existing function's shape)
+   */
+  async run(input: z.infer<typeof GenerateSceneFramesToolInput>): Promise<SceneFrameGenerationResult[]> {
+    return this.generateFrames(input);
+  }
+
+  private async generateFrames(
+    input: z.infer<typeof GenerateSceneFramesToolInput>,
+  ): Promise<SceneFrameGenerationResult[]> {
+    const { projectRepository, projectId } = this.context;
+
+    // Fetch full scene entities from DB so we can build prompts from descriptions
+    const sceneEntities = await projectRepository.getEntities(
+      input.scenes.map((s) => ({ entityId: s.id, entityType: "scene" as const, entity: {} })),
+    );
+
+    // Build scene lookup by id
+    const sceneById = new Map(sceneEntities.map(({ entity }) => [(entity as any).id, entity as SceneWithAssets]));
+
+    // Build requests for start and end frames for each scene
+    const requests: SceneFrameGenerationRequest[] = [];
+    for (const { id, name, version } of input.scenes) {
+      const scene = sceneById.get(id);
+      const description = (scene as any)?.description ?? "";
+
+      for (const framePosition of ["start", "end"] as const) {
+        const prompt = buildSceneFramePrompt(name, description, framePosition, input.generationRules);
+        requests.push({
+          id: `${id}_${framePosition}`,
+          projectId,
+          sceneId: id,
+          framePosition,
+          prompt,
+          referenceImages: { base: [], subject: [], style: [], control: [], content: [], mask: [] },
+          version,
+        });
+      }
+    }
+
+    // Delegate to the core function which handles image generation, asset
+    // persistence, entity enrichment, and ENTITY_UPDATED emission.
+    return generateSceneFrames({ requests, attempt: input.attempt }, this.context);
+  }
+}
+
+// ============================================================================
+// FACTORY
+// ============================================================================
+
+export function createGenerateSceneFramesTool(
+  deps: GenerateSceneFramesToolDeps,
+  params?: ToolParams,
+): GenerateSceneFramesTool {
+  return new GenerateSceneFramesTool(deps, params);
 }

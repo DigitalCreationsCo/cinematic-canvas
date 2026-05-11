@@ -205,14 +205,15 @@ async function run(
 
     console.log(
       `${traceId}: Image generation complete. ` +
-        `succeeded=${imageResults.filter((r) => r.success).length} ` +
-        `failed=${imageFailures.length}`,
+      `succeeded=${imageResults.filter((r) => r.success).length} ` +
+      `failed=${imageFailures.length}`,
     );
   } catch (e) {
     // Image generation failure is non-fatal for the attribute pipeline —
     // locations are already inserted and ENTITY_CREATED was emitted.
     // Callers can schedule a retry via GENERATE_LOCATION_IMAGES command.
     console.error(`${traceId}: imagesTool.run() threw — image generation skipped`, e);
+    console.error(`${traceId}: schedule a retry via GENERATE_LOCATION_IMAGES command`);
   }
 
   // Return the attribute-level results
