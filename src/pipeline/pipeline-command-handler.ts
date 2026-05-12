@@ -10,15 +10,13 @@ import {
   GenerateCompositeCommand,
   CreateSceneWithEntitiesCommand,
   GenerateEntitiesCommand,
-  GenerateScenesFromPromptCommand,
 } from "#shared/types/pipeline.types.js";
 import { eq, and } from "drizzle-orm";
 import { JobControlPlane } from "#shared/services/job-control-plane.js";
-import { createHash } from 'crypto';
-import type { AssetKey } from '#shared/types/assets.types.js';
+import { createHash } from "crypto";
+import type { AssetKey } from "#shared/types/assets.types.js";
 
 export const PipelineCommandHandler = {
-
   /**
    * GENERATE_COMPOSITE: Creates a GENERATE_COMPOSITE worker job.
    *
@@ -30,10 +28,7 @@ export const PipelineCommandHandler = {
 
     // Stable unique key: imageId is already a unique identifier for this
     // composite request; append timestamp to allow re-runs on the same imageId.
-    const uniqueKey = jobControlPlane.uniqueKey(
-      projectId,
-      `composite-${payload.imageId}-${Date.now()}`
-    );
+    const uniqueKey = jobControlPlane.uniqueKey(projectId, `composite-${payload.imageId}-${Date.now()}`);
 
     return await jobControlPlane.createJob({
       type: "GENERATE_COMPOSITE",
@@ -68,9 +63,9 @@ export const PipelineCommandHandler = {
 
     const characterIds = payload.map((p) => p.id);
 
-    const idsHash = createHash('md5')
+    const idsHash = createHash("md5")
       .update(JSON.stringify([...characterIds].sort()))
-      .digest('hex')
+      .digest("hex")
       .substring(0, 8);
 
     return await jobControlPlane.createJob({
@@ -81,10 +76,7 @@ export const PipelineCommandHandler = {
       userId: cmd.userId,
       worldId: cmd.worldId,
       payload,
-      uniqueKey: jobControlPlane.uniqueKey(
-        projectId,
-        `generate-characters-${idsHash}-${Date.now()}`
-      ),
+      uniqueKey: jobControlPlane.uniqueKey(projectId, `generate-characters-${idsHash}-${Date.now()}`),
       attempts: {
         maxRetries: 3,
       },
@@ -104,9 +96,9 @@ export const PipelineCommandHandler = {
 
     const characterIds = payload.map((p) => p.characterId);
 
-    const idsHash = createHash('md5')
+    const idsHash = createHash("md5")
       .update(JSON.stringify([...characterIds].sort()))
-      .digest('hex')
+      .digest("hex")
       .substring(0, 8);
 
     return await jobControlPlane.createJob({
@@ -117,10 +109,7 @@ export const PipelineCommandHandler = {
       userId: cmd.userId,
       worldId: cmd.worldId,
       payload: { characterIds },
-      uniqueKey: jobControlPlane.uniqueKey(
-        projectId,
-        `character-assets-${idsHash}-${Date.now()}`
-      ),
+      uniqueKey: jobControlPlane.uniqueKey(projectId, `character-assets-${idsHash}-${Date.now()}`),
       attempts: {
         maxRetries: 3,
       },
@@ -138,9 +127,9 @@ export const PipelineCommandHandler = {
 
     const locationIds = payload.map((p) => p.id);
 
-    const idsHash = createHash('md5')
+    const idsHash = createHash("md5")
       .update(JSON.stringify([...locationIds].sort()))
-      .digest('hex')
+      .digest("hex")
       .substring(0, 8);
 
     return await jobControlPlane.createJob({
@@ -151,10 +140,7 @@ export const PipelineCommandHandler = {
       userId: cmd.userId,
       worldId: cmd.worldId,
       payload: { locationIds },
-      uniqueKey: jobControlPlane.uniqueKey(
-        projectId,
-        `generate-locations-${idsHash}-${Date.now()}`
-      ),
+      uniqueKey: jobControlPlane.uniqueKey(projectId, `generate-locations-${idsHash}-${Date.now()}`),
       attempts: {
         maxRetries: 3,
       },
@@ -172,9 +158,9 @@ export const PipelineCommandHandler = {
 
     const locationIds = payload.map((p) => p.locationId);
 
-    const idsHash = createHash('md5')
+    const idsHash = createHash("md5")
       .update(JSON.stringify([...locationIds].sort()))
-      .digest('hex')
+      .digest("hex")
       .substring(0, 8);
 
     return await jobControlPlane.createJob({
@@ -185,10 +171,7 @@ export const PipelineCommandHandler = {
       userId: cmd.userId,
       worldId: cmd.worldId,
       payload: { locationIds },
-      uniqueKey: jobControlPlane.uniqueKey(
-        projectId,
-        `location-assets-${idsHash}-${Date.now()}`
-      ),
+      uniqueKey: jobControlPlane.uniqueKey(projectId, `location-assets-${idsHash}-${Date.now()}`),
       attempts: {
         maxRetries: 3,
       },
@@ -196,68 +179,26 @@ export const PipelineCommandHandler = {
   },
 
   /**
-   * CREATE_SCENE_WITH_ENTITIES: Creates a CREATE_SCENE_WITH_ENTITIES worker job.
+   * CREATE_SCENES_WITH_ENTITIES: Creates a CREATE_SCENES_WITH_ENTITIES worker job.
    */
   async handleCreateSceneWithEntities(cmd: CreateSceneWithEntitiesCommand, jobControlPlane: JobControlPlane) {
-
     const sortedPayload = Object.fromEntries(
-      Object.entries(cmd.payload.sceneFields).sort(([keyA], [keyB]) =>
-        keyA.localeCompare(keyB)
-      )
+      Object.entries(cmd.payload.sceneFields).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)),
     );
 
-    const uniqueHash = createHash('md5')
-      .update(JSON.stringify(sortedPayload))
-      .digest('hex')
-      .substring(0, 8);
+    const uniqueHash = createHash("md5").update(JSON.stringify(sortedPayload)).digest("hex").substring(0, 8);
 
     return await jobControlPlane.createJob({
-      type: "CREATE_SCENE_WITH_ENTITIES",
+      type: "CREATE_SCENES_WITH_ENTITIES",
       assetKey: "entity",
       projectId: cmd.projectId,
       teamId: cmd.teamId,
       userId: cmd.userId,
       worldId: cmd.worldId,
       payload: cmd.payload,
-      uniqueKey: jobControlPlane.uniqueKey(
-        cmd.projectId,
-        `create-scene-with-entities-${uniqueHash}-${Date.now()}`
-      ),
+      uniqueKey: jobControlPlane.uniqueKey(cmd.projectId, `create-scene-with-entities-${uniqueHash}-${Date.now()}`),
       attempts: {
         maxRetries: 3,
-      },
-    });
-  },
-
-  /**
-   * GENERATE_SCENES_FROM_PROMPT: Creates a job that uses an LLM agent to
-   * generate multiple scenes from a natural-language prompt.
-   *
-   * The worker receives the prompt, desired scene count, optional duration,
-   * and is responsible for:
-   *   1. Generating N scene descriptions via LLM
-   *   2. Creating Scene entities in the database
-   *   3. Emitting ENTITY_CREATED events for each scene
-   */
-  async handleGenerateScenesFromPrompt(cmd: GenerateScenesFromPromptCommand, jobControlPlane: JobControlPlane) {
-    const { projectId, payload } = cmd;
-
-    const uniqueKey = jobControlPlane.uniqueKey(
-      projectId,
-      `scenes-from-prompt-${projectId}-${Date.now()}`
-    );
-
-    return await jobControlPlane.createJob({
-      type: "GENERATE_SCENES_FROM_PROMPT",
-      assetKey: "entity",
-      projectId,
-      teamId: cmd.teamId,
-      userId: cmd.userId,
-      worldId: cmd.worldId,
-      payload,
-      uniqueKey,
-      attempts: {
-        maxRetries: 2,
       },
     });
   },
@@ -266,17 +207,11 @@ export const PipelineCommandHandler = {
    * GENERATE_ENTITIES: Creates a GENERATE_ENTITIES worker job.
    */
   async handleGenerateEntities(cmd: GenerateEntitiesCommand, jobControlPlane: JobControlPlane) {
-
     const sortedPayload = Object.fromEntries(
-      Object.entries(cmd.payload).sort(([keyA], [keyB]) =>
-        keyA.localeCompare(keyB)
-      )
+      Object.entries(cmd.payload).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)),
     );
 
-    const uniqueHash = createHash('md5')
-      .update(JSON.stringify(sortedPayload))
-      .digest('hex')
-      .substring(0, 8);
+    const uniqueHash = createHash("md5").update(JSON.stringify(sortedPayload)).digest("hex").substring(0, 8);
 
     return await jobControlPlane.createJob({
       type: "GENERATE_ENTITIES",
@@ -286,10 +221,7 @@ export const PipelineCommandHandler = {
       userId: cmd.userId,
       worldId: cmd.worldId,
       payload: JSON.stringify(cmd.payload),
-      uniqueKey: jobControlPlane.uniqueKey(
-        cmd.projectId,
-        `generate-entities-${uniqueHash}`
-      ),
+      uniqueKey: jobControlPlane.uniqueKey(cmd.projectId, `generate-entities-${uniqueHash}`),
       attempts: {
         maxRetries: 3,
       },
@@ -303,13 +235,11 @@ export const PipelineCommandHandler = {
     const { projectId, payload } = cmd;
 
     const sortedIds = payload.sceneIds ? [...payload.sceneIds].sort() : [];
-    const promptMods = payload.promptModifications
-      ? payload.promptModifications.sort().join('|')
-      : '';
+    const promptMods = payload.promptModifications ? payload.promptModifications.sort().join("|") : "";
 
-    const sceneIdsHash = createHash('md5')
+    const sceneIdsHash = createHash("md5")
       .update(JSON.stringify({ ids: sortedIds, prompts: promptMods }))
-      .digest('hex')
+      .digest("hex")
       .substring(0, 8);
 
     return await jobControlPlane.createJob({
@@ -320,10 +250,7 @@ export const PipelineCommandHandler = {
       userId: cmd.userId,
       worldId: cmd.worldId,
       payload,
-      uniqueKey: jobControlPlane.uniqueKey(
-        projectId,
-        `scene_frames-${sceneIdsHash}-${Date.now()}`
-      ),
+      uniqueKey: jobControlPlane.uniqueKey(projectId, `scene_frames-${sceneIdsHash}-${Date.now()}`),
       attempts: {
         maxRetries: 3,
       },
@@ -344,10 +271,7 @@ export const PipelineCommandHandler = {
       teamId: cmd.teamId,
       userId: cmd.userId,
       worldId: cmd.worldId,
-      uniqueKey: jobControlPlane.uniqueKey(
-        projectId,
-        `scene_video-${sceneId}-${Date.now()}`
-      ),
+      uniqueKey: jobControlPlane.uniqueKey(projectId, `scene_video-${sceneId}-${Date.now()}`),
       payload: {
         sceneId,
         overridePrompt: promptModification,
@@ -369,7 +293,7 @@ export const PipelineCommandHandler = {
    */
   async handleUpdateEntityAsset(params: {
     entityId: string;
-    entityType: 'scene' | 'character' | 'location' | 'project';
+    entityType: "scene" | "character" | "location" | "project";
     assetKey: AssetKey;
     version: number | null;
     projectId: string;
@@ -379,10 +303,13 @@ export const PipelineCommandHandler = {
     // Build the WHERE clause targeting the correct FK column
     const entityFilter = (() => {
       switch (entityType) {
-        case 'scene': return eq(assetEntries.sceneId, entityId);
-        case 'character': return eq(assetEntries.characterId, entityId);
-        case 'location': return eq(assetEntries.locationId, entityId);
-        case 'project':
+        case "scene":
+          return eq(assetEntries.sceneId, entityId);
+        case "character":
+          return eq(assetEntries.characterId, entityId);
+        case "location":
+          return eq(assetEntries.locationId, entityId);
+        case "project":
           // Project assets have all three FK columns as NULL
           return and(
             eq(assetEntries.projectId, entityId),
@@ -398,11 +325,6 @@ export const PipelineCommandHandler = {
     await db
       .update(assetEntries)
       .set({ best: newBest, updatedAt: new Date() })
-      .where(
-        and(
-          entityFilter,
-          eq(assetEntries.assetKey, assetKey)
-        )
-      );
+      .where(and(entityFilter, eq(assetEntries.assetKey, assetKey)));
   },
 };

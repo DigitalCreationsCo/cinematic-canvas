@@ -315,24 +315,13 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
               }
               break;
 
-            case "CREATE_SCENE_WITH_ENTITIES":
+            case "CREATE_SCENES_WITH_ENTITIES":
               try {
                 await PipelineCommandHandler.handleCreateSceneWithEntities(commandRaw, jobControlPlane);
               } catch (errSceneCreate) {
                 console.error(
                   { command: commandRaw, error: errSceneCreate },
-                  `[Pipeline] Error dispatching CREATE_SCENE_WITH_ENTITIES for ${projectId}.`,
-                );
-              }
-              break;
-
-            case "GENERATE_SCENES_FROM_PROMPT":
-              try {
-                await PipelineCommandHandler.handleGenerateScenesFromPrompt(commandRaw, jobControlPlane);
-              } catch (errSceneGen) {
-                console.error(
-                  { command: commandRaw, error: errSceneGen },
-                  `[Pipeline] Error dispatching GENERATE_SCENES_FROM_PROMPT for ${projectId}.`,
+                  `[Pipeline] Error dispatching CREATE_SCENES_WITH_ENTITIES for ${projectId}.`,
                 );
               }
               break;

@@ -31,7 +31,6 @@ import type { ActiveJobRecord } from "#shared/services/job-control-plane.js";
 import { ACTIVE_JOB_STATES, jobPayloadSchemas } from "#shared/types/job.types.js";
 import { IEventBus } from "#shared/messaging/event-bus.types.js";
 import { TRPCError } from "@trpc/server";
-import { callTRPCProcedure } from "@trpc/server";
 import { Storage } from "@google-cloud/storage";
 import { AssetKey, GuidanceLevel } from "#shared/types/assets.types.js";
 import { CharacterAttributes } from "#shared/types/character.types.js";
@@ -964,49 +963,22 @@ export function createAppRouter(deps: RouterDependencies) {
           }
         }),
 
-      // Queues scene creation with autofill of entity relationships
-      createSceneWithAutoFill: teamProcedure
-        .input(jobPayloadSchemas["CREATE_SCENE_WITH_ENTITIES"])
+      // Unified scene creation endpoint supporting two modes:
+      //
+      // Mode 1 — Prompt-based (SceneCreator):
+      //   { projectId, prompt, sceneCount, duration?, charactersTextInput?, locationTextInput? }
+      //   The worker decomposes the prompt into N scenes.
+      //
+      // Mode 2 — Single-scene autofill (NewEntityModal):
+      //   { projectId, sceneFields, charactersTextInput?, locationTextInput?,
+      //     startFrameGcsUri?, startFrameMimeType?, endFrameGcsUri?, endFrameMimeType? }
+      //   The worker uses explicit scene fields and creates/looks up entities.
+      createScenesWithAutoFill: teamProcedure
+        .input(jobPayloadSchemas["CREATE_SCENES_WITH_ENTITIES"])
         .mutation(async ({ ctx, input }) => {
           try {
             await publishCommand({
-              type: "CREATE_SCENE_WITH_ENTITIES",
-              commandId: generateId(),
-              teamId: ctx.teamId,
-              projectId: ctx.projectId!,
-              userId: ctx.user!.id,
-              worldId: ctx.worldId,
-              payload: {
-                sceneFields: input.sceneFields,
-                startFrameGcsUri: input.startFrameGcsUri,
-                startFrameMimeType: input.startFrameMimeType,
-                endFrameGcsUri: input.endFrameGcsUri,
-                endFrameMimeType: input.endFrameMimeType,
-              },
-            });
-            return {
-              message: "Scene creation queued.",
-              projectId: ctx.projectId!,
-            };
-          } catch (err) {
-            console.error("[Router] Failed to queue scene creation:", err);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: (err as any)?.message || "Failed to queue scene creation.",
-            });
-          }
-        }),
-
-      // Batch scene generation from a natural-language prompt.
-      // Dispatches a GENERATE_SCENES_FROM_PROMPT command to the pipeline,
-      // which uses an LLM agent to generate N scenes. Results arrive
-      // asynchronously via SSE ENTITY_CREATED events.
-      generateScenesFromPrompt: teamProcedure
-        .input(jobPayloadSchemas["GENERATE_SCENES_FROM_PROMPT"])
-        .mutation(async ({ ctx, input }) => {
-          try {
-            await publishCommand({
-              type: "GENERATE_SCENES_FROM_PROMPT",
+              type: "CREATE_SCENES_WITH_ENTITIES",
               commandId: generateId(),
               teamId: ctx.teamId,
               projectId: ctx.projectId!,
@@ -1015,16 +987,15 @@ export function createAppRouter(deps: RouterDependencies) {
               payload: input,
             });
             return {
-              message: "Scene generation queued.",
+              message: "Scene creation queued.",
               projectId: ctx.projectId!,
-              prompt: input.prompt.slice(0, 80),
               sceneCount: input.sceneCount,
             };
           } catch (err) {
-            console.error("[Router] Failed to queue scene generation:", err);
+            console.error("[Router] Failed to queue scene creation:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
-              message: (err as any)?.message || "Failed to queue scene generation.",
+              message: (err as any)?.message || "Failed to queue scene creation.",
             });
           }
         }),
@@ -1128,7 +1099,7 @@ export function createAppRouter(deps: RouterDependencies) {
           z.object({
             projectId: z.string(),
             entityId: z.string(),
-            entityType: z.enum(["scene", "character", "location", "project", "prop", "file"]),
+            entityType: z.enum(["scene", "character", "location", "prop", "file"]),
             assetKey: AssetKey,
             url: z.string(),
           }),
@@ -1173,7 +1144,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .input(
           z.object({
             entityId: z.string(),
-            entityType: z.enum(["scene", "character", "location", "project"]),
+            entityType: z.enum(["scene", "character", "location", "prop"]),
             assetKey: AssetKey,
             version: z.number(),
             projectId: z.string(),
@@ -1291,15 +1262,18 @@ export function createAppRouter(deps: RouterDependencies) {
               });
 
             const fileId = generateId();
-            await db.insert(schema.files).values({
-              id: fileId,
-              projectId,
-              name: input.fileName,
-              description: null,
-              fileType: "image",
-              mediaId: imageGcsUri,
-              metadata: { width: 0, height: 0, format: input.mimeType },
-            });
+            const [insertedFile] = await db
+              .insert(schema.files)
+              .values({
+                id: fileId,
+                projectId,
+                name: input.fileName,
+                description: null,
+                fileType: "image",
+                mediaId: imageGcsUri,
+                metadata: { width: 0, height: 0, format: input.mimeType },
+              })
+              .returning();
 
             await publishPipelineEvent({
               type: "ENTITY_CREATED",
@@ -1311,7 +1285,7 @@ export function createAppRouter(deps: RouterDependencies) {
                 {
                   entityId: fileId,
                   entityType: "file",
-                  entity: { id: fileId, projectId, name: input.fileName },
+                  entity: insertedFile,
                 },
               ],
               timestamp: new Date().toISOString(),
@@ -1567,7 +1541,12 @@ export function createAppRouter(deps: RouterDependencies) {
       // Returns filtered handle suggestions accessible to the calling user
       suggest: protectedProcedure.input(SuggestMentionsRequest).query(async ({ ctx, input }) => {
         try {
-          const allSuggestions = await tagRegistryService.getAccessibleHandles(input.projectId, ctx.user!.id, db);
+          const allSuggestions = await tagRegistryService.getAccessibleHandles(
+            input.projectId,
+            ctx.user!.id,
+            undefined,
+            db,
+          );
           const normalizedQuery = input.query?.toLowerCase() ?? "";
           const filtered = allSuggestions
             .filter((s) => s.handle.toLowerCase().includes(normalizedQuery))
@@ -1767,9 +1746,7 @@ export function createAppRouter(deps: RouterDependencies) {
               )
               .returning();
 
-            console.log(
-              `[Router] Created ${insertedBlocks.length} storyblocks for project ${projectId}.`,
-            );
+            console.log(`[Router] Created ${insertedBlocks.length} storyblocks for project ${projectId}.`);
 
             return {
               success: true as const,

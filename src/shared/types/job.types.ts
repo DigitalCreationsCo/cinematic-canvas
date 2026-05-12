@@ -27,6 +27,7 @@ import {
   ACTIVE_JOB_STATES,
   JobType,
 } from "#shared/types/job.constants.js";
+import { IdentityBase } from "#shared/types/base.types.js";
 
 export * from "#shared/types/job.constants.js";
 export { Job, InsertJob } from "#shared/types/schema.types.js";
@@ -43,6 +44,15 @@ export type RecoveryConfig = z.infer<typeof RecoveryConfig>;
 // JOB PAYLOAD/RESULT SCHEMAS - defined FIRST for use in Job/InsertJob
 // ============================================================================
 
+const CreateScenesWithEntitiesBase = z.object({
+  sceneFields: CreateSceneWithEntitiesInput,
+  sceneIds: z.array(IdentityBase.shape.id),
+  startFrameGcsUri: z.string().optional(),
+  startFrameMimeType: z.string().optional(),
+  endFrameGcsUri: z.string().optional(),
+  endFrameMimeType: z.string().optional(),
+});
+
 export const jobPayloadSchemas = {
   EXPAND_CREATIVE_PROMPT: z.undefined(),
   GENERATE_STORYBOARD: z.undefined(),
@@ -55,18 +65,33 @@ export const jobPayloadSchemas = {
   GENERATE_LOCATION_IMAGES: z.object({ locationIds: z.array(z.string()) }),
   GENERATE_ENTITIES: InsertEntitiesInput,
 
-  /** Raw form fields as submitted by the client modal.
-   *  charactersTextInput: mix of "@handle" tokens and plain-text descriptions.
-   *  locationTextInput:   "@handle" token or plain-text description.
-   *  All other SceneAttributes fields may be present and will be preserved. */
-  /** GCS URIs for user-uploaded images — already written before job dispatch. */
-  CREATE_SCENE_WITH_ENTITIES: z.object({
-    sceneFields: CreateSceneWithEntitiesInput,
-    startFrameGcsUri: z.string().optional(),
-    startFrameMimeType: z.string().optional(),
-    endFrameGcsUri: z.string().optional(),
-    endFrameMimeType: z.string().optional(),
-  }),
+  /**
+   * Unified schema that supports two generation modes:
+   *
+   * Mode 1 — Prompt-based multi-scene generation (SceneCreator):
+   *   Provide a high-level narrative prompt + sceneCount. The worker
+   *   decomposes the prompt into N scenes, extracting characters, locations,
+   *   and props from the narrative context.
+   *
+   * Mode 2 — Single-scene entity autofill (NewEntityModal):
+   *   Provide explicit sceneFields (partial SceneAttributes + inline entity
+   *   descriptions) for a single scene. The worker parses entity text,
+   *   creates/looks up entities, generates images, then creates the scene.
+   *
+   * Both modes share the charactersTextInput / locationTextInput fields for
+   * supplemental entity descriptions. When only sceneFields is present the
+   * worker uses the entity text embedded within it (legacy compat).
+   */
+  CREATE_SCENES_WITH_ENTITIES: z.discriminatedUnion("mode", [
+    CreateScenesWithEntitiesBase.extend({
+      mode: z.literal("scenes"),
+      sceneCount: z.number().min(1).max(50).default(1),
+    }),
+    CreateScenesWithEntitiesBase.extend({
+      mode: z.literal("duration"),
+      duration: z.string().optional(),
+    }),
+  ]),
   GENERATE_SCENE_FRAMES: z.object({
     sceneIds: z.array(z.string()).optional(),
     assetKeys: z.array(z.enum(["scene_start_frame", "scene_end_frame"])),
@@ -80,12 +105,6 @@ export const jobPayloadSchemas = {
   RENDER_VIDEO: z.object({
     videoPaths: z.array(z.string()),
     audioGcsUri: z.string().optional(),
-  }),
-  GENERATE_SCENES_FROM_PROMPT: z.object({
-    prompt: z.string(),
-    sceneCount: z.number().min(1).max(50),
-    duration: z.string().optional(),
-    projectId: z.string(),
   }),
   GENERATE_COMPOSITE: z.object({
     imageId: z.string(),
@@ -119,10 +138,9 @@ const jobResultSchemas = {
   GENERATE_LOCATIONS: z.any(),
   GENERATE_LOCATION_IMAGES: z.any(),
   GENERATE_ENTITIES: z.any(),
-  CREATE_SCENE_WITH_ENTITIES: z.any(),
+  CREATE_SCENES_WITH_ENTITIES: z.any(),
   GENERATE_SCENE_FRAMES: z.any(),
   GENERATE_SCENE_VIDEO: z.any(),
-  GENERATE_SCENES_FROM_PROMPT: z.any(),
   RENDER_VIDEO: z.any(),
   GENERATE_COMPOSITE: z.any(),
 } as const;
@@ -185,14 +203,9 @@ export type JobGenerateEntities = JobBaseFields & {
 };
 
 export type JobCreateSceneWithEntities = JobBaseFields & {
-  type: "CREATE_SCENE_WITH_ENTITIES";
-  payload: z.infer<JobPayloadSchemaMap["CREATE_SCENE_WITH_ENTITIES"]>;
+  type: "CREATE_SCENES_WITH_ENTITIES";
+  payload: z.infer<JobPayloadSchemaMap["CREATE_SCENES_WITH_ENTITIES"]>;
   result: GenerativeResultCreateSceneWithEntities["data"];
-};
-export type JobGenerateScenesFromPrompt = JobBaseFields & {
-  type: "GENERATE_SCENES_FROM_PROMPT";
-  payload: z.infer<JobPayloadSchemaMap["GENERATE_SCENES_FROM_PROMPT"]>;
-  result: GenerativeResultGenerateScenesFromPrompt["data"];
 };
 export type JobGenerateSceneFrames = JobBaseFields & {
   type: "GENERATE_SCENE_FRAMES";
@@ -241,7 +254,6 @@ export type AnyJob =
   | JobEnhanceStoryboard
   | JobSemanticAnalysis
   | JobCreateSceneWithEntities
-  | JobGenerateScenesFromPrompt
   | JobGenerateCharacters
   | JobGenerateCharacterAssets
   | JobGenerateLocations
@@ -296,10 +308,10 @@ export type GenerativeResultCreateSceneWithEntities = GenerativeResultEnvelope<{
   scene: SceneWithAssets;
   newCharacters: CharacterWithAssets[];
   newLocation: LocationWithAssets | null;
-}>;
-export type GenerativeResultGenerateScenesFromPrompt = GenerativeResultEnvelope<{
-  sceneIds: string[];
-  scenes: SceneWithAssets[];
+  // When sceneCount > 1, the worker returns the first scene inline
+  // and emits ENTITY_CREATED events for the remaining scenes.
+  sceneIds?: string[];
+  scenes?: SceneWithAssets[];
 }>;
 
 // ============================================================================

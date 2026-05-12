@@ -8,6 +8,7 @@ import {
   SceneWithAssets,
   CharacterBase,
   LocationBase,
+  PropWithAssets,
 } from "#shared/types/workflow.types.js";
 import {
   AssetStatus,
@@ -21,7 +22,7 @@ import {
 } from "#shared/types/assets.types.js";
 import { EntityPrimitiveType, EntityCreatableType, EntityUnion } from "#shared/types/entity.types.js";
 import { JobPayloadSchemaMap, RetryStrategy } from "#shared/types/job.types.js";
-import { Project, Job } from "#shared/types/schema.types.js";
+import { Project, Job, FileEntity } from "#shared/types/schema.types.js";
 import { GenerateEntity } from "#shared/types/editable.types.js";
 import { z } from "zod";
 import { MessageRole } from "#shared/types/chat.types.js";
@@ -32,26 +33,26 @@ import { MessageRole } from "#shared/types/chat.types.js";
 
 export type PubSubMessage<T extends string, P = undefined> = P extends undefined
   ? {
-      type: T;
-      projectId: string;
-      worldId?: string;
-      teamId: string;
-      userId: string;
-      commandId?: string;
-      correlationId?: string;
-      timestamp: string;
-    }
+    type: T;
+    projectId: string;
+    worldId?: string;
+    teamId: string;
+    userId: string;
+    commandId?: string;
+    correlationId?: string;
+    timestamp: string;
+  }
   : {
-      type: T;
-      projectId: string;
-      worldId?: string;
-      teamId: string;
-      userId: string;
-      commandId?: string;
-      correlationId?: string;
-      timestamp: string;
-      payload: P;
-    };
+    type: T;
+    projectId: string;
+    worldId?: string;
+    teamId: string;
+    userId: string;
+    commandId?: string;
+    correlationId?: string;
+    timestamp: string;
+    payload: P;
+  };
 
 // ============================================================================
 // COMMANDS (Client -> Server -> Pipeline)
@@ -68,7 +69,6 @@ export type PipelineCommand =
   | GenerateLocationImagesCommand
   | GenerateEntitiesCommand
   | CreateSceneWithEntitiesCommand
-  | GenerateScenesFromPromptCommand
   | GenerateSceneFramesCommand
   | GenerateSceneVideoCommand
   | ResolveInterventionCommand
@@ -178,22 +178,13 @@ export type GenerateLocationImagesCommand = PubSubMessage<
 export type GenerateEntitiesCommand = PubSubMessage<"GENERATE_ENTITIES", GenerateEntity<EntityCreatableType>[]>;
 
 export type CreateSceneWithEntitiesCommand = PubSubMessage<
-  "CREATE_SCENE_WITH_ENTITIES",
-  z.infer<JobPayloadSchemaMap["CREATE_SCENE_WITH_ENTITIES"]>
+  "CREATE_SCENES_WITH_ENTITIES",
+  z.infer<JobPayloadSchemaMap["CREATE_SCENES_WITH_ENTITIES"]>
 >;
 
-/**
- * GENERATE_SCENES_FROM_PROMPT: Generates multiple scenes from a natural-language
- * prompt using an LLM agent. The agent receives the prompt, desired scene count,
- * and optional duration, and returns N scenes with full attributes (description,
- * cinematography, lighting, etc.).
- *
- * This is the backend command for the "Create Scenes" canvas tool.
- */
-export type GenerateScenesFromPromptCommand = PubSubMessage<
-  "GENERATE_SCENES_FROM_PROMPT",
-  z.infer<JobPayloadSchemaMap["GENERATE_SCENES_FROM_PROMPT"]>
->;
+/** CreateSceneWithEntitiesCommand now also handles the SceneCreator
+ * prompt-based flow — see jobPayloadSchemas["CREATE_SCENES_WITH_ENTITIES"]
+ * for the unified schema that supports both modes. */
 
 export type GenerateSceneFramesCommand = PubSubMessage<
   "GENERATE_SCENE_FRAMES",
@@ -216,18 +207,18 @@ export type GenerateSceneVideoCommand = PubSubMessage<
 export type ResolveInterventionCommand = PubSubMessage<
   "RESOLVE_INTERVENTION",
   | {
-      action: "skip";
-      jobType?: string;
-    }
+    action: "skip";
+    jobType?: string;
+  }
   | {
-      action: "abort";
-      jobType?: string;
-    }
+    action: "abort";
+    jobType?: string;
+  }
   | {
-      action: "retry";
-      revisedParams: Record<string, any>;
-      jobType: string;
-    }
+    action: "retry";
+    revisedParams: Record<string, any>;
+    jobType: string;
+  }
 >;
 
 export type StopPipelineCommand = PubSubMessage<"STOP_PIPELINE">;
@@ -235,15 +226,6 @@ export type StopPipelineCommand = PubSubMessage<"STOP_PIPELINE">;
 // ============================================================================
 // EVENTS (Pipeline -> Server -> Client)
 // ============================================================================
-
-export type EntityCreatedEvent = PubSubMessage<
-  "ENTITY_CREATED",
-  Array<{
-    entityId: string;
-    entityType: EntityPrimitiveType;
-    entity: EntityUnion;
-  }>
->;
 
 export type LayoutNodeData = {
   idEntity: string;
@@ -255,15 +237,6 @@ export type LayoutNodeData = {
   jsonUiMetadata?: Record<string, unknown>;
   idxVersion: number;
 };
-
-export type LayoutUpdatedEvent = PubSubMessage<
-  "LAYOUT_UPDATED",
-  {
-    contextType: "project" | "world";
-    contextId: string;
-    nodes: LayoutNodeData[];
-  }
->;
 
 export type PipelineEvent =
   | WorkflowStartedEvent
@@ -303,12 +276,97 @@ export type SceneStartedEvent = PubSubMessage<"SCENE_STARTED", { scene: Scene }>
 
 export type EntityUpdatedEvent = PubSubMessage<
   "ENTITY_UPDATED",
-  Array<{
+  ({
     id: string;
-    entityType: "scene" | "character" | "location" | "project" | "prop" | "file";
-    entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
+    entityType: "scene";
+    entity: Partial<SceneWithAssets>;
     assets?: AssetRegistry;
-  }>
+  } |
+  {
+    id: string;
+    entityType: "character";
+    entity: Partial<CharacterWithAssets>;
+    assets?: AssetRegistry;
+  } |
+  {
+    id: string;
+    entityType: "location";
+    entity: Partial<LocationWithAssets>;
+    assets?: AssetRegistry;
+  } |
+  {
+    id: string;
+    entityType: "prop";
+    entity: Partial<PropWithAssets>;
+    assets?: AssetRegistry;
+  } |
+  {
+    id: string;
+    entityType: "file";
+    entity: Partial<FileEntity>;
+    assets?: AssetRegistry;
+  })[]
+>;
+
+type EntityUpdatedEventItem =
+  | {
+    id: string;
+    entityType: "scene";
+    entity: Partial<SceneWithAssets>;
+    assets?: AssetRegistry;
+  }
+  | {
+    id: string;
+    entityType: "character";
+    entity: Partial<CharacterWithAssets>;
+    assets?: AssetRegistry;
+  }
+  | {
+    id: string;
+    entityType: "location";
+    entity: Partial<LocationWithAssets>;
+    assets?: AssetRegistry;
+  }
+  | {
+    id: string;
+    entityType: "prop";
+    entity: Partial<PropWithAssets>;
+    assets?: AssetRegistry;
+  }
+  | {
+    id: string;
+    entityType: "file";
+    entity: Partial<FileEntity>;
+    assets?: AssetRegistry;
+  };
+
+export type EntityCreatedEvent = PubSubMessage<
+  "ENTITY_CREATED",
+  ({
+    entityId: string;
+    entityType: "character";
+    entity: CharacterWithAssets;
+  } |
+  {
+    entityId: string;
+    entityType: "scene";
+    entity: SceneWithAssets;
+  } |
+  {
+    entityId: string;
+    entityType: "location";
+    entity: LocationWithAssets;
+  } |
+  {
+    entityId: string;
+    entityType: "prop";
+    entity: PropWithAssets;
+  } |
+  {
+    entityId: string;
+    entityType: "file";
+    entity: FileEntity;
+  })[]
 >;
 
 export type SceneSkippedEvent = PubSubMessage<"SCENE_SKIPPED", { sceneId: string; reason: string; videoUrl?: string }>;
@@ -355,6 +413,15 @@ export type NewAssetsBatchEvent = PubSubMessage<
     assetKey: AssetKey;
     history: AssetHistory;
   }[]
+>;
+
+export type LayoutUpdatedEvent = PubSubMessage<
+  "LAYOUT_UPDATED",
+  {
+    contextType: "project" | "world";
+    contextId: string;
+    nodes: LayoutNodeData[];
+  }
 >;
 
 // ============================================================================

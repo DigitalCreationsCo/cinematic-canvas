@@ -57,10 +57,7 @@ const CACHE_PREFIX = "new-entity";
 const getCacheKey = (entityType: EntityCreatableType): string =>
   `${CACHE_PREFIX}-${entityType}-fields`;
 
-const cacheFields = (
-  entityType: EntityCreatableType,
-  fields: EntityFormData,
-): void => {
+const cacheFields = (entityType: EntityCreatableType, fields: EntityFormData): void => {
   try {
     sessionStorage.setItem(getCacheKey(entityType), JSON.stringify(fields));
   } catch {
@@ -68,9 +65,7 @@ const cacheFields = (
   }
 };
 
-const loadCachedFields = (
-  entityType: EntityCreatableType,
-): EntityFormData | null => {
+const loadCachedFields = (entityType: EntityCreatableType): EntityFormData | null => {
   try {
     const raw = sessionStorage.getItem(getCacheKey(entityType));
     return raw ? (JSON.parse(raw) as EntityFormData) : null;
@@ -185,10 +180,7 @@ export function NewEntityModal({
 
   // ── Whether the form carries any user-entered data ─────────────────────
   const hasUnsavedData =
-    hasAtLeastOneValue ||
-    !!uploadedImage ||
-    !!startFrameFile ||
-    !!endFrameFile;
+    hasAtLeastOneValue || !!uploadedImage || !!startFrameFile || !!endFrameFile;
 
   // ── Restore cached fields when the modal opens or entityType changes ───
   useEffect(() => {
@@ -415,7 +407,8 @@ export function NewEntityModal({
           endFrameFile ? uploadImageFile(endFrameFile) : Promise.resolve(null),
         ]);
 
-        await api.entities.createSceneWithAutoFill.mutate({
+        await api.entities.createScenesWithAutoFill.mutate({
+          projectId,
           sceneFields: sceneData,
           startFrameGcsUri: startFrameUpload?.gcsUri,
           startFrameMimeType: startFrameFile?.type,
@@ -524,247 +517,253 @@ export function NewEntityModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent
-        onPointerDownOutside={(e) => {
-          // Prevent Radix from immediately closing — let onInteractOutside handle it
-          e.preventDefault();
-        }}
-        onInteractOutside={(e) => {
-          e.preventDefault();
-          handleClose();
-        }}
-        onEscapeKeyDown={(e) => {
-          e.preventDefault();
-          handleClose();
-        }}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        overlayClassName="bg-transparent"
-        className={cn(isDragging ? "ring-2 ring-primary ring-offset-2" : "border")}
-      >
-        <DialogHeader>
-          <DialogTitle data-testid="title">
-            New{" "}
-            {entityType === "character" &&
-            initialImageFile &&
-            initialImageFile.type.startsWith("audio/")
-              ? "Audio"
-              : entityType.slice(0, 1).toLocaleUpperCase() + entityType.slice(1)}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-4 relative">
-          {isDragging && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/10 rounded-none">
-              <Upload className="h-12 w-12 text-primary mb-2" />
-              <span className="text-sm font-medium">Drop file here</span>
-            </div>
-          )}
-          {previewUrl && !isAudioFile && (
-            <div className="relative">
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="w-full max-h-48 object-contain rounded-none border"
-              />
-              <Button
-                data-testid="button-image-x"
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 h-8 w-8 bg-background/10 hover:bg-background"
-                onClick={removeImage}
+        <DialogContent
+          onPointerDownOutside={(e) => {
+            // Prevent Radix from immediately closing — let onInteractOutside handle it
+            e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            e.preventDefault();
+            handleClose();
+          }}
+          onEscapeKeyDown={(e) => {
+            e.preventDefault();
+            handleClose();
+          }}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          overlayClassName="bg-transparent"
+          className={cn(isDragging ? "ring-2 ring-primary ring-offset-2" : "border")}
+        >
+          <DialogHeader>
+            <DialogTitle data-testid="title">
+              New{" "}
+              {entityType === "character" &&
+              initialImageFile &&
+              initialImageFile.type.startsWith("audio/")
+                ? "Audio"
+                : entityType.slice(0, 1).toLocaleUpperCase() + entityType.slice(1)}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 relative">
+            {isDragging && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/10 rounded-none">
+                <Upload className="h-12 w-12 text-primary mb-2" />
+                <span className="text-sm font-medium">Drop file here</span>
+              </div>
+            )}
+            {previewUrl && !isAudioFile && (
+              <div className="relative">
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="w-full max-h-48 object-contain rounded-none border"
+                />
+                <Button
+                  data-testid="button-image-x"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 h-8 w-8 bg-background/10 hover:bg-background"
+                  onClick={removeImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {isAudioFile && (
+              <div className="text-center py-4">
+                <div data-testid="input-audio-file" className="text-muted-foreground">
+                  Audio file selected:
+                </div>
+                <div data-testid="audio-file-name" className="font-mono text-sm">
+                  {getSelectedFileName(uploadedImage, initialImageFile)}
+                </div>
+              </div>
+            )}
+
+            {canUploadImage && !previewUrl && !isAudioFile && entityType !== "scene" && (
+              <div
+                className={`flex flex-col items-center justify-center border border-dashed rounded-none p-6 cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary/10" : "hover:border-primary/50"}`}
+                onClick={() => fileInputRef.current?.click()}
               >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-
-          {isAudioFile && (
-            <div className="text-center py-4">
-              <div data-testid="input-audio-file" className="text-muted-foreground">
-                Audio file selected:
+                <Upload
+                  className={`h-8 w-8 mb-2 ${isDragging ? "text-primary" : "text-muted-foreground"}`}
+                />
+                <span
+                  className={`text-sm ${isDragging ? "text-primary font-medium" : "text-muted-foreground"}`}
+                >
+                  {isDragging ? "Drop image here" : `Click to upload reference image`}
+                </span>
+                <input
+                  data-testid="input-image"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
               </div>
-              <div data-testid="audio-file-name" className="font-mono text-sm">
-                {getSelectedFileName(uploadedImage, initialImageFile)}
-              </div>
-            </div>
-          )}
+            )}
 
-          {canUploadImage && !previewUrl && !isAudioFile && entityType !== "scene" && (
-            <div
-              className={`flex flex-col items-center justify-center border border-dashed rounded-none p-6 cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary/10" : "hover:border-primary/50"}`}
-              onClick={() => fileInputRef.current?.click()}
+            {entityType === "scene" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm">Start Frame</span>
+                  {startFramePreview ? (
+                    <div className="relative">
+                      <img
+                        src={startFramePreview}
+                        alt="Start Frame"
+                        className="w-full h-24 object-cover rounded-none border"
+                      />
+                      <Button
+                        data-testid="button-image-x"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
+                        onClick={() => {
+                          setStartFrameFile(null);
+                          setStartFramePreview(null);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex flex-col items-center justify-center border border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => fileInputStartFrameRef.current?.click()}
+                    >
+                      <input
+                        type="file"
+                        ref={fileInputStartFrameRef}
+                        accept="image/*"
+                        data-testid="input-start-frame"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setStartFrameFile(file);
+                            setStartFramePreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                      <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                      <span className="text-xs text-muted-foreground">
+                        Upload an image
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm">End Frame</span>
+                  {endFramePreview ? (
+                    <div className="relative">
+                      <img
+                        src={endFramePreview}
+                        alt="End Frame"
+                        className="w-full h-24 object-cover rounded-none border"
+                      />
+                      <Button
+                        data-testid="button-image-x"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
+                        onClick={() => {
+                          setEndFrameFile(null);
+                          setEndFramePreview(null);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex flex-col items-center justify-center border border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => fileInputEndFrameRef.current?.click()}
+                    >
+                      <input
+                        type="file"
+                        ref={fileInputEndFrameRef}
+                        accept="image/*"
+                        data-testid="input-end-frame"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setEndFrameFile(file);
+                            setEndFramePreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                      <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                      <span className="text-xs text-muted-foreground">
+                        Upload an image
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!isAudioFile && (
+              <>
+                <EntityFormFields
+                  entityType={entityType}
+                  fields={fields}
+                  onChange={handleFieldsChange}
+                  projectId={projectId}
+                  errors={validationErrors}
+                  requiredFields={requiredFields}
+                />
+              </>
+            )}
+
+            {isAudioFile && (
+              <>
+                <Input
+                  data-testid="input-name"
+                  placeholder="Name"
+                  value={fields.name || ""}
+                  onChange={(e) =>
+                    handleFieldsChange({ ...fields, name: e.target.value })
+                  }
+                  aria-invalid={Boolean(validationErrors.name)}
+                  className={getFieldControlClassName(validationErrors, "name")}
+                />
+                <EntityFieldErrorMessage errors={validationErrors} fieldPath="name" />
+                <Textarea
+                  data-testid="input-description"
+                  placeholder="Description (optional)"
+                  value={fields.description || ""}
+                  onChange={(e) =>
+                    handleFieldsChange({ ...fields, description: e.target.value })
+                  }
+                  aria-invalid={Boolean(validationErrors.description)}
+                  className={getFieldControlClassName(validationErrors, "description")}
+                />
+                <EntityFieldErrorMessage
+                  errors={validationErrors}
+                  fieldPath="description"
+                />
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button data-testid="button-cancel" variant="ghost" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button
+              data-testid="button-submit"
+              onClick={handleSubmit}
+              disabled={isSubmitting || !hasAtLeastOneValue}
             >
-              <Upload
-                className={`h-8 w-8 mb-2 ${isDragging ? "text-primary" : "text-muted-foreground"}`}
-              />
-              <span
-                className={`text-sm ${isDragging ? "text-primary font-medium" : "text-muted-foreground"}`}
-              >
-                {isDragging ? "Drop image here" : `Click to upload reference image`}
-              </span>
-              <input
-                data-testid="input-image"
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
-            </div>
-          )}
-
-          {entityType === "scene" && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <span className="text-sm">Start Frame</span>
-                {startFramePreview ? (
-                  <div className="relative">
-                    <img
-                      src={startFramePreview}
-                      alt="Start Frame"
-                      className="w-full h-24 object-cover rounded-none border"
-                    />
-                    <Button
-                      data-testid="button-image-x"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
-                      onClick={() => {
-                        setStartFrameFile(null);
-                        setStartFramePreview(null);
-                      }}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div
-                    className="flex flex-col items-center justify-center border border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => fileInputStartFrameRef.current?.click()}
-                  >
-                    <input
-                      type="file"
-                      ref={fileInputStartFrameRef}
-                      accept="image/*"
-                      data-testid="input-start-frame"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setStartFrameFile(file);
-                          setStartFramePreview(URL.createObjectURL(file));
-                        }
-                      }}
-                    />
-                    <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">Upload an image</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <span className="text-sm">End Frame</span>
-                {endFramePreview ? (
-                  <div className="relative">
-                    <img
-                      src={endFramePreview}
-                      alt="End Frame"
-                      className="w-full h-24 object-cover rounded-none border"
-                    />
-                    <Button
-                      data-testid="button-image-x"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
-                      onClick={() => {
-                        setEndFrameFile(null);
-                        setEndFramePreview(null);
-                      }}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div
-                    className="flex flex-col items-center justify-center border border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => fileInputEndFrameRef.current?.click()}
-                  >
-                    <input
-                      type="file"
-                      ref={fileInputEndFrameRef}
-                      accept="image/*"
-                      data-testid="input-end-frame"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setEndFrameFile(file);
-                          setEndFramePreview(URL.createObjectURL(file));
-                        }
-                      }}
-                    />
-                    <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">Upload an image</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {!isAudioFile && (
-            <>
-              <EntityFormFields
-                entityType={entityType}
-                fields={fields}
-                onChange={handleFieldsChange}
-                projectId={projectId}
-                errors={validationErrors}
-                requiredFields={requiredFields}
-              />
-            </>
-          )}
-
-          {isAudioFile && (
-            <>
-              <Input
-                data-testid="input-name"
-                placeholder="Name"
-                value={fields.name || ""}
-                onChange={(e) => handleFieldsChange({ ...fields, name: e.target.value })}
-                aria-invalid={Boolean(validationErrors.name)}
-                className={getFieldControlClassName(validationErrors, "name")}
-              />
-              <EntityFieldErrorMessage errors={validationErrors} fieldPath="name" />
-              <Textarea
-                data-testid="input-description"
-                placeholder="Description (optional)"
-                value={fields.description || ""}
-                onChange={(e) =>
-                  handleFieldsChange({ ...fields, description: e.target.value })
-                }
-                aria-invalid={Boolean(validationErrors.description)}
-                className={getFieldControlClassName(validationErrors, "description")}
-              />
-              <EntityFieldErrorMessage
-                errors={validationErrors}
-                fieldPath="description"
-              />
-            </>
-          )}
-        </div>
-        <DialogFooter>
-          <Button data-testid="button-cancel" variant="ghost" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button
-            data-testid="button-submit"
-            onClick={handleSubmit}
-            disabled={isSubmitting || !hasAtLeastOneValue}
-          >
-            {isSubmitting ? "Creating..." : "Create"}
-          </Button>
-        </DialogFooter>
+              {isSubmitting ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -773,20 +772,16 @@ export function NewEntityModal({
         <AlertContent>
           <AlertHeader>
             <AlertTitle>Discard changes?</AlertTitle>
-            <AlertDescription>
-              Are you sure? You will lose your data.
-            </AlertDescription>
+            <AlertDescription>Are you sure? You will lose your data.</AlertDescription>
           </AlertHeader>
           <AlertFooter>
             <AlertDialogCancel onClick={() => setShowCloseConfirm(false)}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDiscard}>
-              Discard
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmDiscard}>Discard</AlertDialogAction>
           </AlertFooter>
         </AlertContent>
       </AlertDialog>
     </>
   );
-  }
+}
