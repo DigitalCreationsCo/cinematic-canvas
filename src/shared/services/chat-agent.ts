@@ -9,6 +9,7 @@ import { createAssistantTools } from "#shared/lm/tools/index.js";
 import { IncrementAttemptHook } from "#shared/types/pipeline.types.js";
 import { StructuredTool } from "@langchain/core/tools";
 import { MessageRole } from "#shared/types/chat.types.js";
+import { Dispatcher } from "#shared/services/dispatcher.js";
 
 export interface ChatAgentConfig {
   conversationId: string;
@@ -19,6 +20,7 @@ export interface ChatAgentConfig {
   toolContext: ToolContext<TextModelController> & {
     projectRepository: ProjectRepository;
     incrementAttempt: IncrementAttemptHook;
+    dispatcher: Dispatcher;
   };
 }
 
@@ -49,10 +51,12 @@ export type CompiledChatGraph = CompiledStateGraph<ChatAgentState, Partial<ChatA
 
 export type ChatGraphStreamOutput = Record<string, Partial<ChatAgentState>>;
 
-const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant for Cinematic Canvas, a generative AI workspace for storytelling.
-
-You have access to tools that can help users manage their cinematic projects:
-- insert_entities: Save character, location, prop, and scene information to the project database
+const DEFAULT_SYSTEM_PROMPT = (
+  tools: StructuredTool[],
+) => `You are a helpful AI assistant for Cinematic Canvas, a generative AI workspace for storytelling.
+  You have read access to the project data including characters, locations, scenes, and assets.
+You have access to the following tools to help users manage their cinematic projects:
+${tools.map(({ name, description }) => ({ name, description }))}
 
 When responding to users:
 1. Be concise and helpful
@@ -60,7 +64,7 @@ When responding to users:
 3. Provide context about what you're doing
 4. If you don't have enough information, ask follow-up questions
 
-You have read access to the project data including characters, locations, scenes, and assets.`;
+`;
 
 export class ChatAgent {
   private provider: TextModelController;
@@ -68,14 +72,16 @@ export class ChatAgent {
   private graph: StateGraph<ChatAgentState> | null = null;
   private abortController: AbortController | null = null;
   private historyCache: Array<{ role: MessageRole; content: string }> | null = null;
+  private tools: StructuredTool[] = [];
 
   constructor(config: ChatAgentConfig) {
     this.config = config;
     this.provider = this.config.toolContext.provider;
+    this.tools = this.createTools();
   }
 
   private buildSystemPrompt(): string {
-    const basePrompt = this.config.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+    const basePrompt = this.config.systemPrompt || DEFAULT_SYSTEM_PROMPT(this.tools);
 
     if (!this.config.storyboard) {
       return basePrompt;
@@ -184,7 +190,7 @@ Use this context to provide more informed and relevant responses about the proje
     const messages = state.messages.map((m) => this.toLangChainMessage(m));
 
     const systemMessage = new SystemMessage(this.buildSystemPrompt());
-    const modelWithTools = this.provider.bindTools(this.createTools());
+    const modelWithTools = this.provider.bindTools(this.tools);
 
     const response = await modelWithTools.invoke([systemMessage, ...messages]);
 
@@ -217,7 +223,7 @@ Use this context to provide more informed and relevant responses about the proje
     // produces empty/confused responses.
     const toolResultMessages: ChatStateMessage[] = [];
     for (const toolCall of toolCalls) {
-      const tool = this.createTools().find((t) => t.name === toolCall.name);
+      const tool = this.tools.find((t) => t.name === toolCall.name);
       if (tool) {
         const result = await tool.invoke(toolCall.args);
         toolResultMessages.push({
@@ -310,7 +316,7 @@ Use this context to provide more informed and relevant responses about the proje
 
       const initialMessages = [...historyWithoutDuplicate, { role: "human" as const, content }];
 
-      const finalState = await compiledGraph.invoke(
+      const finalState: ChatAgentState = (await compiledGraph.invoke(
         {
           messages: initialMessages,
           conversationId: this.config.conversationId,
@@ -322,7 +328,7 @@ Use this context to provide more informed and relevant responses about the proje
           configurable: { thread_id: this.config.conversationId },
           signal: this.abortController.signal,
         },
-      );
+      )) as unknown as ChatAgentState;
 
       const aiMessages = finalState.messages.filter((m: ChatStateMessage) => m.role === "ai");
       const lastAIMsg = aiMessages[aiMessages.length - 1];

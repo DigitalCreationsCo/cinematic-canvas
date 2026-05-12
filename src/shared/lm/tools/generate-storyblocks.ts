@@ -19,7 +19,7 @@ export type BlockDirectives = z.infer<typeof BlockDirectives>;
 const GenerateStoryBlocksInput = z.object({ directives: BlockDirectives });
 
 export type BlockResult =
-  | { success: true;  index: number; block: BlockAttributes }
+  | { success: true; index: number; block: BlockAttributes }
   | { success: false; index: number; error: Error };
 
 export interface GenerateStoryBlocksToolDeps {
@@ -27,7 +27,7 @@ export interface GenerateStoryBlocksToolDeps {
 }
 
 const TIMEOUT_CONTEXT_MS = 8_000;
-const _provider       = new NarrativeProvider(db);
+const _provider = new NarrativeProvider(db);
 const narrativeEngine = new NarrativeEngine(_provider);
 
 async function generateContextBatch(
@@ -51,10 +51,10 @@ async function generateContextBatch(
 }
 
 async function generateSingleBlock(
-  directive:       string,
-  index:           number,
-  ragContext:      string,
-  context:         GenerateStoryBlocksToolDeps["context"],
+  directive: string,
+  index: number,
+  ragContext: string,
+  context: GenerateStoryBlocksToolDeps["context"],
   narrativeAnchor: BlockAttributes | undefined,
 ): Promise<BlockResult> {
   try {
@@ -86,9 +86,9 @@ async function generateSingleBlock(
 }
 
 async function* yieldAsCompleted<T>(promises: Promise<T>[]): AsyncGenerator<T> {
-  const queue: T[]            = [];
-  let   notify: (() => void) | null = null;
-  let   remaining             = promises.length;
+  const queue: T[] = [];
+  let notify: (() => void) | null = null;
+  let remaining = promises.length;
 
   for (const p of promises) {
     p.then((value) => {
@@ -115,7 +115,7 @@ async function* yieldAsCompleted<T>(promises: Promise<T>[]): AsyncGenerator<T> {
 
 async function* streamBlocks(
   directives: BlockDirectives,
-  context:    GenerateStoryBlocksToolDeps["context"],
+  context: GenerateStoryBlocksToolDeps["context"],
 ): AsyncGenerator<BlockResult> {
   const [seedDirective, ...continuationDirectives] = directives;
   if (!seedDirective) return;
@@ -159,23 +159,23 @@ async function* streamBlocks(
 
 function serialiseResults(results: BlockResult[]): string {
   const succeeded = results.filter((r) => r.success).length;
-  const failed    = results.length - succeeded;
+  const failed = results.length - succeeded;
   return JSON.stringify({
     // "partial" signals to callers that some blocks succeeded and some failed.
     status: failed === 0 ? "ok" : succeeded === 0 ? "error" : "partial",
     summary: { total: results.length, succeeded, failed },
     results: results.map((r) =>
       r.success
-        ? { success: true,  index: r.index, block: r.block }
+        ? { success: true, index: r.index, block: r.block }
         : { success: false, index: r.index, error: (r as Extract<BlockResult, { success: false }>).error.message },
     ),
   });
 }
 
 class GenerateStoryBlocksTool extends StructuredTool<typeof GenerateStoryBlocksInput> {
-  name        = "generate_storyblocks";
+  name = "generate_storyblocks";
   description = "Generates story blocks used for composing scenes and storyboards";
-  schema      = GenerateStoryBlocksInput;
+  schema = GenerateStoryBlocksInput;
 
   private readonly context: GenerateStoryBlocksToolDeps["context"];
 
@@ -210,8 +210,8 @@ class GenerateStoryBlocksTool extends StructuredTool<typeof GenerateStoryBlocksI
    * Seed is always first. Continuations arrive in completion order.
    * Use this for progressive UI rendering.
    */
-  stream({ directives }: z.infer<typeof GenerateStoryBlocksInput>): AsyncGenerator<BlockResult> {
-    return streamBlocks(directives, this.context);
+  override stream({ directives }: z.infer<typeof GenerateStoryBlocksInput>): any {
+    return streamBlocks(directives, this.context) as AsyncGenerator<BlockResult>;
   }
 
   /**
@@ -229,7 +229,7 @@ class GenerateStoryBlocksTool extends StructuredTool<typeof GenerateStoryBlocksI
 }
 
 export function createGenerateStoryBlocksTool(
-  deps:    GenerateStoryBlocksToolDeps,
+  deps: GenerateStoryBlocksToolDeps,
   params?: ToolParams,
 ): GenerateStoryBlocksTool {
   return new GenerateStoryBlocksTool(deps, params);

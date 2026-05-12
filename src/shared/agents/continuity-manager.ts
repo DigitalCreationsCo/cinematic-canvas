@@ -37,19 +37,20 @@ import { extractGeneratedResponse } from "#shared/lm/parts-extractor.js";
 import { buildReferenceImageInputs } from "#shared/lm/utils.js";
 import { composeEnhancedSceneGenerationPromptMeta } from "#shared/prompts/scene.prompt.js";
 import { continuitySystemPrompt } from "#shared/prompts/must-review/continuity.prompt.js";
-import { createGenerateCharacterImagesTool } from "#shared/lm/tools/characters/generate-character-images.tool.js";
-import { createGenerateLocationImagesTool } from "#shared/lm/tools/locations/generate-location-images.tool.js";
+import { createGenerateCharacterImagesTool } from "#shared/lm/tools/characters/generate-characters-images.tool.js";
+import { createGenerateLocationImagesTool } from "#shared/lm/tools/locations/generate-locations-images.tool.js";
 import {
   generateSceneFrames,
   SceneFrameGenerationRequest,
   SceneFrameGenerationSuccess,
-} from "#shared/lm/tools/scenes/generate-scene-frames.js";
+} from "#shared/lm/tools/scenes/generate-scene-frames.tool.js";
 import {
   FramePromptRequest,
   generateFrameGenerationPrompts,
 } from "#shared/lm/tools/scenes/generate-frame-generation-prompts.js";
 import { AgentOptions } from "#shared/agents/agent.options.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
+import { ProjectRepository } from "#shared/services/project-repository.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal types
@@ -129,10 +130,15 @@ export class ContinuityManagerAgent {
     // ToolContext shared by generateSceneFrames (and transitively generateImages).
     // Callbacks are injected here so the tool layer can persist and update UI
     // without knowing about the agent or job infrastructure.
-    const toolContext: ToolContext<TextModelController> = {
+
+    const toolContext: ToolContext<TextModelController> & {
+      projectRepository: ProjectRepository;
+      incrementAttempt: IncrementAttemptHook;
+    } = {
       projectId,
       traceId,
       safetyRetries: this.qualityAgent.qualityConfig.maxRetries,
+      projectRepository: new ProjectRepository(),
       console,
       storageManager: this.storageManager,
       provider: this.imageModel,
@@ -589,6 +595,7 @@ export class ContinuityManagerAgent {
             const result = await createGenerateCharacterImagesTool({
               context: {
                 safetyRetries: this.qualityAgent.qualityConfig.maxRetries,
+                projectRepository: new ProjectRepository(),
                 provider: this.imageModel,
                 storageManager: this.storageManager,
                 projectId,
@@ -825,10 +832,14 @@ export class ContinuityManagerAgent {
       }),
     );
 
-    const imageGenerationToolContext: ToolContext<TextModelController> & { incrementAttempt: IncrementAttemptHook } = {
+    const imageGenerationToolContext: ToolContext<TextModelController> & {
+      projectRepository: ProjectRepository;
+      incrementAttempt: IncrementAttemptHook;
+    } = {
       safetyRetries: this.qualityAgent.qualityConfig.maxRetries,
       provider: this.imageModel,
       storageManager: this.storageManager,
+      projectRepository: new ProjectRepository(),
       projectId,
       console,
       traceId,

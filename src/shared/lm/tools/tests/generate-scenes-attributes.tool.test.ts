@@ -1,6 +1,6 @@
 import "#shared/mocks/mock-config.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createGenerateScenesTool } from "#shared/lm/tools/scenes/generate-scenes.tool.js";
+import { createGenerateSceneAttributesTool } from "#shared/lm/tools/scenes/generate-scenes-attributes.tool.js";
 import { generateId } from "#shared/utils/id.ts";
 
 // Mock generateEntityAttributes to control LLM output directly
@@ -72,28 +72,32 @@ describe("GenerateScenesTool", () => {
       { entity: { id: sceneId, name: "The Great Escape", assets: {} }, entityType: "scene" },
     ]);
 
-    const tool = createGenerateScenesTool({
+    const tool = createGenerateSceneAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
-      insertScenes: mockInsert
+      insertScenes: mockInsert,
     });
 
-    const sceneInput = [{
-      partial: { name: "The Great Escape", slug: "scene-1", id: sceneId },
-      images: []
-    }];
+    const sceneInput = [
+      {
+        partial: { name: "The Great Escape", slug: "scene-1", id: sceneId },
+        images: [],
+      },
+    ];
 
     await tool.run({ scenes: sceneInput as any });
 
     // Verify Scene-specific persistence logic
-    expect(mockInsert).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ name: "The Great Escape" })
-    ]));
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ name: "The Great Escape" })]),
+    );
 
     // Ensure the image tool is called to generate storyboards for the new scene
-    expect(mockImagesTool.run).toHaveBeenCalledWith(expect.objectContaining({
-      scenes: expect.arrayContaining([expect.objectContaining({ id: sceneId })])
-    }));
+    expect(mockImagesTool.run).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenes: expect.arrayContaining([expect.objectContaining({ id: sceneId })]),
+      }),
+    );
   });
 
   // ==========================================================================
@@ -140,11 +144,9 @@ describe("GenerateScenesTool", () => {
     ]);
 
     // Mock entity fetch for ENTITY_CREATED
-    mockContext.projectRepository.getEntities.mockResolvedValue([
-      { entity: mockInsertedEntity, entityType: "scene" },
-    ]);
+    mockContext.projectRepository.getEntities.mockResolvedValue([{ entity: mockInsertedEntity, entityType: "scene" }]);
 
-    const tool = createGenerateScenesTool({
+    const tool = createGenerateSceneAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertScenes: mockInsert,
@@ -193,9 +195,7 @@ describe("GenerateScenesTool", () => {
     // ── Assert: images tool called with inserted refs ──
     expect(mockImagesTool.run).toHaveBeenCalledWith(
       expect.objectContaining({
-        scenes: expect.arrayContaining([
-          expect.objectContaining({ id: sceneId, name: "The Great Escape" }),
-        ]),
+        scenes: expect.arrayContaining([expect.objectContaining({ id: sceneId, name: "The Great Escape" })]),
       }),
     );
 
@@ -219,7 +219,7 @@ describe("GenerateScenesTool", () => {
     ]);
 
     const mockInsert = vi.fn();
-    const tool = createGenerateScenesTool({
+    const tool = createGenerateSceneAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertScenes: mockInsert,
@@ -249,15 +249,31 @@ describe("GenerateScenesTool", () => {
   it("should throw when insertScenes fails, preserving attribute results", async () => {
     const sceneId = generateId();
     const generatedAttr = {
-      sceneIndex: 0, name: "Fail Insert", description: "test",
-      mood: "neutral", shotType: "Medium", cameraAngle: "Eye Level",
-      cameraMovement: "Static", transitionType: "None", composition: {},
-      startTime: 0, endTime: 5, duration: 5, type: "narrative",
-      lyrics: "", musicalDescription: "", musicChange: "None",
-      intensity: "medium", tempo: "moderate", audioEvidence: "",
-      transientImpact: "soft", audioSync: "Mood Sync",
+      sceneIndex: 0,
+      name: "Fail Insert",
+      description: "test",
+      mood: "neutral",
+      shotType: "Medium",
+      cameraAngle: "Eye Level",
+      cameraMovement: "Static",
+      transitionType: "None",
+      composition: {},
+      startTime: 0,
+      endTime: 5,
+      duration: 5,
+      type: "narrative",
+      lyrics: "",
+      musicalDescription: "",
+      musicChange: "None",
+      intensity: "medium",
+      tempo: "moderate",
+      audioEvidence: "",
+      transientImpact: "soft",
+      audioSync: "Mood Sync",
       lighting: { quality: { hardness: "Soft", colorTemperature: "Neutral", intensity: "Medium" } },
-      characterReferenceIds: [], locationReferenceId: "", continuityNotes: [],
+      characterReferenceIds: [],
+      locationReferenceId: "",
+      continuityNotes: [],
       version: 1,
     };
 
@@ -267,7 +283,7 @@ describe("GenerateScenesTool", () => {
 
     const mockInsert = vi.fn().mockRejectedValue(new Error("DB constraint violation"));
 
-    const tool = createGenerateScenesTool({
+    const tool = createGenerateSceneAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertScenes: mockInsert,
@@ -286,15 +302,31 @@ describe("GenerateScenesTool", () => {
   it("should still return attribute results when imagesTool.run() throws", async () => {
     const sceneId = generateId();
     const generatedAttr = {
-      sceneIndex: 0, name: "Img Fail", description: "test",
-      mood: "neutral", shotType: "Medium", cameraAngle: "Eye Level",
-      cameraMovement: "Static", transitionType: "None", composition: {},
-      startTime: 0, endTime: 5, duration: 5, type: "narrative",
-      lyrics: "", musicalDescription: "", musicChange: "None",
-      intensity: "medium", tempo: "moderate", audioEvidence: "",
-      transientImpact: "soft", audioSync: "Mood Sync",
+      sceneIndex: 0,
+      name: "Img Fail",
+      description: "test",
+      mood: "neutral",
+      shotType: "Medium",
+      cameraAngle: "Eye Level",
+      cameraMovement: "Static",
+      transitionType: "None",
+      composition: {},
+      startTime: 0,
+      endTime: 5,
+      duration: 5,
+      type: "narrative",
+      lyrics: "",
+      musicalDescription: "",
+      musicChange: "None",
+      intensity: "medium",
+      tempo: "moderate",
+      audioEvidence: "",
+      transientImpact: "soft",
+      audioSync: "Mood Sync",
       lighting: { quality: { hardness: "Soft", colorTemperature: "Neutral", intensity: "Medium" } },
-      characterReferenceIds: [], locationReferenceId: "", continuityNotes: [],
+      characterReferenceIds: [],
+      locationReferenceId: "",
+      continuityNotes: [],
       version: 1,
     };
 
@@ -308,7 +340,7 @@ describe("GenerateScenesTool", () => {
       { entity: { id: sceneId, name: "Img Fail", assets: {} }, entityType: "scene" },
     ]);
 
-    const tool = createGenerateScenesTool({
+    const tool = createGenerateSceneAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertScenes: mockInsert,
@@ -322,9 +354,7 @@ describe("GenerateScenesTool", () => {
     // Attributes and insert succeeded
     expect(mockInsert).toHaveBeenCalled();
     expect(mockContext.saveAssets).toHaveBeenCalled();
-    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "ENTITY_CREATED" }),
-    );
+    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
 
     // Attribute result still returned as success
     expect(results).toHaveLength(1);
@@ -342,23 +372,41 @@ describe("GenerateScenesTool", () => {
     const sceneId1 = generateId();
     const sceneId2 = generateId();
     const successAttr = {
-      sceneIndex: 0, name: "Success Scene", description: "good",
-      mood: "happy", shotType: "Medium", cameraAngle: "Eye Level",
-      cameraMovement: "Static", transitionType: "None", composition: {},
-      startTime: 0, endTime: 5, duration: 5, type: "narrative",
-      lyrics: "", musicalDescription: "", musicChange: "None",
-      intensity: "medium", tempo: "moderate", audioEvidence: "",
-      transientImpact: "soft", audioSync: "Mood Sync",
+      sceneIndex: 0,
+      name: "Success Scene",
+      description: "good",
+      mood: "happy",
+      shotType: "Medium",
+      cameraAngle: "Eye Level",
+      cameraMovement: "Static",
+      transitionType: "None",
+      composition: {},
+      startTime: 0,
+      endTime: 5,
+      duration: 5,
+      type: "narrative",
+      lyrics: "",
+      musicalDescription: "",
+      musicChange: "None",
+      intensity: "medium",
+      tempo: "moderate",
+      audioEvidence: "",
+      transientImpact: "soft",
+      audioSync: "Mood Sync",
       lighting: { quality: { hardness: "Soft", colorTemperature: "Neutral", intensity: "Medium" } },
-      characterReferenceIds: [], locationReferenceId: "", continuityNotes: [],
+      characterReferenceIds: [],
+      locationReferenceId: "",
+      continuityNotes: [],
       version: 1,
     };
 
     vi.mocked(generateEntityAttributes).mockResolvedValue([
       { success: true, id: sceneId1, data: successAttr, entityType: "scene" },
       {
-        success: false, id: sceneId2,
-        data: { id: sceneId2 }, entityType: "scene",
+        success: false,
+        id: sceneId2,
+        data: { id: sceneId2 },
+        entityType: "scene",
         error: new Error("Scene 2 generation failed"),
       },
     ]);
@@ -368,7 +416,7 @@ describe("GenerateScenesTool", () => {
       { entity: { id: sceneId1, name: "Success Scene", assets: {} }, entityType: "scene" },
     ]);
 
-    const tool = createGenerateScenesTool({
+    const tool = createGenerateSceneAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertScenes: mockInsert,
@@ -412,7 +460,7 @@ describe("GenerateScenesTool", () => {
   it("should handle empty scene array gracefully", async () => {
     vi.mocked(generateEntityAttributes).mockResolvedValue([]);
 
-    const tool = createGenerateScenesTool({
+    const tool = createGenerateSceneAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertScenes: vi.fn(),
@@ -431,15 +479,31 @@ describe("GenerateScenesTool", () => {
   it("should serialise results via _call in the expected JSON format", async () => {
     const sceneId = generateId();
     const generatedAttr = {
-      sceneIndex: 0, name: "Serialise Test", description: "test",
-      mood: "neutral", shotType: "Medium", cameraAngle: "Eye Level",
-      cameraMovement: "Static", transitionType: "None", composition: {},
-      startTime: 0, endTime: 5, duration: 5, type: "narrative",
-      lyrics: "", musicalDescription: "", musicChange: "None",
-      intensity: "medium", tempo: "moderate", audioEvidence: "",
-      transientImpact: "soft", audioSync: "Mood Sync",
+      sceneIndex: 0,
+      name: "Serialise Test",
+      description: "test",
+      mood: "neutral",
+      shotType: "Medium",
+      cameraAngle: "Eye Level",
+      cameraMovement: "Static",
+      transitionType: "None",
+      composition: {},
+      startTime: 0,
+      endTime: 5,
+      duration: 5,
+      type: "narrative",
+      lyrics: "",
+      musicalDescription: "",
+      musicChange: "None",
+      intensity: "medium",
+      tempo: "moderate",
+      audioEvidence: "",
+      transientImpact: "soft",
+      audioSync: "Mood Sync",
       lighting: { quality: { hardness: "Soft", colorTemperature: "Neutral", intensity: "Medium" } },
-      characterReferenceIds: [], locationReferenceId: "", continuityNotes: [],
+      characterReferenceIds: [],
+      locationReferenceId: "",
+      continuityNotes: [],
       version: 1,
     };
 
@@ -452,7 +516,7 @@ describe("GenerateScenesTool", () => {
       { entity: { id: sceneId, name: "Serialise Test", assets: {} }, entityType: "scene" },
     ]);
 
-    const tool = createGenerateScenesTool({
+    const tool = createGenerateSceneAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertScenes: mockInsert,
@@ -468,5 +532,104 @@ describe("GenerateScenesTool", () => {
     expect(parsed).toHaveProperty("results");
     expect(parsed.results[0].success).toBe(true);
     expect(parsed.results[0].scene.name).toBe("Serialise Test");
+  });
+
+  // ==========================================================================
+  // Optional Dependencies / Generation-Only Mode
+  // ==========================================================================
+
+  describe("Optional Dependencies", () => {
+    const sceneId = generateId();
+    const generatedAttr = {
+      sceneIndex: 0,
+      name: "Generation Only Scene",
+      description: "A scene generated without persistence",
+      mood: "contemplative",
+      shotType: "Wide",
+      cameraAngle: "Low Angle",
+      cameraMovement: "Tracking",
+      transitionType: "Fade",
+      composition: {},
+      startTime: 0,
+      endTime: 10,
+      duration: 10,
+      type: "narrative",
+      lyrics: "",
+      musicalDescription: "",
+      musicChange: "None",
+      intensity: "low",
+      tempo: "slow",
+      audioEvidence: "",
+      transientImpact: "soft",
+      audioSync: "Mood Sync",
+      lighting: { quality: { hardness: "Soft", colorTemperature: "Warm", intensity: "Low" } },
+      characterReferenceIds: [],
+      locationReferenceId: "loc_dry_run",
+      continuityNotes: [],
+      version: 1,
+    };
+
+    beforeEach(() => {
+      vi.mocked(generateEntityAttributes).mockResolvedValue([
+        { success: true, id: sceneId, data: generatedAttr, entityType: "scene" },
+      ]);
+    });
+
+    it("should succeed in generation-only mode (no optional dependencies)", async () => {
+      // Initialize tool with NO optional deps
+      const tool = createGenerateSceneAttributesTool({
+        context: mockContext,
+      });
+
+      const results = await tool.run({
+        scenes: [{ partial: { name: "Generation Only Scene", id: sceneId }, images: [] }] as any,
+      });
+
+      // Verify core generation succeeded
+      expect(results[0].success).toBe(true);
+      expect(results[0].output.name).toBe("Generation Only Scene");
+
+      // Verify side-effects were skipped
+      expect(mockContext.publishPipelineEvent).not.toHaveBeenCalled();
+      expect(mockImagesTool.run).not.toHaveBeenCalled();
+    });
+
+    it("should skip image generation if insertScenes is missing (no entity IDs available)", async () => {
+      // Provide imagesTool but NO insertScenes
+      const tool = createGenerateSceneAttributesTool({
+        context: mockContext,
+        imagesTool: mockImagesTool,
+      });
+
+      await tool.run({
+        scenes: [{ partial: { name: "No ID Scene", id: sceneId }, images: [] }] as any,
+      });
+
+      // Image tool requires DB IDs (insertedRefs) to run; it should be skipped
+      expect(mockImagesTool.run).not.toHaveBeenCalled();
+    });
+
+    it("should skip image generation if only imagesTool is missing", async () => {
+      const mockInsert = vi.fn().mockResolvedValue([{ id: sceneId, name: "Insert Only" }]);
+      mockContext.projectRepository.getEntities.mockResolvedValue([
+        { entity: { id: sceneId, name: "Insert Only", assets: {} }, entityType: "scene" },
+      ]);
+
+      // Provide insertScenes but NO imagesTool
+      const tool = createGenerateSceneAttributesTool({
+        context: mockContext,
+        insertScenes: mockInsert,
+      });
+
+      const results = await tool.run({
+        scenes: [{ partial: { name: "Insert Only", id: sceneId }, images: [] }] as any,
+      });
+
+      expect(results[0].success).toBe(true);
+      expect(mockInsert).toHaveBeenCalled();
+      expect(mockImagesTool.run).not.toHaveBeenCalled();
+      // ENTITY_CREATED should still fire since persistence succeeded
+      expect(mockContext.publishPipelineEvent).toHaveBeenCalled();
+    });
   });
 });

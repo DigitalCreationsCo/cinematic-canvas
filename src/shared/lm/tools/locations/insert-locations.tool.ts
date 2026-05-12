@@ -8,6 +8,7 @@ import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappers.js";
+import { TagRegistryService } from "#shared/services/tag-registry.js";
 
 const InsertLocationsInput = z.object({ locations: z.array(InsertLocation) });
 export type InsertLocationsInput = z.input<typeof InsertLocationsInput>;
@@ -36,6 +37,22 @@ async function run(locationsData: InsertLocationsInput["locations"], context: In
       toInsertLocations,
     );
 
+    for (let i = 0; i < insertedLocations.length; i++) {
+      const entity = insertedLocations[i];
+      if (!entity.name) throw new Error("Entity name is required for handle registration.");
+
+      await context.tagRegistry
+        .registerHandle({
+          handle: `@${entity.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+          entityId: entity.id,
+          entityType: "location",
+          projectId: context.projectId,
+        })
+        .catch((err) => {
+          console.warn({ entityId: entity.id, error: err }, "[Worker] Failed to register entity handle.");
+        });
+    }
+
     return Promise.all(
       insertedLocations.map(async (res) => {
         return { success: true as const, location: res };
@@ -51,7 +68,10 @@ async function run(locationsData: InsertLocationsInput["locations"], context: In
 // ---------------------------------------------------------------------------
 
 export interface InsertLocationsToolDeps {
-  context: ToolContext<TextModelController> & { projectRepository: ProjectRepository };
+  context: ToolContext<TextModelController> & {
+    projectRepository: ProjectRepository;
+    tagRegistry: TagRegistryService;
+  };
 }
 
 class InsertLocationsTool extends StructuredTool<typeof InsertLocationsInput> {
@@ -91,6 +111,8 @@ class InsertLocationsTool extends StructuredTool<typeof InsertLocationsInput> {
     }
   }
 }
+
+export type { InsertLocationsTool };
 
 // ---------------------------------------------------------------------------
 // Factory — preferred way to instantiate so callers don't touch the class directly

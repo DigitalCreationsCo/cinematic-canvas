@@ -22,7 +22,7 @@ export const createMockLocation = (overrides?: Partial<LocationWithAssetsKV>): L
 
     referenceId: overrides?.referenceId ?? `loc-${Math.random().toString(36).slice(2, 8)}`,
     name: overrides?.name ?? "Test Location",
-    description: overrides?.description ?? "",
+    // description: overrides?.description ?? "",
     type: overrides?.type ?? "interior",
     lightingConditions: overrides?.lightingConditions ?? {
       quality: {

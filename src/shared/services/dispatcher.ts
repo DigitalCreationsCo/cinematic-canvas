@@ -35,7 +35,7 @@ export class Dispatcher {
     userId,
     payload,
   }: {
-    workflowId: string;
+    workflowId: string | undefined;
     nodeName: string;
     jobType: T;
     assetKey: AssetKey;
@@ -114,7 +114,7 @@ export class Dispatcher {
 
   async ensureBatchJobs<T extends JobType>(
     nodeName: string,
-    workflowId: string,
+    workflowId: string | undefined,
     jobs: BatchJobs<T>,
   ): Promise<Extract<AnyJob, { type: T }>[]> {
     let completedJobs: Extract<AnyJob, { type: T }>[] = [];
@@ -230,7 +230,7 @@ export class Dispatcher {
     assetKey: AssetKey;
     payload: any;
     uniqueKey: string;
-    workflowId: string;
+    workflowId?: string;
     teamId: string;
     userId: string;
   }): Promise<Job> {
@@ -259,7 +259,7 @@ export class Dispatcher {
   }
 
   private async handleRetriableFailure<T extends JobType>(
-    workflowId: string,
+    workflowId: string | undefined,
     nodeName: string,
     uniqueKey: string,
     jobType: T,
@@ -311,7 +311,7 @@ export class Dispatcher {
   // This is THE recovery gate. It calls incrementAttempt (the hook) to
   // advance the monotonic counter, then decides: auto-recover or throw.
   private async handleFatalFailure<T extends JobType>(
-    workflowId: string,
+    workflowId: string | undefined,
     nodeName: string,
     uniqueKey: string,
     jobType: T,
@@ -363,6 +363,7 @@ export class Dispatcher {
     if (advanced.attempts.totalAttempts > config.maxTotalAttempts) {
       // Graph stops here, waiting for manual resume/fix
       const interruptValue: InterruptValue = {
+        functionName: "handleFatalFailure",
         type: "max_lifetime_exceeded", // Custom type for your UI to catch
         error: `Job exhausted all ${config.maxTotalAttempts} lifetime attempts.`,
         errorDetails: { jobId: freshFatalJob.id, instructions: config.recoveryInstructions },

@@ -4,7 +4,7 @@ import { WorkflowOperator } from "#pipeline/workflow-service.js";
 import { handleStream } from "#pipeline/helpers/stream-helper.js";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { generateId } from "#shared/utils/id.ts";
-import { PipelineEventHandler } from "#pipeline/event-handler.ts";
+import { PipelineEventHandler } from "#pipeline/pipeline-event-handler.ts";
 import { CinematicVideoWorkflow } from "#pipeline/graph.js";
 
 describe("WorkflowOperator", () => {

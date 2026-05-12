@@ -70,7 +70,7 @@ export const createMockScene = (overrides?: Partial<SceneWithAssetsKV>): SceneWi
     transientImpact: overrides?.transientImpact ?? "soft",
 
     name: overrides?.name ?? `Scene ${sceneIndex + 1}`,
-    description: overrides?.description ?? "",
+    // description: overrides?.description ?? "",
     audioSync: overrides?.audioSync ?? "Mood Sync",
 
     characterReferenceIds: overrides?.characterReferenceIds ?? [],

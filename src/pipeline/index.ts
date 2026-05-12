@@ -15,7 +15,7 @@ import * as path from "node:path";
 import { ApiError as StorageApiError } from "@google-cloud/storage";
 
 import { IEventBus } from "#shared/messaging/event-bus.types.js";
-import { SUBSCRIPTION_NAMES } from "#shared/config.js";
+import { getMaxParallelJobs, SUBSCRIPTION_NAMES } from "#shared/config.js";
 import {
   PipelineCommand,
   PipelineEvent,
@@ -45,6 +45,7 @@ import { initLogger, logContextStore, LogContext } from "#shared/logger/index.js
 import { getPool, initializeDatabase } from "#shared/db/index.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { PipelineEventHandler } from "#pipeline/pipeline-event-handler.js";
+import { Dispatcher } from "#shared/services/dispatcher.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface PipelineDependencies {
@@ -436,11 +437,17 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
     };
   };
 
-  const getOrCreateChatAgent = async (
-    conversationId: string,
-    projectId: string,
-    userId: string,
-  ): Promise<ChatAgent> => {
+  const getOrCreateChatAgent = async ({
+    conversationId,
+    projectId,
+    userId,
+    worldId,
+  }: {
+    conversationId: string;
+    projectId: string;
+    userId: string;
+    worldId: string | undefined;
+  }): Promise<ChatAgent> => {
     let agent = chatAgents.get(conversationId);
     if (!agent) {
       const textController = new TextModelController();
@@ -470,6 +477,7 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
           traceId: `chat-${conversationId}`,
           projectId,
           incrementAttempt: createIncrementAttemptHook(conversationId),
+          dispatcher: new Dispatcher(jobControlPlane, getMaxParallelJobs(), projectId, worldId),
         },
       });
       chatAgents.set(conversationId, agent);
@@ -512,7 +520,12 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
         return;
       }
 
-      const agent = await getOrCreateChatAgent(conversationId, conversation.projectId, userId);
+      const agent = await getOrCreateChatAgent({
+        conversationId,
+        projectId: conversation.projectId,
+        userId,
+        worldId: chatEvent.worldId,
+      });
 
       // Do NOT pre-create the assistant message here — sendMessage() handles
       // creation internally. Pre-creating it would leave an empty AI message

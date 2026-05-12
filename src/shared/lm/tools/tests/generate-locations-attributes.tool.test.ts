@@ -3,7 +3,7 @@ import { createMockTextModel } from "#shared/mocks/mock-model.ts";
 import { mockProjectRepository } from "#shared/mocks/mock-project-repository.ts";
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createGenerateLocationsTool } from "#shared/lm/tools/locations/generate-locations.tool.js";
+import { createGenerateLocationAttributesTool } from "#shared/lm/tools/locations/generate-locations.tool.js";
 import { generateId } from "#shared/utils/id.ts";
 
 // Mock generateEntityAttributes to control LLM output directly
@@ -13,7 +13,7 @@ vi.mock("#shared/lm/tools/generate-entity-attributes.js", () => ({
 
 import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
 
-describe("GenerateLocationsTool", () => {
+describe("GenerateLocationAttributesTool", () => {
   let mockProvider: any;
   let mockContext: any;
   let mockImagesTool: any;
@@ -41,34 +41,40 @@ describe("GenerateLocationsTool", () => {
     const insertedRefs = [{ id: inputLocations[0].id, name: "Cyberpunk Bar" }];
 
     vi.mocked(generateEntityAttributes).mockResolvedValue([
-      { success: true, id: inputLocations[0].id, data: generatedAttr }
+      { success: true, id: inputLocations[0].id, data: generatedAttr },
     ]);
 
     const insertLocations = vi.fn().mockResolvedValue(insertedRefs);
 
     // 3. Mock Repository entity fetch for ENTITY_CREATED
-    mockProjectRepository.getEntities.mockResolvedValue([{ entityType: 'location', entity: { ...generatedAttr, id: insertedRefs[0].id } }]);
+    mockProjectRepository.getEntities.mockResolvedValue([
+      { entityType: "location", entity: { ...generatedAttr, id: insertedRefs[0].id } },
+    ]);
 
     const consoleSpy = vi.spyOn(console, "log");
-    const tool = createGenerateLocationsTool({
+    const tool = createGenerateLocationAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
-      insertLocations
+      insertLocations,
     });
 
     const results = await tool.run({
       locations: inputLocations as any,
       generationRules: ["high quality"],
-      attempt: 1
+      attempt: 1,
     });
 
     expect(insertLocations).toHaveBeenCalledWith([expect.objectContaining({ name: "Cyberpunk Bar" })]);
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(`Inserted ${insertedRefs.length} location(s) into DB`));
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining(`Inserted ${insertedRefs.length} location(s) into DB`),
+    );
     expect(mockContext.saveAssets).toHaveBeenCalled();
     expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
-    expect(mockImagesTool.run).toHaveBeenCalledWith(expect.objectContaining({
-      locations: [expect.objectContaining({ id: insertedRefs[0].id })]
-    }));
+    expect(mockImagesTool.run).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locations: [expect.objectContaining({ id: insertedRefs[0].id })],
+      }),
+    );
     expect(results[0].success).toBe(true);
   });
 
@@ -108,7 +114,7 @@ describe("GenerateLocationsTool", () => {
       { entity: { ...generatedAttr, id: locationId, assets: {} }, entityType: "location" },
     ]);
 
-    const tool = createGenerateLocationsTool({
+    const tool = createGenerateLocationAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertLocations,
@@ -188,7 +194,7 @@ describe("GenerateLocationsTool", () => {
 
     const insertLocations = vi.fn();
 
-    const tool = createGenerateLocationsTool({
+    const tool = createGenerateLocationAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertLocations,
@@ -217,11 +223,21 @@ describe("GenerateLocationsTool", () => {
   it("should throw when insertLocations fails", async () => {
     const locationId = generateId();
     const generatedAttr = {
-      name: "Fail Insert", description: "test", type: "exterior",
+      name: "Fail Insert",
+      description: "test",
+      type: "exterior",
       referenceId: "loc_fail",
-      lightingConditions: {}, mood: "neutral", timeOfDay: "day", weather: "clear",
-      colorPalette: [], architecture: [], naturalElements: [], manMadeObjects: [],
-      groundSurface: "", skyOrCeiling: "", state: {},
+      lightingConditions: {},
+      mood: "neutral",
+      timeOfDay: "day",
+      weather: "clear",
+      colorPalette: [],
+      architecture: [],
+      naturalElements: [],
+      manMadeObjects: [],
+      groundSurface: "",
+      skyOrCeiling: "",
+      state: {},
       version: 1,
     };
 
@@ -231,15 +247,15 @@ describe("GenerateLocationsTool", () => {
 
     const insertLocations = vi.fn().mockRejectedValue(new Error("DB constraint violation"));
 
-    const tool = createGenerateLocationsTool({
+    const tool = createGenerateLocationAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertLocations,
     });
 
-    await expect(
-      tool.run({ locations: [{ id: locationId, name: "Fail Insert" }] as any }),
-    ).rejects.toThrow("DB constraint violation");
+    await expect(tool.run({ locations: [{ id: locationId, name: "Fail Insert" }] as any })).rejects.toThrow(
+      "DB constraint violation",
+    );
   });
 
   // ==========================================================================
@@ -249,11 +265,21 @@ describe("GenerateLocationsTool", () => {
   it("should still return attribute results when imagesTool.run() throws", async () => {
     const locationId = generateId();
     const generatedAttr = {
-      name: "Img Fail Loc", description: "test", type: "interior",
+      name: "Img Fail Loc",
+      description: "test",
+      type: "interior",
       referenceId: "loc_img_fail",
-      lightingConditions: {}, mood: "neutral", timeOfDay: "day", weather: "clear",
-      colorPalette: [], architecture: [], naturalElements: [], manMadeObjects: [],
-      groundSurface: "", skyOrCeiling: "", state: {},
+      lightingConditions: {},
+      mood: "neutral",
+      timeOfDay: "day",
+      weather: "clear",
+      colorPalette: [],
+      architecture: [],
+      naturalElements: [],
+      manMadeObjects: [],
+      groundSurface: "",
+      skyOrCeiling: "",
+      state: {},
       version: 1,
     };
 
@@ -267,7 +293,7 @@ describe("GenerateLocationsTool", () => {
       { entity: { id: locationId, name: "Img Fail Loc", assets: {} }, entityType: "location" },
     ]);
 
-    const tool = createGenerateLocationsTool({
+    const tool = createGenerateLocationAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertLocations,
@@ -279,9 +305,7 @@ describe("GenerateLocationsTool", () => {
 
     // Insert and ENTITY_CREATED still happened
     expect(insertLocations).toHaveBeenCalled();
-    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "ENTITY_CREATED" }),
-    );
+    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
 
     // Attribute result is success
     expect(results).toHaveLength(1);
@@ -299,19 +323,31 @@ describe("GenerateLocationsTool", () => {
     const locId1 = generateId();
     const locId2 = generateId();
     const successAttr = {
-      name: "Good Location", description: "nice place", type: "exterior",
+      name: "Good Location",
+      description: "nice place",
+      type: "exterior",
       referenceId: "loc_good",
-      lightingConditions: {}, mood: "peaceful", timeOfDay: "day", weather: "sunny",
-      colorPalette: [], architecture: [], naturalElements: [], manMadeObjects: [],
-      groundSurface: "", skyOrCeiling: "", state: {},
+      lightingConditions: {},
+      mood: "peaceful",
+      timeOfDay: "day",
+      weather: "sunny",
+      colorPalette: [],
+      architecture: [],
+      naturalElements: [],
+      manMadeObjects: [],
+      groundSurface: "",
+      skyOrCeiling: "",
+      state: {},
       version: 1,
     };
 
     vi.mocked(generateEntityAttributes).mockResolvedValue([
       { success: true, id: locId1, data: successAttr, entityType: "location" },
       {
-        success: false, id: locId2,
-        data: { id: locId2 }, entityType: "location",
+        success: false,
+        id: locId2,
+        data: { id: locId2 },
+        entityType: "location",
         error: new Error("Location 2 failed"),
       },
     ]);
@@ -321,7 +357,7 @@ describe("GenerateLocationsTool", () => {
       { entity: { id: locId1, name: "Good Location", assets: {} }, entityType: "location" },
     ]);
 
-    const tool = createGenerateLocationsTool({
+    const tool = createGenerateLocationAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertLocations,
@@ -351,7 +387,7 @@ describe("GenerateLocationsTool", () => {
   it("should handle empty location array gracefully", async () => {
     vi.mocked(generateEntityAttributes).mockResolvedValue([]);
 
-    const tool = createGenerateLocationsTool({
+    const tool = createGenerateLocationAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertLocations: vi.fn(),
@@ -370,11 +406,21 @@ describe("GenerateLocationsTool", () => {
   it("should serialise results via _call in the expected JSON format", async () => {
     const locationId = generateId();
     const generatedAttr = {
-      name: "Serialise Loc", description: "test", type: "interior",
+      name: "Serialise Loc",
+      description: "test",
+      type: "interior",
       referenceId: "loc_serial",
-      lightingConditions: {}, mood: "neutral", timeOfDay: "day", weather: "clear",
-      colorPalette: [], architecture: [], naturalElements: [], manMadeObjects: [],
-      groundSurface: "", skyOrCeiling: "", state: {},
+      lightingConditions: {},
+      mood: "neutral",
+      timeOfDay: "day",
+      weather: "clear",
+      colorPalette: [],
+      architecture: [],
+      naturalElements: [],
+      manMadeObjects: [],
+      groundSurface: "",
+      skyOrCeiling: "",
+      state: {},
       version: 1,
     };
 
@@ -387,7 +433,7 @@ describe("GenerateLocationsTool", () => {
       { entity: { id: locationId, name: "Serialise Loc", assets: {} }, entityType: "location" },
     ]);
 
-    const tool = createGenerateLocationsTool({
+    const tool = createGenerateLocationAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertLocations,
@@ -404,5 +450,4 @@ describe("GenerateLocationsTool", () => {
     expect(parsed.results[0].success).toBe(true);
     expect(parsed.results[0].location.name).toBe("Serialise Loc");
   });
-
 });

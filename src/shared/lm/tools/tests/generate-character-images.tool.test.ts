@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, Mocked } from "vitest"
 import {
   createGenerateCharacterImagesTool,
   GenerateCharacterImagesResult,
-} from "#shared/lm/tools/characters/generate-character-images.tool.js";
+} from "#shared/lm/tools/characters/generate-characters-images.tool.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { getExecutionMode } from "#shared/config.js";
@@ -41,7 +41,7 @@ describe("generateCharacterImages - Output Order Preservation", () => {
       } as any,
       safetyRetries: 3,
       incrementAttempt: vi.fn(),
-      projectRepository: mockProjectRepository
+      projectRepository: mockProjectRepository,
     };
   });
 
@@ -57,11 +57,7 @@ describe("generateCharacterImages - Output Order Preservation", () => {
       const character2 = createMockCharacter({ name: "Bob" });
       const character3 = createMockCharacter({ name: "Charlie" });
 
-      const inputCharacters = [
-        character1,
-        character2,
-        character3,
-      ];
+      const inputCharacters = [character1, character2, character3];
 
       mockProvider.generateBatchImages.mockResolvedValue([
         { customId: character3.id, status: "SUCCESS", imageBytes: "abc123" },
@@ -69,10 +65,10 @@ describe("generateCharacterImages - Output Order Preservation", () => {
         { customId: character1.id, status: "SUCCESS", imageBytes: "ghi789" },
       ]);
       mockProjectRepository.getEntities.mockResolvedValue([
-        { entityType: 'character', entity: character2 },
-        { entityType: 'character', entity: character3 },
-        { entityType: 'character', entity: character1 }
-      ])
+        { entityType: "character", entity: character2 },
+        { entityType: "character", entity: character3 },
+        { entityType: "character", entity: character1 },
+      ]);
 
       const results = await createGenerateCharacterImagesTool({
         context: mockContext,
@@ -95,11 +91,7 @@ describe("generateCharacterImages - Output Order Preservation", () => {
       const character2 = createMockCharacter({ name: "Bob", version: 2 });
       const character3 = createMockCharacter({ name: "Charlie", version: 3 });
 
-      const inputCharacters = [
-        character1,
-        character2,
-        character3,
-      ];
+      const inputCharacters = [character1, character2, character3];
 
       mockProvider.generateBatchImages.mockResolvedValue([
         { customId: character2.id, status: "SUCCESS", imageBytes: "abc123" },
@@ -112,10 +104,10 @@ describe("generateCharacterImages - Output Order Preservation", () => {
       ]);
 
       mockProjectRepository.getEntities.mockResolvedValue([
-        { entityType: 'character', entity: character2 },
-        { entityType: 'character', entity: character3 },
-        { entityType: 'character', entity: character1 }
-      ])
+        { entityType: "character", entity: character2 },
+        { entityType: "character", entity: character3 },
+        { entityType: "character", entity: character1 },
+      ]);
 
       const results = await createGenerateCharacterImagesTool({
         context: mockContext,
@@ -140,19 +132,13 @@ describe("generateCharacterImages - Output Order Preservation", () => {
       const character2 = createMockCharacter({ name: "Bob" });
       const character3 = createMockCharacter({ name: "Charlie" });
 
-      const inputCharacters = [
-        character1,
-        character2,
-        character3,
-      ];
+      const inputCharacters = [character1, character2, character3];
 
       mockProvider.generateImages.mockImplementation(() =>
         Promise.resolve({
           generatedImages: [{ image: { imageBytes: "test" } }],
         }),
       );
-
-
 
       const results = await createGenerateCharacterImagesTool({
         context: mockContext,

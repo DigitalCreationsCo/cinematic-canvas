@@ -4,7 +4,7 @@ import { getAllBestAssets } from "../utils/assets.utils.js";
 
 export const buildPropImagePrompt = (prop: PropWithAssets, generationRules?: string[]): string => {
   const assets = getAllBestAssets(prop.assets);
-  const description = assets["description"]?.data || prop.description || "";
+  const description = assets["description"]?.data || "";
 
   return [
     // 1. CORE IDENTITY

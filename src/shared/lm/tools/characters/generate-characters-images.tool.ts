@@ -466,7 +466,7 @@ class GenerateCharacterImagesTool extends StructuredTool<typeof GenerateCharacte
   }
 }
 
-export { GenerateCharacterImagesTool };
+export type { GenerateCharacterImagesTool };
 
 export function createGenerateCharacterImagesTool(
   deps: GenerateCharacterImagesToolDeps,

@@ -2,7 +2,7 @@ import { vi, type Mock } from "vitest";
 import type { AssetVersionManager } from "#shared/services/asset-version-manager.js";
 
 vi.mock("#shared/services/asset-version-manager.js", async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<typeof import("#shared/services/asset-version-manager.js")>();
   return {
     ...actual,
     AssetVersionManager: class MockAssetVersionManager {

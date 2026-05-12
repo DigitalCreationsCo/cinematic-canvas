@@ -1,5 +1,5 @@
 import { vi, type Mock } from "vitest";
-import type { SceneFrameGenerationResult } from "#shared/lm/tools/scenes/generate-scene-frames.js";
+import type { SceneFrameGenerationResult } from "#shared/lm/tools/scenes/generate-scene-frames.tool.js";
 import type {
   FramePromptRequest,
   FramePromptResult,

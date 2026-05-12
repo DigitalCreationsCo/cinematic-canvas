@@ -60,7 +60,9 @@ async function run(scenesData: InsertScenesInput["scenes"], context: InsertScene
 // ---------------------------------------------------------------------------
 
 export interface InsertScenesToolDeps {
-  context: ToolContext<TextModelController> & { projectRepository: ProjectRepository };
+  context: ToolContext<TextModelController> & {
+    projectRepository: ProjectRepository;
+  };
 }
 
 class InsertScenesTool extends StructuredTool<typeof InsertScenesInput> {

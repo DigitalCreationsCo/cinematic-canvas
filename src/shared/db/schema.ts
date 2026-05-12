@@ -11,7 +11,6 @@ import {
   uniqueIndex,
   primaryKey,
   unique,
-  serial,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { generateId } from "../utils/id.js";
@@ -599,8 +598,7 @@ export const tagRegistry = pgTable(
   (t) => ({
     idxScope: index("idx_tag_scope").on(t.projectId, t.worldId),
     // Ensure your Drizzle schema includes the GIN index with the gin_trgm_ops operator class, otherwise, these sql fragments will default to slow sequential scans
-    idxHandleFuzzy: index("idx_tag_handle_fuzzy")
-      .using("gin", sql`${t.handle} gin_trgm_ops`),
+    idxHandleFuzzy: index("idx_tag_handle_fuzzy").using("gin", sql`${t.handle} gin_trgm_ops`),
   }),
 );
 

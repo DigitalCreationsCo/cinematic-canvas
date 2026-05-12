@@ -110,8 +110,8 @@ async function finaliseResults(
       worldId: context.worldId,
       payload: updatedEntities.map(({ entity, entityType }) => ({
         id: (entity as any).id,
-        entityType,
-        entity,
+        entityType: entityType as "scene",
+        entity: entity as SceneWithAssets,
       })),
     });
   }
@@ -242,7 +242,7 @@ export async function generateSceneFrames(
 
 // ============================================================================
 // TOOL — wraps generateSceneFrames for use as the imagesTool in
-// GenerateScenesTool.  Accepts the simple { scenes, generationRules, attempt }
+// GenerateSceneAttributesTool.  Accepts the simple { scenes, generationRules, attempt }
 // input shape and internally fetches scene entities, builds prompt text, and
 // dispatches to the core generateSceneFrames function.
 // ============================================================================
@@ -294,10 +294,10 @@ const GenerateSceneFramesToolInput = z.object({
 // TOOL CLASS
 // _call() is the LangChain string interface.
 // run()   is the programmatic interface — matches the { run: (input) => any[] }
-//         contract expected by GenerateScenesTool.imagesTool.
+//         contract expected by GenerateSceneAttributesTool.imagesTool.
 // ============================================================================
 
-export class GenerateSceneFramesTool extends StructuredTool<typeof GenerateSceneFramesToolInput> {
+class GenerateSceneFramesTool extends StructuredTool<typeof GenerateSceneFramesToolInput> {
   name = "generate_scene_frames";
   description = "Generates scene start and end frame images based on scene attributes.";
   schema = GenerateSceneFramesToolInput;
@@ -330,9 +330,7 @@ export class GenerateSceneFramesTool extends StructuredTool<typeof GenerateScene
         id: r.id,
         sceneId: (r as any).sceneId,
         framePosition: (r as any).framePosition,
-        ...(r.success
-          ? { output: r.outputs?.[0]?.uri, metadata: r.metadata }
-          : { error: r.error?.message }),
+        ...(r.success ? { output: r.outputs?.[0]?.uri, metadata: r.metadata } : { error: r.error?.message }),
       })),
     });
   }
@@ -385,6 +383,8 @@ export class GenerateSceneFramesTool extends StructuredTool<typeof GenerateScene
     return generateSceneFrames({ requests, attempt: input.attempt }, this.context);
   }
 }
+
+export type { GenerateSceneFramesTool };
 
 // ============================================================================
 // FACTORY

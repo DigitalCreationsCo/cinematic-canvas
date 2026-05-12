@@ -49,9 +49,7 @@ export type GeneratePropImagesResultSuccess = {
   entity?: PropWithAssets;
 };
 
-export type GeneratePropImagesResult =
-  | GeneratePropImagesResultSuccess
-  | { success: false; id: string; error: Error };
+export type GeneratePropImagesResult = GeneratePropImagesResultSuccess | { success: false; id: string; error: Error };
 
 // ============================================================================
 // INTERNAL CONTEXT TYPE
@@ -198,8 +196,8 @@ async function run(
           const imageBuffer = Buffer.from(res.imageBytes!, "base64");
           const outputPath = context.storageManager.getObjectPath({
             projectId,
-            propId: prop.id,
-            type: "prop_image",
+            imageId: prop.id,
+            type: "image_file",
             version: ctx.version,
           });
           const src = await context.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
@@ -255,9 +253,9 @@ async function run(
 
           const imageBuffer = Buffer.from(imageData, "base64");
           const imagePath = context.storageManager.getObjectPath({
-            type: "prop_image",
+            type: "image_file",
             projectId,
-            propId: prop.id,
+            imageId: prop.id,
             version: prop.version,
           });
           const gcsUri = await context.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
@@ -313,9 +311,9 @@ async function run(
 
         const imageBuffer = Buffer.from(imageData, "base64");
         const imagePath = context.storageManager.getObjectPath({
-          type: "prop_image",
+          type: "image_file",
           projectId,
-          propId: prop.id,
+          imageId: prop.id,
           version: prop.version,
         });
         const gcsUri = await context.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
@@ -374,9 +372,9 @@ async function finaliseResults(
       type: "ENTITY_UPDATED",
       worldId: context.worldId,
       payload: updatedEntities.map(({ entity, entityType }) => ({
-        id: (entity as any).id,
-        entityType,
-        entity,
+        id: entity.id,
+        entityType: entityType as "prop",
+        entity: entity as PropWithAssets,
       })),
     });
   }
@@ -465,7 +463,7 @@ class GeneratePropImagesTool extends StructuredTool<typeof GeneratePropImagesInp
   }
 }
 
-export { GeneratePropImagesTool };
+export type { GeneratePropImagesTool };
 
 export function createGeneratePropImagesTool(
   deps: GeneratePropImagesToolDeps,

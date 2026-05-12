@@ -116,7 +116,7 @@ export async function initializeServer(
       const ctx = await createContext({
         req,
         res,
-        info: { connectionParams: {} },
+        info: { connectionParams: {} } as any,
       });
       const caller = createCaller(ctx);
       const result = await caller.storyblocks.create(req.body);

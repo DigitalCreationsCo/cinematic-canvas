@@ -16,6 +16,9 @@ test_videos/
 diff
 scripts/vertex-ai/**/out/*
 
+# NarrativeEngine
+narrativeengine/
+
 # Terraform
 .terraform/
 .terraform.lock.hcl

@@ -18,9 +18,9 @@ import { ProjectRepository } from "#shared/services/project-repository.js";
  * Usage inside a tool:
  *   await context.publishPipelineEvent?.({ type: "ENTITY_UPDATED", payload: [...] });
  */
-export type PublishPipelineEventFn = (
-  event: Omit<Extract<PipelineEvent, { payload: any }>, "projectId" | "teamId" | "userId" | "timestamp"> &
-    Partial<Pick<Extract<PipelineEvent, { payload: any }>, "timestamp" | "payload">>,
+export type PublishPipelineEventFn<T extends PipelineEvent["type"]> = (
+  event: Omit<Extract<PipelineEvent, { type: T }>, "projectId" | "teamId" | "userId" | "timestamp"> &
+    Partial<Pick<Extract<PipelineEvent, { type: T }>, "timestamp" | "payload">>,
 ) => Promise<void>;
 
 export type ToolContext<T extends TextModelController | VideoModelController> = {
@@ -31,9 +31,9 @@ export type ToolContext<T extends TextModelController | VideoModelController> = 
   console: Console;
   traceId: string;
   projectId: string;
-  teamId: string;
-  userId: string;
   worldId?: string;
+  // teamId: string;
+  // userId: string;
   options?: AgentOptions;
   /**
    * Optional callbacks injected by the owning agent.

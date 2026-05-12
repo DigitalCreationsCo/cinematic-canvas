@@ -28,7 +28,7 @@ export const createMockCharacter = (overrides?: Partial<CharacterWithAssetKV>): 
     // CharacterAttributes
     referenceId: overrides?.referenceId ?? `char-${Math.random().toString(36).slice(2, 8)}`,
     name: overrides?.name ?? "Test Character",
-    description: overrides?.description ?? "",
+    // description: overrides?.description ?? "",
     aliases: overrides?.aliases ?? [],
     physicalTraits: {
       gender: "male",

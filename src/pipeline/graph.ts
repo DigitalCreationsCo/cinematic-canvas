@@ -13,10 +13,8 @@ import { GCPStorageManager } from "#shared/services/storage-manager.js";
 import { AssetVersionManager } from "#shared/services/asset-version-manager.js";
 import { Dispatcher } from "#pipeline/dispatcher.js";
 import { interceptNodeErrorAndDoInterrupt } from "#pipeline/helpers/interrupts.js";
-import { getExecutionMode, ExecutionMode } from "#shared/config.js";
+import { getExecutionMode, ExecutionMode, getMaxParallelJobs, getMaxRetries } from "#shared/config.js";
 import { resolvePublicUrl } from "#shared/utils/utils.js";
-
-
 
 // ============================================================================
 // CINEMATIC VIDEO FRAMEWORK - TypeScript Implementation
@@ -39,34 +37,31 @@ export class CinematicVideoWorkflow {
   private controller?: AbortController;
   private MAX_PARALLEL_JOBS: number;
   private MAX_RETRIES: number;
-  private EXECUTION_MODE: ExecutionMode
+  private EXECUTION_MODE: ExecutionMode;
 
-  constructor(
-    { gcpProjectId,
-      worldId,
-      projectId,
-      bucketName,
-      storageManager,
-      projectRepository,
-      jobControlPlane,
-      lockManager,
-      controller,
-      location = "us-east1",
-    }:
-      {
-        gcpProjectId: string;
-        worldId?: string;
-        projectId: string;
-        bucketName: string;
-        storageManager?: GCPStorageManager;
-        projectRepository?: ProjectRepository;
-        jobControlPlane: JobControlPlane;
-        lockManager: DistributedLockManager;
-        controller?: AbortController;
-        location?: string;
-      }
-  ) {
-
+  constructor({
+    gcpProjectId,
+    worldId,
+    projectId,
+    bucketName,
+    storageManager,
+    projectRepository,
+    jobControlPlane,
+    lockManager,
+    controller,
+    location = "us-east1",
+  }: {
+    gcpProjectId: string;
+    worldId?: string;
+    projectId: string;
+    bucketName: string;
+    storageManager?: GCPStorageManager;
+    projectRepository?: ProjectRepository;
+    jobControlPlane: JobControlPlane;
+    lockManager: DistributedLockManager;
+    controller?: AbortController;
+    location?: string;
+  }) {
     if (!gcpProjectId) throw Error("A gcpProjectId was not provided");
     if (!bucketName) throw Error("A bucket name was not provided");
 
@@ -74,8 +69,8 @@ export class CinematicVideoWorkflow {
     this.projectId = projectId;
     this.bucketName = bucketName;
     this.controller = controller;
-    this.MAX_PARALLEL_JOBS = Number(process.env.MAX_PARALLEL_JOBS) || 2;
-    this.MAX_RETRIES = Number(process.env.MAX_RETRIES) || 2;
+    this.MAX_PARALLEL_JOBS = getMaxParallelJobs();
+    this.MAX_RETRIES = getMaxRetries();
     this.EXECUTION_MODE = getExecutionMode();
 
     this.storageManager = storageManager || new GCPStorageManager(this.gcpProjectId, this.bucketName);
@@ -83,12 +78,7 @@ export class CinematicVideoWorkflow {
     this.jobControlPlane = jobControlPlane;
     this.lockManager = lockManager;
     this.assetManager = new AssetVersionManager(this.projectRepository);
-    this.dispatcher = new Dispatcher(
-      this.jobControlPlane,
-      this.MAX_PARALLEL_JOBS,
-      this.projectId,
-      this.worldId,
-    );
+    this.dispatcher = new Dispatcher(this.jobControlPlane, this.MAX_PARALLEL_JOBS, this.projectId, this.worldId);
 
     // this.mediaProcessingAgent = new MediaProcessingAgent(
     //   textandImageModel,
@@ -100,9 +90,17 @@ export class CinematicVideoWorkflow {
     this.graph = this.buildGraph();
   }
 
-  public publishEvent: (event: PipelineEvent) => Promise<void> = async () => { };
+  public publishEvent: (event: PipelineEvent) => Promise<void> = async () => {};
 
-  private async publishStateUpdate({ project, nodeName, userId }: { project: Project, nodeName: string, userId: string }) {
+  private async publishStateUpdate({
+    project,
+    nodeName,
+    userId,
+  }: {
+    project: Project;
+    nodeName: string;
+    userId: string;
+  }) {
     this.publishEvent({
       type: "FULL_STATE",
       projectId: this.projectId,
@@ -154,14 +152,13 @@ export class CinematicVideoWorkflow {
       const project = await this.projectRepository.getProject(state.projectId);
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
-      if (scenes.some(s => !!getAllBestAssets(s.assets)['scene_video']?.data)) {
+      if (scenes.some((s) => !!getAllBestAssets(s.assets)["scene_video"]?.data)) {
         if (!state.userApprovedVideoProcessing) return "user_approval_before_video_gen";
         console.log(" [Cinematic-Canvas]: Resuming from 'process_scene'");
         return "process_scene";
       }
 
       if (project.storyboard?.scenes?.length > 0) {
-
         if (!state.userApprovedStoryboard) return "user_approval_after_storyboard_gen";
 
         if (project.generationRules.length > 0) {
@@ -196,18 +193,23 @@ export class CinematicVideoWorkflow {
     workflow.addConditionalEdges("process_scene" as any, async (state: WorkflowState) => {
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
-      if (this.EXECUTION_MODE === 'SEQUENTIAL') {
+      if (this.EXECUTION_MODE === "SEQUENTIAL") {
         const currentIndex = state.currentSceneIndex || 0;
         if (currentIndex < scenes.length) {
-          console.log({
-            projectId: state.projectId,
-            currentIndex,
-            scenesLength: scenes.length
-          }, "'process_scene': Continuing sequential loop");
+          console.log(
+            {
+              projectId: state.projectId,
+              currentIndex,
+              scenesLength: scenes.length,
+            },
+            "'process_scene': Continuing sequential loop",
+          );
           return "process_scene";
         } else {
-          if (process.env.RENDER_IN_PROGRESS !== 'false') {
-            const [bestRender] = await this.assetManager.getBestVersion({ projectId: state.projectId }, ['render_video']);
+          if (process.env.RENDER_IN_PROGRESS !== "false") {
+            const [bestRender] = await this.assetManager.getBestVersion({ projectId: state.projectId }, [
+              "render_video",
+            ]);
             if (bestRender?.data) {
               console.log("'process_scene': All scenes processed and inline render verified. Proceeding to 'finalize'");
               return "finalize";
@@ -233,47 +235,48 @@ export class CinematicVideoWorkflow {
     // workflow.addEdge("process_scene" as any, "error_handler" as any);
     // workflow.addEdge("render_video" as any, "error_handler" as any);
 
-    workflow.addNode("expand_creative_prompt", async (state: WorkflowState) => {
-      const nodeName = "expand_creative_prompt";
-      console.log(`[${nodeName}]: Started`);
-      try {
-
-        await this.dispatcher.ensureJob(
-          {
+    workflow.addNode(
+      "expand_creative_prompt",
+      async (state: WorkflowState) => {
+        const nodeName = "expand_creative_prompt";
+        console.log(`[${nodeName}]: Started`);
+        try {
+          await this.dispatcher.ensureJob({
             workflowId: state.id,
             nodeName,
             jobType: "EXPAND_CREATIVE_PROMPT",
-            assetKey: 'enhanced_prompt',
+            assetKey: "enhanced_prompt",
             entityId: this.projectId,
             teamId: state.teamId,
             userId: state.userId,
-          }
-        );
+          });
 
-        console.log(`[${this.projectId}-${nodeName}]: Completed\n`);
+          console.log(`[${this.projectId}-${nodeName}]: Completed\n`);
 
-        return new Command({
-          goto: state.hasAudio ? "create_scenes_from_audio" : "generate_storyboard_exclusively_from_prompt",
-          update: {
-            __interrupt__: undefined,
-            __interrupt_resolved__: false,
-          }
-        });
+          return new Command({
+            goto: state.hasAudio ? "create_scenes_from_audio" : "generate_storyboard_exclusively_from_prompt",
+            update: {
+              __interrupt__: undefined,
+              __interrupt_resolved__: false,
+            },
+          });
+        } catch (error: any) {
+          interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
+        }
+      },
+      {
+        ends: ["create_scenes_from_audio", "generate_storyboard_exclusively_from_prompt"],
+      },
+    );
 
-      } catch (error: any) {
-        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
-      }
-    }, {
-      ends: ["create_scenes_from_audio", "generate_storyboard_exclusively_from_prompt",]
-    });
+    workflow.addNode(
+      "generate_storyboard_exclusively_from_prompt",
+      async (state: WorkflowState) => {
+        const nodeName = "generate_storyboard_exclusively_from_prompt";
+        console.log(`[${nodeName}]: Started`);
 
-    workflow.addNode("generate_storyboard_exclusively_from_prompt", async (state: WorkflowState) => {
-      const nodeName = "generate_storyboard_exclusively_from_prompt";
-      console.log(`[${nodeName}]: Started`);
-
-      try {
-        await this.dispatcher.ensureJob(
-          {
+        try {
+          await this.dispatcher.ensureJob({
             workflowId: state.id,
             nodeName,
             jobType: "GENERATE_STORYBOARD",
@@ -281,31 +284,33 @@ export class CinematicVideoWorkflow {
             entityId: this.projectId,
             teamId: state.teamId,
             userId: state.userId,
-          }
-        );
+          });
 
-        console.log(`[${nodeName}]: Completed\n`);
+          console.log(`[${nodeName}]: Completed\n`);
 
-        return {
-          ...state,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
-        };
-      } catch (error: any) {
-        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
-      }
-    }, {
-      ends: ["enrich_storyboard_and_scenes",]
-    });
+          return {
+            ...state,
+            __interrupt__: undefined,
+            __interrupt_resolved__: false,
+          };
+        } catch (error: any) {
+          interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
+        }
+      },
+      {
+        ends: ["enrich_storyboard_and_scenes"],
+      },
+    );
 
-    workflow.addNode("create_scenes_from_audio", async (state: WorkflowState) => {
-      const nodeName = "create_scenes_from_audio";
-      console.log(`[${nodeName}]: Started`);
+    workflow.addNode(
+      "create_scenes_from_audio",
+      async (state: WorkflowState) => {
+        const nodeName = "create_scenes_from_audio";
+        console.log(`[${nodeName}]: Started`);
 
-      console.log(" Creating Timed Scenes from Audio...");
-      try {
-        await this.dispatcher.ensureJob(
-          {
+        console.log(" Creating Timed Scenes from Audio...");
+        try {
+          await this.dispatcher.ensureJob({
             workflowId: state.id,
             nodeName,
             jobType: "PROCESS_AUDIO_TO_SCENES",
@@ -313,31 +318,32 @@ export class CinematicVideoWorkflow {
             entityId: this.projectId,
             teamId: state.teamId,
             userId: state.userId,
-          }
-        );
+          });
 
-        console.log(`[${nodeName}]: Completed\n`);
-        return {
-          ...state,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
-        };
-      } catch (error: any) {
-        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
-      }
-    }, {
-      ends: ["enrich_storyboard_and_scenes",]
-    });
+          console.log(`[${nodeName}]: Completed\n`);
+          return {
+            ...state,
+            __interrupt__: undefined,
+            __interrupt_resolved__: false,
+          };
+        } catch (error: any) {
+          interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
+        }
+      },
+      {
+        ends: ["enrich_storyboard_and_scenes"],
+      },
+    );
 
-    workflow.addNode("enrich_storyboard_and_scenes", async (state: WorkflowState) => {
-      const nodeName = "enrich_storyboard_and_scenes";
-      console.log(`[${nodeName}]: Started`);
+    workflow.addNode(
+      "enrich_storyboard_and_scenes",
+      async (state: WorkflowState) => {
+        const nodeName = "enrich_storyboard_and_scenes";
+        console.log(`[${nodeName}]: Started`);
 
-      console.log(" Enhancing storyboard...");
-      try {
-
-        await this.dispatcher.ensureJob(
-          {
+        console.log(" Enhancing storyboard...");
+        try {
+          await this.dispatcher.ensureJob({
             workflowId: state.id,
             nodeName,
             jobType: "ENHANCE_STORYBOARD",
@@ -345,29 +351,31 @@ export class CinematicVideoWorkflow {
             entityId: this.projectId,
             teamId: state.teamId,
             userId: state.userId,
-          }
-        );
+          });
 
-        console.log(`[${nodeName}]: Completed\n`);
-        return {
-          ...state,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
-        };
-      } catch (error: any) {
-        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
-      }
-    }, {
-      ends: ["semantic_analysis",]
-    });
+          console.log(`[${nodeName}]: Completed\n`);
+          return {
+            ...state,
+            __interrupt__: undefined,
+            __interrupt_resolved__: false,
+          };
+        } catch (error: any) {
+          interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
+        }
+      },
+      {
+        ends: ["semantic_analysis"],
+      },
+    );
 
-    workflow.addNode("semantic_analysis", async (state: WorkflowState) => {
-      const nodeName = "semantic_analysis";
-      console.log(`[${nodeName}]: Started`);
+    workflow.addNode(
+      "semantic_analysis",
+      async (state: WorkflowState) => {
+        const nodeName = "semantic_analysis";
+        console.log(`[${nodeName}]: Started`);
 
-      try {
-        await this.dispatcher.ensureJob(
-          {
+        try {
+          await this.dispatcher.ensureJob({
             workflowId: state.id,
             nodeName,
             jobType: "SEMANTIC_ANALYSIS",
@@ -375,557 +383,158 @@ export class CinematicVideoWorkflow {
             entityId: this.projectId,
             teamId: state.teamId,
             userId: state.userId,
-          }
-        );
+          });
 
-        console.log(`[${nodeName}]: Completed\n`);
-        return {
-          ...state,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
-        };
-      } catch (error: any) {
-        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
-      }
-    }, {
-      ends: ["user_approval_after_storyboard_gen",]
-    });
-
-    workflow.addNode("user_approval_after_storyboard_gen", async (state: WorkflowState) => {
-      const nodeName = "user_approval_after_storyboard_gen";
-
-      // If we are resuming/running and already have approval, pass through.
-      // This handles the re-entry logic cleanly.
-      if (state.userApprovedStoryboard) {
-        console.log({ nodeName, projectId: state.projectId }, `User approved the storyboard. Proceeding.`);
-        return {
-          userApprovedStoryboard: true,
-          __interrupt__: undefined,
-          __interrupt_resolved__: true,
-        };
-      }
-
-      console.log(`[${nodeName}]: ⏸️ Interrupting for user review after storyboard generation.`);
-
-      const interruptValue: InterruptValue = {
-        type: "user_approval_after_storyboard_gen",
-        error: "Your storyboard is ready for review.",
-        nodeName: "user_approval_after_storyboard_gen",
-        functionName: "user_approval_after_storyboard_gen",
-        projectId: state.projectId,
-        attempts: 0,
-        maxRetries: 0,
-        lastAttemptTimestamp: new Date().toISOString(),
-      };
-
-      const feedback = interrupt(interruptValue);
-
-      if (feedback?.action === "approve" || feedback === true) {
-        console.log(`[${nodeName}]: ▶️ Approval received. Moving to generate_character_assets.`);
-        return {
-          userApprovedStoryboard: true,
-          __interrupt__: undefined,
-          __interrupt_resolved__: true,
-        };
-      }
-
-      console.log(`[${nodeName}]: No valid approval received. Staying at gate.`);
-      return new Command({
-        goto: nodeName,
-        update: {
-          userApprovedStoryboard: false
-        }
-      });
-    }, {
-      ends: ["generate_character_assets"]
-    });
-
-    workflow.addNode("generate_character_assets", async (state: WorkflowState) => {
-      const nodeName = "generate_character_assets";
-      console.log(`[${nodeName}]: Started`);
-
-      console.log(` Generating Character References `);
-      try {
-        console.log(`[${nodeName}]: Executing in ${this.EXECUTION_MODE.toLowerCase()} mode.`);
-
-        if (this.EXECUTION_MODE === 'SEQUENTIAL') {
-          await this.dispatcher.ensureJob(
-            {
-              workflowId: state.id,
-              nodeName,
-              jobType: "GENERATE_CHARACTER_IMAGES",
-              assetKey: "character_image",
-              entityId: this.projectId,
-              teamId: state.teamId,
-              userId: state.userId,
-            }
-          );
-
-        } else {
-
-          await this.dispatcher.ensureJob(
-            {
-              workflowId: state.id,
-              nodeName,
-              jobType: "GENERATE_CHARACTER_IMAGES",
-              assetKey: "character_image",
-              entityId: this.projectId,
-              teamId: state.teamId,
-              userId: state.userId,
-            }
-          );
-
-          // Parallel logic (fan-out)
-          // const characterIds = characters.map(c => c.id);
-
-          // const jobs: BatchJobs<'GENERATE_CHARACTER_IMAGES'> = characters.map((char, index) => ({
-          //   uniqueKey: char.id,
-          //   type: "GENERATE_CHARACTER_IMAGES",
-          //   assetKey: "character_image",
-          //   payload: {
-          //     characters: [ char ],
-          //     generationRules: project.generationRules,
-          //   },
-          // }));
-
-          // const results = await this.dispatcher.ensureBatchJobs(nodeName, jobs);
-          // const allUpdatedChars = results.flatMap(r => r.characters);
-          // const updated = await this.projectRepository.updateCharacters(allUpdatedChars);
-
-          // const charMap = new Map(updated.map(c => [ c.id, c ]));
-
-          // const validIds: string[] = [];
-          // const validUris: string[] = [];
-          // const validMetadata: AssetVersion[ 'metadata' ][] = [];
-          // const validTypes: AssetType[] = [];
-
-          // characters.forEach(c => {
-          //   const updatedChar = charMap.get(c.id);
-          //   const assets = getAllBestAssets(updatedChar?.assets);
-          //   const imageData = assets[ 'character_image' ]?.data;
-
-          //   if (updatedChar && imageData) {
-          //     validIds.push(updatedChar.id);
-          //     validUris.push(imageData);
-          //     validTypes.push('image');
-          //     validMetadata.push({
-          //       model: imageModelName,
-          //       jobId: results.find(r => r.characters.some(rc => rc.id === c.id))?.jobId!,
-          //     });
-          //   }
-          // });
-          // if (validIds.length > 0) {
-          //   await this.assetManager.createVersionedAssets(
-          //     { projectId: this.projectId, characterIds: validIds },
-          //     'character_image',
-          //     validTypes,
-          //     validUris,
-          //     validMetadata,
-          //     true
-          //   );
-          // }
-          // updatedProject = await this.projectRepository.getProjectFullState(state.projectId);
-          // this.publishStateUpdate(updatedProject, nodeName);
-        }
-
-        console.log(`[${nodeName}]: Completed\n`);
-        return {
-          ...state,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
-        };
-      } catch (error: any) {
-        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
-      }
-    }, {
-      ends: ["generate_location_assets",]
-    });
-
-    workflow.addNode("generate_location_assets", async (state: WorkflowState) => {
-      const nodeName = "generate_location_assets";
-      console.log(`[${nodeName}]: Started`);
-
-      console.log(` Generating Location References `);
-      try {
-        console.log(`[${nodeName}]: Executing in ${this.EXECUTION_MODE.toLowerCase()} mode.`);
-
-        if (this.EXECUTION_MODE === 'SEQUENTIAL') {
-          await this.dispatcher.ensureJob(
-            {
-              workflowId: state.id,
-              nodeName,
-              jobType: "GENERATE_LOCATION_IMAGES",
-              assetKey: "location_image",
-              entityId: this.projectId,
-              teamId: state.teamId,
-              userId: state.userId,
-            }
-          );
-
-        } else {
-
-          await this.dispatcher.ensureJob(
-            {
-              workflowId: state.id,
-              nodeName,
-              jobType: "GENERATE_LOCATION_IMAGES",
-              assetKey: "location_image",
-              entityId: this.projectId,
-              teamId: state.teamId,
-              userId: state.userId,
-            }
-          );
-
-          // const jobs: BatchJobs<"GENERATE_LOCATION_IMAGES"> = locations.map((loc, index) => ({
-          //   id: this.jobControlPlane.jobId(this.projectId, nodeName, `loc-${loc.id}`),
-          //   type: "GENERATE_LOCATION_IMAGES" as const,
-          //   assetKey: "location_image",
-          //   payload: {
-          //     locations: [ loc ],
-          //     generationRules: project.generationRules
-          //   },
-          // }));
-
-          // const results = await this.dispatcher.ensureBatchJobs(nodeName, jobs);
-          // const allUpdatedLocs = results.flatMap(r => r.locations);
-          // const updated = await this.projectRepository.updateLocations(allUpdatedLocs);
-
-          // const locMap = new Map(updated.map(l => [ l.id, l ]));
-
-          // const validIds: string[] = [];
-          // const validUris: string[] = [];
-          // const validMetadata: AssetVersion[ 'metadata' ][] = [];
-          // const validTypes: AssetType[] = [];
-
-          // locations.forEach(l => {
-          //   const updatedLoc = locMap.get(l.id);
-          //   const assets = getAllBestAssets(updatedLoc?.assets);
-          //   const imageData = assets[ 'location_image' ]?.data;
-
-          //   if (updatedLoc && imageData) {
-          //     validIds.push(updatedLoc.id);
-          //     validUris.push(imageData);
-          //     validTypes.push('image');
-          //     validMetadata.push({
-          //       model: imageModelName,
-          //       jobId: results.find(r => r.locations.some(rl => rl.id === l.id))?.jobId!,
-          //     });
-          //   }
-          // });
-        }
-        console.log(`[${nodeName}]: Completed\n`);
-        return {
-          ...state,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
-        };
-      } catch (error: any) {
-        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
-      }
-    }, {
-      ends: ["generate_scene_assets",]
-    });
-
-    workflow.addNode("generate_scene_assets", async (state: WorkflowState) => {
-      const nodeName = "generate_scene_assets";
-      console.log(`[${nodeName}]: Started`);
-
-      try {
-        console.log({ nodeName, executionMode: this.EXECUTION_MODE, projectId: state.projectId });
-        const scenes = await this.projectRepository.getProjectScenes(state.projectId);
-
-        if (this.EXECUTION_MODE === 'SEQUENTIAL') {
-          // const jobs = await Promise.all(scenes.flatMap((scene) => {
-          //   const assetKeys = [ "scene_start_frame", "scene_end_frame" ] as const;
-          //   return assetKeys.map(async (key) => {
-          //     return {
-          //       uniqueKey: `scene-${scene.id}-${key}`,
-          //       type: "GENERATE_SCENE_FRAMES" as const,
-          //       assetKey: key,
-          //       payload: {
-          //         assetKeys: [ key ],
-          //         sceneId: scene.id,
-          //         sceneIndex: scene.sceneIndex,
-          //       },
-          //     };
-          //   });
-          // }));
-          // // sequential mode dispatchs multiple individual jobs (batch) - generation is processed in isolation
-          // await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_FRAMES">(nodeName, jobs);
-
-          await this.dispatcher.ensureJob(
-            {
-              workflowId: state.id,
-              nodeName,
-              jobType: "GENERATE_SCENE_FRAMES",
-              assetKey: "scene_start_frame",
-              entityId: this.projectId,
-              teamId: state.teamId,
-              userId: state.userId,
-              payload: {
-                assetKeys: ["scene_start_frame", "scene_end_frame"],
-                sceneIds: scenes.map(scene => scene.id),
-              }
-            }
-          );
-        } else {
-          // parallel mode dispatches a single job with batch parameters - generation is processed in batch
-          await this.dispatcher.ensureJob(
-            {
-              workflowId: state.id,
-              nodeName,
-              jobType: "GENERATE_SCENE_FRAMES",
-              assetKey: "scene_start_frame",
-              entityId: this.projectId,
-              teamId: state.teamId,
-              userId: state.userId,
-              payload: {
-                assetKeys: ["scene_start_frame", "scene_end_frame"],
-              }
-            }
-          );
-
-        }
-
-        console.log(`[${nodeName}]: Completed\n`);
-        return {
-          ...state,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
-        };
-      } catch (error: any) {
-        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
-      }
-    }, {
-      ends: ["user_approval_before_video_gen",]
-    });
-
-    workflow.addNode("user_approval_before_video_gen", async (state: WorkflowState) => {
-      const nodeName = "user_approval_before_video_gen";
-
-      // If we are resuming/running and already have approval, pass through.
-      // This handles the re-entry logic cleanly.
-      if (state.userApprovedVideoProcessing) {
-        console.log({ nodeName, projectId: state.projectId }, `User approved the generated assets. Proceeding to generate videos.`);
-        return {
-          userApprovedVideoProcessing: true,
-          __interrupt__: undefined,
-          __interrupt_resolved__: true,
-        };
-      }
-
-      console.log(`[${nodeName}]: ⏸️ Interrupting for user review before video generation.`);
-
-      const interruptValue: InterruptValue = {
-        type: "user_approval_before_video_gen",
-        error: "Your generated assets are ready for review.",
-        nodeName: "user_approval_before_video_gen",
-        functionName: "user_approval_before_video_gen",
-        projectId: state.projectId,
-        attempts: 0,
-        maxRetries: 0,
-        lastAttemptTimestamp: new Date().toISOString(),
-      };
-
-      const feedback = interrupt(interruptValue);
-
-      if (feedback?.action === "approve" || feedback === true) {
-        console.log(`[${nodeName}]: ▶️ Approval received. Moving to process_scene.`);
-        return {
-          userApprovedVideoProcessing: true,
-          __interrupt__: undefined,
-          __interrupt_resolved__: true,
-        };
-      }
-
-      console.log(`[${nodeName}]: No valid approval received. Staying at gate.`);
-      return new Command({
-        goto: nodeName,
-        update: {
-          userApprovedVideoProcessing: false
-        }
-      });
-    }, {
-      ends: ["process_scene"]
-    });
-
-    workflow.addNode("process_scene", async (state: WorkflowState) => {
-      const nodeName = "process_scene";
-      const currentIndex = state.currentSceneIndex || 0;
-
-      console.log(`[${nodeName}]: Processing Scene ${state.currentSceneIndex}. Executing in ${this.EXECUTION_MODE.toLowerCase()} mode.`);
-      let project = await this.projectRepository.getProjectFullState(state.projectId);
-      if (!project) throw new Error("No project state available");
-
-      const { scenes } = project;
-
-      if (this.EXECUTION_MODE === 'SEQUENTIAL') {
-        if (currentIndex >= scenes.length) return state;
-
-        const scene = scenes[currentIndex];
-        const nextScene = scenes[currentIndex + 1];
-
-        const [best] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [scene.id] }, ['scene_video']);
-        const videoUrl = best ? best.data : null;
-
-        const forceRegenerateIndex = project.forceRegenerateSceneIds.findIndex(id => id === scene.id);
-        const shouldForceRegenerate = forceRegenerateIndex !== -1;
-
-        if (!shouldForceRegenerate && videoUrl && await this.storageManager.fileExists(videoUrl)) {
-          console.log(`   ... Scene video already exists at ${videoUrl}, skipping.`);
-
-          let shouldRenderScenes = false;
-          const [nextSceneBest] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [nextScene.id] }, ['scene_video']);
-          const nextScenePath = nextSceneBest ? await this.storageManager.getObjectPath({ type: "scene_video", projectId: this.projectId, sceneId: nextScene.id, version: nextSceneBest.version }) : "";
-          const nextSceneVideoExists = await this.storageManager.fileExists(nextScenePath);
-          if (!nextSceneVideoExists) {
-            shouldRenderScenes = true;
-          } else {
-            console.log(` ... Next scene (${nextScene.id}) also exists, skipping redundant stitch.`);
-          }
-
-          if (shouldRenderScenes) {
-            const videoPaths = scenes.map(s => {
-              const sceneAssets = getAllBestAssets(s.assets);
-              const videoAsset = sceneAssets['scene_video'];
-              return resolvePublicUrl(videoAsset?.data);
-            }).filter((uri): uri is string => !!uri);
-            if (videoPaths.length === 0) {
-              console.warn(`[${nodeName}]: No videos to render.`);
-              return state;
-            }
-
-            this.dispatcher.dispatch({
-              nodeName,
-              jobType: "RENDER_VIDEO",
-              assetKey: "render_video",
-              payload: {
-                videoPaths,
-                audioGcsUri: project.metadata.audioGcsUri,
-              },
-              uniqueKey: `${this.projectId}-video-${currentIndex}`,
-              workflowId: state.id,
-              teamId: project.teamId,
-              userId: state.userId,
-            }).catch(err => console.error("Non-blocking render failed to dispatch", err));
-
-            await this.publishEvent({
-              type: "SCENE_SKIPPED",
-              projectId: this.projectId,
-              worldId: this.worldId,
-              teamId: project.teamId,
-              userId: state.userId,
-              payload: {
-                sceneId: scene.id,
-                reason: "Video already exists",
-                videoUrl: videoUrl
-              },
-              timestamp: new Date().toISOString(),
-            });
-          }
-
-          console.log(`[${nodeName}]: Completed (Skipped)\n`);
+          console.log(`[${nodeName}]: Completed\n`);
           return {
             ...state,
-            currentSceneIndex: currentIndex + 1,
             __interrupt__: undefined,
             __interrupt_resolved__: false,
           };
+        } catch (error: any) {
+          interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
+        }
+      },
+      {
+        ends: ["user_approval_after_storyboard_gen"],
+      },
+    );
+
+    workflow.addNode(
+      "user_approval_after_storyboard_gen",
+      async (state: WorkflowState) => {
+        const nodeName = "user_approval_after_storyboard_gen";
+
+        // If we are resuming/running and already have approval, pass through.
+        // This handles the re-entry logic cleanly.
+        if (state.userApprovedStoryboard) {
+          console.log({ nodeName, projectId: state.projectId }, `User approved the storyboard. Proceeding.`);
+          return {
+            userApprovedStoryboard: true,
+            __interrupt__: undefined,
+            __interrupt_resolved__: true,
+          };
         }
 
-        console.log(`[${nodeName}]: Processing scene ${scene.sceneIndex} (${currentIndex + 1}/${scenes.length}).`);
-        const [next] = await this.assetManager.getNextVersionNumber({ projectId: this.projectId, sceneIds: [scene.id] }, ['scene_video']);
-        await this.dispatcher.ensureJob(
-          {
-            workflowId: state.id,
-            nodeName,
-            jobType: "GENERATE_SCENE_VIDEO",
-            assetKey: "scene_video",
-            entityId: scene.id,
-            teamId: project.teamId,
-            userId: state.userId,
-            payload: {
-              sceneId: scene.id,
-              overridePrompt: "",
-              renderInProgress: process.env.RENDER_IN_PROGRESS !== 'false',
-            },
-          }
-        );
+        console.log(`[${nodeName}]: ⏸️ Interrupting for user review after storyboard generation.`);
 
-        await this.publishEvent({
-          type: "SCENE_COMPLETED",
-          projectId: this.projectId,
-          worldId: this.worldId,
-          teamId: project.teamId,
-          userId: state.userId,
-          payload: {
-            sceneId: scene.id,
-          },
-          timestamp: new Date().toISOString(),
-        });
-
-        console.log(`[${nodeName}]: Completed\n`);
-
-        // Publish scene completion event
-        await this.publishEvent({
-          type: "SCENE_COMPLETED",
-          projectId: this.projectId,
-          worldId: this.worldId,
-          teamId: project.teamId,
-          userId: state.userId,
-          payload: {
-            sceneId: scene.id,
-            videoUrl: videoUrl ?? undefined
-          },
-          timestamp: new Date().toISOString(),
-        });
-
-        return {
-          ...state,
-          currentSceneIndex: currentIndex + 1,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
+        const interruptValue: InterruptValue = {
+          type: "user_approval_after_storyboard_gen",
+          error: "Your storyboard is ready for review.",
+          nodeName: "user_approval_after_storyboard_gen",
+          functionName: "user_approval_after_storyboard_gen",
+          projectId: state.projectId,
+          attempts: 0,
+          maxRetries: 0,
+          lastAttemptTimestamp: new Date().toISOString(),
         };
-      } else {
-        // Parallel execution
 
-        const jobs: any[] = [];
-        await Promise.all(scenes.map(async (scene) => {
+        const feedback = interrupt(interruptValue);
 
-          const forceRegenerateIndex = project?.forceRegenerateSceneIds.findIndex(id => id === scene.id);
-          const shouldForceRegenerate = forceRegenerateIndex !== -1;
+        if (feedback?.action === "approve" || feedback === true) {
+          console.log(`[${nodeName}]: ▶️ Approval received. Moving to generate_character_assets.`);
+          return {
+            userApprovedStoryboard: true,
+            __interrupt__: undefined,
+            __interrupt_resolved__: true,
+          };
+        }
 
-          let videoExists = false;
-          if (!shouldForceRegenerate) {
-            const [best] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [scene.id] }, ['scene_video']);
-            const videoUrl = best?.data;
-            videoExists = !!videoUrl && await this.storageManager.fileExists(videoUrl);
-            if (videoExists) console.log(`   ... Scene ${scene.id} video already exists, skipping.`);
-          }
+        console.log(`[${nodeName}]: No valid approval received. Staying at gate.`);
+        return new Command({
+          goto: nodeName,
+          update: {
+            userApprovedStoryboard: false,
+          },
+        });
+      },
+      {
+        ends: ["generate_character_assets"],
+      },
+    );
 
-          if (shouldForceRegenerate || !videoExists) {
-            jobs.push({
-              uniqueKey: this.jobControlPlane.uniqueKey(scene.id, "scene_video"),
-              type: "GENERATE_SCENE_VIDEO" as const,
-              assetKey: "scene_video" as const,
-              payload: {
-                sceneId: scene.id,
-                overridePrompt: "",
-                renderInProgress: false
-              },
-            });
-          }
-        }));
+    workflow.addNode(
+      "generate_character_assets",
+      async (state: WorkflowState) => {
+        const nodeName = "generate_character_assets";
+        console.log(`[${nodeName}]: Started`);
 
+        console.log(` Generating Character References `);
         try {
-          if (jobs.length > 0) {
-            await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_VIDEO">(
+          console.log(`[${nodeName}]: Executing in ${this.EXECUTION_MODE.toLowerCase()} mode.`);
+
+          if (this.EXECUTION_MODE === "SEQUENTIAL") {
+            await this.dispatcher.ensureJob({
+              workflowId: state.id,
               nodeName,
-              state.id,
-              jobs,
-            );
+              jobType: "GENERATE_CHARACTER_IMAGES",
+              assetKey: "character_image",
+              entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
+            });
           } else {
-            console.log(`[${nodeName}]: All scenes skipped (already exist and not forced).`);
+            await this.dispatcher.ensureJob({
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_CHARACTER_IMAGES",
+              assetKey: "character_image",
+              entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
+            });
+
+            // Parallel logic (fan-out)
+            // const characterIds = characters.map(c => c.id);
+
+            // const jobs: BatchJobs<'GENERATE_CHARACTER_IMAGES'> = characters.map((char, index) => ({
+            //   uniqueKey: char.id,
+            //   type: "GENERATE_CHARACTER_IMAGES",
+            //   assetKey: "character_image",
+            //   payload: {
+            //     characters: [ char ],
+            //     generationRules: project.generationRules,
+            //   },
+            // }));
+
+            // const results = await this.dispatcher.ensureBatchJobs(nodeName, jobs);
+            // const allUpdatedChars = results.flatMap(r => r.characters);
+            // const updated = await this.projectRepository.updateCharacters(allUpdatedChars);
+
+            // const charMap = new Map(updated.map(c => [ c.id, c ]));
+
+            // const validIds: string[] = [];
+            // const validUris: string[] = [];
+            // const validMetadata: AssetVersion[ 'metadata' ][] = [];
+            // const validTypes: AssetType[] = [];
+
+            // characters.forEach(c => {
+            //   const updatedChar = charMap.get(c.id);
+            //   const assets = getAllBestAssets(updatedChar?.assets);
+            //   const imageData = assets[ 'character_image' ]?.data;
+
+            //   if (updatedChar && imageData) {
+            //     validIds.push(updatedChar.id);
+            //     validUris.push(imageData);
+            //     validTypes.push('image');
+            //     validMetadata.push({
+            //       model: imageModelName,
+            //       jobId: results.find(r => r.characters.some(rc => rc.id === c.id))?.jobId!,
+            //     });
+            //   }
+            // });
+            // if (validIds.length > 0) {
+            //   await this.assetManager.createVersionedAssets(
+            //     { projectId: this.projectId, characterIds: validIds },
+            //     'character_image',
+            //     validTypes,
+            //     validUris,
+            //     validMetadata,
+            //     true
+            //   );
+            // }
+            // updatedProject = await this.projectRepository.getProjectFullState(state.projectId);
+            // this.publishStateUpdate(updatedProject, nodeName);
           }
 
           console.log(`[${nodeName}]: Completed\n`);
@@ -937,59 +546,492 @@ export class CinematicVideoWorkflow {
         } catch (error: any) {
           interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
         }
-      }
-    }, {
-      ends: ["process_scene", "render_video",]
-    });
+      },
+      {
+        ends: ["generate_location_assets"],
+      },
+    );
 
-    workflow.addNode("render_video", async (state: WorkflowState) => {
+    workflow.addNode(
+      "generate_location_assets",
+      async (state: WorkflowState) => {
+        const nodeName = "generate_location_assets";
+        console.log(`[${nodeName}]: Started`);
 
-      const nodeName = "render_video";
-      let project = await this.projectRepository.getProjectFullState(state.projectId);
-      if (!project) {
-        throw new Error("Project not found");
-      }
-      const currentAttempt = (state.nodeAttempts?.[nodeName] || 0) + 1;
-      console.log(`\n[${nodeName}]: Rendering Final Video...Attempt ${currentAttempt}`);
-      try {
+        console.log(` Generating Location References `);
+        try {
+          console.log(`[${nodeName}]: Executing in ${this.EXECUTION_MODE.toLowerCase()} mode.`);
 
-        const scenes = project.scenes;
-        const videoPaths = scenes.map(s => {
-          const sceneAssets = getAllBestAssets(s.assets);
-          const videoAsset = sceneAssets['scene_video'];
-          return resolvePublicUrl(videoAsset?.data);
-        }).filter((uri): uri is string => !!uri);
-        if (videoPaths.length === 0) {
-          console.warn(`[${nodeName}]: No videos to render.`);
-          return state;
+          if (this.EXECUTION_MODE === "SEQUENTIAL") {
+            await this.dispatcher.ensureJob({
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_LOCATION_IMAGES",
+              assetKey: "location_image",
+              entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
+            });
+          } else {
+            await this.dispatcher.ensureJob({
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_LOCATION_IMAGES",
+              assetKey: "location_image",
+              entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
+            });
+
+            // const jobs: BatchJobs<"GENERATE_LOCATION_IMAGES"> = locations.map((loc, index) => ({
+            //   id: this.jobControlPlane.jobId(this.projectId, nodeName, `loc-${loc.id}`),
+            //   type: "GENERATE_LOCATION_IMAGES" as const,
+            //   assetKey: "location_image",
+            //   payload: {
+            //     locations: [ loc ],
+            //     generationRules: project.generationRules
+            //   },
+            // }));
+
+            // const results = await this.dispatcher.ensureBatchJobs(nodeName, jobs);
+            // const allUpdatedLocs = results.flatMap(r => r.locations);
+            // const updated = await this.projectRepository.updateLocations(allUpdatedLocs);
+
+            // const locMap = new Map(updated.map(l => [ l.id, l ]));
+
+            // const validIds: string[] = [];
+            // const validUris: string[] = [];
+            // const validMetadata: AssetVersion[ 'metadata' ][] = [];
+            // const validTypes: AssetType[] = [];
+
+            // locations.forEach(l => {
+            //   const updatedLoc = locMap.get(l.id);
+            //   const assets = getAllBestAssets(updatedLoc?.assets);
+            //   const imageData = assets[ 'location_image' ]?.data;
+
+            //   if (updatedLoc && imageData) {
+            //     validIds.push(updatedLoc.id);
+            //     validUris.push(imageData);
+            //     validTypes.push('image');
+            //     validMetadata.push({
+            //       model: imageModelName,
+            //       jobId: results.find(r => r.locations.some(rl => rl.id === l.id))?.jobId!,
+            //     });
+            //   }
+            // });
+          }
+          console.log(`[${nodeName}]: Completed\n`);
+          return {
+            ...state,
+            __interrupt__: undefined,
+            __interrupt_resolved__: false,
+          };
+        } catch (error: any) {
+          interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
+        }
+      },
+      {
+        ends: ["generate_scene_assets"],
+      },
+    );
+
+    workflow.addNode(
+      "generate_scene_assets",
+      async (state: WorkflowState) => {
+        const nodeName = "generate_scene_assets";
+        console.log(`[${nodeName}]: Started`);
+
+        try {
+          console.log({ nodeName, executionMode: this.EXECUTION_MODE, projectId: state.projectId });
+          const scenes = await this.projectRepository.getProjectScenes(state.projectId);
+
+          if (this.EXECUTION_MODE === "SEQUENTIAL") {
+            // const jobs = await Promise.all(scenes.flatMap((scene) => {
+            //   const assetKeys = [ "scene_start_frame", "scene_end_frame" ] as const;
+            //   return assetKeys.map(async (key) => {
+            //     return {
+            //       uniqueKey: `scene-${scene.id}-${key}`,
+            //       type: "GENERATE_SCENE_FRAMES" as const,
+            //       assetKey: key,
+            //       payload: {
+            //         assetKeys: [ key ],
+            //         sceneId: scene.id,
+            //         sceneIndex: scene.sceneIndex,
+            //       },
+            //     };
+            //   });
+            // }));
+            // // sequential mode dispatchs multiple individual jobs (batch) - generation is processed in isolation
+            // await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_FRAMES">(nodeName, jobs);
+
+            await this.dispatcher.ensureJob({
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_SCENE_FRAMES",
+              assetKey: "scene_start_frame",
+              entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
+              payload: {
+                assetKeys: ["scene_start_frame", "scene_end_frame"],
+                sceneIds: scenes.map((scene) => scene.id),
+              },
+            });
+          } else {
+            // parallel mode dispatches a single job with batch parameters - generation is processed in batch
+            await this.dispatcher.ensureJob({
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_SCENE_FRAMES",
+              assetKey: "scene_start_frame",
+              entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
+              payload: {
+                assetKeys: ["scene_start_frame", "scene_end_frame"],
+              },
+            });
+          }
+
+          console.log(`[${nodeName}]: Completed\n`);
+          return {
+            ...state,
+            __interrupt__: undefined,
+            __interrupt_resolved__: false,
+          };
+        } catch (error: any) {
+          interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
+        }
+      },
+      {
+        ends: ["user_approval_before_video_gen"],
+      },
+    );
+
+    workflow.addNode(
+      "user_approval_before_video_gen",
+      async (state: WorkflowState) => {
+        const nodeName = "user_approval_before_video_gen";
+
+        // If we are resuming/running and already have approval, pass through.
+        // This handles the re-entry logic cleanly.
+        if (state.userApprovedVideoProcessing) {
+          console.log(
+            { nodeName, projectId: state.projectId },
+            `User approved the generated assets. Proceeding to generate videos.`,
+          );
+          return {
+            userApprovedVideoProcessing: true,
+            __interrupt__: undefined,
+            __interrupt_resolved__: true,
+          };
         }
 
-        await this.dispatcher.ensureJob({
-          nodeName,
-          jobType: "RENDER_VIDEO",
-          assetKey: "render_video",
-          entityId: this.projectId,
-          teamId: state.teamId,
-          userId: state.userId,
-          payload: {
-            videoPaths,
-            audioGcsUri: project.metadata.audioGcsUri,
-          },
-          workflowId: state.id,
-        });
+        console.log(`[${nodeName}]: ⏸️ Interrupting for user review before video generation.`);
 
-        console.log(`[${nodeName}]: Completed\n`);
-        return {
-          ...state,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
+        const interruptValue: InterruptValue = {
+          type: "user_approval_before_video_gen",
+          error: "Your generated assets are ready for review.",
+          nodeName: "user_approval_before_video_gen",
+          functionName: "user_approval_before_video_gen",
+          projectId: state.projectId,
+          attempts: 0,
+          maxRetries: 0,
+          lastAttemptTimestamp: new Date().toISOString(),
         };
-      } catch (error: any) {
-        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
-      }
-    }, {
-      ends: ["finalize",]
-    });
+
+        const feedback = interrupt(interruptValue);
+
+        if (feedback?.action === "approve" || feedback === true) {
+          console.log(`[${nodeName}]: ▶️ Approval received. Moving to process_scene.`);
+          return {
+            userApprovedVideoProcessing: true,
+            __interrupt__: undefined,
+            __interrupt_resolved__: true,
+          };
+        }
+
+        console.log(`[${nodeName}]: No valid approval received. Staying at gate.`);
+        return new Command({
+          goto: nodeName,
+          update: {
+            userApprovedVideoProcessing: false,
+          },
+        });
+      },
+      {
+        ends: ["process_scene"],
+      },
+    );
+
+    workflow.addNode(
+      "process_scene",
+      async (state: WorkflowState) => {
+        const nodeName = "process_scene";
+        const currentIndex = state.currentSceneIndex || 0;
+
+        console.log(
+          `[${nodeName}]: Processing Scene ${state.currentSceneIndex}. Executing in ${this.EXECUTION_MODE.toLowerCase()} mode.`,
+        );
+        let project = await this.projectRepository.getProjectFullState(state.projectId);
+        if (!project) throw new Error("No project state available");
+
+        const { scenes } = project;
+
+        if (this.EXECUTION_MODE === "SEQUENTIAL") {
+          if (currentIndex >= scenes.length) return state;
+
+          const scene = scenes[currentIndex];
+          const nextScene = scenes[currentIndex + 1];
+
+          const [best] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [scene.id] }, [
+            "scene_video",
+          ]);
+          const videoUrl = best ? best.data : null;
+
+          const forceRegenerateIndex = project.forceRegenerateSceneIds.findIndex((id) => id === scene.id);
+          const shouldForceRegenerate = forceRegenerateIndex !== -1;
+
+          if (!shouldForceRegenerate && videoUrl && (await this.storageManager.fileExists(videoUrl))) {
+            console.log(`   ... Scene video already exists at ${videoUrl}, skipping.`);
+
+            let shouldRenderScenes = false;
+            const [nextSceneBest] = await this.assetManager.getBestVersion(
+              { projectId: this.projectId, sceneIds: [nextScene.id] },
+              ["scene_video"],
+            );
+            const nextScenePath = nextSceneBest
+              ? await this.storageManager.getObjectPath({
+                  type: "scene_video",
+                  projectId: this.projectId,
+                  sceneId: nextScene.id,
+                  version: nextSceneBest.version,
+                })
+              : "";
+            const nextSceneVideoExists = await this.storageManager.fileExists(nextScenePath);
+            if (!nextSceneVideoExists) {
+              shouldRenderScenes = true;
+            } else {
+              console.log(` ... Next scene (${nextScene.id}) also exists, skipping redundant stitch.`);
+            }
+
+            if (shouldRenderScenes) {
+              const videoPaths = scenes
+                .map((s) => {
+                  const sceneAssets = getAllBestAssets(s.assets);
+                  const videoAsset = sceneAssets["scene_video"];
+                  return resolvePublicUrl(videoAsset?.data);
+                })
+                .filter((uri): uri is string => !!uri);
+              if (videoPaths.length === 0) {
+                console.warn(`[${nodeName}]: No videos to render.`);
+                return state;
+              }
+
+              this.dispatcher
+                .dispatch({
+                  nodeName,
+                  jobType: "RENDER_VIDEO",
+                  assetKey: "render_video",
+                  payload: {
+                    videoPaths,
+                    audioGcsUri: project.metadata.audioGcsUri,
+                  },
+                  uniqueKey: `${this.projectId}-video-${currentIndex}`,
+                  workflowId: state.id,
+                  teamId: project.teamId,
+                  userId: state.userId,
+                })
+                .catch((err) => console.error("Non-blocking render failed to dispatch", err));
+
+              await this.publishEvent({
+                type: "SCENE_SKIPPED",
+                projectId: this.projectId,
+                worldId: this.worldId,
+                teamId: project.teamId,
+                userId: state.userId,
+                payload: {
+                  sceneId: scene.id,
+                  reason: "Video already exists",
+                  videoUrl: videoUrl,
+                },
+                timestamp: new Date().toISOString(),
+              });
+            }
+
+            console.log(`[${nodeName}]: Completed (Skipped)\n`);
+            return {
+              ...state,
+              currentSceneIndex: currentIndex + 1,
+              __interrupt__: undefined,
+              __interrupt_resolved__: false,
+            };
+          }
+
+          console.log(`[${nodeName}]: Processing scene ${scene.sceneIndex} (${currentIndex + 1}/${scenes.length}).`);
+          const [next] = await this.assetManager.getNextVersionNumber(
+            { projectId: this.projectId, sceneIds: [scene.id] },
+            ["scene_video"],
+          );
+          await this.dispatcher.ensureJob({
+            workflowId: state.id,
+            nodeName,
+            jobType: "GENERATE_SCENE_VIDEO",
+            assetKey: "scene_video",
+            entityId: scene.id,
+            teamId: project.teamId,
+            userId: state.userId,
+            payload: {
+              sceneId: scene.id,
+              overridePrompt: "",
+              renderInProgress: process.env.RENDER_IN_PROGRESS !== "false",
+            },
+          });
+
+          await this.publishEvent({
+            type: "SCENE_COMPLETED",
+            projectId: this.projectId,
+            worldId: this.worldId,
+            teamId: project.teamId,
+            userId: state.userId,
+            payload: {
+              sceneId: scene.id,
+            },
+            timestamp: new Date().toISOString(),
+          });
+
+          console.log(`[${nodeName}]: Completed\n`);
+
+          // Publish scene completion event
+          await this.publishEvent({
+            type: "SCENE_COMPLETED",
+            projectId: this.projectId,
+            worldId: this.worldId,
+            teamId: project.teamId,
+            userId: state.userId,
+            payload: {
+              sceneId: scene.id,
+              videoUrl: videoUrl ?? undefined,
+            },
+            timestamp: new Date().toISOString(),
+          });
+
+          return {
+            ...state,
+            currentSceneIndex: currentIndex + 1,
+            __interrupt__: undefined,
+            __interrupt_resolved__: false,
+          };
+        } else {
+          // Parallel execution
+
+          const jobs: any[] = [];
+          await Promise.all(
+            scenes.map(async (scene) => {
+              const forceRegenerateIndex = project?.forceRegenerateSceneIds.findIndex((id) => id === scene.id);
+              const shouldForceRegenerate = forceRegenerateIndex !== -1;
+
+              let videoExists = false;
+              if (!shouldForceRegenerate) {
+                const [best] = await this.assetManager.getBestVersion(
+                  { projectId: this.projectId, sceneIds: [scene.id] },
+                  ["scene_video"],
+                );
+                const videoUrl = best?.data;
+                videoExists = !!videoUrl && (await this.storageManager.fileExists(videoUrl));
+                if (videoExists) console.log(`   ... Scene ${scene.id} video already exists, skipping.`);
+              }
+
+              if (shouldForceRegenerate || !videoExists) {
+                jobs.push({
+                  uniqueKey: this.jobControlPlane.uniqueKey(scene.id, "scene_video"),
+                  type: "GENERATE_SCENE_VIDEO" as const,
+                  assetKey: "scene_video" as const,
+                  payload: {
+                    sceneId: scene.id,
+                    overridePrompt: "",
+                    renderInProgress: false,
+                  },
+                });
+              }
+            }),
+          );
+
+          try {
+            if (jobs.length > 0) {
+              await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_VIDEO">(nodeName, state.id, jobs);
+            } else {
+              console.log(`[${nodeName}]: All scenes skipped (already exist and not forced).`);
+            }
+
+            console.log(`[${nodeName}]: Completed\n`);
+            return {
+              ...state,
+              __interrupt__: undefined,
+              __interrupt_resolved__: false,
+            };
+          } catch (error: any) {
+            interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
+          }
+        }
+      },
+      {
+        ends: ["process_scene", "render_video"],
+      },
+    );
+
+    workflow.addNode(
+      "render_video",
+      async (state: WorkflowState) => {
+        const nodeName = "render_video";
+        let project = await this.projectRepository.getProjectFullState(state.projectId);
+        if (!project) {
+          throw new Error("Project not found");
+        }
+        const currentAttempt = (state.nodeAttempts?.[nodeName] || 0) + 1;
+        console.log(`\n[${nodeName}]: Rendering Final Video...Attempt ${currentAttempt}`);
+        try {
+          const scenes = project.scenes;
+          const videoPaths = scenes
+            .map((s) => {
+              const sceneAssets = getAllBestAssets(s.assets);
+              const videoAsset = sceneAssets["scene_video"];
+              return resolvePublicUrl(videoAsset?.data);
+            })
+            .filter((uri): uri is string => !!uri);
+          if (videoPaths.length === 0) {
+            console.warn(`[${nodeName}]: No videos to render.`);
+            return state;
+          }
+
+          await this.dispatcher.ensureJob({
+            nodeName,
+            jobType: "RENDER_VIDEO",
+            assetKey: "render_video",
+            entityId: this.projectId,
+            teamId: state.teamId,
+            userId: state.userId,
+            payload: {
+              videoPaths,
+              audioGcsUri: project.metadata.audioGcsUri,
+            },
+            workflowId: state.id,
+          });
+
+          console.log(`[${nodeName}]: Completed\n`);
+          return {
+            ...state,
+            __interrupt__: undefined,
+            __interrupt_resolved__: false,
+          };
+        } catch (error: any) {
+          interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
+        }
+      },
+      {
+        ends: ["finalize"],
+      },
+    );
 
     workflow.addNode("finalize", async (state: WorkflowState) => {
       const nodeName = "finalize";
@@ -997,15 +1039,22 @@ export class CinematicVideoWorkflow {
       console.log(`\n✅ [finalize]: Finalizing...`);
 
       const project = await this.projectRepository.updateProject(state.projectId, { status: "complete" });
-      const [attempt] = await this.assetManager.createVersionedAssets({ projectId: this.projectId }, ['final_output'], 'text', [JSON.stringify(project)], {
-        model: "",
-        jobId: ""
-      });
-      const objectPath = this.storageManager.getObjectPath({ type: "final_output", projectId: project.id, version: attempt.head });
-      const uploaded = await this.storageManager.uploadJSON(
-        project,
-        objectPath
+      const [attempt] = await this.assetManager.createVersionedAssets(
+        { projectId: this.projectId },
+        ["final_output"],
+        "text",
+        [JSON.stringify(project)],
+        {
+          model: "",
+          jobId: "",
+        },
       );
+      const objectPath = this.storageManager.getObjectPath({
+        type: "final_output",
+        projectId: project.id,
+        version: attempt.head,
+      });
+      const uploaded = await this.storageManager.uploadJSON(project, objectPath);
       console.log(`\n🎉 Video generation complete!`);
       console.log(`   Output saved to: ${this.storageManager.getPublicUrl(uploaded)}`);
       this.publishStateUpdate({ project, nodeName: "finalize", userId: state.userId });

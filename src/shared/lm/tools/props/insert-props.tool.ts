@@ -8,6 +8,7 @@ import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { mapDomainPropToInsertProp } from "#shared/entity/prop-mappers.js";
+import { TagRegistryService } from "#shared/services/tag-registry.js";
 
 const InsertPropsInput = z.object({ props: z.array(InsertProp) });
 export type InsertPropsInput = z.input<typeof InsertPropsInput>;
@@ -33,6 +34,22 @@ async function run(propsData: InsertPropsInput["props"], context: InsertPropsToo
     const toInsertProps = propsData.map(mapDomainPropToInsertProp);
     const insertedProps = await context.projectRepository.createProps(toInsertProps[0].projectId, toInsertProps);
 
+    for (let i = 0; i < insertedProps.length; i++) {
+      const entity = insertedProps[i];
+      if (!entity.name) throw new Error("Entity name is required for handle registration.");
+
+      await context.tagRegistry
+        .registerHandle({
+          handle: `@${entity.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+          entityId: entity.id,
+          entityType: "prop",
+          projectId: context.projectId,
+        })
+        .catch((err) => {
+          console.warn({ entityId: entity.id, error: err }, "[Worker] Failed to register entity handle.");
+        });
+    }
+
     return Promise.all(
       insertedProps.map(async (res) => {
         return { success: true as const, prop: res };
@@ -44,7 +61,10 @@ async function run(propsData: InsertPropsInput["props"], context: InsertPropsToo
 }
 
 export interface InsertPropsToolDeps {
-  context: ToolContext<TextModelController> & { projectRepository: ProjectRepository };
+  context: ToolContext<TextModelController> & {
+    projectRepository: ProjectRepository;
+    tagRegistry: TagRegistryService;
+  };
 }
 
 class InsertPropsTool extends StructuredTool<typeof InsertPropsInput> {

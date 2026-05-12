@@ -22,7 +22,7 @@ const assetKeyMap: Record<JobType, AssetKey> = {
   GENERATE_SCENE_VIDEO: "scene_video",
   RENDER_VIDEO: "final_output",
   GENERATE_COMPOSITE: "image_file",
-  CREATE_SCENE_WITH_ENTITIES: "entity",
+  CREATE_SCENES_WITH_ENTITIES: "entity",
 };
 
 export function createMockJob(overrides?: Partial<InsertJob>): Job {
@@ -132,7 +132,7 @@ export const createMockJobPayload = <T = JobType>(type: T, overrides?: Partial<J
         numberOfOutputs: 2,
       };
       break;
-    case "CREATE_SCENE_WITH_ENTITIES":
+    case "CREATE_SCENES_WITH_ENTITIES":
       basePayload = {
         userId: (overrides as any)?.userId ?? generateId(),
         /** Raw form fields from the scene creation modal.

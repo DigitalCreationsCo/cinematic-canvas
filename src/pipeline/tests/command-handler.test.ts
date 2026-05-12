@@ -2,7 +2,7 @@ import { createBuilder } from "#shared/mocks/mock-db.js";
 import "#shared/mocks/mock-job-control-plane.js";
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { PipelineCommandHandler } from "#pipeline/command-handler.js";
+import { PipelineCommandHandler } from "#pipeline/pipeline-command-handler.js";
 import { JobControlPlane } from "#shared/services/job-control-plane.ts";
 import { generateId } from "#shared/utils/id.ts";
 import { db } from "#shared/db/index.js";

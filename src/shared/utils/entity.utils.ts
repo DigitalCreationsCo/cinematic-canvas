@@ -121,12 +121,7 @@ export function buildEntityCreatableAssetDescriptionArgs(
   ];
 }
 
-export const InsertEntityUnion = z.discriminatedUnion("entityType", [
-  InsertCharacter,
-  InsertLocation,
-  InsertScene,
-  InsertProp,
-]);
+export const InsertEntityUnion = z.union([InsertCharacter, InsertLocation, InsertScene, InsertProp]);
 export type InsertEntityUnion = z.infer<typeof InsertEntityUnion>;
 
 export function mapDomainEntityToInsertEntity<T extends InsertEntitiesInput[number]>(

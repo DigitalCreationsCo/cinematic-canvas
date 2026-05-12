@@ -8,6 +8,7 @@ import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { mapDomainCharacterToInsertCharacter } from "#shared/entity/character-mappers.js";
+import { TagRegistryService } from "#shared/services/tag-registry.js";
 
 // ---------------------------------------------------------------------------
 // Input schema — what the orchestrator LLM sends when invoking this tool
@@ -53,6 +54,22 @@ async function run(charactersData: InsertCharactersInput["characters"], context:
       toInsertCharacters,
     );
 
+    for (let i = 0; i < insertedCharacters.length; i++) {
+      const entity = insertedCharacters[i];
+      if (!entity.name) throw new Error("Entity name is required for handle registration.");
+
+      await context.tagRegistry
+        .registerHandle({
+          handle: `@${entity.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+          entityId: entity.id,
+          entityType: "character",
+          projectId: context.projectId,
+        })
+        .catch((err) => {
+          console.warn({ entityId: entity.id, error: err }, "[Worker] Failed to register entity handle.");
+        });
+    }
+
     return Promise.all(
       insertedCharacters.map(async (res) => {
         return { success: true as const, character: res };
@@ -68,7 +85,10 @@ async function run(charactersData: InsertCharactersInput["characters"], context:
 // ---------------------------------------------------------------------------
 
 export interface InsertCharactersToolDeps {
-  context: ToolContext<TextModelController> & { projectRepository: ProjectRepository };
+  context: ToolContext<TextModelController> & {
+    projectRepository: ProjectRepository;
+    tagRegistry: TagRegistryService;
+  };
 }
 
 class InsertCharactersTool extends StructuredTool<typeof InsertCharactersInput> {
@@ -114,6 +134,7 @@ class InsertCharactersTool extends StructuredTool<typeof InsertCharactersInput> 
   }
 }
 
+export type { InsertCharactersTool };
 // ---------------------------------------------------------------------------
 // Factory — preferred way to instantiate so callers don't touch the class directly
 // ---------------------------------------------------------------------------

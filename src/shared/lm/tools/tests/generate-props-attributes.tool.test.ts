@@ -1,6 +1,6 @@
 import "#shared/mocks/mock-config.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createGeneratePropsTool } from "#shared/lm/tools/props/generate-props.tool.js";
+import { createGeneratePropAttributesTool } from "#shared/lm/tools/props/generate-props-attributes.tool.js";
 import { generateId } from "#shared/utils/id.ts";
 
 // Mock generateEntityAttributes to control LLM output directly
@@ -10,7 +10,7 @@ vi.mock("#shared/lm/tools/generate-entity-attributes.js", () => ({
 
 import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
 
-describe("GeneratePropsTool", () => {
+describe("GeneratePropAttributesTool", () => {
   let mockContext: any;
   let mockImagesTool: any;
 
@@ -51,16 +51,16 @@ describe("GeneratePropsTool", () => {
       },
     ]);
 
-    const tool = createGeneratePropsTool({
+    const tool = createGeneratePropAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
-      insertProps: mockInsert
+      insertProps: mockInsert,
     });
 
     await tool.run({
       props: [{ id: propId, name: "Plasma Sword" }] as any,
       generationRules: ["glowing edges"],
-      attempt: 1
+      attempt: 1,
     });
 
     expect(mockContext.saveAssets).toHaveBeenCalledWith(
@@ -69,7 +69,7 @@ describe("GeneratePropsTool", () => {
       "text",
       expect.anything(),
       expect.anything(),
-      true
+      true,
     );
     expect(mockInsert).toHaveBeenCalled();
   });
@@ -99,7 +99,7 @@ describe("GeneratePropsTool", () => {
       { entity: { ...generatedAttr, id: propId, assets: {} }, entityType: "prop" },
     ]);
 
-    const tool = createGeneratePropsTool({
+    const tool = createGeneratePropAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertProps,
@@ -144,9 +144,7 @@ describe("GeneratePropsTool", () => {
     // ── Assert: images tool called with inserted refs ──
     expect(mockImagesTool.run).toHaveBeenCalledWith(
       expect.objectContaining({
-        props: expect.arrayContaining([
-          expect.objectContaining({ id: propId, name: "Plasma Sword" }),
-        ]),
+        props: expect.arrayContaining([expect.objectContaining({ id: propId, name: "Plasma Sword" })]),
         generationRules: ["glowing edges"],
         attempt: 1,
       }),
@@ -180,7 +178,7 @@ describe("GeneratePropsTool", () => {
 
     const insertProps = vi.fn();
 
-    const tool = createGeneratePropsTool({
+    const tool = createGeneratePropAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertProps,
@@ -209,7 +207,9 @@ describe("GeneratePropsTool", () => {
   it("should throw when insertProps fails", async () => {
     const propId = generateId();
     const generatedAttr = {
-      name: "Fail Insert Prop", description: "test", type: "misc",
+      name: "Fail Insert Prop",
+      description: "test",
+      type: "misc",
       referenceId: "prop_fail",
       version: 1,
     };
@@ -220,15 +220,15 @@ describe("GeneratePropsTool", () => {
 
     const insertProps = vi.fn().mockRejectedValue(new Error("DB constraint violation"));
 
-    const tool = createGeneratePropsTool({
+    const tool = createGeneratePropAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertProps,
     });
 
-    await expect(
-      tool.run({ props: [{ id: propId, name: "Fail Insert Prop" }] as any }),
-    ).rejects.toThrow("DB constraint violation");
+    await expect(tool.run({ props: [{ id: propId, name: "Fail Insert Prop" }] as any })).rejects.toThrow(
+      "DB constraint violation",
+    );
   });
 
   // ==========================================================================
@@ -238,7 +238,9 @@ describe("GeneratePropsTool", () => {
   it("should still return attribute results when imagesTool.run() throws", async () => {
     const propId = generateId();
     const generatedAttr = {
-      name: "Img Fail Prop", description: "test", type: "misc",
+      name: "Img Fail Prop",
+      description: "test",
+      type: "misc",
       referenceId: "prop_img_fail",
       version: 1,
     };
@@ -253,7 +255,7 @@ describe("GeneratePropsTool", () => {
       { entity: { id: propId, name: "Img Fail Prop", assets: {} }, entityType: "prop" },
     ]);
 
-    const tool = createGeneratePropsTool({
+    const tool = createGeneratePropAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertProps,
@@ -265,9 +267,7 @@ describe("GeneratePropsTool", () => {
 
     // Insert and ENTITY_CREATED still happened
     expect(insertProps).toHaveBeenCalled();
-    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "ENTITY_CREATED" }),
-    );
+    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
 
     // Attribute result is success
     expect(results).toHaveLength(1);
@@ -285,7 +285,9 @@ describe("GeneratePropsTool", () => {
     const propId1 = generateId();
     const propId2 = generateId();
     const successAttr = {
-      name: "Good Prop", description: "a good prop", type: "misc",
+      name: "Good Prop",
+      description: "a good prop",
+      type: "misc",
       referenceId: "prop_good",
       version: 1,
     };
@@ -293,8 +295,10 @@ describe("GeneratePropsTool", () => {
     vi.mocked(generateEntityAttributes).mockResolvedValue([
       { success: true, id: propId1, data: successAttr, entityType: "prop" },
       {
-        success: false, id: propId2,
-        data: { id: propId2 }, entityType: "prop",
+        success: false,
+        id: propId2,
+        data: { id: propId2 },
+        entityType: "prop",
         error: new Error("Prop 2 failed"),
       },
     ]);
@@ -304,7 +308,7 @@ describe("GeneratePropsTool", () => {
       { entity: { id: propId1, name: "Good Prop", assets: {} }, entityType: "prop" },
     ]);
 
-    const tool = createGeneratePropsTool({
+    const tool = createGeneratePropAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertProps,
@@ -322,9 +326,7 @@ describe("GeneratePropsTool", () => {
     expect(results[1].success).toBe(false);
 
     // Insert only called for success
-    expect(insertProps).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ name: "Good Prop" })]),
-    );
+    expect(insertProps).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ name: "Good Prop" })]));
   });
 
   // ==========================================================================
@@ -334,7 +336,7 @@ describe("GeneratePropsTool", () => {
   it("should handle empty prop array gracefully", async () => {
     vi.mocked(generateEntityAttributes).mockResolvedValue([]);
 
-    const tool = createGeneratePropsTool({
+    const tool = createGeneratePropAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertProps: vi.fn(),
@@ -353,7 +355,9 @@ describe("GeneratePropsTool", () => {
   it("should serialise results via _call in the expected JSON format", async () => {
     const propId = generateId();
     const generatedAttr = {
-      name: "Serialise Prop", description: "test", type: "misc",
+      name: "Serialise Prop",
+      description: "test",
+      type: "misc",
       referenceId: "prop_serial",
       version: 1,
     };
@@ -367,7 +371,7 @@ describe("GeneratePropsTool", () => {
       { entity: { id: propId, name: "Serialise Prop", assets: {} }, entityType: "prop" },
     ]);
 
-    const tool = createGeneratePropsTool({
+    const tool = createGeneratePropAttributesTool({
       context: mockContext,
       imagesTool: mockImagesTool,
       insertProps,
@@ -384,5 +388,4 @@ describe("GeneratePropsTool", () => {
     expect(parsed.results[0].success).toBe(true);
     expect(parsed.results[0].prop.name).toBe("Serialise Prop");
   });
-
 });
