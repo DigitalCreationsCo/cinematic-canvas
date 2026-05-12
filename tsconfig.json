@@ -1,18 +1,10 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "disableReferencedProjectLoad": true
+    "noEmit": true
   },
   "files": [],
   "include": [],
-  "exclude": [
-    "**/node_modules",
-    "**/dist",
-    "**/coverage",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "**/*.test.tsx",
-    "**/*.spec.tsx"
-  ],
   "references": [
     {
       "path": "./src/shared"

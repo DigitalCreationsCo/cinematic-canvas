@@ -3,7 +3,17 @@
     "compilerOptions": {
         "noEmit": true,
         "composite": false,
-        "types": ["vitest", "node"]
+        "baseUrl": ".",
+        "paths": {
+            "#client/mocks/*": ["./src/client/mocks/*"],
+            "#client/*": ["./src/client/src/*"],
+            "#shared/*": ["./src/shared/*"],
+            "#worker/*": ["./src/worker/*"],
+            "#pipeline/*": ["./src/pipeline/*"],
+            "#server/*": ["./src/server/*"],
+            "#*": ["./src/*"]
+        },
+        "types": ["node"]
     },
     "include": [
         "src/**/*.ts",
@@ -15,6 +25,9 @@
         "**/node_modules",
         "**/dist",
         "**/.next",
+        "**/*.test.*",
+        "**/*.test.ts",
+        "**/*.test.tsx",
         "**/coverage"
     ]
 }

@@ -49,7 +49,7 @@
         "typescript": {
           "preferences": {
             "importModuleSpecifier": "non-relative",
-            "includeCompletionsForModuleExports": true,
+            // "includeCompletionsForModuleExports": true,
           },
           "format": {
             "insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": true,
