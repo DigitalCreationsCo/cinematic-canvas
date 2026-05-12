@@ -34,7 +34,7 @@ import { api } from "#client/lib/api.js";
 import { useAssetStore } from "#client/store/useAssetStore.js";
 import { getAllBestAssets } from "#shared/utils/assets.utils.js";
 import { AssetKey } from "#shared/types/assets.types.js";
-import { fileToBase64 } from "#shared/utils/utils.js";
+import { fileToBase64, resolvePublicUrl } from "#shared/utils/utils.js";
 import { Card } from "#client/components/ui/card.js";
 
 const COLLAPSE_DURATION = "200ms";
@@ -425,19 +425,34 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
   };
 
   const characterAssetImages = Object.fromEntries(
-    characterList.map((c) => [c.id, getBestAssetImage(c.id, "character_image")]),
+    characterList.map((c) => [
+      c.id,
+      resolvePublicUrl(getBestAssetImage(c.id, "character_image")),
+    ]),
   );
   const wCharacterAssetImages = Object.fromEntries(
-    wCharacterList.map((c) => [c.id, getBestAssetImage(c.id, "character_image")]),
+    wCharacterList.map((c) => [
+      c.id,
+      resolvePublicUrl(getBestAssetImage(c.id, "character_image")),
+    ]),
   );
   const locationAssetImages = Object.fromEntries(
-    locationList.map((l) => [l.id, getBestAssetImage(l.id, "location_image")]),
+    locationList.map((l) => [
+      l.id,
+      resolvePublicUrl(getBestAssetImage(l.id, "location_image")),
+    ]),
   );
   const wLocationAssetImages = Object.fromEntries(
-    wLocationList.map((l) => [l.id, getBestAssetImage(l.id, "location_image")]),
+    wLocationList.map((l) => [
+      l.id,
+      resolvePublicUrl(getBestAssetImage(l.id, "location_image")),
+    ]),
   );
   const sceneAssetImages = Object.fromEntries(
-    sceneList.map((s) => [s.id, getBestAssetImage(s.id, "scene_start_frame")]),
+    sceneList.map((s) => [
+      s.id,
+      resolvePublicUrl(getBestAssetImage(s.id, "scene_start_frame")),
+    ]),
   );
 
   const scenesOnCanvas = useProjectStore((s) => s.scenesOnCanvas);
@@ -445,7 +460,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
   return (
     <Card
       className={cn(
-        `absolute top-4 left-4 bottom-4 w-72 bg-accent/80 card-cinematic-glass backdrop-blur-md flex flex-col overflow-hidden z-20`,
+        `absolute top-4 left-4 w-72 bg-accent/80 card-cinematic-glass backdrop-blur-md flex flex-col overflow-hidden z-20 pb-8 h-fit max-h-[calc(100dvh-1rem)]`,
       )}
     >
       <div className="p-4 border-b flex items-center justify-between shrink-0 min-h-[52px]">
@@ -481,7 +496,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 pt-1">
+      <ScrollArea className="flex-1 pt-1 min-h-0">
         <div className="flex flex-col">
           {/* Characters Section */}
           <CollapsibleSection

@@ -4,7 +4,7 @@ import { ProjectMetadata, ProjectMetadataAttributes } from "#shared/types/metada
 import { CharacterAttributes } from "#shared/types/character.types.js";
 import { LocationAttributes } from "#shared/types/location.types.js";
 import { SceneAttributes } from "#shared/types/scene.types.js";
-import { CharacterBase, LocationBase, SceneBase } from "#shared/types/workflow.types.js";
+import { CharacterBase, LocationBase, PropBase, SceneBase } from "#shared/types/workflow.types.js";
 
 // ============================================================================
 // STORYBOARD
@@ -53,29 +53,38 @@ export type Storyboard = z.infer<typeof Storyboard>;
 // always lives in the asset registry.
 // ============================================================================
 
-export const CharacterCondensed = z.object({
-  id: z.uuid(),
-  referenceId: z.string(),
-  name: z.string(),
-  description: z.string().default(""),
+export const CharacterCondensed = CharacterBase.pick({
+  id: true,
+  referenceId: true,
+  name: true,
+  description: true,
 });
 export type CharacterCondensed = z.infer<typeof CharacterCondensed>;
 
-export const LocationCondensed = z.object({
-  id: z.uuid(),
-  referenceId: z.string(),
-  name: z.string(),
-  description: z.string().default(""),
+export const LocationCondensed = LocationBase.pick({
+  id: true,
+  referenceId: true,
+  name: true,
+  description: true,
 });
 export type LocationCondensed = z.infer<typeof LocationCondensed>;
 
 // Scenes use sceneIndex as their narrative-scoped identifier (no referenceId).
-export const SceneCondensed = z.object({
-  id: z.uuid(),
-  name: z.string(),
-  description: z.string().default(""),
+export const SceneCondensed = SceneBase.pick({
+  id: true,
+  name: true,
+  description: true,
+  sceneIndex: true,
 });
 export type SceneCondensed = z.infer<typeof SceneCondensed>;
+
+export const PropCondensed = PropBase.pick({
+  id: true,
+  referenceId: true,
+  name: true,
+  description: true,
+});
+export type PropCondensed = z.infer<typeof PropCondensed>;
 
 // ============================================================================
 // LIVE STORYBOARD

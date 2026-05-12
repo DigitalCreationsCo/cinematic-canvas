@@ -141,8 +141,8 @@ export interface SceneGenerationInput {
 export const GenerateSceneInputVerbose = z.object({
   partial: SceneAttributes.partial().extend({
     id: z.uuid(),
-    characters: z.array(CharacterAttributes),
-    location: LocationAttributes,
+    // characters: z.array(CharacterAttributes),
+    // location: LocationAttributes,
   }),
   images: z.array(UploadResult).optional(),
 });
@@ -209,7 +209,8 @@ export type InterruptValueType =
   | "lm_retry_exhausted"
   | "lm_intervention"
   | "waiting_for_job"
-  | "waiting_for_batch";
+  | "waiting_for_batch"
+  | "max_lifetime_exceeded";
 export interface InterruptValue {
   type: InterruptValueType;
   error: string;

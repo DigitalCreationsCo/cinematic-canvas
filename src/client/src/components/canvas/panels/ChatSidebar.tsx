@@ -1,14 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { X, MessageCircle, Send, Square, Plus, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
+import { X, MessageCircle, Send, Square, Plus, Loader2 } from "lucide-react";
 
-import { usePipelineStore } from '#client/store/usePipelineStore.js';
-import { CHAT_SIDEBAR_WIDTH, selectChatSidebarOpen, useUIMenuStore } from '#client/store/useUIMenuStore.js';
-import { useChatStore } from '#client/store/useChatStore.js';
-import { useProjectStore } from '#client/store/useProjectStore.js';
-import { cn } from '#client/lib/utils.js';
-import { Button } from '#client/components/ui/button.js';
-import { Conversation, Message } from '#shared/types/chat.types.js';
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
+import {
+  CHAT_SIDEBAR_WIDTH,
+  selectChatSidebarOpen,
+  useUIMenuStore,
+} from "#client/store/useUIMenuStore.js";
+import { useChatStore } from "#client/store/useChatStore.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
+import { cn } from "#client/lib/utils.js";
+import { Button } from "#client/components/ui/button.js";
+import { Conversation, Message } from "#shared/types/chat.types.js";
 
 function ChatView({
   messages,
@@ -41,7 +45,7 @@ function ChatView({
   }, [messages.length]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
 
   useEffect(() => {
@@ -50,34 +54,42 @@ function ChatView({
     }
   }, [chatInputFocusTrigger]);
 
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
     onSendMessage(input.trim());
-    setInput('');
+    setInput("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
-    } else if (e.key === 'ArrowUp' && !input) {
+    } else if (e.key === "ArrowUp" && !input) {
       e.preventDefault();
-      const { messageHistory: hist, historyIndex, navigateHistory: nav } = useChatStore.getState();
+      const {
+        messageHistory: hist,
+        historyIndex,
+        navigateHistory: nav,
+      } = useChatStore.getState();
       if (hist.length > 0) {
-        nav('up');
+        nav("up");
         const newIndex = useChatStore.getState().historyIndex;
-        setInput(hist[newIndex] || '');
+        setInput(hist[newIndex] || "");
       }
-    } else if (e.key === 'ArrowDown' && !input) {
+    } else if (e.key === "ArrowDown" && !input) {
       e.preventDefault();
-      const { messageHistory: hist, historyIndex, navigateHistory: nav } = useChatStore.getState();
+      const {
+        messageHistory: hist,
+        historyIndex,
+        navigateHistory: nav,
+      } = useChatStore.getState();
       if (hist.length > 0 && historyIndex >= 0) {
-        nav('down');
+        nav("down");
         const newIndex = useChatStore.getState().historyIndex;
-        setInput(newIndex >= 0 ? hist[newIndex] : '');
+        setInput(newIndex >= 0 ? hist[newIndex] : "");
       }
     }
   };
@@ -89,18 +101,16 @@ function ChatView({
           <div
             key={msg.id}
             className={cn(
-              'flex flex-col gap-1 p-3 rounded-none text-sm',
-              msg.role === 'ai'
-                ? 'bg-primary/10 ml-4'
-                : 'bg-muted mr-4'
+              "flex flex-col gap-1 p-3 rounded-none text-sm",
+              msg.role === "ai" ? "bg-primary/10 ml-4" : "bg-muted mr-4",
             )}
           >
             <span className="text-xs text-muted-foreground font-medium">
-              {msg.role === 'human' ? 'You' : 'AI'}
+              {msg.role === "human" ? "You" : "AI"}
             </span>
             <p className="whitespace-pre-wrap break-words">
               {msg.content}
-              {msg.role === 'ai' && !msg.isComplete && (
+              {msg.role === "ai" && !msg.isComplete && (
                 <span className="inline-flex ml-1">
                   <span className="animate-pulse">▊</span>
                 </span>
@@ -132,21 +142,26 @@ function ChatView({
             <Loader2 className="w-3 h-3 animate-spin shrink-0" />
             <span>
               {queuedMessages.length === 1
-                ? '1 message queued — will send when the current response finishes'
+                ? "1 message queued — will send when the current response finishes"
                 : `${queuedMessages.length} messages queued — will send when the current response finishes`}
             </span>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className={cn("flex-1 p-3 group", hasMessages && "mt-4")}>
+      <form
+        onSubmit={handleSubmit}
+        className={cn("flex-1 p-3 group", hasMessages && "mt-4")}
+      >
         <div className="flex">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={hasMessages ? "Ask AI..." : "Start a conversation with the assistant"}
+            placeholder={
+              hasMessages ? "Ask AI..." : "Start a conversation with the assistant"
+            }
             className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-l bg-background border border-input px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
           {isStreaming ? (
@@ -201,10 +216,10 @@ function ConversationList({
             key={conv.id}
             onClick={() => onSelect(conv.id)}
             className={cn(
-              'w-full text-left px-3 py-2 text-sm truncate rounded-none transition-colors',
+              "w-full text-left px-3 py-2 text-sm truncate rounded-none transition-colors",
               currentConversation?.id === conv.id
-                ? 'bg-primary/20 text-foreground'
-                : 'hover:bg-muted text-muted-foreground'
+                ? "bg-primary/20 text-foreground"
+                : "hover:bg-muted text-muted-foreground",
             )}
           >
             {conv.title}
@@ -268,12 +283,12 @@ export function ChatSidebar({ className }: { className?: string } = {}) {
         "absolute top-0 right-0 flex flex-col backdrop-blur-xl shadow-2xl z-20",
         "bg-panel/95 border-l border-panel-border overflow-hidden",
         "transition-all duration-200 ease-out",
-        className
+        className,
       )}
       style={{
         width: CHAT_SIDEBAR_WIDTH,
-        height: '100%',
-        transformOrigin: 'right',
+        height: "100%",
+        transformOrigin: "right",
       }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">

@@ -32,7 +32,7 @@ import {
   Scene,
   SceneWithAssets,
 } from "#shared/types/workflow.types.js";
-import { Storyboard } from "#shared/types/storyboard.types.js";
+import { LiveStoryboard } from "#shared/types/storyboard.types.js";
 import { z } from "zod";
 import { createSelectSchema, createInsertSchema, createUpdateSchema } from "drizzle-zod";
 import * as schema from "#shared/db/schema.js";
@@ -159,7 +159,7 @@ export const ProjectEntity = createSelectSchema(schema.projects, {
   ...IdentityBase.shape,
   teamId: TeamRef.shape.teamId,
   worldId: WorldRef.shape.worldId,
-  storyboard: Storyboard.readonly().describe("The immutable storyboard snapshot"),
+  storyboard: LiveStoryboard,
   metadata: ProjectMetadata.describe("Fully populated production metadata"),
   audioAnalysis: AudioAnalysisAttributes.nullish(),
   generationRules: GenerationRules,
@@ -204,15 +204,7 @@ export const InsertProject = createInsertSchema(schema.projects, {
   ...InsertIdentityBase.shape,
   ...TeamRef.shape,
   worldId: WorldRef.shape.worldId,
-  storyboard: z
-    .object({
-      metadata: ProjectMetadata,
-      scenes: z.array(InsertScene),
-      characters: z.array(InsertCharacter),
-      locations: z.array(InsertLocation),
-    })
-    .readonly()
-    .describe("The immutable storyboard snapshot"),
+  storyboard: LiveStoryboard,
   metadata: ProjectMetadata.default(() => ProjectMetadata.parse({})),
   audioAnalysis: AudioAnalysisAttributes.nullish(),
 

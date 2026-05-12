@@ -8,7 +8,7 @@ import { NodeCreationMenu } from "#client/components/canvas/context-menu/CanvasC
 import { useUIMenuStore } from "#client/store/useUIMenuStore.js";
 
 vi.mock("#client/store/useNodeStore.js", () => ({
-  useNodeStore: vi.fn(() => ({ nodes: [] })),
+  useNodeStore: vi.fn(() => ({ nodes: [], addNode: vi.fn() })),
 }));
 vi.mock("#client/store/useCanvasUIStore.js", () => ({
   useCanvasUIStore: vi.fn((selector) => selector({ autoLayout: false })),
@@ -19,17 +19,20 @@ vi.mock("#client/store/useUIMenuStore.js", () => ({
 vi.mock("#client/store/useProjectStore.js", () => ({
   useProjectStore: vi.fn((selector) => selector({ selectedProjectId: "project-1" })),
 }));
-vi.mock("#client/components/canvas/context-menu/CanvasContextMenu.js", () => ({
-  NodeCreationMenu: vi.fn(),
-}));
+vi.mock("#client/components/canvas/context-menu/CanvasContextMenu.js", async (importOriginal) => {
+  const mod = await importOriginal() as typeof import("#client/components/canvas/context-menu/CanvasContextMenu.js");
+  return {
+    ...mod
+  }
+});
 vi.mock("#client/components/canvas/panels/NewEntityModal.js", () => ({
   NewEntityModal: ({ isOpen, onClose, entityType }: any) => {
     if (!isOpen) return null;
     return (
       <div data-testid="new-entity-modal">
         <div data-testid="modal-title">New {entityType} Modal</div>
-        <input data-testid="modal-name-input" placeholder="Name" onChange={() => {}} />
-        <button data-testid="modal-create-btn" onClick={() => {}}>
+        <input data-testid="modal-name-input" placeholder="Name" onChange={() => { }} />
+        <button data-testid="modal-create-btn" onClick={() => { }}>
           Create
         </button>
         <button data-testid="modal-close-btn" onClick={onClose}>
@@ -49,20 +52,6 @@ describe("AddNodeDropdown", () => {
     vi.mocked(useUIMenuStore).mockImplementation((selector) =>
       selector({ setDropdownOpen: mockSetDropdownOpen, isDropdownOpen: true }),
     );
-
-    vi.mocked(NodeCreationMenu).mockImplementation(({ onOpenModal }: any) => {
-      return (
-        <div>
-          <button
-            data-testid="mock-character-btn"
-            onClick={() => onOpenModal && onOpenModal("character")}
-          >
-            Character
-          </button>
-        </div>
-      );
-    });
-
     render(
       <TooltipProvider>
         <AddNodeDropdown contextType="project" />
@@ -70,7 +59,7 @@ describe("AddNodeDropdown", () => {
     );
 
     // Dropdown is already open — click the mock character item
-    const charBtn = screen.getByTestId("mock-character-btn");
+    const charBtn = screen.getByTestId("node-creation-menu-item-character-btn");
     await user.click(charBtn);
 
     // Should have closed the dropdown via setDropdownOpen(false)
@@ -88,20 +77,6 @@ describe("AddNodeDropdown", () => {
     vi.mocked(useUIMenuStore).mockImplementation((selector) =>
       selector({ setDropdownOpen: mockSetDropdownOpen, isDropdownOpen: true }),
     );
-
-    vi.mocked(NodeCreationMenu).mockImplementation(({ onOpenModal }: any) => {
-      return (
-        <div>
-          <button
-            data-testid="mock-character-btn"
-            onClick={() => onOpenModal && onOpenModal("character")}
-          >
-            Character
-          </button>
-        </div>
-      );
-    });
-
     render(
       <TooltipProvider>
         <AddNodeDropdown contextType="project" />
@@ -109,7 +84,7 @@ describe("AddNodeDropdown", () => {
     );
 
     // Open the modal from dropdown
-    await user.click(screen.getByTestId("mock-character-btn"));
+    await user.click(screen.getByTestId("node-creation-menu-item-character-btn"));
     expect(screen.getByTestId("new-entity-modal")).toBeInTheDocument();
 
     // Click the title — modal stays open
@@ -137,22 +112,17 @@ describe("AddNodeDropdown", () => {
       selector({ setDropdownOpen: mockSetDropdownOpen, isDropdownOpen: true }),
     );
 
-    let capturedOnClose: (() => void) | null = null;
-
-    vi.mocked(NodeCreationMenu).mockImplementation(({ onClose }: any) => {
-      capturedOnClose = onClose;
-      return <div data-testid="mock-menu-content">Menu Content</div>;
-    });
-
     render(
       <TooltipProvider>
         <AddNodeDropdown contextType="project" />
       </TooltipProvider>,
     );
 
+    // Click a non-modal item like 'image'
+    const imageBtn = screen.getByTestId("node-creation-menu-item-image-btn");
+    await user.click(imageBtn);
+
     // Verify onClose was passed and it calls setDropdownOpen(false)
-    expect(capturedOnClose).not.toBeNull();
-    capturedOnClose!();
     expect(mockSetDropdownOpen).toHaveBeenCalledWith(false);
   });
 });

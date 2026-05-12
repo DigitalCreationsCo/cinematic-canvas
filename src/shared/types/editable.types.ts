@@ -6,7 +6,7 @@ import { SceneAttributes, SceneStatus } from "#shared/types/scene.types.js";
 import { CharacterAttributes } from "#shared/types/character.types.js";
 import { LocationAttributes } from "#shared/types/location.types.js";
 import { AssetKey } from "#shared/types/assets.types.js";
-import { UploadResult } from "#shared/types/base.types.js";
+import { IdentityBase, UploadResult } from "#shared/types/base.types.js";
 import { EntityCreatableType, EntityPrimitiveType } from "#shared/types/entity.types.js";
 import { PropAttributes } from "#shared/types/workflow.types.js";
 import { InsertCharacter, InsertLocation, InsertProp, InsertScene } from "#shared/types/schema.types.js";
@@ -115,7 +115,7 @@ export type GenerateEntitiesPayload = (
 
 export const CreateSceneWithEntitiesInput = z
   .object({
-    id: z.string(),
+    id: IdentityBase.shape.id,
     charactersTextInput: z.array(z.string()).optional(),
     locationTextInput: z.string().optional(),
   })

@@ -149,8 +149,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { currentConversation } = get();
     if (!currentConversation) return;
 
-    // Clear the message queue — user explicitly wants to stop everything
-    set({ queuedMessages: [] });
+    // Clear streaming state immediately so the UI returns to a responsive state
+    // (stop button → send button, "Thinking..." hidden, input usable).
+    // We do NOT wait for the SSE round-trip (CHAT_STREAM_CHUNK isComplete) —
+    // that's a fragile dependency. The SSE handler will also set isStreaming=false
+    // when it eventually arrives, which is idempotent.
+    set({ queuedMessages: [], isStreaming: false, streamChunk: '' });
 
     try {
       await api.chat.stop.mutate({

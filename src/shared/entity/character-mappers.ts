@@ -7,6 +7,7 @@ import { z } from "zod";
 import { hydrateEntity } from "#shared/utils/entity.utils.js";
 import { characters } from "#shared/db/schema.js";
 import { CharacterCondensed } from "#shared/types/storyboard.types.js";
+import { getAllBestAssets } from "#shared/utils/assets.utils.js";
 
 export function mapCharacterHydrationPayloadToCharacter(payload: Character): Character {
   return Character.parse(payload);
@@ -33,13 +34,16 @@ export function mapCharacterWithAssetsToCharacterBase(char: CharacterBase): Char
   return CharacterBase.parse(char);
 }
 
-export function condenseCharacter(character: {
-  id: string;
-  referenceId: string;
-  name: string;
-  description: string;
-}): CharacterCondensed {
-  return CharacterCondensed.parse(character);
+/**
+ * Transforms a scene into a condensed scene, used for the storyboard view.
+ * Description is intentionally sourced from the best versioned asset rather
+ * than a column value, because descriptions for all entity types are stored as
+ * versioned assets (see schema). CharacterWithAssets / LocationWithAssets /
+ * SceneWithAssets omit the description column for exactly this reason.
+ */
+export function condenseCharacter(character: CharacterWithAssets): CharacterCondensed {
+  const description = getAllBestAssets(character.assets)["description"]?.data ?? "";
+  return CharacterCondensed.parse({ ...character, description });
 }
 
 /**

@@ -212,9 +212,7 @@ export function SceneCreatorFields({
               min={MIN_SCENES}
               max={MAX_SCENES}
               value={sceneCount}
-              onChange={(e) =>
-                onFieldChange("sceneCount", parseInt(e.target.value, 10))
-              }
+              onChange={(e) => onFieldChange("sceneCount", parseInt(e.target.value, 10))}
               className={cn(
                 "nodrag w-full h-1.5 appearance-none bg-muted cursor-pointer mt-1",
                 // WebKit thumb
@@ -487,7 +485,10 @@ export function createSceneCreatorConfig(opts?: {
 
       // Strip HTML tags from MentionTextArea content for emptiness check
       const prompt = (fields.prompt as string) || "";
-      const stripped = prompt.replace(/<[^>]*>/g, "").replace(/\u200B/g, "").trim();
+      const stripped = prompt
+        .replace(/<[^>]*>/g, "")
+        .replace(/\u200B/g, "")
+        .trim();
       if (!stripped) {
         errors.prompt = "A prompt is required";
       }
@@ -518,6 +519,7 @@ export function createSceneCreatorConfig(opts?: {
         mode === "scenes"
           ? Math.min(MAX_SCENES, Math.max(MIN_SCENES, (fields.sceneCount as number) || 1))
           : 3; // default count when using duration mode
+      // TODO defer sceneCount to the model when it creates scenes to fill duration
 
       const duration = mode === "duration" ? (fields.duration as string) : undefined;
 
@@ -529,9 +531,16 @@ export function createSceneCreatorConfig(opts?: {
       // ENTITY_CREATED events. Fall back to client-side creation if the
       // API call fails (e.g. no backend connection).
       let pipelineQueued = false;
+
+      // Create placeholder scenes immediately so the user sees results on
+      // the canvas without waiting for the pipeline. If the pipeline is
+      // active, these will be enriched by ENTITY_UPDATED events.
+      const sceneIds: string[] = Array.from({ length: sceneCount }, () => generateId());
+
       try {
         await generateScenesFromPrompt({
-          prompt: stripped,
+          sceneFields: { id: sceneIds[0], description: stripped },
+          sceneIds,
           sceneCount,
           duration,
           projectId,
@@ -544,16 +553,9 @@ export function createSceneCreatorConfig(opts?: {
         );
       }
 
-      // ── Client-side fallback ───────────────────────────────────────
-      // Create placeholder scenes immediately so the user sees results on
-      // the canvas without waiting for the pipeline. If the pipeline is
-      // active, these will be enriched by ENTITY_UPDATED events.
-      const createdIds: string[] = [];
       try {
-        for (let i = 0; i < sceneCount; i++) {
-          const id = generateId();
-          createdIds.push(id);
-
+        for (let i = 0; i < sceneIds.length; i++) {
+          const id = sceneIds[i];
           // 1. Add the scene entity to the project store
           const scene = createMinimalScene({
             id,
@@ -584,8 +586,8 @@ export function createSceneCreatorConfig(opts?: {
           id: generateId(),
           type: "success",
           message: pipelineQueued
-            ? `Queued ${createdIds.length} scene${createdIds.length !== 1 ? "s" : ""} for AI generation`
-            : `Created ${createdIds.length} scene${createdIds.length !== 1 ? "s" : ""} from prompt: "${stripped.slice(0, 60)}${stripped.length > 60 ? "…" : ""}"`,
+            ? `Queued ${sceneIds.length} scene${sceneIds.length !== 1 ? "s" : ""} for AI generation`
+            : `Created ${sceneIds.length} scene${sceneIds.length !== 1 ? "s" : ""} from prompt: "${stripped.slice(0, 60)}${stripped.length > 60 ? "…" : ""}"`,
           timestamp: new Date(),
         });
       } catch (err) {

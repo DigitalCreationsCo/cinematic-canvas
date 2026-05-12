@@ -285,17 +285,20 @@ describe("useChatStore — queue & stop", () => {
       expect(useChatStore.getState().queuedMessages).toEqual([]);
     });
 
-    it("should NOT prematurely set isStreaming to false (SSE handler owns that)", async () => {
+    it("should set isStreaming to false immediately so the UI returns to a responsive state", async () => {
       useChatStore.setState({
         currentConversation: makeConversation(),
         isStreaming: true,
+        streamChunk: "partial response",
       });
 
       await useChatStore.getState().stopStreaming();
 
-      // isStreaming remains true — only the CHAT_STREAM_CHUNK(isComplete)
-      // SSE handler should set it to false
-      expect(useChatStore.getState().isStreaming).toBe(true);
+      // isStreaming must be set to false immediately — we do NOT wait for
+      // the SSE round-trip (CHAT_STREAM_CHUNK isComplete). The SSE handler
+      // will also set isStreaming=false when it arrives, which is idempotent.
+      expect(useChatStore.getState().isStreaming).toBe(false);
+      expect(useChatStore.getState().streamChunk).toBe("");
     });
   });
 

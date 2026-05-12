@@ -103,8 +103,10 @@ export function AddNodeDropdown({
                 getPosition={getPosition}
                 onClose={() => setDropdownOpen(false)}
                 onOpenModal={handleOpenModal}
-                renderItem={(children, onClick) => (
+                renderItem={(children, onClick, key) => (
                   <DropdownMenuItem
+                    key={key}
+                    data-testid={`node-creation-menu-item-${key}-btn`}
                     onSelect={(e) => {
                       e.preventDefault();
                       onClick();

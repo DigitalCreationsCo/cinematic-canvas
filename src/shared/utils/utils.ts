@@ -1,4 +1,5 @@
-import { WorkflowState, StoryboardAttributes } from "../types/workflow.types.js";
+import { WorkflowState } from "../types/workflow.types.js";
+import { StoryboardAttributes } from "../types/storyboard.types.js";
 import { z } from "zod";
 
 /**

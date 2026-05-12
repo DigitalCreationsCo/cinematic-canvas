@@ -1,9 +1,9 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
-export const CHAT_SIDEBAR_WIDTH = 320;
-export const TOOLS_SIDEBAR_WIDTH = 220;
+export const CHAT_SIDEBAR_WIDTH = 360;
+export const TOOLS_SIDEBAR_WIDTH = 280;
 
-type AuxiliarySidebar = 'chat' | 'tools' | null;
+type AuxiliarySidebar = "chat" | "tools" | null;
 
 interface UIMenuState {
   /** Whether any dropdown menu is currently open (e.g., AddNodeDropdown) */
@@ -35,50 +35,58 @@ export const useUIMenuStore = create<UIMenuState>((set) => ({
   activeTools: [],
   notificationsPanelOpen: false,
   setDropdownOpen: (open) => set({ isDropdownOpen: open }),
-  openChatSidebar: () => set({
-    activeAuxiliarySidebar: 'chat',
-  }),
-  closeChatSidebar: () => set((state) => ({
-    activeAuxiliarySidebar: state.activeAuxiliarySidebar === 'chat' ? null : state.activeAuxiliarySidebar,
-  })),
-  toggleChatSidebar: () => set((state) => ({
-    activeAuxiliarySidebar: state.activeAuxiliarySidebar === 'chat' ? null : 'chat',
-  })),
+  openChatSidebar: () =>
+    set({
+      activeAuxiliarySidebar: "chat",
+    }),
+  closeChatSidebar: () =>
+    set((state) => ({
+      activeAuxiliarySidebar: state.activeAuxiliarySidebar === "chat" ? null : state.activeAuxiliarySidebar,
+    })),
+  toggleChatSidebar: () =>
+    set((state) => ({
+      activeAuxiliarySidebar: state.activeAuxiliarySidebar === "chat" ? null : "chat",
+    })),
   openNotificationsPanel: () => set({ notificationsPanelOpen: true }),
   closeNotificationsPanel: () => set({ notificationsPanelOpen: false }),
-  toggleNotificationsPanel: () => set((state) => ({
-    notificationsPanelOpen: !state.notificationsPanelOpen,
-  })),
-  openWorkspaceToolsSidebar: (activeTools) => set((state) => ({
-    activeAuxiliarySidebar: 'tools',
-    activeTools: activeTools ?? state.activeTools,
-  })),
-  closeWorkspaceToolsSidebar: () => set((state) => ({
-    activeAuxiliarySidebar: state.activeAuxiliarySidebar === 'tools' ? null : state.activeAuxiliarySidebar,
-  })),
-  toggleWorkspaceToolsSidebar: (activeTools) => set((state) => ({
-    activeAuxiliarySidebar: state.activeAuxiliarySidebar === 'tools' ? null : 'tools',
-    activeTools: activeTools ?? state.activeTools,
-  })),
+  toggleNotificationsPanel: () =>
+    set((state) => ({
+      notificationsPanelOpen: !state.notificationsPanelOpen,
+    })),
+  openWorkspaceToolsSidebar: (activeTools) =>
+    set((state) => ({
+      activeAuxiliarySidebar: "tools",
+      activeTools: activeTools ?? state.activeTools,
+    })),
+  closeWorkspaceToolsSidebar: () =>
+    set((state) => ({
+      activeAuxiliarySidebar: state.activeAuxiliarySidebar === "tools" ? null : state.activeAuxiliarySidebar,
+    })),
+  toggleWorkspaceToolsSidebar: (activeTools) =>
+    set((state) => ({
+      activeAuxiliarySidebar: state.activeAuxiliarySidebar === "tools" ? null : "tools",
+      activeTools: activeTools ?? state.activeTools,
+    })),
   setActiveTools: (activeTools) => set({ activeTools }),
-  toggleActiveTool: (toolId) => set((state) => ({
-    activeTools: state.activeTools.includes(toolId)
-      ? state.activeTools.filter((activeToolId) => activeToolId !== toolId)
-      : [...state.activeTools, toolId],
-    activeAuxiliarySidebar: 'tools',
-  })),
+  toggleActiveTool: (toolId) =>
+    set((state) => ({
+      activeTools: state.activeTools.includes(toolId)
+        ? state.activeTools.filter((activeToolId) => activeToolId !== toolId)
+        : [...state.activeTools, toolId],
+      activeAuxiliarySidebar: "tools",
+    })),
 }));
 
-export const selectChatSidebarOpen = (state: UIMenuState) => state.activeAuxiliarySidebar === 'chat';
+export const selectChatSidebarOpen = (state: UIMenuState) => state.activeAuxiliarySidebar === "chat";
 
-export const selectWorkspaceToolsSidebarOpen = (state: UIMenuState) => state.activeAuxiliarySidebar === 'tools';
+export const selectWorkspaceToolsSidebarOpen = (state: UIMenuState) => state.activeAuxiliarySidebar === "tools";
 
 export const selectAuxiliarySidebarWidth = (state: UIMenuState) => {
-  if (state.activeAuxiliarySidebar === 'chat') {
+  if (state.activeAuxiliarySidebar === "chat") {
     return CHAT_SIDEBAR_WIDTH;
   }
 
-  if (state.activeAuxiliarySidebar === 'tools') {
+  if (state.activeAuxiliarySidebar === "tools") {
     return TOOLS_SIDEBAR_WIDTH;
   }
 

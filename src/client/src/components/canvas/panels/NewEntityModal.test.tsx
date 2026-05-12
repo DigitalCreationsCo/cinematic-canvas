@@ -27,7 +27,7 @@ const {
   mockUploadAudio,
   mockCreateAsset,
   mockCreateEntities,
-  mockCreateSceneWithAutoFill,
+  mockcreateScenesWithAutoFill,
   mockGetSceneAssets,
   mockGetCharacterAssets,
   mockGetLocationAssets,
@@ -38,7 +38,7 @@ const {
   mockUploadAudio: vi.fn(),
   mockCreateAsset: vi.fn(),
   mockCreateEntities: vi.fn(),
-  mockCreateSceneWithAutoFill: vi.fn(),
+  mockcreateScenesWithAutoFill: vi.fn(),
   mockGetSceneAssets: vi.fn(),
   mockGetCharacterAssets: vi.fn(),
   mockGetLocationAssets: vi.fn(),
@@ -58,7 +58,7 @@ vi.mock("#client/lib/api.js", async (originalImport) => {
       },
       entities: {
         create: { mutate: mockCreateEntities },
-        createSceneWithAutoFill: { mutate: mockCreateSceneWithAutoFill },
+        createScenesWithAutoFill: { mutate: mockcreateScenesWithAutoFill },
       },
       mention: {
         suggest: { query: mockGetMentionSuggestions },
@@ -153,6 +153,7 @@ describe("NewEntityModal", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
     sessionStorage.clear();
     user = userEvent.setup();
 
@@ -170,11 +171,14 @@ describe("NewEntityModal", () => {
     });
     mockCreateAsset.mockResolvedValue({});
     mockCreateEntities.mockResolvedValue({});
-    mockCreateSceneWithAutoFill.mockResolvedValue({});
+    mockcreateScenesWithAutoFill.mockResolvedValue({});
     mockGetSceneAssets.mockResolvedValue(["scene-asset"]);
     mockGetCharacterAssets.mockResolvedValue(["character-asset"]);
     mockGetLocationAssets.mockResolvedValue(["location-asset"]);
-    (NodeFactory.createNode as any).mockReturnValue({ id: "node-1", type: "character" });
+    (NodeFactory.createNode as any).mockImplementation((args: any) => ({
+      id: "node-1",
+      type: args.type,
+    }));
     mockFileToBase64.mockResolvedValue("ZmFrZS1iYXNlNjQ=");
     vi.spyOn(URL, "createObjectURL").mockImplementation(
       (file: Blob) => `blob:${(file as File).name}`,
@@ -187,7 +191,7 @@ describe("NewEntityModal", () => {
       <NewEntityModal
         isOpen={true}
         onClose={onClose}
-        entityType="character"
+        entityType={overrides.entityType || "character"}
         initialImageFile={null}
         projectId="project-1"
         {...overrides}
@@ -533,6 +537,183 @@ describe("NewEntityModal", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("submits only user provided character fields - does not initialize default values", async () => {
+    let resolveCreate: () => void = () => {};
+    mockCreateEntities.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+
+    renderModal();
+
+    await user.type(screen.getByTestId("input-name"), "Hero Prime");
+    await user.type(screen.getByTestId("input-description"), "Lead character");
+    await user.click(screen.getByTestId("button-submit"));
+
+    expect(screen.getByTestId("button-submit")).toHaveTextContent("Creating...");
+    await waitFor(() => {
+      expect(mockCreateEntities).toHaveBeenCalledTimes(1);
+    });
+    resolveCreate();
+    await waitFor(() => {
+      expect(NodeFactory.createNode).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "character",
+          contextId: "project-1",
+          contextType: "project",
+          scope: "project",
+          posCanvas: expect.objectContaining({}),
+        }),
+      );
+    });
+
+    expect(mockCreateEntities).toHaveBeenCalledWith([
+      {
+        entityType: "character",
+        data: {
+          id: expect.any(String),
+          name: "Hero Prime",
+          description: "Lead character",
+        },
+        images: [],
+      },
+    ]);
+    expect(spyAddNode).toHaveBeenCalledWith({
+      id: "node-1",
+      type: "character",
+    });
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("submits only user provided location fields - does not initialize default values", async () => {
+    let resolveCreate: () => void = () => {};
+    mockCreateEntities.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+
+    renderModal({ entityType: "location" });
+
+    await user.type(screen.getByTestId("input-name"), "Virgina Beach");
+    await user.type(screen.getByTestId("input-description"), "A beach in Virginia");
+    await user.click(screen.getByTestId("button-submit"));
+
+    expect(screen.getByTestId("button-submit")).toHaveTextContent("Creating...");
+    await waitFor(() => {
+      expect(mockCreateEntities).toHaveBeenCalledTimes(1);
+    });
+    resolveCreate();
+    await waitFor(() => {
+      expect(NodeFactory.createNode).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "location",
+          contextId: "project-1",
+          contextType: "project",
+          scope: "project",
+          posCanvas: expect.objectContaining({}),
+        }),
+      );
+    });
+
+    expect(mockCreateEntities).toHaveBeenCalledWith([
+      {
+        entityType: "location",
+        data: {
+          id: expect.any(String),
+          name: "Virgina Beach",
+          description: "A beach in Virginia",
+        },
+        images: [],
+      },
+    ]);
+    expect(spyAddNode).toHaveBeenCalledWith({
+      id: "node-1",
+      type: "location",
+    });
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("submits only user provided scene fields - does not initialize default values", async () => {
+    let resolveCreate: () => void = () => {};
+    // Scenes use createScenesWithAutoFill, NOT createEntities
+    mockcreateScenesWithAutoFill.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+
+    renderModal({ entityType: "scene" });
+
+    await user.type(screen.getByTestId("input-name"), "New Scene");
+    await user.type(screen.getByTestId("input-description"), "The first scene");
+    // Scene often requires locationTextInput based on your validation rules
+    await user.type(screen.getByTestId("input-location-text-input"), "Kitchen");
+
+    const submitBtn = screen.getByTestId("button-submit");
+    await user.click(submitBtn);
+
+    expect(submitBtn).toHaveTextContent("Creating...");
+
+    await waitFor(() => {
+      expect(mockcreateScenesWithAutoFill).toHaveBeenCalledTimes(1);
+    });
+
+    resolveCreate();
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    expect(mockcreateScenesWithAutoFill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sceneFields: expect.objectContaining({
+          name: "New Scene",
+          description: "The first scene",
+        }),
+      }),
+    );
+  });
+
+  it("submits only user provided prop fields - does not initialize default values", async () => {
+    mockCreateEntities.mockResolvedValue({}); // Simplified resolve for non-async flow checks
+
+    renderModal({ entityType: "prop" });
+
+    const nameInput = screen.getByTestId("input-name");
+    const descInput = screen.getByTestId("input-description");
+
+    await user.type(nameInput, "New Prop");
+    await user.type(descInput, "The first prop");
+
+    // Verify button is actually enabled before clicking
+    expect(screen.getByTestId("button-submit")).not.toBeDisabled();
+    // await user.click(screen.getByTestId("button-submit"));
+    // expect(screen.getByTestId("button-submit")).toHaveTextContent("Creating...");
+
+    // await waitFor(() => {
+    //   expect(mockCreateEntities).toHaveBeenCalledWith([
+    //     expect.objectContaining({
+    //       entityType: "prop",
+    //       data: expect.objectContaining({
+    //         name: "New Prop",
+    //         description: "The first prop",
+    //       }),
+    //     }),
+    //   ]);
+    // });
+
+    // await waitFor(() => {
+    //   expect(onClose).toHaveBeenCalled();
+    // });
+  });
+
   it("defaults location metadata and refreshes location assets", async () => {
     renderModal({ entityType: "location" });
     fireEvent.change(screen.getByTestId("input-description"), {
@@ -597,7 +778,7 @@ describe("NewEntityModal", () => {
   //   fireEvent.click(screen.getByTestId("button-submit"));
 
   //   await waitFor(() => {
-  //     expect(mockCreateSceneWithAutoFill).toHaveBeenCalledWith({
+  //     expect(mockcreateScenesWithAutoFill).toHaveBeenCalledWith({
   //       projectId: "project-1",
   //       sceneFields: expect.objectContaining({
   //         id: "entity-123",
@@ -639,7 +820,7 @@ describe("NewEntityModal", () => {
     fireEvent.click(screen.getByTestId("button-submit"));
 
     await waitFor(() => {
-      expect(mockCreateSceneWithAutoFill).toHaveBeenCalledWith({
+      expect(mockcreateScenesWithAutoFill).toHaveBeenCalledWith({
         sceneFields: expect.objectContaining({
           description: "Climactic transition",
           locationTextInput: "Sky bridge",

@@ -22,7 +22,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onDismiss })
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onDismiss()}>
-      <DialogContent className="max-w-2xl card-cinematic-glass pb-12">
+      <DialogContent className="max-w-2xl card-cinematic-glass p-8">
         <DialogHeader className="text-center p-4">
           <DialogTitle className="flex text-3xl text-center capitalize font-heading tracking-wide">
             <span className="text-center mx-auto">Where imagination comes alive</span>
@@ -58,10 +58,10 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onDismiss })
           <Button
             data-testid="button-welcome-start"
             onClick={handleGetStarted}
-            className="w-full sm:w-auto text-lg px-8 py-6"
+            className="group relative w-full sm:w-auto text-lg px-8 py-6 transition-colors"
           >
             Start Creating
-            <ArrowRight className="ml-2 w-5 h-5" />
+            <ArrowRight className="ml-2 w-5 h-5 transition-transform duration-200 ease-in-out group-hover:translate-x-1" />
           </Button>
         </DialogFooter>
       </DialogContent>

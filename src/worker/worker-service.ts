@@ -23,6 +23,7 @@ import {
   ProjectEntity,
   InsertLocation,
   InsertCharacter,
+  InsertProp,
   InsertScene,
   Job,
 } from "#shared/types/schema.types.js";
@@ -33,10 +34,12 @@ import {
   SceneBase,
   Location,
   Scene,
+  Prop,
   CharacterWithAssets,
   LocationWithAssets,
+  PropAttributes,
 } from "#shared/types/workflow.types.js";
-import { Storyboard } from "#shared/types/storyboard.types.js";
+import { Storyboard, makeEmptyLiveStoryboard } from "#shared/types/storyboard.types.js";
 import { ProjectMetadata } from "#shared/types/metadata.types.js";
 import { SaveAssetsCallbackArgs } from "#shared/types/pipeline.types.js";
 import { CharacterAttributes } from "#shared/types/character.types.js";
@@ -67,6 +70,7 @@ import {
   mapDomainLocationToInsertLocation,
   mapReferenceIdsToIds,
 } from "#shared/entity/location-mappers.js";
+import { mapDomainPropToInsertProp } from "#shared/entity/prop-mappers.js";
 import { entityIdAt, getAllBestAssets } from "#shared/utils/assets.utils.js";
 import {
   buildEntityCreatableAssetDescriptionArgs,
@@ -81,20 +85,23 @@ import { processGenerateCompositeJob } from "./generateCompositeWorker.js";
 import { KBHydrator } from "#shared/services/sac/KBHydrator.js";
 import { needsEntityTextParsing, ToolContext } from "#shared/lm/tools/tools.utils.js";
 import {
-  createParseCharactersTool,
-  createParseLocationsTool,
-  createGenerateScenesTool,
+  createParseEntitiesTool,
+  createGenerateSceneAttributesTool,
   createGenerateCharacterImagesTool,
   createGenerateLocationImagesTool,
-  createGenerateCharactersTool,
-  createGenerateLocationsTool,
+  createGenerateCharacterAttributesTool,
+  createGenerateLocationAttributesTool,
   createGeneratePropImagesTool,
-  createGeneratePropsTool,
+  createGeneratePropAttributesTool,
   createInsertCharactersTool,
   createInsertLocationsTool,
   createInsertPropsTool,
+  createGenerateCharactersPipelineTool,
+  createGenerateLocationsPipelineTool,
+  createGeneratePropsPipelineTool,
 } from "#shared/lm/tools/index.js";
-import { tagRegistryService } from "#shared/services/tag-registry.js";
+import { TagRegistryService, tagRegistryService } from "#shared/services/tag-registry.js";
+import { storyboardManager } from "#shared/services/storyboard-manager.js";
 import {
   GenerateCharacterEntity,
   GenerateLocationEntity,
@@ -102,8 +109,8 @@ import {
   InsertEntitiesInput,
 } from "#shared/types/editable.types.js";
 import { normalizeGenerateEntitiesPayload } from "./utils/generate-entities-payload.js";
-import { GenerateCharacterImagesResultSuccess } from "#shared/lm/tools/characters/generate-character-images.tool.js";
-import { GenerateLocationImagesResultSuccess } from "#shared/lm/tools/locations/generate-location-images.tool.js";
+import { GenerateCharacterImagesResultSuccess } from "#shared/lm/tools/characters/generate-characters-images.tool.js";
+import { GenerateLocationImagesResultSuccess } from "#shared/lm/tools/locations/generate-locations-images.tool.js";
 
 /**
  * Orchestrates job execution for AI agents.
@@ -212,7 +219,7 @@ export class WorkerService {
           worldId: job.worldId,
           userId: job.userId,
           teamId: job.teamId,
-          payload: updates,
+          payload: updates as any,
           timestamp: new Date().toISOString(),
         });
       } catch (error) {
@@ -374,11 +381,21 @@ export class WorkerService {
               }
 
               try {
+                const updatedMetadata: ProjectMetadata = {
+                  ...project.metadata,
+                  enhancedPrompt: result.data.expandedPrompt,
+                };
+
+                const nextStoryboard = storyboardManager.applyUpdates(project.storyboard, {
+                  metadata: updatedMetadata,
+                  characters: [],
+                  locations: [],
+                  scenes: [],
+                });
+
                 updated = await this.projectRepository.updateProject(project.id, {
-                  metadata: {
-                    ...project.metadata,
-                    enhancedPrompt: result.data.expandedPrompt,
-                  },
+                  metadata: updatedMetadata,
+                  storyboard: nextStoryboard,
                 });
               } catch (updateError: any) {
                 console.error(
@@ -618,17 +635,25 @@ export class WorkerService {
                       ...data.storyboardAttributes.metadata,
                     };
 
-                    const storyboard: Storyboard = {
-                      ...data.storyboardAttributes,
-                      metadata: updateMetadata,
-                      scenes: storyboardScenes,
-                      characters: storyboardCharacters,
-                      locations: storyboardLocations,
-                    };
+                    const [refreshedCharacters, refreshedLocations, refreshedScenes] = await Promise.all([
+                      this.projectRepository.getProjectCharacters(project.id),
+                      this.projectRepository.getProjectLocations(project.id),
+                      this.projectRepository.getProjectScenes(project.id),
+                    ]);
+
+                    const nextStoryboard = storyboardManager.applyUpdates(
+                      makeEmptyLiveStoryboard(updateMetadata), // always fresh for full storyboard gen
+                      {
+                        metadata: updateMetadata,
+                        characters: refreshedCharacters,
+                        locations: refreshedLocations,
+                        scenes: refreshedScenes,
+                      },
+                    );
 
                     updated = await this.projectRepository.updateProject(project.id, {
                       metadata: updateMetadata,
-                      storyboard,
+                      storyboard: nextStoryboard,
                       scenes: allScenesWithAssets,
                       characters: allCharactersWithAssets,
                       locations: allLocationsWithAssets,
@@ -639,7 +664,7 @@ export class WorkerService {
                       { projectId: project.id },
                       ["storyboard"],
                       "text",
-                      [JSON.stringify(storyboard)],
+                      [JSON.stringify(updated.storyboard)],
                       [{ model: metadata.model }],
                     ).catch((error) => {
                       console.error(
@@ -722,12 +747,8 @@ export class WorkerService {
                       ...project.metadata,
                       ...analysisData,
                     };
-                    const storyboard: Storyboard = {
-                      metadata: projectMetadata,
-                      scenes: [],
-                      characters: [],
-                      locations: [],
-                    };
+
+                    const storyboard = makeEmptyLiveStoryboard(projectMetadata);
 
                     updated = await this.projectRepository.updateProject(job.projectId, {
                       status: "pending",
@@ -784,7 +805,7 @@ export class WorkerService {
                   "Initiating ENHANCE_STORYBOARD pipeline.",
                 );
 
-                let project = await this.projectRepository.getProject(job.projectId);
+                let project = await this.projectRepository.getProjectFullState(job.projectId);
                 if (!project?.storyboard || !project.storyboard.scenes) throw new Error("No scenes available.");
                 if (!project?.metadata.enhancedPrompt) throw new Error("No enhanced prompt available.");
 
@@ -818,7 +839,7 @@ export class WorkerService {
                     ({ data, metadata } = await agents.compositionalAgent.generateStoryboardFromAudioAnalysis(
                       project.metadata.title,
                       project.metadata.enhancedPrompt,
-                      project.storyboard.scenes,
+                      project.scenes,
                       {
                         initialDelay: 30000,
                         attempt: job.attempts.currentAttempt,
@@ -1024,16 +1045,21 @@ export class WorkerService {
                       ...data.storyboardAttributes.metadata,
                     };
 
-                    const storyboard: Storyboard = {
-                      ...data.storyboardAttributes,
+                    const [refreshedCharacters, refreshedLocations, refreshedScenes] = await Promise.all([
+                      this.projectRepository.getProjectCharacters(project.id),
+                      this.projectRepository.getProjectLocations(project.id),
+                      this.projectRepository.getProjectScenes(project.id),
+                    ]);
+
+                    const nextStoryboard = storyboardManager.applyUpdates(makeEmptyLiveStoryboard(updateMetadata), {
                       metadata: updateMetadata,
-                      characters: storyboardCharacters,
-                      locations: storyboardLocations,
-                      scenes: storyboardScenes,
-                    };
+                      characters: refreshedCharacters,
+                      locations: refreshedLocations,
+                      scenes: refreshedScenes,
+                    });
 
                     updated = await this.projectRepository.updateProject(job.projectId, {
-                      storyboard,
+                      storyboard: nextStoryboard,
                       metadata: updateMetadata,
                       characters: allCharactersWithAssets,
                       locations: allLocationsWithAssets,
@@ -1180,8 +1206,16 @@ export class WorkerService {
                   );
 
                   try {
+                    const nextStoryboard = storyboardManager.applyUpdates(project.storyboard, {
+                      metadata: project.storyboard.metadata,
+                      characters: data.characters, // updated by this job
+                      locations: project.locations, // pass-through — preserves storyboard entries
+                      scenes: project.scenes, // pass-through
+                    });
+
                     updated = await this.projectRepository.updateProject(job.projectId, {
                       characters: data.characters,
+                      storyboard: nextStoryboard,
                     });
                   } catch (updateError: any) {
                     console.error(
@@ -1245,8 +1279,16 @@ export class WorkerService {
                     this.jobControlPlane.createIncrementAttemptHook(job),
                   );
                   try {
+                    const nextStoryboard = storyboardManager.applyUpdates(project.storyboard, {
+                      metadata: project.storyboard.metadata,
+                      characters: project.characters, // pass-through
+                      locations: data.locations, // updated by this job
+                      scenes: project.scenes, // pass-through
+                    });
+
                     updated = await this.projectRepository.updateProject(job.projectId, {
                       locations: data.locations,
+                      storyboard: nextStoryboard, // [+]
                     });
                   } catch (updateError: any) {
                     console.error(
@@ -1434,8 +1476,16 @@ export class WorkerService {
                   const { data, metadata } = result;
 
                   try {
+                    const nextStoryboard = storyboardManager.applyUpdates(project.storyboard, {
+                      metadata: project.storyboard.metadata,
+                      characters: project.characters, // pass-through
+                      locations: project.locations, // pass-through
+                      scenes: data.updatedScenes, // updated by this job
+                    });
+
                     updated = await this.projectRepository.updateProject(job.projectId, {
                       scenes: data.updatedScenes,
+                      storyboard: nextStoryboard, // [+]
                     });
                   } catch (updateError: any) {
                     console.error(
@@ -1541,12 +1591,20 @@ export class WorkerService {
                       .slice(0, forceRegenerateIndex)
                       .concat(hydratedProject.forceRegenerateSceneIds.slice(forceRegenerateIndex + 1));
 
+                    const nextStoryboard = storyboardManager.applyUpdates(project.storyboard, {
+                      metadata: project.storyboard.metadata,
+                      characters: updatedProject.characters, // narrative state updated
+                      locations: updatedProject.locations,
+                      scenes: updatedProject.scenes,
+                    });
+
                     updated = await this.projectRepository.updateProject(job.projectId, {
                       characters: updatedProject.characters,
                       locations: updatedProject.locations,
                       scenes: updatedProject.scenes,
                       generationRules,
                       forceRegenerateSceneIds,
+                      storyboard: nextStoryboard, // [+]
                     });
 
                     if (job.payload.renderInProgress !== false) {
@@ -1699,11 +1757,11 @@ export class WorkerService {
               break;
             }
 
-            case "CREATE_SCENE_WITH_ENTITIES": {
+            case "CREATE_SCENES_WITH_ENTITIES": {
               const { sceneFields, startFrameGcsUri, startFrameMimeType, endFrameGcsUri, endFrameMimeType } =
                 job.payload;
 
-              const traceId = `create_scene_with_entities_${job.projectId}_${startTime}`;
+              const traceId = `CREATE_SCENES_WITH_ENTITIES_${job.projectId}_${startTime}`;
 
               const saveAssets = this.createSaveAssetsCallback(job, startTime);
 
@@ -1760,79 +1818,108 @@ export class WorkerService {
                 incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
               };
 
-              // ── Pass 1 (concurrent): Parse plain-text descriptions → partial attrs ─
-              // Skipped entirely when there is no substantive plain text.
-              const [charactersAttributes, locationsAttributes] = await Promise.all([
-                needsEntityTextParsing(charPlainText)
-                  ? createParseCharactersTool({ context: toolContext }).run({ input: charPlainText })
-                  : Promise.resolve([]),
-                needsEntityTextParsing(locationPlainText) && !resolvedExistingLocation
-                  ? createParseLocationsTool({ context: toolContext }).run({ input: locationPlainText })
-                  : Promise.resolve([]),
-              ]);
+              // ── Pass 1: Parse plain-text descriptions → partial attrs (all types) ─
+              // Single LLM call extracts characters, locations, and props from the
+              // combined plain-text input. Skipped entirely when there is no
+              // substantive text beyond @handle mentions.
+              const combinedPlainText = [charPlainText, locationPlainText].filter(Boolean).join("\n\n");
 
-              // Filter and Normalize Characters
-              // Filters out null/undefined and empty strings/objects if necessary
+              const {
+                characters: charactersAttributes,
+                locations: locationsAttributes,
+                props: propsAttributes,
+              } = needsEntityTextParsing(combinedPlainText)
+                ? await createParseEntitiesTool({ context: toolContext }).run({ input: combinedPlainText })
+                : { characters: [], locations: [], props: [] };
+
+              // ── Filter & Normalize ───────────────────────────────────────────
               const validCharacters: CharacterAttributes[] = (charactersAttributes ?? []).filter(
                 (char): char is CharacterAttributes => Boolean(char) && Object.keys(char).length > 0,
               );
-
-              // Filter and Normalize Locations
-              // Converts the single null/object result into a clean, iterable array
               const validLocations: LocationAttributes[] = (locationsAttributes ?? []).filter(
                 (loc): loc is LocationAttributes => Boolean(loc),
               );
-
-              // 4. Perform Type-Safe Mapping
-              const toInsertCharacters: InsertCharacter[] = validCharacters.map((attrChar) =>
-                mapDomainCharacterToInsertCharacter({
-                  ...attrChar,
-                  projectId: job.projectId,
-                }),
+              const validProps: PropAttributes[] = (propsAttributes ?? []).filter(
+                (prop): prop is PropAttributes => Boolean(prop) && Object.keys(prop).length > 0,
               );
 
-              const toInsertLocations: InsertLocation[] = validLocations.map((attrLoc) =>
-                mapDomainLocationToInsertLocation({
-                  ...attrLoc,
+              console.log(
+                {
                   projectId: job.projectId,
-                }),
+                  characters: validCharacters.length,
+                  locations: validLocations.length,
+                  props: validProps.length,
+                },
+                `[CSWE] Entities parsed from plain-text descriptions.`,
+              );
+
+              // ── Type-Safe Mapping ────────────────────────────────────────────
+              const toInsertCharacters: InsertCharacter[] = validCharacters.map((attrChar) =>
+                mapDomainCharacterToInsertCharacter({ ...attrChar, projectId: job.projectId }),
+              );
+              const toInsertLocations: InsertLocation[] = validLocations.map((attrLoc) =>
+                mapDomainLocationToInsertLocation({ ...attrLoc, projectId: job.projectId }),
+              );
+              const toInsertProps: InsertProp[] = validProps.map((attrProp) =>
+                mapDomainPropToInsertProp({ ...attrProp, projectId: job.projectId }),
               );
 
               await Promise.all([
-                this.projectRepository.createCharacters(job.projectId, toInsertCharacters),
-                this.projectRepository.createLocations(job.projectId, toInsertLocations),
+                toInsertCharacters.length > 0
+                  ? this.projectRepository.createCharacters(job.projectId, toInsertCharacters)
+                  : Promise.resolve(),
+                toInsertLocations.length > 0
+                  ? this.projectRepository.createLocations(job.projectId, toInsertLocations)
+                  : Promise.resolve(),
+                toInsertProps.length > 0
+                  ? this.projectRepository.createProps(job.projectId, toInsertProps)
+                  : Promise.resolve(),
               ]);
 
               const characterIds = toInsertCharacters.map((c) => c.id);
-              const characterDescriptions = validCharacters.map((c) => c.description);
-
               const locationIds = toInsertLocations.map((l) => l.id);
-              const locationDescriptions = validLocations.map((l) => l.description);
+              const propIds = toInsertProps.map((p) => p.id);
 
-              // save entity description assets
-              await saveAssets(
-                { projectId: job.projectId, characterIds },
-                ["description"],
-                "text",
-                characterDescriptions,
-                [{ model: this.textModel.textModel }],
-              );
+              // Save entity description assets
+              const saveAssetCalls: Promise<void>[] = [];
+              if (characterIds.length > 0) {
+                const characterDescriptions = validCharacters.map((c) => c.description);
+                saveAssetCalls.push(
+                  saveAssets(
+                    { projectId: job.projectId, characterIds },
+                    ["description"],
+                    "text",
+                    characterDescriptions,
+                    [{ model: this.textModel.textModel }],
+                  ),
+                );
+              }
+              if (locationIds.length > 0) {
+                const locationDescriptions = validLocations.map((l) => l.description);
+                saveAssetCalls.push(
+                  saveAssets({ projectId: job.projectId, locationIds }, ["description"], "text", locationDescriptions, [
+                    { model: this.textModel.textModel },
+                  ]),
+                );
+              }
+              if (propIds.length > 0) {
+                const propDescriptions = validProps.map((p) => p.description);
+                saveAssetCalls.push(
+                  saveAssets({ projectId: job.projectId, propIds }, ["description"], "text", propDescriptions, [
+                    { model: this.textModel.textModel },
+                  ]),
+                );
+              }
+              await Promise.all(saveAssetCalls);
 
-              await saveAssets(
-                { projectId: job.projectId, locationIds },
-                ["description"],
-                "text",
-                locationDescriptions,
-                [{ model: this.textModel.textModel }],
-              );
-
-              // refetch to get newly saved assets
-              const [insertedCharactersUnsorted, insertedLocationsUnsored] = await Promise.all([
-                await this.projectRepository.getCharactersByIds(characterIds),
-                await this.projectRepository.getLocationsByIds(locationIds),
+              // ── Refetch to get newly saved assets ────────────────────────────
+              const [insertedCharactersUnsorted, insertedLocationsUnsorted, insertedPropsUnsorted] = await Promise.all([
+                characterIds.length > 0 ? this.projectRepository.getCharactersByIds(characterIds) : Promise.resolve([]),
+                locationIds.length > 0 ? this.projectRepository.getLocationsByIds(locationIds) : Promise.resolve([]),
+                propIds.length > 0 ? this.projectRepository.getPropsByIds(propIds) : Promise.resolve([]),
               ]);
 
-              // register handles
+              // ── Register handles ─────────────────────────────────────────────
               for (const character of insertedCharactersUnsorted) {
                 if (!character.name) {
                   throw new Error("Entity name is required for handle registration.");
@@ -1852,7 +1939,7 @@ export class WorkerService {
                 }
               }
 
-              for (const location of insertedLocationsUnsored) {
+              for (const location of insertedLocationsUnsorted) {
                 if (!location.name) {
                   throw new Error("Entity name is required for handle registration.");
                 }
@@ -1871,9 +1958,29 @@ export class WorkerService {
                 }
               }
 
-              const [insertedCharacters, insertedLocations] = await Promise.all([
-                characterIds.map((id) => insertedCharactersUnsorted.find((c) => c.id === id)!),
-                locationIds.map((id) => insertedLocationsUnsored.find((l) => l.id === id)!),
+              for (const prop of insertedPropsUnsorted) {
+                if (!prop.name) {
+                  throw new Error("Entity name is required for handle registration.");
+                }
+                try {
+                  await tagRegistryService.registerHandle({
+                    handle: `@${prop.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                    entityId: prop.id,
+                    entityType: "prop",
+                    projectId: job.projectId,
+                  });
+                } catch (errRegisterHandle) {
+                  console.warn(
+                    { entityId: prop.id, error: errRegisterHandle },
+                    "[Worker] Failed to register prop handle.",
+                  );
+                }
+              }
+
+              const [insertedCharacters, insertedLocations, _insertedProps] = await Promise.all([
+                Promise.all(characterIds.map((id) => insertedCharactersUnsorted.find((c) => c.id === id)!)),
+                Promise.all(locationIds.map((id) => insertedLocationsUnsorted.find((l) => l.id === id)!)),
+                Promise.all(propIds.map((id) => insertedPropsUnsorted.find((p) => p.id === id)!)),
               ]);
 
               const nextCharacterVersions = await this.getAgents(job.projectId).assetManager.getNextVersionNumber(
@@ -1920,40 +2027,42 @@ export class WorkerService {
                     attempt: job.attempts.currentAttempt,
                   }),
 
-                  createGenerateScenesTool({ context: toolContext }).run([
-                    {
-                      partial: {
-                        ...sceneFields,
-                        sceneIndex,
-                        id: sceneFields.id,
-                        characters: [
-                          ...resolvedExistingCharacters.map((c) => hydrateEntity(c, c.assets)),
-                          ...insertedCharacters,
-                        ].map((c) => CharacterAttributes.parse(c)),
-                        location: LocationAttributes.parse(hydrateEntity(sceneLocation, sceneLocation.assets)),
+                  createGenerateSceneAttributesTool({ context: toolContext }).run({
+                    scenes: [
+                      {
+                        partial: {
+                          ...sceneFields,
+                          sceneIndex,
+                          id: sceneFields.id,
+                          // characters: [
+                          //   ...resolvedExistingCharacters.map((c) => hydrateEntity(c, c.assets)),
+                          //   ...insertedCharacters,
+                          // ].map((c) => CharacterAttributes.parse(c)),
+                          // location: LocationAttributes.parse(hydrateEntity(sceneLocation, sceneLocation.assets)),
+                        },
+                        images: [
+                          ...(startFrameGcsUri && startFrameMimeType
+                            ? [
+                                {
+                                  gcsUri: startFrameGcsUri,
+                                  publicUri: startFrameGcsUri,
+                                  mimeType: startFrameMimeType,
+                                },
+                              ]
+                            : []),
+                          ...(endFrameGcsUri && endFrameMimeType
+                            ? [
+                                {
+                                  gcsUri: endFrameGcsUri,
+                                  publicUri: endFrameGcsUri,
+                                  mimeType: endFrameMimeType,
+                                },
+                              ]
+                            : []),
+                        ],
                       },
-                      images: [
-                        ...(startFrameGcsUri && startFrameMimeType
-                          ? [
-                              {
-                                gcsUri: startFrameGcsUri,
-                                publicUri: startFrameGcsUri,
-                                mimeType: startFrameMimeType,
-                              },
-                            ]
-                          : []),
-                        ...(endFrameGcsUri && endFrameMimeType
-                          ? [
-                              {
-                                gcsUri: endFrameGcsUri,
-                                publicUri: endFrameGcsUri,
-                                mimeType: endFrameMimeType,
-                              },
-                            ]
-                          : []),
-                      ],
-                    },
-                  ]),
+                    ],
+                  }),
                 ]);
 
               const [characterImageUris, characterImageMetadatas] = generatedCharacterImagesResults
@@ -2087,6 +2196,21 @@ export class WorkerService {
               });
 
               updated = await this.projectRepository.getProjectFullState(job.projectId);
+
+              // [+] Pattern B: post-read. All description assets were saved above and are
+              // [+] now present on updated.characters / locations / scenes.
+              const nextStoryboard = storyboardManager.applyUpdates(updated.storyboard, {
+                metadata: updated.storyboard.metadata,
+                characters: updated.characters,
+                locations: updated.locations,
+                scenes: updated.scenes,
+              });
+              await this.projectRepository.updateProject(job.projectId, {
+                storyboard: nextStoryboard,
+              });
+
+              updated = { ...updated, storyboard: nextStoryboard };
+
               break;
             }
 
@@ -2097,6 +2221,7 @@ export class WorkerService {
 
               const toolContext: ToolContext<TextModelController> & {
                 projectRepository: ProjectRepository;
+                tagRegistry: TagRegistryService;
               } = {
                 provider: this.textModel,
                 safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
@@ -2105,17 +2230,18 @@ export class WorkerService {
                 traceId,
                 projectId: job.projectId,
                 projectRepository: this.projectRepository,
+                tagRegistry: tagRegistryService,
               };
 
-              const characterAttributesResults = await createGenerateCharactersTool({
+              const characterAttributesResults = await createGenerateCharacterAttributesTool({
                 context: toolContext,
-              }).run(charactersData);
+              }).run({ characters: charactersData });
               const characterAttributesSuccess = characterAttributesResults
                 .filter((c) => c.success)
                 .map((c) => ({ ...c.output, projectId: job.projectId }));
               const insertedCharacters = await createInsertCharactersTool({
                 context: toolContext,
-              }).run(characterAttributesSuccess);
+              }).run({ characters: characterAttributesSuccess });
 
               for (const character of insertedCharacters) {
                 if (!character.name) {
@@ -2150,7 +2276,19 @@ export class WorkerService {
                 timestamp: new Date().toISOString(),
               });
 
-              updated = await this.projectRepository.getProjectFullState(projectId);
+              updated = await this.projectRepository.getProjectFullState(job.projectId);
+
+              const nextStoryboard = storyboardManager.applyUpdates(updated.storyboard, {
+                metadata: updated.storyboard.metadata,
+                characters: updated.characters,
+                locations: updated.locations,
+                scenes: updated.scenes,
+              });
+              await this.projectRepository.updateProject(job.projectId, {
+                storyboard: nextStoryboard,
+              });
+              updated = { ...updated, storyboard: nextStoryboard };
+
               break;
             }
             case "GENERATE_LOCATIONS": {
@@ -2160,6 +2298,7 @@ export class WorkerService {
 
               const toolContext: ToolContext<TextModelController> & {
                 projectRepository: ProjectRepository;
+                tagRegistry: TagRegistryService;
               } = {
                 provider: this.textModel,
                 safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
@@ -2168,17 +2307,18 @@ export class WorkerService {
                 traceId,
                 projectId: job.projectId,
                 projectRepository: this.projectRepository,
+                tagRegistry: tagRegistryService,
               };
 
-              const locationAttributes = await createGenerateLocationsTool({
+              const locationAttributes = await createGenerateLocationAttributesTool({
                 context: toolContext,
-              }).run(locationsData);
+              }).run({ locations: locationsData });
               const locationAttributesSuccess = locationAttributes
                 .filter((c) => c.success)
                 .map((c) => ({ ...c.output, projectId: job.projectId }));
               const insertedLocations = await createInsertLocationsTool({
                 context: toolContext,
-              }).run(locationAttributesSuccess);
+              }).run({ locations: locationAttributesSuccess });
 
               for (const location of insertedLocations) {
                 if (!location.name) {
@@ -2213,17 +2353,33 @@ export class WorkerService {
                 timestamp: new Date().toISOString(),
               });
 
-              updated = await this.projectRepository.getProjectFullState(projectId);
+              updated = await this.projectRepository.getProjectFullState(job.projectId);
+
+              const nextStoryboard = storyboardManager.applyUpdates(updated.storyboard, {
+                metadata: updated.storyboard.metadata,
+                characters: updated.characters,
+                locations: updated.locations,
+                scenes: updated.scenes,
+              });
+              await this.projectRepository.updateProject(job.projectId, {
+                storyboard: nextStoryboard,
+              });
+              updated = { ...updated, storyboard: nextStoryboard };
+
               break;
             }
             case "GENERATE_ENTITIES": {
               const { projectId } = job;
+              const project = await this.projectRepository.getProjectFullState(job.projectId);
+
               const rawEntities = normalizeGenerateEntitiesPayload(job.payload);
 
               const traceId = `generate-entities-${job.id}`;
 
               const toolContext: ToolContext<TextModelController> & {
                 projectRepository: ProjectRepository;
+                incrementAttempt: IncrementAttemptHook;
+                tagRegistry: TagRegistryService;
               } = {
                 provider: this.textModel,
                 safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
@@ -2232,11 +2388,11 @@ export class WorkerService {
                 traceId,
                 projectId: job.projectId,
                 projectRepository: this.projectRepository,
+                incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
+                tagRegistry: tagRegistryService,
               };
 
               const groupedEntities = groupEntitiesByEntityPrimitiveType(rawEntities);
-
-              // const insertedEntities = [];
 
               type GenerateEntityEnvelope = GenerateCharacterEntity | GenerateLocationEntity | GeneratePropEntity;
 
@@ -2253,9 +2409,17 @@ export class WorkerService {
                         images: e.images,
                       }));
 
-                      const characterAttributesResults = await createGenerateCharactersTool({
+                      const characterAttributesResults = await createGenerateCharactersPipelineTool({
                         context: toolContext,
-                      }).run({ characters });
+                        attributesTool: createGenerateCharacterAttributesTool({ context: toolContext }),
+                        imagesTool: createGenerateCharacterImagesTool({ context: toolContext }),
+                        insertCharacters: (characters) =>
+                          createInsertCharactersTool({ context: toolContext }).run({ characters }),
+                      }).run({
+                        characters,
+                        generationRules: project.generationRules,
+                        attempt: job.attempts.currentAttempt,
+                      });
 
                       // --- 🔍 DEBUG VISIBILITY: GENERATE CHARACTERS ---
                       const charFailures = characterAttributesResults.filter((r) => r.success === false);
@@ -2268,7 +2432,7 @@ export class WorkerService {
                         .map((r, i) => ({ r, origin: typedEntities[i] }))
                         .map(({ r, origin }) => ({
                           entityType: "character" as const,
-                          data: { ...r.output, id: origin.data.id },
+                          data: { ...r.character, id: origin.data.id },
                           images: origin.images,
                         }));
                     }
@@ -2279,9 +2443,17 @@ export class WorkerService {
                         ...e.data,
                         images: e.images,
                       }));
-                      const locationAttributesResults = await createGenerateLocationsTool({ context: toolContext }).run(
-                        { locations },
-                      );
+                      const locationAttributesResults = await createGenerateLocationsPipelineTool({
+                        context: toolContext,
+                        attributesTool: createGenerateLocationAttributesTool({ context: toolContext }),
+                        imagesTool: createGenerateLocationImagesTool({ context: toolContext }),
+                        insertLocations: (locations) =>
+                          createInsertLocationsTool({ context: toolContext }).run({ locations }),
+                      }).run({
+                        locations,
+                        generationRules: project.generationRules,
+                        attempt: job.attempts.currentAttempt,
+                      });
 
                       const locFailures = locationAttributesResults.filter((r) => r.success === false);
                       if (locFailures.length > 0) {
@@ -2293,7 +2465,7 @@ export class WorkerService {
                         .map((r, i) => ({ r, origin: typedEntities[i] }))
                         .map(({ r, origin }) => ({
                           entityType: "location" as const,
-                          data: { ...r.output, id: origin.data.id },
+                          data: { ...r.location, id: origin.data.id },
                           images: origin.images,
                         }));
                     }
@@ -2304,9 +2476,12 @@ export class WorkerService {
                         ...e.data,
                         images: e.images,
                       }));
-                      const propAttributesResults = await createGeneratePropsTool({
+                      const propAttributesResults = await createGeneratePropsPipelineTool({
                         context: toolContext,
-                      }).run({ props });
+                        attributesTool: createGeneratePropAttributesTool({ context: toolContext }),
+                        imagesTool: createGeneratePropImagesTool({ context: toolContext }),
+                        insertProps: (props) => createInsertPropsTool({ context: toolContext }).run({ props }),
+                      }).run({ props, generationRules: project.generationRules, attempt: job.attempts.currentAttempt });
 
                       const propFailures = propAttributesResults.filter((r) => r.success === false);
                       if (propFailures.length > 0) {
@@ -2318,7 +2493,7 @@ export class WorkerService {
                         .map((r, i) => ({ r, origin: typedEntities[i] }))
                         .map(({ r, origin }) => ({
                           entityType: "prop" as const,
-                          data: { ...r.output, id: origin.data.id },
+                          data: { ...r.prop, id: origin.data.id },
                           images: origin.images,
                         }));
                     }
@@ -2337,67 +2512,67 @@ export class WorkerService {
               // ↕ use createEntitiesResults here before insert (asset args, logging, etc.)
 
               // ── Phase 2: insert — re-dispatch by entityType, which is preserved on each envelope ──
-              const insertEntitiesResults = (
-                await Promise.all(
-                  (["character", "location", "prop"] as const).map(async (entityType) => {
-                    if (entityType === "character") {
-                      const charactersGenerated = createEntitiesResults
-                        .filter((e) => e.entityType === "character")
-                        .map((e: any) => ({ ...e.data, projectId }));
-                      if (!charactersGenerated.length) return [];
+              // const insertEntitiesResults = (
+              //   await Promise.all(
+              //     (["character", "location", "prop"] as const).map(async (entityType) => {
+              //       if (entityType === "character") {
+              //         const charactersGenerated = createEntitiesResults
+              //           .filter((e) => e.entityType === "character")
+              //           .map((e: any) => ({ ...e.data, projectId }));
+              //         if (!charactersGenerated.length) return [];
 
-                      const insertResults = await createInsertCharactersTool({
-                        context: toolContext,
-                      }).run({ characters: charactersGenerated });
+              //         const insertResults = await createInsertCharactersTool({
+              //           context: toolContext,
+              //         }).run({ characters: charactersGenerated });
 
-                      const insertFailures = insertResults.filter((r: any) => r.success === false);
-                      if (insertFailures.length > 0) {
-                        console.error(`[Tool Error] Insert characters returned errors:`, insertFailures);
-                      }
+              //         const insertFailures = insertResults.filter((r: any) => r.success === false);
+              //         if (insertFailures.length > 0) {
+              //           console.error(`[Tool Error] Insert characters returned errors:`, insertFailures);
+              //         }
 
-                      return insertResults;
-                    }
+              //         return insertResults;
+              //       }
 
-                    if (entityType === "location") {
-                      const locationsGenerated = createEntitiesResults
-                        .filter((e) => e.entityType === "location")
-                        .map((e: any) => ({ ...e.data, projectId }));
-                      if (!locationsGenerated.length) return [];
+              //       if (entityType === "location") {
+              //         const locationsGenerated = createEntitiesResults
+              //           .filter((e) => e.entityType === "location")
+              //           .map((e: any) => ({ ...e.data, projectId }));
+              //         if (!locationsGenerated.length) return [];
 
-                      const insertResults = await createInsertLocationsTool({
-                        context: toolContext,
-                      }).run({ locations: locationsGenerated });
+              //         const insertResults = await createInsertLocationsTool({
+              //           context: toolContext,
+              //         }).run({ locations: locationsGenerated });
 
-                      const insertFailures = insertResults.filter((r: any) => r.success === false);
-                      if (insertFailures.length > 0) {
-                        console.error(`[Tool Error] Insert locations returned errors:`, insertFailures);
-                      }
+              //         const insertFailures = insertResults.filter((r: any) => r.success === false);
+              //         if (insertFailures.length > 0) {
+              //           console.error(`[Tool Error] Insert locations returned errors:`, insertFailures);
+              //         }
 
-                      return insertResults;
-                    }
-                    if (entityType === "prop") {
-                      const propsGenerated = createEntitiesResults
-                        .filter((e) => e.entityType === "prop")
-                        .map((e: any) => ({ ...e.data, projectId }));
-                      if (!propsGenerated.length) return [];
+              //         return insertResults;
+              //       }
+              //       if (entityType === "prop") {
+              //         const propsGenerated = createEntitiesResults
+              //           .filter((e) => e.entityType === "prop")
+              //           .map((e: any) => ({ ...e.data, projectId }));
+              //         if (!propsGenerated.length) return [];
 
-                      const insertResults = await createInsertPropsTool({
-                        context: toolContext,
-                      }).run({ props: propsGenerated });
+              //         const insertResults = await createInsertPropsTool({
+              //           context: toolContext,
+              //         }).run({ props: propsGenerated });
 
-                      const insertFailures = insertResults.filter((r: any) => r.success === false);
-                      if (insertFailures.length > 0) {
-                        console.error(`[Tool Error] Insert props returned errors:`, insertFailures);
-                      }
+              //         const insertFailures = insertResults.filter((r: any) => r.success === false);
+              //         if (insertFailures.length > 0) {
+              //           console.error(`[Tool Error] Insert props returned errors:`, insertFailures);
+              //         }
 
-                      return insertResults;
-                    }
+              //         return insertResults;
+              //       }
 
-                    const _exhaustive: never = entityType; // ← compile error if a case is ever missing
-                    throw new Error(`Unhandled entity type: ${_exhaustive}`);
-                  }),
-                )
-              ).flat();
+              //       const _exhaustive: never = entityType; // ← compile error if a case is ever missing
+              //       throw new Error(`Unhandled entity type: ${_exhaustive}`);
+              //     }),
+              //   )
+              // ).flat();
 
               // const createAndInsertEntitiesResults = await Promise.all(
               //   Object.entries(groupedEntities).map(async ([type, entities]) => {
@@ -2413,7 +2588,7 @@ export class WorkerService {
               //         }),
               //       );
 
-              //       const characterAttributesResults = await createGenerateCharactersTool(
+              //       const characterAttributesResults = await createGenerateCharacterAttributesTool(
               //         { context: toolContext },
               //       ).run(characterInputs);
               //       const success = characterAttributesResults
@@ -2431,7 +2606,7 @@ export class WorkerService {
               //           images: entity.images,
               //         }),
               //       );
-              //       const locationAttributesResults = await createGenerateLocationsTool({
+              //       const locationAttributesResults = await createGenerateLocationAttributesTool({
               //         context: toolContext,
               //       }).run(locationInputs);
               //       const success = locationAttributesResults
@@ -2449,7 +2624,7 @@ export class WorkerService {
               //           images: entity.images,
               //         }),
               //       );
-              //       const propAttributesResults = await createGeneratePropsTool({
+              //       const propAttributesResults = await createGeneratePropAttributesTool({
               //         context: toolContext,
               //       }).run(propInputs);
               //       const success = propAttributesResults
@@ -2470,104 +2645,116 @@ export class WorkerService {
 
               // insertedEntities.push(...createAndInsertEntitiesResults.flat());
 
-              await Promise.all([
-                // Desription asset creation
-                ...Object.entries(groupEntitiesByEntityPrimitiveType(createEntitiesResults)).map(
-                  async ([type, entities]) => {
-                    const entityType = type as EntityPrimitiveType;
-                    if (!entities?.length) return;
+              // await Promise.all([
+              // Desription asset creation
+              // ...Object.entries(groupEntitiesByEntityPrimitiveType(createEntitiesResults)).map(
+              //   async ([type, entities]) => {
+              //     const entityType = type as EntityPrimitiveType;
+              //     if (!entities?.length) return;
 
-                    const operations = buildEntityCreatableAssetDescriptionArgs(entityType, entities, projectId);
+              //     const operations = buildEntityCreatableAssetDescriptionArgs(entityType, entities, projectId);
 
-                    const assetResults =
-                      await this.getAgents(projectId).assetManager.batchCreateVersionedAssets(operations);
+              //     const assetResults =
+              //       await this.getAgents(projectId).assetManager.batchCreateVersionedAssets(operations);
 
-                    // --- 🔍 DEBUG VISIBILITY: DESCRIPTION ASSETS ---
-                    if (assetResults?.errors?.length > 0) {
-                      console.error(`[Asset Error] Description assets for ${entityType} failed:`, assetResults.errors);
-                    }
+              //     // --- 🔍 DEBUG VISIBILITY: DESCRIPTION ASSETS ---
+              //     if (assetResults?.errors?.length > 0) {
+              //       console.error(`[Asset Error] Description assets for ${entityType} failed:`, assetResults.errors);
+              //     }
 
-                    return assetResults;
-                  },
-                ),
+              //     return assetResults;
+              //   },
+              // ),
 
-                // Image asset creation: one batchCreateVersionedAssets call per entity type
-                ...Object.entries(groupedEntities).map(async ([type, entities]) => {
-                  const entityType = type as EntityPrimitiveType;
-                  if (!entities?.length) return;
+              // // Image asset creation: one batchCreateVersionedAssets call per entity type
+              // ...Object.entries(groupedEntities).map(async ([type, entities]) => {
+              //   const entityType = type as EntityPrimitiveType;
+              //   if (!entities?.length) return;
 
-                  const operations = buildEntityCreatableAssetImageArgs(
-                    entityType,
-                    entities as InsertEntitiesInput,
-                    projectId,
-                  );
+              //   const operations = buildEntityCreatableAssetImageArgs(
+              //     entityType,
+              //     entities as InsertEntitiesInput,
+              //     projectId,
+              //   );
 
-                  const assetResults =
-                    await this.getAgents(projectId).assetManager.batchCreateVersionedAssets(operations);
+              //   const assetResults =
+              //     await this.getAgents(projectId).assetManager.batchCreateVersionedAssets(operations);
 
-                  if (assetResults?.errors?.length > 0) {
-                    console.error(`[Asset Error] Image assets for ${entityType} failed:`, assetResults.errors);
-                  }
+              //   if (assetResults?.errors?.length > 0) {
+              //     console.error(`[Asset Error] Image assets for ${entityType} failed:`, assetResults.errors);
+              //   }
 
-                  return assetResults;
-                }),
+              //   return assetResults;
+              // }),
 
-                // Handle registration: all inserted entities in parallel
-                Promise.all(
-                  insertEntitiesResults.map(async (entity) => {
-                    const rawEntity = rawEntities.find((e) => e.data.id === entity.id);
-                    if (!rawEntity) throw new Error("Entity not found in raw entities.");
-                    if (!entity.name) throw new Error("Entity name is required for handle registration.");
+              // Handle registration: all inserted entities in parallel
+              //   Promise.all(
+              //     insertEntitiesResults.map(async (entity) => {
+              //       const rawEntity = rawEntities.find((e) => e.data.id === entity.id);
+              //       if (!rawEntity) throw new Error("Entity not found in raw entities.");
+              //       if (!entity.name) throw new Error("Entity name is required for handle registration.");
 
-                    await tagRegistryService
-                      .registerHandle({
-                        handle: `@${entity.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
-                        entityId: entity.id,
-                        entityType: rawEntity.entityType as "character" | "location" | "prop",
-                        projectId,
-                      })
-                      .catch((err) => {
-                        console.warn({ entityId: entity.id, error: err }, "[Worker] Failed to register entity handle.");
-                      });
-                  }),
-                ),
-              ]);
+              //       await tagRegistryService
+              //         .registerHandle({
+              //           handle: `@${entity.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+              //           entityId: entity.id,
+              //           entityType: rawEntity.entityType as "character" | "location" | "prop",
+              //           projectId,
+              //         })
+              //         .catch((err) => {
+              //           console.warn({ entityId: entity.id, error: err }, "[Worker] Failed to register entity handle.");
+              //         });
+              //     }),
+              //   ),
+              // ]);
 
-              const insertedEntityEnvelopes = insertEntitiesResults.map((inserted) => {
-                const rawEntity = rawEntities.find((e) => e.data.id === inserted.id);
-                if (!rawEntity) throw new Error("Entity not found in raw entities.");
+              // const insertedEntityEnvelopes = insertEntitiesResults.map((inserted) => {
+              //   const rawEntity = rawEntities.find((e) => e.data.id === inserted.id);
+              //   if (!rawEntity) throw new Error("Entity not found in raw entities.");
 
-                if (rawEntity.entityType === "file") return;
+              //   if (rawEntity.entityType === "file") return;
 
-                if (!inserted.name) throw new Error("Entity name is required for handle registration.");
-                return {
-                  entityId: inserted.id,
-                  entityType: rawEntity.entityType,
-                  entity: inserted,
-                };
-              });
+              //   if (!inserted.name) throw new Error("Entity name is required for handle registration.");
+              //   return {
+              //     entityId: inserted.id,
+              //     entityType: rawEntity.entityType,
+              //     entity: inserted,
+              //   };
+              // });
 
-              const [updatedEntities] = await Promise.all([
-                await this.projectRepository.getEntities(insertedEntityEnvelopes as any),
-              ]);
+              // const [updatedEntities] = await Promise.all([
+              //   await this.projectRepository.getEntities(insertedEntityEnvelopes as any),
+              // ]);
 
-              await this.publishPipelineEvent({
-                type: "ENTITY_CREATED",
-                projectId: job.projectId,
-                worldId: job.worldId,
-                userId: job.userId,
-                teamId: job.teamId,
-                payload: updatedEntities.map((updated) => {
-                  return {
-                    entityId: updated.entity.id,
-                    entityType: updated.entityType,
-                    entity: updated.entity,
-                  };
-                }),
-                timestamp: new Date().toISOString(),
-              });
+              // await this.publishPipelineEvent({
+              //   type: "ENTITY_CREATED",
+              //   projectId: job.projectId,
+              //   worldId: job.worldId,
+              //   userId: job.userId,
+              //   teamId: job.teamId,
+              //   payload: updatedEntities.map((updated) => {
+              //     return {
+              //       entityId: updated.entity.id,
+              //       entityType: updated.entityType,
+              //       entity: updated.entity,
+              //     } as any;
+              //   }),
+              //   timestamp: new Date().toISOString(),
+              // });
 
               updated = await this.projectRepository.getProjectFullState(projectId);
+
+              const nextStoryboard = storyboardManager.applyUpdates(updated.storyboard, {
+                metadata: updated.storyboard.metadata,
+                characters: updated.characters,
+                locations: updated.locations,
+                scenes: updated.scenes,
+              });
+              await this.projectRepository.updateProject(projectId, {
+                storyboard: nextStoryboard,
+              });
+              updated = { ...updated, storyboard: nextStoryboard };
+
               break;
             }
 

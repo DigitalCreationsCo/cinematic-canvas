@@ -7,6 +7,7 @@ import {
   FileImage,
   Layers,
   MessageCircle,
+  Gem
 } from "lucide-react";
 import { NewEntityModal } from "#client/components/canvas/panels/NewEntityModal.js";
 import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
@@ -29,56 +30,63 @@ export const NODE_TYPE_OPTIONS: {
   description: string;
   requiresModal?: boolean;
 }[] = [
-  {
-    type: "character",
-    label: "Character",
-    icon: User,
-    description: "Character entity with portrait and traits",
-    requiresModal: true,
-  },
-  {
-    type: "location",
-    label: "Location",
-    icon: MapPin,
-    description: "Location with atmosphere and weather",
-    requiresModal: true,
-  },
-  {
-    type: "scene",
-    label: "Scene",
-    icon: Clapperboard,
-    description: "Video scene with cinematography",
-    requiresModal: true,
-  },
-  {
-    type: "audio",
-    label: "Audio Track",
-    icon: Music,
-    description: "Audio or music reference",
-    requiresModal: false,
-  },
-  {
-    type: "image",
-    label: "Image",
-    icon: FileImage,
-    description: "Image asset (style ref, import, or lore)",
-    requiresModal: false,
-  },
-  {
-    type: "composite",
-    label: "Composite",
-    icon: Layers,
-    description: "Multi-input image merge",
-    requiresModal: false,
-  },
-  {
-    type: "render",
-    label: "Render Output",
-    icon: Clapperboard,
-    description: "Final video assembly output",
-    requiresModal: false,
-  },
-];
+    {
+      type: "character",
+      label: "Character",
+      icon: User,
+      description: "Character entity with portrait and traits",
+      requiresModal: true,
+    },
+    {
+      type: "location",
+      label: "Location",
+      icon: MapPin,
+      description: "Location with atmosphere and weather",
+      requiresModal: true,
+    },
+    {
+      type: "prop",
+      label: "Prop",
+      icon: Gem,
+      description: "Prop with atmosphere and weather",
+      requiresModal: true,
+    },
+    {
+      type: "scene",
+      label: "Scene",
+      icon: Clapperboard,
+      description: "Video scene with cinematography",
+      requiresModal: true,
+    },
+    {
+      type: "audio",
+      label: "Audio Track",
+      icon: Music,
+      description: "Audio or music reference",
+      requiresModal: false,
+    },
+    {
+      type: "image",
+      label: "Image",
+      icon: FileImage,
+      description: "Image asset (style ref, import, or lore)",
+      requiresModal: false,
+    },
+    {
+      type: "composite",
+      label: "Composite",
+      icon: Layers,
+      description: "Multi-input image merge",
+      requiresModal: false,
+    },
+    {
+      type: "render",
+      label: "Render Output",
+      icon: Clapperboard,
+      description: "Final video assembly output",
+      requiresModal: false,
+    },
+  ];
 
 export function NodeCreationMenu({
   contextType,
@@ -89,6 +97,7 @@ export function NodeCreationMenu({
   renderItem = (children, onClick, key) => (
     <button
       type="button"
+      data-testid={`node-creation-menu-item-${key}`}
       key={key}
       onClick={onClick}
       className="flex w-full items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
@@ -198,6 +207,21 @@ export function NodeCreationMenu({
   );
 }
 
+interface CanvasContextMenuProps {
+  contextType: "project" | "world";
+  projectId?: string;
+  worldId?: string;
+  position: {
+    x: number;
+    y: number;
+  };
+  canvasPosition: {
+    x: number;
+    y: number;
+  };
+  open: boolean;
+  onClose: () => void;
+}
 
 export function CanvasContextMenu({
   contextType,
@@ -212,7 +236,7 @@ export function CanvasContextMenu({
   const openChatSidebar = useUIMenuStore((s) => s.openChatSidebar);
   const { nodes } = useNodeStore();
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
-  
+
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -306,8 +330,8 @@ export function CanvasContextMenu({
             Add Node
           </div>
           <div className="-mx-1 my-1 h-px bg-muted" />
-          
-          <NodeCreationMenu 
+
+          <NodeCreationMenu
             contextType={contextType}
             projectId={projectId}
             worldId={worldId}

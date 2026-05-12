@@ -11,7 +11,7 @@ const {
   mockCreateAsset,
   mockCreateEntities,
   mockDeleteEntities,
-  mockCreateSceneWithAutoFill,
+  mockcreateScenesWithAutoFill,
   mockGetMentionSuggestions,
 } = vi.hoisted(() => ({
   mockWorldsList: vi.fn(),
@@ -21,7 +21,7 @@ const {
   mockCreateAsset: vi.fn(),
   mockCreateEntities: vi.fn(),
   mockDeleteEntities: vi.fn(),
-  mockCreateSceneWithAutoFill: vi.fn(),
+  mockcreateScenesWithAutoFill: vi.fn(),
   mockGetMentionSuggestions: vi.fn().mockResolvedValue({ suggestions: [], totalAvailable: 0 }),
 }));
 
@@ -40,7 +40,7 @@ const mockTrpcModule = await vi.hoisted(async () => {
     entities: {
       create: { mutate: mockCreateEntities },
       delete: { mutate: mockDeleteEntities },
-      createSceneWithAutoFill: { mutate: mockCreateSceneWithAutoFill },
+      createScenesWithAutoFill: { mutate: mockcreateScenesWithAutoFill },
     },
     mention: {
       suggest: { query: mockGetMentionSuggestions },
@@ -154,7 +154,7 @@ export const {
 //   mockUploadAudio,
 //   mockCreateAsset,
 //   mockCreateEntities,
-//   mockCreateSceneWithAutoFill,
+//   mockcreateScenesWithAutoFill,
 //   mockGetSceneAssets,
 //   mockGetCharacterAssets,
 //   mockGetLocationAssets,
@@ -168,7 +168,7 @@ export const {
 //   mockUploadAudio: vi.fn(),
 //   mockCreateAsset: vi.fn(),
 //   mockCreateEntities: vi.fn(),
-//   mockCreateSceneWithAutoFill: vi.fn(),
+//   mockcreateScenesWithAutoFill: vi.fn(),
 //   mockGetSceneAssets: vi.fn(),
 //   mockGetCharacterAssets: vi.fn(),
 //   mockGetLocationAssets: vi.fn(),
@@ -184,7 +184,7 @@ export const {
 //   mockUploadAudio,
 //   mockCreateAsset,
 //   mockCreateEntities,
-//   mockCreateSceneWithAutoFill,
+//   mockcreateScenesWithAutoFill,
 //   mockGetSceneAssets,
 //   mockGetCharacterAssets,
 //   mockGetLocationAssets,

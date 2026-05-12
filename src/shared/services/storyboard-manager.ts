@@ -80,14 +80,7 @@ export class StoryboardManager {
     return { metadata, characters, locations, scenes } as unknown as LiveStoryboard;
   }
 
-  // --------------------------------------------------------------------------
-  // EXTRACTION  —  *WithAssets  →  Condensed*
-  //
-  // Description is intentionally sourced from the best versioned asset rather
-  // than a column value, because descriptions for all entity types are stored as
-  // versioned assets (see schema). CharacterWithAssets / LocationWithAssets /
-  // SceneWithAssets omit the description column for exactly this reason.
-  // --------------------------------------------------------------------------
+
 
   private extractCharacter(entity: CharacterWithAssets): CharacterCondensed {
     const best = getAllBestAssets(entity.assets);

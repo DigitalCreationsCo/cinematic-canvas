@@ -1338,11 +1338,11 @@ describe("WorkerService Asset Management", () => {
       expect(mockMediaProcessingAgent.renderVideo).toHaveBeenCalled();
     });
 
-    it("should handle CREATE_SCENE_WITH_ENTITIES", async () => {
+    it("should handle CREATE_SCENES_WITH_ENTITIES", async () => {
       const job: Job = {
         id: "job-create-scene-1",
         projectId: "proj-1",
-        type: "CREATE_SCENE_WITH_ENTITIES",
+        type: "CREATE_SCENES_WITH_ENTITIES",
         state: "RUNNING",
         attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
         uniqueKey: "unique-create-scene-key",

@@ -35,16 +35,16 @@ export interface WorkspaceToolDefinition {
 }
 
 export const WORKSPACE_TOOLS: WorkspaceToolDefinition[] = [
-  {
-    id: "reverse-engineer",
-    name: "Reverse Engineer",
-    description: "Borrow the cinematic styles from a video into your project.",
-    icon: ScreenShareIcon,
-  },
+  // {
+  //   id: "reverse-engineer",
+  //   name: "Reverse Engineer",
+  //   description: "Borrow the cinematic styles from a video into your project.",
+  //   icon: ScreenShareIcon,
+  // },
   {
     id: "create-scenes",
     name: "Create Scenes",
-    description: "Ask the assistant to generate scenes.",
+    description: "Ask the assistant to generate a sequence of scenes.",
     icon: SceneInfiniteIcon,
   },
 ];
