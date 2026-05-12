@@ -101,12 +101,13 @@ function ChatView({
           <div
             key={msg.id}
             className={cn(
-              "flex flex-col gap-1 p-3 rounded-none text-sm",
-              msg.role === "ai" ? "bg-primary/10 ml-4" : "bg-muted mr-4",
+              msg.role === 'ai' ? 'rounded-lg' : '',
+              "flex flex-col gap-1 p-3 text-sm select-text",
+              msg.role === "ai" ? "bg-primary/10 ml-4" : "bg-transparent mr-4",
             )}
           >
             <span className="text-xs text-muted-foreground font-medium">
-              {msg.role === "human" ? "You" : "AI"}
+              {msg.role === "human" ? "You" : "Assistant"}
             </span>
             <p className="whitespace-pre-wrap break-words">
               {msg.content}
@@ -119,7 +120,7 @@ function ChatView({
           </div>
         ))}
         {isStreaming && (
-          <div className="flex flex-col gap-1 p-3 rounded-none text-sm bg-primary/10 ml-4">
+          <div className="flex flex-col gap-1 p-3 rounded-lg text-sm bg-primary/10 ml-4 select-text">
             <span className="text-xs text-muted-foreground font-medium">AI</span>
             <p className="whitespace-pre-wrap break-words">
               {streamChunk || (
