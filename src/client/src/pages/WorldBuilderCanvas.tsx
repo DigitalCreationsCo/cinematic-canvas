@@ -62,7 +62,7 @@ import { ChatSidebar } from "../components/canvas/panels/ChatSidebar.js";
 import { NotificationsPanel } from "../components/canvas/panels/NotificationsPanel.js";
 import { ToolsSidebar } from "../components/canvas/panels/ToolsSidebar.js";
 import { CanvasToolbar } from "../components/canvas/toolbar/CanvasToolbar.js";
-import { GlobalNotifications } from "../components/canvas/panels/GlobalNotifications.js";
+
 import { NodeFactory } from "../domain/canvas/NodeFactory.js";
 import {
   screenToWorld,
@@ -484,7 +484,6 @@ export function WorldBuilderCanvas() {
         {selectedNodeId && (
           <RightSidebar className="absolute right-0 top-0 h-full w-80 border-l border-panel-border bg-panel z-10" />
         )}
-        <GlobalNotifications />
 
         <CompoundModal />
       </div>

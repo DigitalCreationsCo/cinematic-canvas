@@ -59,7 +59,7 @@ import ProjectDashboard from "#client/pages/ProjectDashboard.js";
 import { CanvasToolbar } from "#client/components/canvas/toolbar/CanvasToolbar.js";
 import { SceneEditorToolbar } from "#client/components/canvas/toolbar/SceneEditorToolbar.js";
 import { LeftSidebar } from "#client/components/canvas/panels/LeftSidebar.js";
-import { GlobalNotifications } from "#client/components/canvas/panels/GlobalNotifications.js";
+
 import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
 import {
   DEMO_EDGES,
@@ -624,8 +624,6 @@ export default function ProjectBuilderCanvas() {
           e.stopPropagation();
         }}
       >
-        <GlobalNotifications />
-
         <DndContext
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
