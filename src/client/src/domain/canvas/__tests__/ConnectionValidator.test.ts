@@ -291,12 +291,12 @@ describe('isValidConnection', () => {
 });
 
 describe('getCompatibleTargetHandles', () => {
-    it('returns entityInput handle for character dragging from char_source', () => {
+    it('returns entityInput handle for character dragging from source_character', () => {
         const handles = getCompatibleTargetHandles('character', HANDLE_IDS.character.source);
         expect(handles).toContain(HANDLE_IDS.scene.entityInput);
     });
 
-    it('returns entityInput handle for location dragging from loc_source', () => {
+    it('returns entityInput handle for location dragging from source_location', () => {
         const handles = getCompatibleTargetHandles('location', HANDLE_IDS.location.source);
         expect(handles).toContain(HANDLE_IDS.scene.entityInput);
     });
@@ -319,7 +319,7 @@ describe('getCompatibleTargetHandles', () => {
 });
 
 describe('getCompatibleSourceHandles', () => {
-    it('returns char_source for a scene entityInput target', () => {
+    it('returns source_character for a scene entityInput target', () => {
         const handles = getCompatibleSourceHandles('scene', HANDLE_IDS.scene.entityInput);
         expect(handles).toContain(HANDLE_IDS.character.source);
     });

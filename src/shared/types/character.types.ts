@@ -106,7 +106,7 @@ export type CharacterState = z.infer<typeof CharacterState>;
 // ============================================================================
 
 export const CharacterAttributes = z.object({
-  referenceId: z.string().describe("Narrative-scoped identifier for the character e.g. char_1"),
+  referenceId: z.string().describe("Narrative-scoped identifier for the character e.g. Luke_Skywalker, North_Villain"),
   name: z.string().describe("Character name"),
   description: z.string().describe("Character description: personality, background, and role in the story"),
   aliases: z.array(z.string()).default([]).describe("Character aliases"),

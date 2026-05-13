@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
-
 import { aspectRatios, getExecutionMode, imageMimeType } from "#shared/config.js";
 import { IncrementAttemptHook } from "#shared/types/pipeline.types.js";
 import { CharacterWithAssets } from "#shared/types/workflow.types.js";
@@ -13,27 +12,30 @@ import { buildCharacterImagePrompt } from "#shared/prompts/character-reference-i
 import { GenerateBatchImagesParameters, UserMessage } from "#shared/lm/provider.js";
 import { extractGeneratedResponse } from "#shared/lm/parts-extractor.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
+import { IdentityBase } from "#shared/types/base.types.js";
+import { CharacterAttributes } from "#shared/types/character.types.js";
 
 // ============================================================================
-// SCHEMA — unchanged so external callers are unaffected
+// INPUT
 // ============================================================================
+
+const CharacterBaseWithIdAndVersion = CharacterAttributes.extend({ id: IdentityBase.shape.id, version: z.number() });
+type CharacterBaseWithIdAndVersion = CharacterAttributes & {
+  id: string;
+  version: number;
+};
 
 const GenerateCharacterImagesInput = z.object({
-  characters: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      version: z.number(),
-    }),
-  ),
+  characters: z.array(CharacterBaseWithIdAndVersion),
   generationRules: z.array(z.string()),
   attempt: z.number(),
 });
 
-export type GenerateCharacterImagesInput = z.input<typeof GenerateCharacterImagesInput>;
+export type GenerateCharacterImagesInput = z.infer<typeof GenerateCharacterImagesInput>;
 
 // ============================================================================
-// RESULT TYPES
+// OUTPUT
+//
 // `entity` is populated whenever projectRepository is available (i.e. when
 // called internally from generateCharacters). External callers that don't need
 // entity data can continue to rely on `output` (the image URL) as before.
@@ -44,9 +46,9 @@ export type GenerateCharacterImagesResultSuccess = {
   id: string;
   /** GCS URI / public URL of the generated image */
   output: string;
+  entity?: CharacterWithAssets;
   metadata: { model: string; prompt: string };
   /** Full updated character entity — present when projectRepository is injected */
-  entity?: CharacterWithAssets;
 };
 
 export type GenerateCharacterImagesResult =
@@ -64,10 +66,6 @@ type GenerateCharacterImagesContext = ToolContext<TextModelController> & {
   /** Required to fetch the updated entity after asset persistence */
   projectRepository: ProjectRepository;
 };
-
-// ============================================================================
-// SERIALISER — unchanged (used by _call for the LangChain string interface)
-// ============================================================================
 
 type ToolResultItem =
   | { success: true; id: string; output: string; metadata: { model: string; prompt: string } }
@@ -96,7 +94,7 @@ function serialiseResults(results: GenerateCharacterImagesResult[]): string {
 // ============================================================================
 
 async function persistImageAsset(
-  char: { id: string; version: number },
+  char: CharacterBaseWithIdAndVersion,
   gcsUri: string,
   prompt: string,
   context: GenerateCharacterImagesContext,
@@ -104,238 +102,13 @@ async function persistImageAsset(
   if (!context.saveAssets) return;
 
   await context.saveAssets(
-    // Scope — entity-scoped to this character
-    { entityType: "character", entityId: char.id, projectId: context.projectId } as any,
+    { characterIds: [char.id], projectId: context.projectId },
     ["character_image"],
     "image",
     [gcsUri],
     [{ model: context.provider.imageModel, prompt }],
     /* setBest */ true,
   );
-}
-
-// ============================================================================
-// CORE RUN FUNCTION — handles all execution modes
-// ============================================================================
-
-async function run(
-  params: {
-    characters: { id: string; name: string; version: number }[];
-    generationRules: string[];
-    attempt: number;
-    incrementAttempt: IncrementAttemptHook;
-  },
-  context: GenerateCharacterImagesContext,
-): Promise<GenerateCharacterImagesResult[]> {
-  const { projectId, traceId } = context;
-  const executionMode = getExecutionMode();
-
-  // ── BATCH ──────────────────────────────────────────────────────────────────
-  if (executionMode === "BATCH") {
-    console.log(`${traceId}: Batch execution. Generating ${params.characters.length} character images`);
-
-    const contextMap = new Map<string, { character: any; version: number; prompt: string }>();
-    const batchRequests: GenerateBatchImagesParameters["requests"] = [];
-
-    for (const char of params.characters) {
-      if (!contextMap.has(char.id)) {
-        const prompt = buildCharacterImagePrompt(char as any, params.generationRules);
-        contextMap.set(char.id, { character: char, version: char.version, prompt });
-      }
-
-      const ctx = contextMap.get(char.id)!;
-      batchRequests.push({
-        messages: [new UserMessage({ content: ctx.prompt })],
-        metadata: { custom_id: char.id, version: ctx.version, assetKey: "character_image" },
-        config: {
-          abortSignal: context.options?.signal,
-          candidateCount: 1,
-          responseModalities: [Modality.IMAGE],
-          imageConfig: { ...aspectRatios.vertical, outputMimeType: imageMimeType },
-        },
-      });
-    }
-
-    if (batchRequests.length === 0) return [];
-
-    let batchApiResults: Awaited<ReturnType<typeof context.provider.generateBatchImages>>;
-    try {
-      batchApiResults = await context.provider.generateBatchImages({
-        projectId,
-        model: context.provider.imageModel,
-        requests: batchRequests,
-        config: {
-          abortSignal: context.options?.signal,
-          dest: {
-            gcsUri: context.storageManager.getObjectPath({
-              type: "batch-data",
-              projectId,
-              uniqueId: Date.now().toString(),
-            }),
-          },
-          displayName: `generate_character_images_attempt_${params.attempt}`,
-        },
-      });
-    } catch (e) {
-      // Entire batch failed — all characters are errors
-      return params.characters.map((c) => ({ success: false as const, id: c.id, error: e as Error }));
-    }
-
-    // Upload & persist each result atomically
-    const imageResults = await Promise.all(
-      params.characters.map(async (char): Promise<GenerateCharacterImagesResult> => {
-        const res = batchApiResults.find((r) => r.customId === char.id);
-
-        if (!res) {
-          return { success: false as const, id: char.id, error: new Error("Result missing from batch response") };
-        }
-        if (res.status !== "SUCCESS") {
-          return { success: false as const, id: char.id, error: res.error || new Error("Batch generation failed") };
-        }
-
-        try {
-          const ctx = contextMap.get(char.id)!;
-          const imageBuffer = Buffer.from(res.imageBytes!, "base64");
-          const outputPath = context.storageManager.getObjectPath({
-            projectId,
-            characterId: char.id,
-            type: "character_image",
-            version: ctx.version,
-          });
-          const src = await context.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
-
-          // ── Inline asset persistence ──
-          await persistImageAsset(char, src, ctx.prompt, context);
-
-          return {
-            success: true as const,
-            id: char.id,
-            output: src,
-            metadata: { prompt: ctx.prompt, model: context.provider.imageModel },
-          };
-        } catch (e) {
-          return { success: false as const, id: char.id, error: e as Error };
-        }
-      }),
-    );
-
-    return finaliseResults(imageResults, params.characters, context);
-
-    // ── PARALLEL ───────────────────────────────────────────────────────────────
-  } else if (executionMode === "PARALLEL") {
-    console.log(`${traceId}: Parallel execution. Generating ${params.characters.length} character images`);
-
-    const imageResults = await Promise.all(
-      params.characters.map(async (char): Promise<GenerateCharacterImagesResult> => {
-        try {
-          const prompt = buildCharacterImagePrompt(char as any, params.generationRules);
-          const [imageData] = extractGeneratedResponse(
-            "image",
-            await executeWithRetry(
-              (p) =>
-                context.provider.generateImages({
-                  prompt: p.prompt,
-                  config: {
-                    abortSignal: context.options?.signal,
-                    numberOfImages: 1,
-                    seed: Math.floor(Math.random() * 1000000),
-                    aspectRatio: aspectRatios.vertical.aspectRatio,
-                    outputMimeType: imageMimeType,
-                  },
-                }),
-              { prompt },
-              { attempt: char.version, maxRetries: context.safetyRetries + char.version, projectId },
-              async (error, attempt, p) => {
-                params.incrementAttempt(error.message, "BACKOFF_RETRY");
-                return { attempt, params: p };
-              },
-            ),
-            "google",
-          );
-
-          const imageBuffer = Buffer.from(imageData, "base64");
-          const imagePath = context.storageManager.getObjectPath({
-            type: "character_image",
-            projectId,
-            characterId: char.id,
-            version: char.version,
-          });
-          const gcsUri = await context.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
-
-          // ── Inline asset persistence ──
-          await persistImageAsset(char, gcsUri, prompt, context);
-
-          return {
-            success: true as const,
-            id: char.id,
-            output: gcsUri,
-            metadata: { prompt, model: context.provider.imageModel },
-          };
-        } catch (error) {
-          return { success: false as const, id: char.id, error: error as Error };
-        }
-      }),
-    );
-
-    return finaliseResults(imageResults, params.characters, context);
-
-    // ── SEQUENTIAL ─────────────────────────────────────────────────────────────
-  } else {
-    console.log(`${traceId}: Sequential execution. Generating ${params.characters.length} character images`);
-    const imageResults: GenerateCharacterImagesResult[] = [];
-
-    for (const char of params.characters) {
-      try {
-        const prompt = buildCharacterImagePrompt(char as any, params.generationRules);
-        const [imageData] = extractGeneratedResponse(
-          "image",
-          await executeWithRetry(
-            (p) =>
-              context.provider.generateImages({
-                prompt: p.prompt,
-                config: {
-                  abortSignal: context.options?.signal,
-                  numberOfImages: 1,
-                  seed: Math.floor(Math.random() * 1000000),
-                  aspectRatio: aspectRatios.vertical.aspectRatio,
-                  outputMimeType: imageMimeType,
-                },
-              }),
-            { prompt },
-            { attempt: char.version, maxRetries: context.safetyRetries + char.version, projectId },
-            async (error, attempt, p) => {
-              params.incrementAttempt(error.message, "BACKOFF_RETRY");
-              return { attempt, params: p };
-            },
-          ),
-          "google",
-        );
-
-        const imageBuffer = Buffer.from(imageData, "base64");
-        const imagePath = context.storageManager.getObjectPath({
-          type: "character_image",
-          projectId,
-          characterId: char.id,
-          version: char.version,
-        });
-        const gcsUri = await context.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
-
-        // ── Inline asset persistence ──
-        await persistImageAsset(char, gcsUri, prompt, context);
-
-        imageResults.push({
-          success: true,
-          id: char.id,
-          output: gcsUri,
-          metadata: { prompt, model: context.provider.imageModel },
-        });
-      } catch (error) {
-        imageResults.push({ success: false, id: char.id, error: error as Error });
-      }
-    }
-
-    return finaliseResults(imageResults, params.characters, context);
-  }
 }
 
 // ============================================================================
@@ -346,7 +119,7 @@ async function run(
 
 async function finaliseResults(
   imageResults: GenerateCharacterImagesResult[],
-  _characters: { id: string; name: string; version: number }[],
+  _characters: CharacterBaseWithIdAndVersion[],
   context: GenerateCharacterImagesContext,
 ): Promise<GenerateCharacterImagesResult[]> {
   const successes = imageResults.filter((r): r is GenerateCharacterImagesResultSuccess => r.success);
@@ -359,12 +132,12 @@ async function finaliseResults(
   );
 
   // Build a lookup so we can attach entity data to each success result
-  const entityById = new Map(updatedEntities.map(({ entity }) => [(entity as any).id as string, entity]));
+  const entityById = new Map(updatedEntities.map(({ entity }) => [entity.id, entity]));
 
   // Enrich success results with the full entity
   const enrichedResults: GenerateCharacterImagesResult[] = imageResults.map((r) => {
     if (!r.success) return r;
-    const entity = entityById.get(r.id) as CharacterWithAssets | undefined;
+    const entity = entityById.get(r.id)! as CharacterWithAssets;
     return { ...r, entity };
   });
 
@@ -374,7 +147,7 @@ async function finaliseResults(
       type: "ENTITY_UPDATED",
       worldId: context.worldId,
       payload: updatedEntities.map(({ entity, entityType }) => ({
-        id: (entity as any).id,
+        id: entity.id,
         entityType,
         entity,
       })),
@@ -384,17 +157,9 @@ async function finaliseResults(
   return enrichedResults;
 }
 
-// ============================================================================
-// DEPS — projectRepository is now required (was optional in ToolContext)
-// ============================================================================
-
 export interface GenerateCharacterImagesToolDeps {
   context: ToolContext<TextModelController> & {
     incrementAttempt: IncrementAttemptHook;
-    /**
-     * Required: used to fetch the updated character entity after image assets
-     * are saved, so the tool can return entity data and emit ENTITY_UPDATED.
-     */
     projectRepository: ProjectRepository;
   };
 }
@@ -425,14 +190,12 @@ class GenerateCharacterImagesTool extends StructuredTool<typeof GenerateCharacte
     const { traceId } = this.context;
     console.log(`${traceId}: GenerateCharacterImagesTool invoked. count: ${input.characters.length}`);
 
-    const generated = await run(
+    const generated = await this.run(
       {
         characters: input.characters,
         generationRules: input.generationRules,
         attempt: input.attempt,
-        incrementAttempt: this.incrementAttempt,
       },
-      this.context,
     );
 
     const output = serialiseResults(generated);
@@ -442,26 +205,226 @@ class GenerateCharacterImagesTool extends StructuredTool<typeof GenerateCharacte
 
   /**
    * Programmatic interface for direct tool-to-tool calls.
-   *
    * Input:  GenerateCharacterImagesInput — unchanged; external callers are unaffected.
    * Output: GenerateCharacterImagesResult[] — success items now carry an optional
    *         `entity` field (the full CharacterWithAssets after image asset persistence).
    *         External callers that don't need entity data can ignore the new field.
    */
-  async run(input: GenerateCharacterImagesInput): Promise<GenerateCharacterImagesResult[]> {
-    try {
-      return await run(
-        {
-          characters: input.characters,
-          generationRules: input.generationRules,
-          attempt: input.attempt,
-          incrementAttempt: this.incrementAttempt,
-        },
-        this.context,
+  async run(
+    params: {
+      characters: CharacterBaseWithIdAndVersion[];
+      generationRules: string[];
+      attempt: number;
+    },
+  ): Promise<GenerateCharacterImagesResult[]> {
+    const context = this.context;
+    const { projectId, traceId } = context;
+    const executionMode = getExecutionMode();
+
+    // ── BATCH ──────────────────────────────────────────────────────────────────
+    if (executionMode === "BATCH") {
+      console.log(`${traceId}: Batch execution. Generating ${params.characters.length} character images`);
+
+      const contextMap = new Map<string, { character: any; version: number; prompt: string }>();
+      const batchRequests: GenerateBatchImagesParameters["requests"] = [];
+
+      for (const char of params.characters) {
+        if (!contextMap.has(char.id)) {
+          const prompt = buildCharacterImagePrompt(char, params.generationRules);
+          contextMap.set(char.id, { character: char, version: char.version, prompt });
+        }
+
+        const ctx = contextMap.get(char.id)!;
+        batchRequests.push({
+          messages: [new UserMessage({ content: ctx.prompt })],
+          metadata: { custom_id: char.id, version: ctx.version, assetKey: "character_image" },
+          config: {
+            abortSignal: context.options?.signal,
+            candidateCount: 1,
+            responseModalities: [Modality.IMAGE],
+            imageConfig: { ...aspectRatios.vertical, outputMimeType: imageMimeType },
+          },
+        });
+      }
+
+      if (batchRequests.length === 0) return [];
+
+      let batchApiResults: Awaited<ReturnType<typeof context.provider.generateBatchImages>>;
+      try {
+        batchApiResults = await context.provider.generateBatchImages({
+          projectId,
+          model: context.provider.imageModel,
+          requests: batchRequests,
+          config: {
+            abortSignal: context.options?.signal,
+            dest: {
+              gcsUri: context.storageManager.getObjectPath({
+                type: "batch-data",
+                projectId,
+                uniqueId: Date.now().toString(),
+              }),
+            },
+            displayName: `generate_character_images_attempt_${params.attempt}`,
+          },
+        });
+      } catch (e) {
+        // Entire batch failed — all characters are errors
+        return params.characters.map((c) => ({ success: false as const, id: c.id, error: e as Error }));
+      }
+
+      // Upload & persist each result atomically
+      const imageResults = await Promise.all(
+        params.characters.map(async (char): Promise<GenerateCharacterImagesResult> => {
+          const res = batchApiResults.find((r) => r.customId === char.id);
+
+          if (!res) {
+            return { success: false as const, id: char.id, error: new Error("Result missing from batch response") };
+          }
+          if (res.status !== "SUCCESS") {
+            return { success: false as const, id: char.id, error: res.error || new Error("Batch generation failed") };
+          }
+
+          try {
+            const ctx = contextMap.get(char.id)!;
+            const imageBuffer = Buffer.from(res.imageBytes!, "base64");
+            const outputPath = context.storageManager.getObjectPath({
+              projectId,
+              characterId: char.id,
+              type: "character_image",
+              version: ctx.version,
+            });
+            const src = await context.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
+
+            // ── Inline asset persistence ──
+            await persistImageAsset(char, src, ctx.prompt, context);
+
+            return {
+              success: true as const,
+              id: char.id,
+              output: src,
+              metadata: { prompt: ctx.prompt, model: context.provider.imageModel },
+            };
+          } catch (e) {
+            return { success: false as const, id: char.id, error: e as Error };
+          }
+        }),
       );
-    } catch (e) {
-      console.error(e);
-      throw e;
+
+      return finaliseResults(imageResults, params.characters, context);
+
+      // ── PARALLEL ───────────────────────────────────────────────────────────────
+    } else if (executionMode === "PARALLEL") {
+      console.log(`${traceId}: Parallel execution. Generating ${params.characters.length} character images`);
+
+      const imageResults = await Promise.all(
+        params.characters.map(async (char): Promise<GenerateCharacterImagesResult> => {
+          try {
+            const prompt = buildCharacterImagePrompt(char, params.generationRules);
+            const [imageData] = extractGeneratedResponse(
+              "image",
+              await executeWithRetry(
+                (p) =>
+                  context.provider.generateImages({
+                    prompt: p.prompt,
+                    config: {
+                      abortSignal: context.options?.signal,
+                      numberOfImages: 1,
+                      seed: Math.floor(Math.random() * 1000000),
+                      aspectRatio: aspectRatios.vertical.aspectRatio,
+                      outputMimeType: imageMimeType,
+                    },
+                  }),
+                { prompt },
+                { attempt: char.version, maxRetries: context.safetyRetries + char.version, projectId },
+                async (error, attempt, p) => {
+                  this.incrementAttempt(error.message, "BACKOFF_RETRY");
+                  return { attempt, params: p };
+                },
+              ),
+              "google",
+            );
+
+            const imageBuffer = Buffer.from(imageData, "base64");
+            const imagePath = context.storageManager.getObjectPath({
+              type: "character_image",
+              projectId,
+              characterId: char.id,
+              version: char.version,
+            });
+            const gcsUri = await context.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
+
+            // ── Inline asset persistence ──
+            await persistImageAsset(char, gcsUri, prompt, context);
+
+            return {
+              success: true as const,
+              id: char.id,
+              output: gcsUri,
+              metadata: { prompt, model: context.provider.imageModel },
+            };
+          } catch (error) {
+            return { success: false as const, id: char.id, error: error as Error };
+          }
+        }),
+      );
+
+      return finaliseResults(imageResults, params.characters, context);
+
+      // ── SEQUENTIAL ─────────────────────────────────────────────────────────────
+    } else {
+      console.log(`${traceId}: Sequential execution. Generating ${params.characters.length} character images`);
+      const imageResults: GenerateCharacterImagesResult[] = [];
+
+      for (const char of params.characters) {
+        try {
+          const prompt = buildCharacterImagePrompt(char, params.generationRules);
+          const [imageData] = extractGeneratedResponse(
+            "image",
+            await executeWithRetry(
+              (p) =>
+                context.provider.generateImages({
+                  prompt: p.prompt,
+                  config: {
+                    abortSignal: context.options?.signal,
+                    numberOfImages: 1,
+                    seed: Math.floor(Math.random() * 1000000),
+                    aspectRatio: aspectRatios.vertical.aspectRatio,
+                    outputMimeType: imageMimeType,
+                  },
+                }),
+              { prompt },
+              { attempt: char.version, maxRetries: context.safetyRetries + char.version, projectId },
+              async (error, attempt, p) => {
+                this.incrementAttempt(error.message, "BACKOFF_RETRY");
+                return { attempt, params: p };
+              },
+            ),
+            "google",
+          );
+
+          const imageBuffer = Buffer.from(imageData, "base64");
+          const imagePath = context.storageManager.getObjectPath({
+            type: "character_image",
+            projectId,
+            characterId: char.id,
+            version: char.version,
+          });
+          const gcsUri = await context.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
+
+          // ── Inline asset persistence ──
+          await persistImageAsset(char, gcsUri, prompt, context);
+
+          imageResults.push({
+            success: true,
+            id: char.id,
+            output: gcsUri,
+            metadata: { prompt, model: context.provider.imageModel },
+          });
+        } catch (error) {
+          imageResults.push({ success: false, id: char.id, error: error as Error });
+        }
+      }
+      return finaliseResults(imageResults, params.characters, context);
     }
   }
 }

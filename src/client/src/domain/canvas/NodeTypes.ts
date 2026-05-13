@@ -30,43 +30,43 @@ export * from "#shared/types/canvas.types.js";
 export const HANDLE_IDS = {
   scene: {
     /** Start frame input — accepts images or scene end-frames. */
-    frameInput: "scene_frame_input",
+    frameInput: "target_scene_frame",
     /** Entity input — accepts characters, locations, audio, style refs, images. */
-    entityInput: "scene_entity_input",
+    entityInput: "target_scene",
     /** End frame output — emits the scene's closing frame for continuity or to other nodes. */
-    frameOutput: "scene_frame_output",
+    frameOutput: "source_scene_frame",
   },
   character: {
     /** Casts this character into connected scene(s). */
-    source: "char_source",
+    source: "source_character",
   },
   location: {
     /** Sets this location as the backdrop for connected scene(s). */
-    source: "loc_source",
+    source: "source_location",
   },
   audio: {
     /** Syncs this audio track to connected scene(s). */
-    source: "audio_source",
+    source: "source_audio",
   },
   image: {
     /** Applies this image to connected scene(s) or composite input(s). */
-    source: "img_source",
+    source: "source_image",
     /** Accepts composite output — only rendered on composite_output images. */
-    target: "img_target",
+    target: "target_image",
   },
   composite: {
     // Named inputs retained for the composite-weights UI.
-    in1: "composite_in_1",
-    in2: "composite_in_2",
-    in3: "composite_in_3",
+    in1: "target_composite_in_1",
+    in2: "target_composite_in_2",
+    in3: "target_composite_in_3",
     /** Emits the merged composite result to connected scene(s). */
-    source: "composite_source",
+    source: "source_composite",
   },
   sceneCreator: {
     /** Accepts images as mood-board / style references for scene generation. */
-    imageInput: "scene_creator_image_input",
+    imageInput: "target_scene_creator_image_input",
     /** Emits created scenes to a connected scene node (for chaining). */
-    output: "scene_creator_output",
+    output: "source_scene_creator_output",
   },
 } as const;
 
@@ -176,7 +176,7 @@ export const CONNECTION_RULES: ConnectionRule[] = [
     sourceHandle: HANDLE_IDS.image.source,
     targetNodeType: "scene-creator" as CanvasNodeType,
     targetHandle: HANDLE_IDS.sceneCreator.imageInput,
-    edgeType: "scene_creator_image_input" as EdgeType,
+    edgeType: "target_scene_creator_image_input" as EdgeType,
   },
   // SceneCreator → Scene (output created scene frames)
   {
@@ -184,7 +184,7 @@ export const CONNECTION_RULES: ConnectionRule[] = [
     sourceHandle: HANDLE_IDS.sceneCreator.output,
     targetNodeType: "scene" as CanvasNodeType,
     targetHandle: HANDLE_IDS.scene.frameInput,
-    edgeType: "scene_creator_output" as EdgeType,
+    edgeType: "source_scene_creator_output" as EdgeType,
   },
 ];
 
@@ -194,7 +194,7 @@ export const CONNECTION_RULES: ConnectionRule[] = [
 
 // Extended with scene-creator edge types (pending shared composite rebuild).
 export const EDGE_STYLES: Record<EdgeType, React.CSSProperties> &
-  Partial<Record<"scene_creator_image_input" | "scene_creator_output", React.CSSProperties>> = {
+  Partial<Record<"target_scene_creator_image_input" | "source_scene_creator_output", React.CSSProperties>> = {
   scene_sequence: { stroke: "#6366f1", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
   character_in_scene: { stroke: "#f59e0b", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
   location_in_scene: { stroke: "#10b981", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
@@ -204,8 +204,8 @@ export const EDGE_STYLES: Record<EdgeType, React.CSSProperties> &
   composite_output: { stroke: "#f97316", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
   lore_context: { stroke: "#94a3b8", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
   frame_input: { stroke: "#22d3ee", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
-  scene_creator_image_input: { stroke: "#c9a55a", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
-  scene_creator_output: { stroke: "#c9a55a", strokeWidth: 3, strokeDasharray: "6 3", vectorEffect: "non-scaling-stroke" },
+  target_scene_creator_image_input: { stroke: "#c9a55a", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
+  source_scene_creator_output: { stroke: "#c9a55a", strokeWidth: 3, strokeDasharray: "6 3", vectorEffect: "non-scaling-stroke" },
 };
 
 export const PENDING_EDGE_STYLE: React.CSSProperties = {

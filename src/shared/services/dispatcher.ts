@@ -23,7 +23,7 @@ export class Dispatcher {
     private MAX_PARALLEL_JOBS: number,
     private projectId: string,
     private worldId?: string,
-  ) {}
+  ) { }
 
   async ensureJob<T extends JobType>({
     workflowId,

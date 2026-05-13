@@ -12,7 +12,7 @@
   --elevate-4: hsla(0, 0%, 50%, 0.7);
 
   --background: hsla(0, 0%, 100%, 1);
-  --foreground: hsla(0, 0%, 5%, 1);
+  --foreground: hsla(0, 0%, 20%, 1);
   --card: hsla(0, 0%, 100%, 1);
   --card-foreground: hsla(0, 0%, 5%, 1);
   --popover: hsla(0, 0%, 98%, 1);
@@ -115,58 +115,43 @@
      White/black overlays at fixed opacities — theme-invariant by design. */
   --border-glass: color-mix(in srgb, rgb(0, 0, 0), transparent 92%);
   /* 0.08 opacity */
-  --border-glass-hover: color-mix(
-    in srgb,
-    hsla(0, 0%, 100%, 1),
-    transparent 85%
-  );
+  --border-glass-hover: color-mix(in srgb,
+      hsla(0, 0%, 100%, 1),
+      transparent 85%);
   /* 0.15 opacity */
-  --border-gradient-start: color-mix(
-    in srgb,
-    hsla(0, 0%, 100%, 1),
-    transparent 80%
-  );
+  --border-gradient-start: color-mix(in srgb,
+      hsla(0, 0%, 100%, 1),
+      transparent 80%);
   /* 0.20 opacity */
-  --border-gradient-end: color-mix(
-    in srgb,
-    hsla(0, 0%, 100%, 1),
-    transparent 95%
-  );
+  --border-gradient-end: color-mix(in srgb,
+      hsla(0, 0%, 100%, 1),
+      transparent 95%);
   /* 0.05 opacity */
 
   /* ── Agent button box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-agent-rim: inset 0 1px 1px
-    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
-  --shadow-agent-rim-2: inset 0 -1px 1px
-    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
+  --shadow-agent-rim: inset 0 1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
+  --shadow-agent-rim-2: inset 0 -1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
   /* Top light rim      */
-  --shadow-agent-inner: inset 0px 1px 10px -5px
-    color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
-  --shadow-agent-inner-2: inset 0px 5px 50px 5px
-    color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
+  --shadow-agent-inner: inset 0px 1px 10px -5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
+  --shadow-agent-inner-2: inset 0px 5px 50px 5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
   /* Inner top shadow   */
   --shadow-agent-reflect: inset 0 0px 0px 0px var(--border-glass);
   /* Bottom rim reflect */
-  --shadow-agent-drop: 0 5px 5px -4px
-    color-mix(in srgb, var(--color-emerald-600), transparent 70%);
+  --shadow-agent-drop: 0 5px 5px -4px color-mix(in srgb, var(--color-emerald-600), transparent 70%);
   /* External depth     */
 
   /* ── Cinematic card box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-glass-rim: inset 0 1px 1px
-    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
+  --shadow-glass-rim: inset 0 1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
   /* Top light rim      */
-  --shadow-glass-inner: inset 0px 20px 30px -5px
-    color-mix(in srgb, hsla(0, 0%, 97%, 1), transparent 0%);
+  --shadow-glass-inner: inset 0px 20px 30px -5px color-mix(in srgb, hsla(0, 0%, 97%, 1), transparent 0%);
   /* Side light rim      */
-  --shadow-glass-sides: inset 0 0px 20px 5px
-    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-glass-sides: inset 0 0px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */
   --shadow-glass-reflect: inset 0 0px 0px 0px var(--border-glass);
   /* Bottom rim reflect */
-  --shadow-glass-drop: 0 5px 5px -2px
-    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-glass-drop: 0 5px 5px -2px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* External depth     */
 
   /* ── Card hover micro-interaction ──────────────────────────
@@ -214,7 +199,7 @@
 
   /* Cinematic Dark Theme Overrides */
   --background: hsla(0, 0%, 0%, 1);
-  --foreground: hsla(0, 0%, 98%, 1);
+  --foreground: hsla(0, 0%, 97%, 1);
 
   --card: hsla(220, 30%, 10%, 1);
   --card-foreground: hsla(0, 0%, 98%, 1);
@@ -243,7 +228,7 @@
   --destructive: hsla(0, 62%, 70%, 1);
   --destructive-foreground: hsla(0, 0%, 98%, 1);
 
-  --border: hsla(220, 20%, 22%, 1);
+  --border: hsla(220, 20%, 40%, 1);
   --input: hsla(0, 0%, 0%, 0);
   --ring: hsla(0, 0%, 80%, 1);
 
@@ -274,93 +259,65 @@
 
   /* ── Glass border & highlight opacities ────────────────────
      White/black overlays at fixed opacities — theme-invariant by design. */
-  --border-glass: color-mix(in srgb, hsla(220, 10%, 30%, 1), transparent 0%);
+  --border-glass: color-mix(in srgb, hsla(220, 10%, 20%, 1), transparent 10%);
   /* 0.08 opacity */
   --border-glass-hover: color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 85%);
   /* 0.15 opacity */
-  --border-gradient-start: color-mix(
-    in srgb,
-    hsla(0, 0%, 0%, 1),
-    transparent 80%
-  );
+  --border-gradient-start: color-mix(in srgb,
+      hsla(0, 0%, 0%, 1),
+      transparent 80%);
   /* 0.20 opacity */
-  --border-gradient-end: color-mix(
-    in srgb,
-    hsla(0, 0%, 0%, 1),
-    transparent 95%
-  );
+  --border-gradient-end: color-mix(in srgb,
+      hsla(0, 0%, 0%, 1),
+      transparent 95%);
   /* 0.05 opacity */
 
   /* ── Agent button box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-agent-rim: inset 0 1px 0px
-    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
-  --shadow-agent-rim-2: inset 0 -1px 1px
-    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
+  --shadow-agent-rim: inset 0 1px 0px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
+  --shadow-agent-rim-2: inset 0 -1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
   /* Top light rim      */
-  --shadow-agent-inner: inset 0 10px 20px 5px
-    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
-  --shadow-agent-inner-2: inset 0 10px 20px 5px
-    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-agent-inner: inset 0 10px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-agent-inner-2: inset 0 10px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */
   --shadow-agent-reflect: inset 0 -2px 20px 0px var(--border-glass);
   /* Bottom rim reflect */
-  --shadow-agent-drop: 0 12px 24px -8px
-    color-mix(in srgb, var(--color-emerald-600), transparent 50%);
+  --shadow-agent-drop: 0 12px 24px -8px color-mix(in srgb, var(--color-emerald-600), transparent 50%);
   /* External depth     */
 
   /* ── Cinematic card box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-glass-rim: inset 0 1px 0px
-    color-mix(in srgb, hsla(0, 0%, 80%, 1), transparent 70%);
+  --shadow-glass-rim: inset 0 1px 0px color-mix(in srgb, hsla(0, 0%, 80%, 1), transparent 70%);
   /* Top light rim      */
-  --shadow-glass-inner: inset 0 10px 30px 0.5px
-    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-glass-inner: inset 0 1px 5px 0.5px color-mix(in srgb, hsla(0, 0%, 15%, 1), transparent 0%);
   /* Side light rim      */
-  --shadow-glass-sides: inset 0 0px 20px 5px
-    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-glass-sides: inset 0 0px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */
-  --shadow-glass-reflect: inset 0 -2px 20px 0px var(--border-glass);
+  --shadow-glass-reflect: inset 50px 250px 160px -10px var(--border-glass);
   /* Bottom rim reflect */
-  --shadow-glass-drop: 0 12px 24px -8px
-    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 50%);
+  --shadow-glass-drop: 0 12px 24px -8px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 50%);
   /* External depth     */
 }
 
 /* ── Opaque border fallback overrides (older browser compat) ── */
 .dark .primary-border {
-  --primary-border: hsla(
-    from var(--primary) h s calc(l + var(--opaque-button-border-intensity)) /
-      alpha
-  );
+  --primary-border: hsla(from var(--primary) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
 .dark .secondary-border {
-  --secondary-border: hsla(
-    from var(--secondary) h s calc(l + var(--opaque-button-border-intensity)) /
-      alpha
-  );
+  --secondary-border: hsla(from var(--secondary) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
 .dark .muted-border {
-  --muted-border: hsla(
-    from var(--muted) h s calc(l + var(--opaque-button-border-intensity)) /
-      alpha
-  );
+  --muted-border: hsla(from var(--muted) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
 .dark .accent-border {
-  --accent-border: hsla(
-    from var(--accent) h s calc(l + var(--opaque-button-border-intensity)) /
-      alpha
-  );
+  --accent-border: hsla(from var(--accent) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
 .dark .destructive-border {
-  --destructive-border: hsla(
-    from var(--destructive) h s
-      calc(l + var(--opaque-button-border-intensity)) / alpha
-  );
+  --destructive-border: hsla(from var(--destructive) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
 /* ============================================================
@@ -456,13 +413,10 @@
      Enables: animate-accordion-down, animate-text-scale-cinematic, etc. */
   --animate-accordion-down: accordion-down var(--duration-fast) ease-out;
   --animate-accordion-up: accordion-up var(--duration-fast) ease-out;
-  --animate-text-scale-cinematic: text-scale-cinematic var(--duration-slowest)
-    var(--ease-cinematic) forwards;
-  --animate-text-go-cinematic: text-go-cinematic var(--duration-slower)
-    var(--ease-bounce-cinematic);
+  --animate-text-scale-cinematic: text-scale-cinematic var(--duration-slowest) var(--ease-cinematic) forwards;
+  --animate-text-go-cinematic: text-go-cinematic var(--duration-slower) var(--ease-bounce-cinematic);
   --animate-gradient-bg: gradientBG var(--duration-gradient-bg) ease infinite;
-  --animate-img-scale-cinematic: img-scale-cinematic var(--duration-slowest)
-    var(--ease-cinematic) forwards;
+  --animate-img-scale-cinematic: img-scale-cinematic var(--duration-slowest) var(--ease-cinematic) forwards;
 
   @keyframes accordion-down {
     from {
@@ -558,10 +512,18 @@
   }
 
   /* ── Custom Fonts ─── */
-  --font-z: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Zalando Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono:
-    "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
+  --font-z: "Zalando Sans SemiExpanded",
+  ui-sans-serif,
+  system-ui,
+  sans-serif;
+  --font-sans: "Zalando Sans",
+  ui-sans-serif,
+  system-ui,
+  sans-serif;
+  --font-mono: "Zalando Sans SemiExpanded",
+  ui-monospace,
+  SFMono-Regular,
+  monospace;
 }
 
 /* ============================================================
@@ -630,6 +592,7 @@
   0% {
     color: color-mix(in srgb, var(--background) 100%, transparent);
   }
+
   100% {
     color: color-mix(in srgb, var(--foreground) 100%, transparent);
     text-shadow:
@@ -676,6 +639,7 @@
 }
 
 @keyframes scrollPulse {
+
   0%,
   100% {
     opacity: 0.3;
@@ -689,6 +653,7 @@
 }
 
 @keyframes blink {
+
   0%,
   100% {
     opacity: 1;
@@ -710,6 +675,7 @@
 }
 
 @keyframes silhouette-float {
+
   0%,
   100% {
     transform: translateY(0);
@@ -721,6 +687,7 @@
 }
 
 @keyframes orb-pulse {
+
   0%,
   100% {
     transform: scale(1);
@@ -734,6 +701,7 @@
 }
 
 @keyframes cta-bg-motion {
+
   0%,
   100% {
     transform: scale(1) translate(0, 0);
@@ -767,6 +735,7 @@
 }
 
 @keyframes ss-float {
+
   0%,
   100% {
     transform: perspective(600px) rotateX(4deg) rotateY(0deg) translateY(0);
@@ -782,11 +751,9 @@
    ============================================================ */
 @layer base {
   body {
-    background: radial-gradient(
-      at 20% 20%,
-      var(--gradient-bg-dark-2),
-      var(--background)
-    );
+    background: radial-gradient(at 20% 20%,
+        var(--gradient-bg-dark-2),
+        var(--background));
     background-size: 400% 400%;
     animation: var(--animate-gradient-bg);
     -webkit-font-smoothing: antialiased;
@@ -825,28 +792,36 @@
     box-shadow:
       var(--shadow-agent-rim),
       var(--shadow-agent-rim-2),
-      /* Top light rim          */ var(--shadow-agent-inner),
+      /* Top light rim          */
+      var(--shadow-agent-inner),
       var(--shadow-agent-inner-2),
-      /* Top inner shadow       */ var(--shadow-agent-reflect),
-      /* Bottom reflective rim  */ var(--shadow-agent-drop);
+      /* Top inner shadow       */
+      var(--shadow-agent-reflect),
+      /* Bottom reflective rim  */
+      var(--shadow-agent-drop);
   }
 
   .shadow-cinematic-glass {
     box-shadow:
       var(--shadow-glass-rim),
+      /* Top light rim          */
       var(--shadow-glass-rim),
-      /* Top light rim          */ var(--shadow-glass-inner),
-      /* Top inner shadow       */ var(--shadow-glass-reflect),
-      /* Bottom reflective rim  */ var(--shadow-glass-drop);
-    /* Soft external depth    */
+      /* Top inner shadow       */
+      var(--shadow-glass-inner),
+      /* Bottom reflective rim  */
+      var(--shadow-glass-reflect),
+      /* Soft external depth    */
+      var(--shadow-glass-drop);
   }
 
   .shadow-cinematic-glass-clear {
     box-shadow:
+      /* Top inner shadow       */
       var(--shadow-glass-sides),
-      /* Top inner shadow       */ var(--shadow-glass-reflect),
-      /* Bottom reflective rim  */ var(--shadow-glass-drop);
-    /* Soft external depth    */
+      /* Bottom reflective rim  */
+      var(--shadow-glass-reflect),
+      /* Soft external depth    */
+      var(--shadow-glass-drop);
   }
 
   .card-cinematic-glass {
@@ -861,11 +836,14 @@
 
     box-shadow:
       var(--shadow-glass-rim),
+      /* Top light rim          */
       var(--shadow-glass-rim),
-      /* Top light rim          */ var(--shadow-glass-inner),
-      /* Top inner shadow       */ var(--shadow-glass-reflect),
-      /* Bottom reflective rim  */ var(--shadow-glass-drop);
-    /* Soft external depth    */
+      /* Top inner shadow       */
+      var(--shadow-glass-inner),
+      /* Bottom reflective rim  */
+      var(--shadow-glass-reflect),
+      /* Soft external depth    */
+      var(--shadow-glass-drop);
 
     /* 4. Smooth transition for hover effects */
     transition:
@@ -915,11 +893,9 @@
     z-index: -1;
     margin: -1px;
     border-radius: inherit;
-    background: linear-gradient(
-      to bottom,
-      var(--border-gradient-start),
-      var(--border-gradient-end)
-    );
+    background: linear-gradient(to bottom,
+        var(--border-gradient-start),
+        var(--border-gradient-end));
   }
 
   .header-padding {

@@ -19,15 +19,15 @@ import {
 describe('HANDLE_IDS', () => {
     describe('scene handles', () => {
         it('exposes frameInput handle id', () => {
-            expect(HANDLE_IDS.scene.frameInput).toBe('scene_frame_input');
+            expect(HANDLE_IDS.scene.frameInput).toBe('target_scene_frame');
         });
 
         it('exposes entityInput handle id', () => {
-            expect(HANDLE_IDS.scene.entityInput).toBe('scene_entity_input');
+            expect(HANDLE_IDS.scene.entityInput).toBe('target_scene');
         });
 
         it('exposes frameOutput handle id', () => {
-            expect(HANDLE_IDS.scene.frameOutput).toBe('scene_frame_output');
+            expect(HANDLE_IDS.scene.frameOutput).toBe('source_scene_frame');
         });
 
         it('has exactly 3 scene handle keys', () => {
@@ -37,37 +37,37 @@ describe('HANDLE_IDS', () => {
 
     describe('character handles', () => {
         it('exposes source handle id', () => {
-            expect(HANDLE_IDS.character.source).toBe('char_source');
+            expect(HANDLE_IDS.character.source).toBe('source_character');
         });
     });
 
     describe('location handles', () => {
         it('exposes source handle id', () => {
-            expect(HANDLE_IDS.location.source).toBe('loc_source');
+            expect(HANDLE_IDS.location.source).toBe('source_location');
         });
     });
 
     describe('audio handles', () => {
         it('exposes source handle id', () => {
-            expect(HANDLE_IDS.audio.source).toBe('audio_source');
+            expect(HANDLE_IDS.audio.source).toBe('source_audio');
         });
     });
 
     describe('image handles', () => {
         it('exposes source handle id', () => {
-            expect(HANDLE_IDS.image.source).toBe('img_source');
+            expect(HANDLE_IDS.image.source).toBe('source_image');
         });
 
         it('exposes target handle id', () => {
-            expect(HANDLE_IDS.image.target).toBe('img_target');
+            expect(HANDLE_IDS.image.target).toBe('target_image');
         });
     });
 
     describe('composite handles', () => {
-        it('exposes in1', () => expect(HANDLE_IDS.composite.in1).toBe('composite_in_1'));
-        it('exposes in2', () => expect(HANDLE_IDS.composite.in2).toBe('composite_in_2'));
-        it('exposes in3', () => expect(HANDLE_IDS.composite.in3).toBe('composite_in_3'));
-        it('exposes out', () => expect(HANDLE_IDS.composite.source).toBe('composite_source'));
+        it('exposes in1', () => expect(HANDLE_IDS.composite.in1).toBe('target_composite_in_1'));
+        it('exposes in2', () => expect(HANDLE_IDS.composite.in2).toBe('target_composite_in_2'));
+        it('exposes in3', () => expect(HANDLE_IDS.composite.in3).toBe('target_composite_in_3'));
+        it('exposes out', () => expect(HANDLE_IDS.composite.source).toBe('source_composite'));
     });
 });
 

@@ -102,32 +102,26 @@ export function nullableTimestamp(name: string) {
 }
 
 export function nullableJsonb<T = any>(name: string) {
-  // return customType<{
-  //     data: T | undefined;
-  //     driverData: string | null;
-  // }>({
-  //     dataType() {
-  //         return 'jsonb';
-  //     },
-  //     fromDriver(value): T | undefined {
-  //         return value === null ? undefined : JSON.parse(JSON.stringify(value));
-  //     },
-  //     toDriver(value): string | null {
-  //         return value === undefined ? null : JSON.stringify(value);
-  //     },
-  // })(name);
   return customType<{
     data: T | undefined;
-    driverData: T | null;
+    driverData: string | null; // Changed from T | null
   }>({
     dataType() {
       return "jsonb";
     },
-    fromDriver(value): T | undefined {
-      return value === null ? undefined : JSON.parse(JSON.stringify(value));
+    fromDriver(value: string | null): T | undefined {
+      if (value === null) return undefined;
+      // Handle cases where the driver might return an object or a string
+      try {
+        return typeof value === "string" ? JSON.parse(value) : (value as T);
+      } catch (e) {
+        return value as unknown as T;
+      }
     },
-    toDriver(value): T | null {
-      return value === undefined ? null : value;
+    toDriver(value: T | undefined): string | null {
+      if (value === undefined) return null;
+      // CRITICAL: Explicitly stringify to prevent [object Object] or malformed data
+      return JSON.stringify(value);
     },
   })(name);
 }

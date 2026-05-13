@@ -55,7 +55,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
     undefined,
   );
   const [canvasMode, setCanvasMode] = useState<"v2" | "classic">("v2");
-  const [mode, setMode] = useState<"resume" | "create">("resume");
+  const [mode, setMode] = useState<"resume" | "create">("create");
   const [title, setTitle] = useState("");
   const [initialPrompt, setInitialPrompt] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -170,7 +170,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
         if (!open && onClose) onClose();
       }}
     >
-      <DialogContent className="card-cinematic-glass space-y-4 sm:max-w-[500px] px-8 flex flex-col gap-0 overflow-hidden">
+      <DialogContent className="card-cinematic-glass space-y-4 sm:max-w-[500px] h-[55vh] px-8 flex flex-col gap-0 overflow-hidden">
         <DialogHeader className="p-4  flex flex-row items-center justify-between gap-4 shrink-0">
           <DialogTitle className="sr-only">
             Resume a Project or start a new project.
@@ -188,26 +188,26 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
             className="w-full flex flex-col"
           >
             <div className="px-4 pt-3 shrink-0">
-              <TabsList className="w-full grid grid-cols-2 gap-5">
-                <TabsTrigger asChild value="resume" data-testid="tab-resume">
-                  <Button variant="outline">
-                    <FolderOpen className="w-4 h-4 mr-1.5" />
-                    Your Projects
-                  </Button>
-                </TabsTrigger>
+              <TabsList className="gap-3 p-0 items-center">
                 <TabsTrigger asChild value="create" data-testid="tab-create">
-                  <Button variant="outline" className="">
+                  <Button variant="ghost" className="w-fit">
                     <Plus className="w-4 h-4 mr-1.5" />
                     New
+                  </Button>
+                </TabsTrigger>
+                <TabsTrigger asChild value="resume" data-testid="tab-resume" className="w-fit">
+                  <Button variant="outline" className="w-fit ">
+                    <FolderOpen className="w-4 h-4 mr-1.5" />
+                    Your Projects
                   </Button>
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            <TabsContent value="resume" className="flex-1 p-4 mt-0 space-y-4">
+            <TabsContent value="resume" className=" flex-1 p-4 mt-0 space-y-4">
               <div className="grid gap-2">
                 <Label className=" font-medium hidden">Select Project</Label>
-                <Select onValueChange={handleSelect} value={localSelectedProject}>
+                <Select onValueChange={handleSelect} defaultValue={projects[0]?.id} value={localSelectedProject}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a project" />
                   </SelectTrigger>
@@ -261,26 +261,26 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
 
             <TabsContent value="create" className="flex-1 p-4 mt-0 space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="title" className=" font-medium">
-                  Title (optional)
+                <Label htmlFor="title" className="font-mono">
+                  Title
                 </Label>
                 <Input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder={`"This Is Your Moment"`}
+                  placeholder={`This Is My Story`}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="prompt" className=" font-medium">
-                  Describe Your Video Project
+                <Label htmlFor="prompt" className=" font-mono">
+                  Describe Your Project
                 </Label>
                 <Textarea
                   id="prompt"
                   value={initialPrompt}
                   onChange={(e) => setInitialPrompt(e.target.value)}
-                  placeholder={`"A music video for a new song"`}
+                  placeholder={`A music video for a new song...`}
                   className="h-24"
                 />
               </div>
@@ -327,7 +327,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Create & Start Project
+                    Create Project
                   </>
                 )}
               </Button>

@@ -8,7 +8,8 @@ import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { CharacterAttributes } from "#shared/types/character.types.js";
 import { CharacterBase } from "#shared/types/workflow.types.js";
 import { UploadResult } from "#shared/types/base.types.js";
-import { GenerationRules } from "#shared/types/entity.types.js";
+
+// INPUT
 
 const CharacterBasePartialWithIdAndImages = CharacterBase.partial().extend({
   id: z.uuid(),
@@ -18,15 +19,16 @@ const CharacterBasePartialWithIdAndImages = CharacterBase.partial().extend({
 const GenerateCharactersInput = z.object({
   characters: z.array(CharacterBasePartialWithIdAndImages),
 });
-
 export type GenerateCharactersInput = z.input<typeof GenerateCharactersInput>;
 
 type CharacterGenerateItem = z.input<typeof CharacterBasePartialWithIdAndImages>;
 
+// OUTPUT
+
 export type GenerateCharactersResultSuccess = {
   success: true;
   id: string;
-  output: CharacterAttributes;
+  attributes: CharacterAttributes;
   metadata?: { model: string; prompt: string };
 };
 
@@ -36,13 +38,13 @@ export type GenerateCharactersResult = GenerateCharactersResultSuccess | { succe
 // SERIALISER — used by _call (LangChain string interface only)
 // ============================================================================
 
-type ToolResultItem = { success: true; character: CharacterAttributes } | { success: false; error: string };
+type ToolResultItem = { success: true; attributes: CharacterAttributes } | { success: false; error: string };
 
-function serialiseResults(raw: { success: boolean; data?: CharacterAttributes; error?: Error }[]): string {
+function serialiseResults(
+  raw: ({ success: true; attributes: CharacterAttributes } | { success: false; error: Error })[],
+): string {
   const items: ToolResultItem[] = raw.map((r) =>
-    r.success
-      ? { success: true, character: r.data as CharacterAttributes }
-      : { success: false, error: r.error?.message ?? "unknown" },
+    r.success ? { success: true, attributes: r.attributes } : { success: false, error: r.error?.message ?? "unknown" },
   );
 
   const succeeded = items.filter((i) => i.success).length;
@@ -65,21 +67,22 @@ async function run(
   const rawResults = await generateEntityAttributes(
     {
       schema: CharacterAttributes,
-      entities: inputs.map((input) => ({
-        data: input,
+      entities: inputs.map((entity) => ({
+        entity,
         entityType: "character",
-        images: input.images,
+        images: entity.images,
       })),
       entityDescription: "character profile",
     },
     context,
   );
 
-  const attributeResults: GenerateCharactersResult[] = rawResults.map((result) =>
-    result.success
-      ? { success: true, id: result.id, output: result.data }
-      : { success: false, id: result.id, error: result.error },
-  );
+  const attributeResults: GenerateCharactersResult[] = rawResults.map(({ entity, id, success, error }) => {
+    if (success) {
+      return { success: true, id, attributes: entity };
+    }
+    return { success: false, id, error };
+  });
 
   // All subsequent steps operate only on items that succeeded here.
   const successes = attributeResults.filter((r): r is GenerateCharactersResultSuccess => r.success);
@@ -125,12 +128,7 @@ class GenerateCharacterAttributesTool extends StructuredTool<typeof GenerateChar
 
     const generated = await run(characters, this.context);
 
-    // serialiseResults expects the legacy shape — adapt from GenerateCharactersResult[]
-    const adapted = generated.map((r) =>
-      r.success ? { success: true, data: r.output } : { success: false, error: r.error },
-    );
-
-    const output = serialiseResults(adapted);
+    const output = serialiseResults(generated);
     console.log(`${traceId}: GenerateCharacterAttributesTool complete.`);
     return output;
   }

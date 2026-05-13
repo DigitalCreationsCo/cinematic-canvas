@@ -32,8 +32,8 @@ export type ToolContext<T extends TextModelController | VideoModelController> = 
   traceId: string;
   projectId: string;
   worldId?: string;
-  // teamId: string;
-  // userId: string;
+  teamId: string;
+  userId: string;
   options?: AgentOptions;
   /**
    * Optional callbacks injected by the owning agent.
@@ -73,4 +73,21 @@ export function nameToReferenceId(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+export function serialiseResults(results: ({ success: true, id: string, entity: any } | { success: false, id: string, error: Error })[]): string {
+  const items = results.map((r) =>
+    r.success
+      ? { success: true, id: r.id, entity: r.entity }
+      : { success: false, id: r.id, error: (r.error as Error)?.message ?? "unknown" },
+  );
+
+  return JSON.stringify({
+    summary: {
+      total: items.length,
+      succeeded: items.filter((i) => i.success).length,
+      failed: items.filter((i) => !i.success).length,
+    },
+    results: items,
+  });
 }

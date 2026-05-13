@@ -21,10 +21,12 @@ export type InsertCharactersInput = z.input<typeof InsertCharactersInput>;
 // Serialised output shape — what the LLM reads back from the tool result
 // ---------------------------------------------------------------------------
 
-type ToolResultItem = { success: true; character: CharacterWithAssets } | { success: false; error: string };
+export type InsertToolResultItem =
+  | { success: true; character: CharacterWithAssets }
+  | { success: false; error: string };
 
 function serialiseResults(raw: Awaited<ReturnType<typeof run>>): string {
-  const items: ToolResultItem[] = raw.map((r) =>
+  const items: InsertToolResultItem[] = raw.map((r) =>
     r.success
       ? {
           success: true,
@@ -76,7 +78,7 @@ async function run(charactersData: InsertCharactersInput["characters"], context:
       }),
     );
   } catch (e) {
-    return charactersData.map((c) => ({ success: false as const, character: c, error: e as Error }));
+    return charactersData.map((c) => ({ success: false as const, error: e as Error }));
   }
 }
 

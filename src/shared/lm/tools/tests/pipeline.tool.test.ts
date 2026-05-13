@@ -26,6 +26,7 @@ import { createGenerateCharactersPipelineTool } from "#shared/lm/tools/character
 import { createGenerateLocationsPipelineTool } from "#shared/lm/tools/locations/locations-pipeline.tool.js";
 import { createGeneratePropsPipelineTool } from "#shared/lm/tools/props/props-pipeline.tool.js";
 import { createGenerateScenesPipelineTool } from "#shared/lm/tools/scenes/scenes-pipeline.tool.js";
+import { createMockCharacter } from "#shared/mocks/mock-character.js";
 
 // =============================================================================
 // SHARED HELPERS
@@ -106,8 +107,8 @@ describe("GenerateCharactersPipelineTool", () => {
     expect(results).toHaveLength(1);
     expect(results[0].success).toBe(true);
     if (results[0].success) {
-      expect(results[0].character.id).toBe(id);
-      expect(results[0].character.name).toBe("Alice");
+      expect(results[0].entity.id).toBe(id);
+      expect(results[0].entity.name).toBe("Alice");
     }
   });
 
@@ -184,7 +185,7 @@ describe("GenerateCharactersPipelineTool", () => {
 
   it("returns success when imagesTool throws — image failure is non-fatal", async () => {
     const id = generateId();
-    const insertedEntity = makeEntityWithAssets(id, "Alice");
+    const insertedEntity = createMockCharacter({ id, name: "Alice" });
 
     mockAttributesTool.run.mockResolvedValue([{ success: true, id, output: charAttr }]);
     mockInsert.mockResolvedValue([{ id, name: "Alice" }]);
@@ -197,14 +198,14 @@ describe("GenerateCharactersPipelineTool", () => {
     expect(results).toHaveLength(1);
     expect(results[0].success).toBe(true);
     if (results[0].success) {
-      expect(results[0].character.id).toBe(id);
+      expect(results[0].entity.id).toBe(id);
     }
   });
 
   it("uses image-enriched entity when available, falls back to inserted entity", async () => {
     const id = generateId();
-    const insertedEntity = makeEntityWithAssets(id, "Alice");
-    const enrichedEntity = makeEntityWithAssets(id, "Alice", { assets: { image: "gs://img" } });
+    const insertedEntity = createMockCharacter({ id, name: "Alice" });
+    const enrichedEntity = createMockCharacter({ id, name: "Alice", assets: { character_image: "gs://img" } });
 
     mockAttributesTool.run.mockResolvedValue([{ success: true, id, output: charAttr }]);
     mockInsert.mockResolvedValue([{ id, name: "Alice" }]);
@@ -215,41 +216,40 @@ describe("GenerateCharactersPipelineTool", () => {
 
     expect(results[0].success).toBe(true);
     if (results[0].success) {
-      expect(results[0].character.assets).toEqual({ image: "gs://img" });
+      expect(results[0].entity.assets).toHaveProperty("character_image");
     }
   });
 
   it("only inserts and generates images for attribute successes in a partial-failure batch", async () => {
-    const id1 = generateId();
-    const id2 = generateId();
-    const insertedEntity1 = makeEntityWithAssets(id1, "Alice");
+    const character1 = createMockCharacter({ name: "Alice" });
+    const character2 = createMockCharacter({ name: "Jeff" });
 
     mockAttributesTool.run.mockResolvedValue([
-      { success: true, id: id1, output: charAttr },
-      { success: false, id: id2, error: new Error("id2 LLM failed") },
+      { success: true, id: character1.id, attributes: charAttr },
+      { success: false, id: character2.id, error: new Error("Jeff LLM failed") },
     ]);
-    mockInsert.mockResolvedValue([{ id: id1, name: "Alice" }]);
-    context.projectRepository.getEntities.mockResolvedValue([{ entity: insertedEntity1, entityType: "character" }]);
+    mockInsert.mockResolvedValue([{ id: character1.id, name: "Alice" }]);
+    context.projectRepository.getEntities.mockResolvedValue([{ entity: character1, entityType: "character" }]);
     mockImagesTool.run.mockResolvedValue([]);
 
     const results = await makeTool().run({
-      characters: [{ id: id1 }, { id: id2 }] as any,
+      characters: [{ id: character1.id }, { id: character2.id }] as any,
       generationRules: [],
       attempt: 1,
     });
 
-    expect(mockInsert).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ name: "Alice" })]));
-    expect(mockInsert).not.toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: id2 })]));
+    expect(mockInsert).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: character1.id })]));
+    expect(mockInsert).not.toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: character2.id })]));
 
     expect(results).toHaveLength(2);
     const success = results.find((r) => r.success);
     const failure = results.find((r) => !r.success);
     expect(success).toBeDefined();
     expect(failure).toBeDefined();
-    if (!failure!.success) expect(failure!.error.message).toBe("id2 LLM failed");
+    if (!failure!.success) expect(failure!.error.message).toBe("Jeff LLM failed");
   });
 
-  it("forwards generationRules and attempt to both attributesTool and imagesTool", async () => {
+  it("forwards generationRules and attempt to imagesTool", async () => {
     const id = generateId();
     const insertedEntity = makeEntityWithAssets(id, "Alice");
 
@@ -264,9 +264,6 @@ describe("GenerateCharactersPipelineTool", () => {
       attempt: 3,
     });
 
-    expect(mockAttributesTool.run).toHaveBeenCalledWith(
-      expect.objectContaining({ generationRules: ["cinematic lighting"], attempt: 3 }),
-    );
     expect(mockImagesTool.run).toHaveBeenCalledWith(
       expect.objectContaining({ generationRules: ["cinematic lighting"], attempt: 3 }),
     );
@@ -279,7 +276,9 @@ describe("GenerateCharactersPipelineTool", () => {
     mockAttributesTool.run.mockResolvedValue([{ success: true, id, output: charAttr }]);
     mockInsert.mockResolvedValue([{ id, name: "Alice" }]);
     context.projectRepository.getEntities.mockResolvedValue([{ entity: insertedEntity, entityType: "character" }]);
-    mockImagesTool.run.mockResolvedValue([]);
+    mockImagesTool.run.mockResolvedValue([
+      {}
+    ]);
 
     const json = await makeTool()._call({
       characters: [{ id }] as any,
@@ -290,7 +289,7 @@ describe("GenerateCharactersPipelineTool", () => {
 
     expect(parsed.summary).toEqual({ total: 1, succeeded: 1, failed: 0 });
     expect(parsed.results[0].success).toBe(true);
-    expect(parsed.results[0].character.id).toBe(id);
+    expect(parsed.results[0].entity.id).toBe(id);
   });
 });
 

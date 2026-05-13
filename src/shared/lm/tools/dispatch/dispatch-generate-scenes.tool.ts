@@ -3,16 +3,18 @@ import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { Dispatcher } from "#shared/services/dispatcher.js";
-import { JobControlPlane } from "#shared/services/job-control-plane.js";
 import { jobPayloadSchemas } from "#shared/types/job.types.js";
 
 interface DispatchGenerateScenesToolDeps {
   context: ToolContext<TextModelController> & {
     dispatcher: Dispatcher;
-    jobControlPlane: JobControlPlane;
+    teamId: string;
+    userId: string;
   };
 }
 
+// sceneFields: CreateSceneWithEntitiesInput,
+//   sceneIds: z.array(IdentityBase.shape.id),
 const DispatchScenesInput = jobPayloadSchemas["CREATE_SCENES_WITH_ENTITIES"];
 type DispatchScenesInput = z.infer<typeof DispatchScenesInput>;
 
@@ -29,7 +31,7 @@ class DispatchGenerateScenesTool extends StructuredTool<typeof DispatchScenesInp
   }
 
   async _call(input: DispatchScenesInput) {
-    const { projectId, worldId } = this.context;
+    const { projectId, worldId, teamId, userId } = this.context;
 
     await this.context.dispatcher.ensureJob({
       workflowId: undefined,

@@ -37,7 +37,7 @@ import { AssetKey } from "#shared/types/assets.types.js";
 import { fileToBase64, resolvePublicUrl } from "#shared/utils/utils.js";
 import { Card } from "#client/components/ui/card.js";
 
-const COLLAPSE_DURATION = "200ms";
+const COLLAPSE_DURATION = "90ms";
 const COLLAPSE_EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
 
 type AssetType = "character" | "location" | "audio" | "style" | "scene";
@@ -91,15 +91,15 @@ function CollapsibleSection({
       <button
         onClick={onToggle}
         className={cn(
-          "w-full cursor-pointer flex items-center gap-2 px-2 py-2 transition-colors group",
+          "w-full cursor-pointer flex items-center gap-2 pl-3 pr-2 py-2 transition-colors group duration-0",
           "hover:bg-accent/50 text-left",
         )}
       >
-        <ChevronRight
+        {/*<ChevronRight
           size={14}
           className="shrink-0 text-muted-foreground transition-transform duration-150"
           style={{ transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}
-        />
+        />*/}
         <Icon
           size={14}
           className={cn(

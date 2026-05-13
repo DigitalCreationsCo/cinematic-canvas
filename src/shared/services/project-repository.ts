@@ -4,7 +4,6 @@ import { eq, and, inArray, sql, isNull, or } from "drizzle-orm";
 import {
   Scene,
   Character,
-  Location,
   SceneWithAssets,
   CharacterWithAssets,
   LocationWithAssets,
@@ -953,7 +952,7 @@ export class ProjectRepository {
     });
   }
 
-  async getScenesByIds(ids: string[]): Promise<Scene[]> {
+  async getScenesByIds(ids: string[]): Promise<SceneWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
     if (ids.length === 0) return [];
 
@@ -976,8 +975,7 @@ export class ProjectRepository {
         }),
       );
 
-      const scenes: Scene[] = domainScenesWithAssets.map((s) => Scene.parse(hydrateEntity(s, s.assets)));
-      return scenes;
+      return domainScenesWithAssets;
     });
   }
 
@@ -1206,7 +1204,7 @@ export class ProjectRepository {
     });
   }
 
-  async getCharactersByIds(ids: string[]): Promise<Character[]> {
+  async getCharactersByIds(ids: string[]): Promise<CharacterWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
     if (ids.length === 0) return [];
 
@@ -1214,10 +1212,7 @@ export class ProjectRepository {
 
     const characterAssets = await this.fetchCharacterAssetsFull(ids, db);
 
-    return records.map((c, i) => {
-      const hydrated = hydrateEntity(c, characterAssets[i] || {});
-      return Character.parse(hydrated);
-    });
+    return records.map((c, i) => CharacterWithAssets.parse({ ...c, assets: characterAssets[i] || {} }));
   }
 
   // ==========================================================================
@@ -1308,7 +1303,7 @@ export class ProjectRepository {
     });
   }
 
-  async getPropsByIds(ids: string[]): Promise<Prop[]> {
+  async getPropsByIds(ids: string[]): Promise<PropWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
     if (ids.length === 0) return [];
 
@@ -1316,10 +1311,7 @@ export class ProjectRepository {
 
     const propAssets = await this.fetchPropAssetsFull(ids, db);
 
-    return records.map((p, i) => {
-      const hydrated = hydrateEntity(p, propAssets[i] || {});
-      return Prop.parse(hydrated) as unknown as Prop;
-    });
+    return records.map((p, i) => PropWithAssets.parse({ ...p, assets: propAssets[i] || {} }));
   }
 
   // ==========================================================================
@@ -1418,7 +1410,7 @@ export class ProjectRepository {
     return records.map((l, i) => LocationWithAssets.parse({ ...l, assets: locationAssets[i] || {} }));
   }
 
-  async getLocationsByIds(ids: string[]): Promise<Location[]> {
+  async getLocationsByIds(ids: string[]): Promise<LocationWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
     if (ids.length === 0) return [];
 
@@ -1426,13 +1418,10 @@ export class ProjectRepository {
 
     const locationAssets = await this.fetchLocationAssetsFull(ids, db);
 
-    return records.map((l, i) => {
-      const hydrated = hydrateEntity(l, locationAssets[i] || {});
-      return Location.parse(hydrated);
-    });
+    return records.map((l, i) => LocationWithAssets.parse({ ...l, assets: locationAssets[i] || {} }));
   }
 
-  async getLocationsByReferenceIds(referenceIds: string[]): Promise<Location[]> {
+  async getLocationsByReferenceIds(referenceIds: string[]): Promise<LocationWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
     if (referenceIds.length === 0) return [];
 
@@ -1441,10 +1430,7 @@ export class ProjectRepository {
     const locationIds = records.map((l) => l.id);
     const locationAssets = await this.fetchLocationAssetsFull(locationIds, db);
 
-    return records.map((l, i) => {
-      const hydrated = hydrateEntity(l, locationAssets[i] || {});
-      return Location.parse(hydrated);
-    });
+    return records.map((l, i) => LocationWithAssets.parse({ ...l, assets: locationAssets[i] || {} }));
   }
 
   // ==========================================================================

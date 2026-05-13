@@ -441,11 +441,13 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
     conversationId,
     projectId,
     userId,
+    teamId,
     worldId,
   }: {
     conversationId: string;
     projectId: string;
     userId: string;
+    teamId: string;
     worldId: string | undefined;
   }): Promise<ChatAgent> => {
     let agent = chatAgents.get(conversationId);
@@ -467,8 +469,11 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
         conversationId,
         projectId,
         userId,
+        teamId,
         storyboard,
         toolContext: {
+          userId,
+          teamId,
           provider: textController,
           safetyRetries: 1,
           storageManager: storageManagerGcp,
@@ -524,6 +529,7 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
         conversationId,
         projectId: conversation.projectId,
         userId,
+        teamId: chatEvent.teamId,
         worldId: chatEvent.worldId,
       });
 

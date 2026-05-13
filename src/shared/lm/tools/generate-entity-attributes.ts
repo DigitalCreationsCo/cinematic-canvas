@@ -1,16 +1,17 @@
 import { filterDefined, ToolContext } from "#shared/lm/tools/tools.utils.js";
-import { GenerateBatchContentParameters, TextModelController, UserMessage } from "../text-model-controller.js";
-import { getModelCompatibleSchema } from "../../utils/utils.js";
-import { getExecutionMode } from "../../config.js";
+import { BaseMessage } from "@langchain/core/messages";
+
+import { GenerateBatchContentParameters, TextModelController, UserMessage } from "#shared/lm/text-model-controller.js";
+import { getModelCompatibleSchema } from "#shared/utils/utils.js";
+import { getExecutionMode } from "#shared/config.js";
 import { z } from "zod";
 import { EntityCreatableType } from "#shared/types/entity.types.js";
-import { BaseMessage } from "@langchain/core/messages";
 
 export type GenerateEntityAttributesSuccessResultEntityEnvelope<T, P> = {
   success: true;
   id: string;
   // Intersection ensures TS knows 'data' has schema fields AND original fields
-  data: T & P;
+  entity: T & P;
   entityType: EntityCreatableType;
   error?: never;
 };
@@ -18,12 +19,12 @@ export type GenerateEntityAttributesSuccessResultEntityEnvelope<T, P> = {
 export type GenerateEntityAttributesResultEntityEnvelope<T, P> =
   | GenerateEntityAttributesSuccessResultEntityEnvelope<T, P>
   | {
-      success: false;
-      id: string;
-      data: P; // Original partial data
-      entityType: EntityCreatableType;
-      error: Error;
-    };
+    success: false;
+    id: string;
+    entity: P; // Original partial data
+    entityType: EntityCreatableType;
+    error: Error;
+  };
 
 /** Build the prompt parts (text + optional image attachments) for one entity. */
 function buildEntityPromptParts<T>(
@@ -63,7 +64,7 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
     entityDescription,
   }: {
     schema: z.ZodType<T>;
-    entities: { data: P; entityType: EntityCreatableType; images?: any[] }[];
+    entities: { entity: P; entityType: EntityCreatableType; images?: any[] }[];
     entityDescription: string;
   },
   context: ToolContext<TextModelController>,
@@ -90,23 +91,23 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
 
     // 2. FIX: Type the map to use 'P' directly instead of Partial<T>.
     // This preserves the full property set passed in by the caller.
-    const contextMap = new Map<string, { data: P; entityType: EntityCreatableType; messages: BaseMessage[] }>();
+    const contextMap = new Map<string, { entity: P; entityType: EntityCreatableType; messages: BaseMessage[] }>();
     const batchRequests: GenerateBatchContentParameters["requests"] = [];
 
-    for (const entity of entities) {
-      if (!contextMap.has(entity.data.id)) {
-        const prompt = buildEntityPromptParts(entity.data, entityDescription, entity.images);
-        contextMap.set(entity.data.id, {
-          data: entity.data,
-          entityType: entity.entityType,
+    for (const { entity, entityType } of entities) {
+      if (!contextMap.has(entity.id)) {
+        const prompt = buildEntityPromptParts(entity, entityDescription, entity.images);
+        contextMap.set(entity.id, {
+          entity,
+          entityType,
           messages: [new UserMessage({ content: prompt })],
         });
       }
 
-      const ctx = contextMap.get(entity.data.id)!;
+      const ctx = contextMap.get(entity.id)!;
       batchRequests.push({
         messages: ctx.messages,
-        metadata: { custom_id: entity.data.id, version: 1, assetKey: "character_image" },
+        metadata: { custom_id: entity.id, version: 1, assetKey: "character_image" },
         config: {
           abortSignal: context.options?.signal,
           candidateCount: 1,
@@ -117,7 +118,7 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
     if (batchRequests.length === 0) return [];
 
     try {
-      const entityIndexMap = new Map(entities.map((e, i) => [e.data.id, i]));
+      const entityIndexMap = new Map(entities.map(({ entity }, i) => [entity.id, i]));
       const results = await context.provider.generateBatchContent({
         projectId,
         model: context.provider.textModel,
@@ -133,7 +134,7 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
           throw new Error(`Context missing for ${res.customId}`);
         }
 
-        const { data, entityType } = ctx;
+        const { entity, entityType } = ctx;
 
         if (res.status !== "SUCCESS" || !res.text) {
           console.error(`${traceId}: Failed ${entityDescription} generation for ${res.customId}`, res.error);
@@ -141,31 +142,30 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
           return {
             success: false,
             id: res.customId,
-            data,
+            entity,
             entityType,
             error: res.error ?? new Error("Empty batch response"),
           };
         }
 
         try {
-          const merged = parseAndMerge(res.text, data);
+          const merged = parseAndMerge(res.text, entity);
           console.log(`${traceId}: Successfully merged ${entityDescription} for ${res.customId}`);
-          // 4. FIX: 'merged' is T & P, matching the success union.
-          return { success: true, id: res.customId, data: merged, entityType };
+          return { success: true, id: res.customId, entity: merged, entityType };
         } catch (parseError) {
           console.error(`${traceId}: Parse/Schema failure for ${res.customId}:`, parseError);
-          return { success: false, id: res.customId, data, entityType, error: parseError as Error };
+          return { success: false, id: res.customId, entity, entityType, error: parseError as Error };
         }
       });
 
       return unordered.sort((a, b) => (entityIndexMap.get(a.id) ?? 0) - (entityIndexMap.get(b.id) ?? 0));
     } catch (error) {
       console.error(`${traceId}: Fatal batch pipeline failure:`, error);
-      return entities.map((entity) => ({
+      return entities.map(({ entity, entityType }) => ({
         success: false,
-        id: entity.data.id,
-        data: entity.data,
-        entityType: entity.entityType,
+        id: entity.id,
+        entity,
+        entityType,
         error: error as Error,
       }));
     }
@@ -177,9 +177,9 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
 
     return await Promise.all(
       entities.map(
-        async ({ data, entityType, images }): Promise<GenerateEntityAttributesResultEntityEnvelope<T, P>> => {
+        async ({ entity, entityType, images }): Promise<GenerateEntityAttributesResultEntityEnvelope<T, P>> => {
           try {
-            const parts = buildEntityPromptParts(data, entityDescription, images);
+            const parts = buildEntityPromptParts(entity, entityDescription, images);
             const result = await context.provider.generateContent({
               model: context.provider.textModel,
               messages: [new UserMessage({ content: parts })],
@@ -188,11 +188,11 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
 
             if (!result.text) throw new Error("LLM returned empty payload.");
 
-            const merged = parseAndMerge(result.text, data);
-            return { success: true, id: data.id, data: merged, entityType };
+            const merged = parseAndMerge(result.text, entity);
+            return { success: true, id: entity.id, entity: merged, entityType };
           } catch (error) {
-            console.error(`${traceId}: Parallel pipeline failure for ${data.id}:`, error);
-            return { success: false, id: data.id, data, entityType, error: error as Error };
+            console.error(`${traceId}: Parallel pipeline failure for ${entity.id}:`, error);
+            return { success: false, id: entity.id, entity, entityType, error: error as Error };
           }
         },
       ),
@@ -205,9 +205,9 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
 
     const results: GenerateEntityAttributesResultEntityEnvelope<T, P>[] = [];
 
-    for (const { data, entityType, images } of entities) {
+    for (const { entity, entityType, images } of entities) {
       try {
-        const parts = buildEntityPromptParts(data, entityDescription, images);
+        const parts = buildEntityPromptParts(entity, entityDescription, images);
         const result = await context.provider.generateContent({
           model: context.provider.textModel,
           messages: [new UserMessage({ content: parts })],
@@ -216,11 +216,11 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
 
         if (!result.text) throw new Error("LLM returned empty payload.");
 
-        const merged = parseAndMerge(result.text, data);
-        results.push({ success: true, id: data.id, data: merged, entityType });
+        const merged = parseAndMerge(result.text, entity);
+        results.push({ success: true, id: entity.id, entity: merged, entityType });
       } catch (error) {
-        console.error(`${traceId}: Sequential pipeline failure for ${data.id}:`, error);
-        results.push({ success: false, id: data.id, data, entityType, error: error as Error });
+        console.error(`${traceId}: Sequential pipeline failure for ${entity.id}:`, error);
+        results.push({ success: false, id: entity.id, entity, entityType, error: error as Error });
       }
     }
     return results;

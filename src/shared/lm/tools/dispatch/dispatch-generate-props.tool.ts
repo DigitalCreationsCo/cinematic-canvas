@@ -3,19 +3,19 @@ import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { Dispatcher } from "#shared/services/dispatcher.js";
-import { JobControlPlane } from "#shared/services/job-control-plane.js";
-import { CharacterCondensed } from "#shared/types/storyboard.types.js";
+import { PropCondensed } from "#shared/types/storyboard.types.js";
 import { generateId } from "#shared/utils/id.js";
 
 interface DispatchGeneratePropsToolDeps {
   context: ToolContext<TextModelController> & {
     dispatcher: Dispatcher;
-    jobControlPlane: JobControlPlane;
+    teamId: string;
+    userId: string;
   };
 }
 
 const DispatchPropsInput = z.object({
-  props: z.array(CharacterCondensed),
+  props: z.array(PropCondensed.omit({ id: true })),
 });
 type DispatchPropsInput = z.infer<typeof DispatchPropsInput>;
 
@@ -32,7 +32,7 @@ class DispatchGeneratePropsTool extends StructuredTool<typeof DispatchPropsInput
   }
 
   async _call(input: DispatchPropsInput) {
-    const { projectId, worldId } = this.context;
+    const { projectId, worldId, teamId, userId } = this.context;
 
     const entities = input.props.map((prop) => {
       const id = generateId();

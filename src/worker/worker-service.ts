@@ -130,7 +130,7 @@ export class WorkerService {
     private lockManager: DistributedLockManager,
     private publishJobEvent: (event: JobEvent) => Promise<string>,
     private publishPipelineEvent: (event: PipelineEvent) => Promise<string>,
-  ) {}
+  ) { }
 
   private async publishStateUpdate({ project, userId }: { project: Project; userId: string }) {
     this.publishPipelineEvent({
@@ -1813,6 +1813,9 @@ export class WorkerService {
                 storageManager: this.getAgents(job.projectId).storageManager,
                 console,
                 traceId,
+                userId: job.userId,
+                teamId: job.teamId,
+                worldId: job.worldId,
                 projectId: job.projectId,
                 projectRepository: this.projectRepository,
                 incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
@@ -1829,8 +1832,8 @@ export class WorkerService {
                 locations: locationsAttributes,
                 props: propsAttributes,
               } = needsEntityTextParsing(combinedPlainText)
-                ? await createParseEntitiesTool({ context: toolContext }).run({ input: combinedPlainText })
-                : { characters: [], locations: [], props: [] };
+                  ? await createParseEntitiesTool({ context: toolContext }).run({ input: combinedPlainText })
+                  : { characters: [], locations: [], props: [] };
 
               // ── Filter & Normalize ───────────────────────────────────────────
               const validCharacters: CharacterAttributes[] = (charactersAttributes ?? []).filter(
@@ -2043,21 +2046,21 @@ export class WorkerService {
                         images: [
                           ...(startFrameGcsUri && startFrameMimeType
                             ? [
-                                {
-                                  gcsUri: startFrameGcsUri,
-                                  publicUri: startFrameGcsUri,
-                                  mimeType: startFrameMimeType,
-                                },
-                              ]
+                              {
+                                gcsUri: startFrameGcsUri,
+                                publicUri: startFrameGcsUri,
+                                mimeType: startFrameMimeType,
+                              },
+                            ]
                             : []),
                           ...(endFrameGcsUri && endFrameMimeType
                             ? [
-                                {
-                                  gcsUri: endFrameGcsUri,
-                                  publicUri: endFrameGcsUri,
-                                  mimeType: endFrameMimeType,
-                                },
-                              ]
+                              {
+                                gcsUri: endFrameGcsUri,
+                                publicUri: endFrameGcsUri,
+                                mimeType: endFrameMimeType,
+                              },
+                            ]
                             : []),
                         ],
                       },
@@ -2144,21 +2147,21 @@ export class WorkerService {
               // Save user-provided scene frames if present in the job payload
               await Promise.all([
                 startFrameGcsUri &&
-                  saveAssets(
-                    { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
-                    ["scene_start_frame"],
-                    "image",
-                    [startFrameGcsUri],
-                    [{ model: "user-upload" }],
-                  ),
+                saveAssets(
+                  { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
+                  ["scene_start_frame"],
+                  "image",
+                  [startFrameGcsUri],
+                  [{ model: "user-upload" }],
+                ),
                 endFrameGcsUri &&
-                  saveAssets(
-                    { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
-                    ["scene_end_frame"],
-                    "image",
-                    [endFrameGcsUri],
-                    [{ model: "user-upload" }],
-                  ),
+                saveAssets(
+                  { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
+                  ["scene_end_frame"],
+                  "image",
+                  [endFrameGcsUri],
+                  [{ model: "user-upload" }],
+                ),
               ]);
 
               // refetch with assets
@@ -2179,12 +2182,12 @@ export class WorkerService {
                   })),
                   ...(sceneLocation
                     ? [
-                        {
-                          entityId: sceneLocation.id,
-                          entityType: "location" as const,
-                          entity: sceneLocation,
-                        },
-                      ]
+                      {
+                        entityId: sceneLocation.id,
+                        entityType: "location" as const,
+                        entity: sceneLocation,
+                      },
+                    ]
                     : []),
                   {
                     entityId: scene.id,
@@ -2228,6 +2231,9 @@ export class WorkerService {
                 storageManager: this.getAgents(job.projectId).storageManager,
                 console,
                 traceId,
+                userId: job.userId,
+                teamId: job.teamId,
+                worldId: job.worldId,
                 projectId: job.projectId,
                 projectRepository: this.projectRepository,
                 tagRegistry: tagRegistryService,
@@ -2238,7 +2244,7 @@ export class WorkerService {
               }).run({ characters: charactersData });
               const characterAttributesSuccess = characterAttributesResults
                 .filter((c) => c.success)
-                .map((c) => ({ ...c.output, projectId: job.projectId }));
+                .map((c) => ({ ...c.attributes, projectId: job.projectId }));
               const insertedCharacters = await createInsertCharactersTool({
                 context: toolContext,
               }).run({ characters: characterAttributesSuccess });
@@ -2305,6 +2311,9 @@ export class WorkerService {
                 storageManager: this.getAgents(job.projectId).storageManager,
                 console,
                 traceId,
+                userId: job.userId,
+                teamId: job.teamId,
+                worldId: job.worldId,
                 projectId: job.projectId,
                 projectRepository: this.projectRepository,
                 tagRegistry: tagRegistryService,
@@ -2380,15 +2389,20 @@ export class WorkerService {
                 projectRepository: ProjectRepository;
                 incrementAttempt: IncrementAttemptHook;
                 tagRegistry: TagRegistryService;
+                saveAssets: SaveAssetsCallback;
               } = {
                 provider: this.textModel,
                 safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
                 storageManager: this.getAgents(job.projectId).storageManager,
                 console,
                 traceId,
+                userId: job.userId,
+                teamId: job.teamId,
+                worldId: job.worldId,
                 projectId: job.projectId,
                 projectRepository: this.projectRepository,
                 incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
+                saveAssets: this.createSaveAssetsCallback(job, startTime),
                 tagRegistry: tagRegistryService,
               };
 
@@ -2432,7 +2446,7 @@ export class WorkerService {
                         .map((r, i) => ({ r, origin: typedEntities[i] }))
                         .map(({ r, origin }) => ({
                           entityType: "character" as const,
-                          data: { ...r.character, id: origin.data.id },
+                          data: { ...r.entity, id: origin.data.id },
                           images: origin.images,
                         }));
                     }

@@ -19,17 +19,17 @@ export type DirectorScene = z.infer<typeof DirectorScene>;
 
 export const ScriptSupervisorScene = z.object({
   continuityNotes: z.array(z.string()).describe("continuity requirements").default([]),
-  characterReferenceIds: z.array(z.string()).default([]).describe("Flattened list of character reference IDs present in scene (not uuid). Example: 'char_hero, char_villain'"),
+  characterReferenceIds: z.array(z.string()).default([]).describe("Flattened list of character reference IDs present in scene (not uuid). Example: 'Hero, North_Villain'"),
   characterIds: z.preprocess(
     (val) => {
-      if (Array.isArray(val) && val.length > 0 && typeof val[ 0 ] === 'object') {
+      if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
         return val.map((item: any) => item.id);
       }
       return val;
     },
     z.array(z.uuid({ version: "v7" }))
   ).describe("Flattened list of character IDs present in scene").default([]),
-  locationReferenceId: z.string().describe("Reference ID where scene takes place (not uuid). Example: 'loc_beach, loc_warehouse'"),
+  locationReferenceId: z.string().describe("Reference ID where scene takes place (not uuid). Example: 'Dune_Beach, Dark_Warehouse'"),
   locationId: z.uuid({ version: "v7" }).describe("Location ID where scene takes place."),
 }).describe("Script Supervisor specifications for scene");
 export type ScriptSupervisorScene = z.infer<typeof ScriptSupervisorScene>;

@@ -11,7 +11,7 @@ import { getAllBestAssets } from "#shared/utils/assets.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { GCPStorageManager } from "#shared/services/storage-manager.js";
 import { AssetVersionManager } from "#shared/services/asset-version-manager.js";
-import { Dispatcher } from "#pipeline/dispatcher.js";
+import { Dispatcher } from "#shared/services/dispatcher.js";
 import { interceptNodeErrorAndDoInterrupt } from "#pipeline/helpers/interrupts.js";
 import { getExecutionMode, ExecutionMode, getMaxParallelJobs, getMaxRetries } from "#shared/config.js";
 import { resolvePublicUrl } from "#shared/utils/utils.js";
@@ -90,7 +90,7 @@ export class CinematicVideoWorkflow {
     this.graph = this.buildGraph();
   }
 
-  public publishEvent: (event: PipelineEvent) => Promise<void> = async () => {};
+  public publishEvent: (event: PipelineEvent) => Promise<void> = async () => { };
 
   private async publishStateUpdate({
     project,
@@ -802,11 +802,11 @@ export class CinematicVideoWorkflow {
             );
             const nextScenePath = nextSceneBest
               ? await this.storageManager.getObjectPath({
-                  type: "scene_video",
-                  projectId: this.projectId,
-                  sceneId: nextScene.id,
-                  version: nextSceneBest.version,
-                })
+                type: "scene_video",
+                projectId: this.projectId,
+                sceneId: nextScene.id,
+                version: nextSceneBest.version,
+              })
               : "";
             const nextSceneVideoExists = await this.storageManager.fileExists(nextScenePath);
             if (!nextSceneVideoExists) {

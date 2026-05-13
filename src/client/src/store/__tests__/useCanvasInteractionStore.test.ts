@@ -13,7 +13,7 @@ function makePendingChange(overrides: Partial<PendingChange> = {}): PendingChang
         changeType: 'add',
         sourceId: 'char-1',
         targetId: 'scene-1',
-        sourceHandle: 'char_source',
+        sourceHandle: 'source_character',
         targetHandle: 'entities',
         edgeType: 'character_in_scene',
         timestamp: Date.now(),

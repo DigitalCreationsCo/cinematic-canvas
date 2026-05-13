@@ -41,8 +41,9 @@ export const createAssistantTools = ({
   context: ToolContext<TextModelController> & {
     projectRepository: ProjectRepository;
     incrementAttempt: IncrementAttemptHook;
-    jobControlPlane: JobControlPlane;
     dispatcher: Dispatcher;
+    userId: string;
+    teamId: string;
   };
 }): StructuredTool[] => {
   return [

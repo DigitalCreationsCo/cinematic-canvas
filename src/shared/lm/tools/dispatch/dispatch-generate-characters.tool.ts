@@ -3,19 +3,19 @@ import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { Dispatcher } from "#shared/services/dispatcher.js";
-import { JobControlPlane } from "#shared/services/job-control-plane.js";
 import { CharacterCondensed } from "#shared/types/storyboard.types.js";
 import { generateId } from "#shared/utils/id.js";
 
 interface DispatchGenerateCharactersToolDeps {
   context: ToolContext<TextModelController> & {
     dispatcher: Dispatcher;
-    jobControlPlane: JobControlPlane;
+    teamId: string;
+    userId: string;
   };
 }
 
 const DispatchCharactersInput = z.object({
-  characters: z.array(CharacterCondensed),
+  characters: z.array(CharacterCondensed.omit({ id: true })),
 });
 type DispatchCharactersInput = z.infer<typeof DispatchCharactersInput>;
 
@@ -32,7 +32,7 @@ class DispatchGenerateCharactersTool extends StructuredTool<typeof DispatchChara
   }
 
   async _call(input: DispatchCharactersInput) {
-    const { projectId, worldId } = this.context;
+    const { projectId, worldId, teamId, userId } = this.context;
 
     const entities = input.characters.map((char) => {
       const id = generateId();
@@ -48,7 +48,7 @@ class DispatchGenerateCharactersTool extends StructuredTool<typeof DispatchChara
       nodeName: "DispatchGenerateCharactersTool",
       jobType: "GENERATE_ENTITIES",
       assetKey: "character_image" as const,
-      entityId: projectId,
+      entityId: entities[0].data.id,
       teamId,
       userId,
       payload: entities,

@@ -113,7 +113,7 @@ export function NodeShell({
       data-testid="node-shell"
       className={cn(
         // Base card style — all nodes share this visual language.
-        "card-cinematic-glass rounded-none overflow-visible transition-all duration-50",
+        "card-cinematic-glass rounded-md overflow-visible transition-all duration-50",
         // Selection ring.
         selected ? "node-selected" : "node",
         !isZoomedIn &&

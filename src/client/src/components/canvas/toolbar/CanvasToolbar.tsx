@@ -169,7 +169,7 @@ export function CanvasToolbar({
           <span className="text-xs font-mono truncate uppercase">{worldName}</span>
         )}
         <div className="flex gap-2">
-          <span className="text-xs font-heading font-normal truncate uppercase">
+          <span className="text-xs font-heading font-medium tracking-wide truncate uppercase">
             {title}
           </span>
           <SaveStatus />

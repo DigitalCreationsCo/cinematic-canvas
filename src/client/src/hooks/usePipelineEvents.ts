@@ -1,9 +1,9 @@
 // src/client/src/hooks/usePipelineEvents.ts
 import { useEffect } from "react";
 import { useAuth } from "#client/lib/auth-context.js";
-import { PipelineEvent } from "../../../shared/types/pipeline.types.js";
-import { JobEvent } from "../../../shared/types/job.types.js";
-import { reviveDates } from "../../../shared/utils/utils.js";
+import { PipelineEvent } from "#shared/types/pipeline.types.js";
+import { JobEvent } from "#shared/types/job.types.js";
+import { reviveDates } from "#shared/utils/utils.js";
 import { requestFullState, fetchActiveJobsForProject, confirmEntityNode } from "#client/lib/api.js";
 import { supabase } from "#client/lib/supabase.js";
 import { generateId } from "#shared/utils/id.js";
