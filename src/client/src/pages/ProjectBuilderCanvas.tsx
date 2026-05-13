@@ -395,8 +395,48 @@ export default function ProjectBuilderCanvas() {
         margin: 0,
       });
 
-      const { setNodes } = useNodeStore.getState();
-      setNodes(nodesWithResolvedCollisions);
+      // ── Animated collision resolution ──────────────────────────────────────
+      // Identify which nodes were moved by the collision resolver so we can
+      // animate their position transitions.
+      const movedNodeIds: string[] = [];
+      for (const resolved of nodesWithResolvedCollisions) {
+        const original = mergedNodes.find((n) => n.id === resolved.id);
+        if (
+          original &&
+          (original.position.x !== resolved.position.x ||
+            original.position.y !== resolved.position.y)
+        ) {
+          movedNodeIds.push(resolved.id);
+        }
+      }
+
+      if (movedNodeIds.length > 0) {
+        // Step 1: Mark nodes for animation. This triggers a React re-render
+        // that applies "transition: transform" via inline style on the
+        // .react-flow__node wrapper elements in the current frame.
+        useCanvasUIStore.getState().setAnimatingNodeIds(new Set(movedNodeIds));
+
+        // Step 2: Wait for the browser to paint the transition style.
+        requestAnimationFrame(() => {
+          // Step 3: Wait one more frame so the transition is fully active.
+          requestAnimationFrame(() => {
+            // Step 4: Set the resolved positions. The browser's CSS engine
+            // interpolates from old to new position over 250ms.
+            useNodeStore.getState().setNodes(nodesWithResolvedCollisions);
+
+            // Step 5: After the transition completes, remove animation styles.
+            // This must happen AFTER the transition finishes (250ms) to avoid
+            // cutting it short, but React Flow will also clear it if the
+            // user starts a new drag (via onNodeDragStart).
+            setTimeout(() => {
+              useCanvasUIStore.getState().setAnimatingNodeIds(new Set());
+            }, 300);
+          });
+        });
+      } else {
+        // No collisions: update positions immediately (no animation needed).
+        useNodeStore.getState().setNodes(nodesWithResolvedCollisions);
+      }
 
       debouncedPersistLayout(
         nodesWithResolvedCollisions,

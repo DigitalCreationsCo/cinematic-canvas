@@ -225,6 +225,19 @@ export function NodeGraph({
   const openDeleteDialog = useCanvasUIStore((s) => s.openDeleteDialog);
   const closeDeleteDialog = useCanvasUIStore((s) => s.closeDeleteDialog);
 
+  // ── Collision animation ────────────────────────────────────────────────────
+  // Tracks which node IDs are currently being animated after collision resolution.
+  // The transition:transform style is applied to these nodes so their position
+  // change is smoothly interpolated over ~250ms.
+  const animatingNodeIds = useCanvasUIStore((s) => s.animatingNodeIds);
+  const prevAnimatingNodeIdsRef = useRef<Set<string>>(new Set());
+
+  // After each render, update the previously-animated set so we can properly
+  // remove the transition style from nodes that finished animating.
+  useEffect(() => {
+    prevAnimatingNodeIdsRef.current = animatingNodeIds;
+  }, [animatingNodeIds]);
+
   // PERF-MEMO: Selected node lookup - only recompute when nodes or selectedNodeId changes
   const selectedNode = useMemo(
     () => (selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null),
@@ -270,7 +283,7 @@ export function NodeGraph({
   );
 
   // ── Canvas context menu (right-click on empty space) ───────────────────────
-  const closeMenuRef = React.useRef<() => void>(() => {});
+  const closeMenuRef = React.useRef<() => void>(() => { });
   const [canvasContextMenu, setCanvasContextMenu] = useState<{
     open: boolean;
     position: { x: number; y: number };
@@ -432,25 +445,44 @@ export function NodeGraph({
       const isLastTouched = node.id === lastTouchedNodeId;
       const isActive = isSelected || node.dragging;
       const isSoftDeleted = softDeletedNodes.includes(node.id);
+      const isAnimating = animatingNodeIds.has(node.id);
+      const wasAnimating = prevAnimatingNodeIdsRef.current.has(node.id);
       const zIndex = isActive ? 1000 : isLastTouched ? 999 : (node.zIndex ?? 0);
 
       // Return a new object ONLY if properties have actually changed,
       // preserving object identity so React Flow can skip re-renders.
+      //
+      // Collision animation: when a node is currently or was recently animating,
+      // we must return a new object to either apply or remove the transition
+      // style on the .react-flow__node wrapper.
       if (
         node.selected !== isSelected ||
         node.zIndex !== zIndex ||
-        (node.data as any).isSoftDeleted !== isSoftDeleted
+        (node.data as any).isSoftDeleted !== isSoftDeleted ||
+        isAnimating ||
+        wasAnimating
       ) {
         return {
           ...node,
           selected: isSelected,
           zIndex,
+          // Apply "transition: transform" via inline style so the DOM rerender
+          // that changes node.position (triggered by collision resolution)
+          // gets smoothly interpolated by the browser's CSS engine.
+          // The style is removed once the node leaves the animating set,
+          // preventing interference with user-initiated dragging.
+          style: isAnimating
+            ? ({
+              transition:
+                "transform 250ms cubic-bezier(0.165, 0.84, 0.44, 1)",
+            } as React.CSSProperties)
+            : undefined,
           data: { ...node.data, isSoftDeleted },
         };
       }
       return node;
     });
-  }, [nodes, selectedNodeId, lastTouchedNodeId, softDeletedNodes]);
+  }, [nodes, selectedNodeId, lastTouchedNodeId, softDeletedNodes, animatingNodeIds]);
 
   if (!contextId) {
     return <div>Loading...</div>;
@@ -509,6 +541,16 @@ export function NodeGraph({
         onPaneClick={handlePaneClick}
         onPaneContextMenu={handlePaneContextMenu}
         onMove={handleMove}
+        // {/* ── Collision animation guard ──────────────────────────────────────
+        //      When the user starts dragging ANY node, immediately clear all
+        //      collision animation styles. This prevents the transition from
+        //      interfering with real-time dragging (which would cause laggy,
+        //      delayed node movement). */}
+        onNodeDragStart={() => {
+          if (animatingNodeIds.size > 0) {
+            useCanvasUIStore.getState().setAnimatingNodeIds(new Set());
+          }
+        }}
         onNodeDragStop={onNodeDragStop}
         onSelectionDragStop={onSelectionDragStop}
         snapToGrid={snapToGrid}
@@ -597,7 +639,7 @@ function buildWrappedNodeTypes(handleDeleteRequest: (node: CanvasNode) => void) 
         <NodeContextMenu
           node={node}
           onDelete={handleDeleteRequest}
-          onRestore={() => {}}
+          onRestore={() => { }}
           isSoftDeleted={false}
         >
           {React.createElement((nodeTypes as any)[type], props)}

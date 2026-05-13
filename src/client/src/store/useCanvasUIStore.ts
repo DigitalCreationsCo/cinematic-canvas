@@ -37,6 +37,12 @@ interface CanvasUIStoreState {
   isLoading: boolean;
   error: string | null;
 
+  // Collision resolution animation: node IDs currently animating position
+  // changes after collision resolution. Managed by the double-rAF pattern
+  // in ProjectBuilderCanvas.handleNodeDragStop.
+  animatingNodeIds: Set<string>;
+  setAnimatingNodeIds: (ids: Set<string>) => void;
+
   // Layout save state for Header display
   isSaving: boolean;
   setIsSaving: (v: boolean) => void;
@@ -107,6 +113,9 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   isHydrated: false,
   isLoading: false,
   error: null,
+  animatingNodeIds: new Set<string>(),
+  setAnimatingNodeIds: (ids) => set({ animatingNodeIds: ids }),
+
   isSaving: false,
   setIsSaving: (v) => set({ isSaving: v }),
   lastSaved: null,
