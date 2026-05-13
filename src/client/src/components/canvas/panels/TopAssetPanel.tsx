@@ -228,6 +228,19 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
             }],
           },
         });
+
+        // Register the uploaded image as a project-wide style reference
+        try {
+          const result = await api.projects.addStyleReferenceFromNode.mutate({
+            projectId: selectedProjectId,
+            fileId: uploadData.fileId,
+          });
+          if (result.success) {
+            useProjectStore.getState().addStyleReference(result.gcsUri);
+          }
+        } catch (err) {
+          console.error('[TopAssetPanel] Failed to register node as project-wide style reference:', err);
+        }
       }
 
       console.debug('[TopAssetPanel] Created StyleRef from drop:', { styleRefId, fileName: file.name });

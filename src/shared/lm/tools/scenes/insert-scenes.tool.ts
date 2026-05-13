@@ -2,8 +2,7 @@ import { z } from "zod";
 import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
-import { SceneWithAssets } from "#shared/types/workflow.types.js";
-import { InsertScene } from "#shared/types/schema.types.js";
+import { SceneBase, SceneWithAssets } from "#shared/types/workflow.types.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
@@ -13,7 +12,7 @@ import { mapDomainSceneToInsertScene } from "#shared/entity/scene-mappers.js";
 // Input schema — what the orchestrator LLM sends when invoking this tool
 // ---------------------------------------------------------------------------
 
-const InsertScenesInput = z.object({ scenes: z.array(InsertScene) });
+const InsertScenesInput = z.object({ scenes: z.array(SceneBase) });
 export type InsertScenesInput = z.input<typeof InsertScenesInput>;
 
 // ---------------------------------------------------------------------------
@@ -44,6 +43,15 @@ async function run(scenesData: InsertScenesInput["scenes"], context: InsertScene
   try {
     const toInsertScenes = scenesData.map(mapDomainSceneToInsertScene);
     const insertedScenes = await context.projectRepository.createScenes(toInsertScenes[0].projectId, toInsertScenes);
+
+    await context.saveAssets?.(
+      { sceneIds: scenesData.map((s) => s.id), projectId: context.projectId },
+      ["description"],
+      "text",
+      scenesData.map((s) => s.description),
+      [{ model: context.provider.textModel }],
+      /* setBest */ true,
+    );
 
     return Promise.all(
       insertedScenes.map(async (res) => {

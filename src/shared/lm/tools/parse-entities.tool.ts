@@ -137,9 +137,9 @@ class ParseEntitiesTool extends StructuredTool<typeof ParseEntitiesInput> {
 
     console.log(
       `${traceId}: ParseEntitiesTool complete. ` +
-        `characters=${parsed.characters.length}, ` +
-        `locations=${parsed.locations.length}, ` +
-        `props=${parsed.props.length}`,
+      `characters=${parsed.characters.length}, ` +
+      `locations=${parsed.locations.length}, ` +
+      `props=${parsed.props.length}`,
     );
     return output;
   }
@@ -155,6 +155,7 @@ class ParseEntitiesTool extends StructuredTool<typeof ParseEntitiesInput> {
   }
 }
 
+export type { ParseEntitiesTool };
 // ── Factory export ───────────────────────────────────────────────────────────
 
 export function createParseEntitiesTool(deps: ParseEntitiesToolDeps, params?: ToolParams): ParseEntitiesTool {

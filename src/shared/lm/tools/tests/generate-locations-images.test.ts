@@ -1,7 +1,7 @@
 import { createMockToolContext } from "#shared/mocks/mock-tools.ts";
 import { createMockLocation } from "#shared/mocks/mock-location.js";
 
-import { createGenerateLocationImagesTool } from "#shared/lm/tools/locations/generate-location-images.tool.js";
+import { createGenerateLocationImagesTool } from "#shared/lm/tools/locations/generate-locations-images.tool.js";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getExecutionMode } from "#shared/config.js";
 

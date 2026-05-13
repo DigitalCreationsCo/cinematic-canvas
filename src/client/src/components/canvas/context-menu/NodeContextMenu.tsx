@@ -15,8 +15,10 @@ import {
 import type { CanvasNode, ImageNodeFlag } from "#client/domain/canvas/NodeTypes.js";
 import { useNodeStore } from "#client/store/useNodeStore.js";
 import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
 import { debouncedPersistLayout } from "#client/store/middleware/canvasIndexedDBStorage.js";
 import { cn } from "#client/lib/utils.js";
+import { api } from "#client/lib/api.js";
 
 interface NodeContextMenuProps {
   children: React.ReactNode;
@@ -109,11 +111,30 @@ export function NodeContextMenu({
     onContextMenu?.(e);
   };
 
-  const setFlag = (e: React.MouseEvent, flag: ImageNodeFlag) => {
+  const setFlag = async (e: React.MouseEvent, flag: ImageNodeFlag) => {
     e.stopPropagation();
+    const prevFlag = node.data.nodeTypeFlag;
+    
     useNodeStore.getState().updateNodeData(node.id, { nodeTypeFlag: flag });
     persistNodes(node);
     close();
+
+    const projectId = node.data.contextId;
+    if (node.data.contextType !== "project" || !projectId) return;
+
+    if (flag === "style_reference" && prevFlag !== "style_reference") {
+      try {
+        const result = await api.projects.addStyleReferenceFromNode.mutate({
+          projectId,
+          fileId: node.data.entityId, // fileId matches entityId for dropped images
+        });
+        if (result.success) {
+          useProjectStore.getState().addStyleReference(result.gcsUri);
+        }
+      } catch (err) {
+        console.error("Failed to set as style reference:", err);
+      }
+    }
   };
 
   const handleOpenSceneEditor = (e: React.MouseEvent) => {

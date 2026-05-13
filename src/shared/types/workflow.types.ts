@@ -66,7 +66,7 @@ export const PropAttributes = z.object({
   name: z.string().describe("Prop name"),
   description: z.string().describe("Prop description"),
   type: z.string().describe("Prop type e.g. car, weapon, furniture, etc."),
-  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., prop_1)"),
+  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., Golden_Sword)"),
 });
 export type PropAttributes = z.infer<typeof PropAttributes>;
 
@@ -120,14 +120,14 @@ export type HydratedEntityEnvelope<E extends EntityPrimitiveType> = {
 export type ConditionalEntityAttributes<E> = E extends "character"
   ? CharacterAttributes
   : E extends "location"
-    ? LocationAttributes
-    : PropAttributes;
+  ? LocationAttributes
+  : PropAttributes;
 
 export type ConditionalEntityBase<E> = E extends "character"
   ? CharacterBase
   : E extends "location"
-    ? LocationBase
-    : PropBase;
+  ? LocationBase
+  : PropBase;
 
 // ============================================================================
 // GENERATION
@@ -138,12 +138,10 @@ export interface SceneGenerationInput {
   enhancedPrompt: string;
 }
 
-export const GenerateSceneInputVerbose = z.object({
-  partial: SceneAttributes.partial().extend({
-    id: z.uuid(),
-    // characters: z.array(CharacterAttributes),
-    // location: LocationAttributes,
-  }),
+export const GenerateSceneInputVerbose = SceneAttributes.partial().extend({
+  id: z.uuid(),
+  // characters: z.array(CharacterAttributes),
+  // location: LocationAttributes,
   images: z.array(UploadResult).optional(),
 });
 

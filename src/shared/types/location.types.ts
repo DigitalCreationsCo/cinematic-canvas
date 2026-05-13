@@ -62,7 +62,7 @@ export type LocationState = z.infer<typeof LocationState>;
 // ============================================================================
 
 export const LocationAttributes = z.object({
-  referenceId: z.string().describe("Narrative-scoped identifier for the location (e.g., loc_1)"),
+  F: z.string().describe("Narrative-scoped identifier for the location (e.g., Grand_Beach)"),
   name: z.string().describe("Location name"),
   description: z.string().describe("Location description"),
   type: z.string().describe("Location type"),

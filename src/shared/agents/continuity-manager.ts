@@ -28,9 +28,6 @@ import {
   GenerativeResultGenerateCharacterAssets,
   GenerativeResultGenerateLocationAssets,
   GenerativeResultGenerateSceneFrames,
-  JobGenerateCharacterAssets,
-  JobGenerateLocationAssets,
-  JobGenerateSceneFrames,
 } from "#shared/types/job.types.js";
 import { aspectRatios, getExecutionMode, imageMimeType } from "#shared/config.js";
 import { extractGeneratedResponse } from "#shared/lm/parts-extractor.js";
@@ -110,6 +107,10 @@ export class ContinuityManagerAgent {
     saveAssets: SaveAssetsCallback,
     sendEntityUpdate: UpdateEntitiesCallback,
     incrementAttempt: IncrementAttemptHook,
+    context: {
+      userId: string;
+      teamId: string;
+    }
   ): Promise<GenerativeResultGenerateSceneFrames> {
     const opStartTime = Date.now();
     const projectId = project.id;
@@ -146,6 +147,7 @@ export class ContinuityManagerAgent {
       saveAssets,
       sendEntityUpdate,
       incrementAttempt,
+      ...context,
     };
 
     while (completedSceneIds.size + failedSceneIds.size < totalRequired) {
@@ -224,6 +226,7 @@ export class ContinuityManagerAgent {
             currentIterationPromptRequests,
             currentIterationContexts,
             saveAssets,
+            context
           );
 
           if (this.qualityAgent.qualityConfig.enabled) {
@@ -368,6 +371,7 @@ export class ContinuityManagerAgent {
     promptRequests: FramePromptRequest[],
     contexts: { scene: Scene; assetKey: AssetKey }[],
     saveAssets: SaveAssetsCallback,
+    userContext: { userId: string, teamId: string }
   ): Promise<SceneFrameQualityItem[]> {
     if (promptRequests.length === 0) return [];
 
@@ -380,6 +384,7 @@ export class ContinuityManagerAgent {
       storageManager: this.storageManager,
       provider: this.lm,
       options: this.options,
+      ...userContext,
     };
 
     const generatedPrompts = await generateFrameGenerationPrompts(promptRequests, promptToolContext);
@@ -479,10 +484,10 @@ export class ContinuityManagerAgent {
 
     const currentSceneEndReferenceImage: SubjectImage | undefined = sceneEndFrame
       ? {
-          referenceType: "subject",
-          referenceImage: { gcsUri: sceneEndFrame, mimeType: imageMimeType },
-          config: { subjectType: "SUBJECT_TYPE_DEFAULT", subjectDescription: "Current scene end frame" },
-        }
+        referenceType: "subject",
+        referenceImage: { gcsUri: sceneEndFrame, mimeType: imageMimeType },
+        config: { subjectType: "SUBJECT_TYPE_DEFAULT", subjectDescription: "Current scene end frame" },
+      }
       : undefined;
 
     const charactersInScene = characters.filter((char) => scene.characterIds.includes(char.id));
@@ -494,11 +499,10 @@ export class ContinuityManagerAgent {
           referenceImage: { gcsUri: assets["character_image"]?.data, mimeType: imageMimeType },
           config: {
             subjectType: "SUBJECT_TYPE_PERSON" as const,
-            subjectDescription: `${c.name}:\nHair: ${c.physicalTraits.hair}\nClothing: ${
-              typeof c.physicalTraits.clothing === "string"
-                ? c.physicalTraits.clothing
-                : c.physicalTraits.clothing?.join(", ")
-            }\nAccessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
+            subjectDescription: `${c.name}:\nHair: ${c.physicalTraits.hair}\nClothing: ${typeof c.physicalTraits.clothing === "string"
+              ? c.physicalTraits.clothing
+              : c.physicalTraits.clothing?.join(", ")
+              }\nAccessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
           },
         };
       })
@@ -559,6 +563,10 @@ export class ContinuityManagerAgent {
     generationRules: string[],
     saveAssets: SaveAssetsCallback,
     incrementAttempt: IncrementAttemptHook,
+    context: {
+      userId: string;
+      teamId: string;
+    }
   ): Promise<GenerativeResultGenerateCharacterAssets> {
     const opStartTime = Date.now();
     const projectId = characters[0].projectId;
@@ -603,6 +611,7 @@ export class ContinuityManagerAgent {
                 traceId,
                 incrementAttempt,
                 options: this.options,
+                ...context,
               },
             }).run({ characters: characterWithVersions, generationRules, attempt });
 
@@ -818,6 +827,7 @@ export class ContinuityManagerAgent {
     generationRules: string[],
     saveAssets: SaveAssetsCallback,
     incrementAttempt: IncrementAttemptHook,
+    context: { userId: string, teamId: string }
   ): Promise<GenerativeResultGenerateLocationAssets> {
     const opStartTime = Date.now();
     const projectId = locations[0].projectId;
@@ -845,6 +855,7 @@ export class ContinuityManagerAgent {
       traceId,
       incrementAttempt,
       options: this.options,
+      ...context
     };
 
     if (this.qualityAgent.qualityConfig.enabled) {

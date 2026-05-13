@@ -449,7 +449,7 @@ export const PropEntity = createSelectSchema(schema.props, {
   ...IdentityBase.shape,
   ...ProjectRef.shape,
   worldId: WorldRef.shape.worldId,
-  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., prop_1)"),
+  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., Golden_Sword)"),
   name: z.string().describe("Prop name"),
   type: z.string().describe("Prop type e.g. car, weapon, furniture, etc."),
 });
@@ -459,7 +459,7 @@ export const InsertProp = createInsertSchema(schema.props, {
   ...InsertIdentityBase.shape,
   ...ProjectRef.shape,
   worldId: WorldRef.shape.worldId,
-  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., prop_1)"),
+  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., Golden_Sword)"),
   name: z.string().describe("Prop name"),
   type: z.string().describe("Prop type e.g. car, weapon, furniture, etc."),
 });

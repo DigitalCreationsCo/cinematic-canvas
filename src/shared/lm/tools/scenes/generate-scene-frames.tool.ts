@@ -7,9 +7,21 @@ import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ReferenceImageInputs } from "#shared/lm/provider.js";
 import { GcsObjectPathParams } from "#shared/types/storage.types.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { generateImages, GenerateImageRequest } from "#shared/lm/tools/old-generate-images.js";
-import { SceneWithAssets } from "#shared/types/workflow.types.js";
+import { createGenerateImagesTool, GenerateImageRequest } from "#shared/lm/tools/generate-images.tool.js";
+import { Character, Scene, Location, SceneWithAssets } from "#shared/types/workflow.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
+import { FramePromptRequest, FramePromptResultsEnvelope, generateFrameGenerationPrompts } from "#shared/lm/tools/scenes/generate-frame-generation-prompts.js";
+import { hydrateEntity } from "#shared/utils/entity.utils.js";
+
+// ============================================================================
+// INPUT SCHEMA
+// ============================================================================
+
+const GenerateSceneFramesToolInput = z.object({
+  scenes: z.array(SceneWithAssets),
+  generationRules: z.array(z.string()),
+  attempt: z.number(),
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public types
@@ -49,12 +61,12 @@ export type SceneFrameGenerationSuccess = {
 export type SceneFrameGenerationResult =
   | SceneFrameGenerationSuccess
   | {
-      success: false;
-      id: string;
-      sceneId: string;
-      framePosition: "start" | "end";
-      error: Error;
-    };
+    success: false;
+    id: string;
+    sceneId: string;
+    framePosition: "start" | "end";
+    error: Error;
+  };
 
 interface GenerateSceneFramesParams {
   requests: SceneFrameGenerationRequest[];
@@ -173,7 +185,7 @@ export async function generateSceneFrames(
     }),
   }));
 
-  const imageResults = await generateImages(imageRequests, context);
+  const imageResults = await createGenerateImagesTool({ context }).run({ requests: imageRequests });
 
   context.sendEntityUpdate?.(
     requests.map((req) => ({
@@ -247,22 +259,6 @@ export async function generateSceneFrames(
 // dispatches to the core generateSceneFrames function.
 // ============================================================================
 
-/** Tool-level prompt builder — uses scene metadata + generation rules. */
-function buildSceneFramePrompt(
-  sceneName: string,
-  sceneDescription: string | undefined,
-  framePosition: "start" | "end",
-  generationRules: string[],
-): string {
-  const desc = sceneDescription ?? sceneName;
-  const rules = generationRules.length > 0 ? `\nGeneration rules:\n${generationRules.join("\n")}` : "";
-
-  if (framePosition === "start") {
-    return `Scene: ${sceneName}\nDescription: ${desc}${rules}\n\nGenerate the establishing shot for the start of this scene.`;
-  }
-  return `Scene: ${sceneName}\nDescription: ${desc}${rules}\n\nGenerate the concluding shot for the end of this scene.`;
-}
-
 // ============================================================================
 // DEPS
 // ============================================================================
@@ -273,29 +269,6 @@ export interface GenerateSceneFramesToolDeps {
     projectRepository: ProjectRepository;
   };
 }
-
-// ============================================================================
-// INPUT SCHEMA
-// ============================================================================
-
-const GenerateSceneFramesToolInput = z.object({
-  scenes: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      version: z.number(),
-    }),
-  ),
-  generationRules: z.array(z.string()).default([]),
-  attempt: z.number().default(1),
-});
-
-// ============================================================================
-// TOOL CLASS
-// _call() is the LangChain string interface.
-// run()   is the programmatic interface — matches the { run: (input) => any[] }
-//         contract expected by GenerateSceneAttributesTool.imagesTool.
-// ============================================================================
 
 class GenerateSceneFramesTool extends StructuredTool<typeof GenerateSceneFramesToolInput> {
   name = "generate_scene_frames";
@@ -348,38 +321,81 @@ class GenerateSceneFramesTool extends StructuredTool<typeof GenerateSceneFramesT
   private async generateFrames(
     input: z.infer<typeof GenerateSceneFramesToolInput>,
   ): Promise<SceneFrameGenerationResult[]> {
+
     const { projectRepository, projectId } = this.context;
 
     // Fetch full scene entities from DB so we can build prompts from descriptions
-    const sceneEntities = await projectRepository.getEntities(
-      input.scenes.map((s) => ({ entityId: s.id, entityType: "scene" as const, entity: {} })),
-    );
+    const project = await projectRepository.getProjectFullState(projectId);
+    const allScenes = project.scenes;
+    const allCharacters = project.characters;
+    const allLocations = project.locations;
+    // const props = project.props;
 
     // Build scene lookup by id
-    const sceneById = new Map(sceneEntities.map(({ entity }) => [(entity as any).id, entity as SceneWithAssets]));
+    const sceneById = new Map<string, Scene>(allScenes.map((entity) => [entity.id, hydrateEntity(entity, entity.assets)]));
+    const characterById = new Map<string, Character>(allCharacters.map((entity) => [entity.id, hydrateEntity(entity, entity.assets)]));
+    const locationById = new Map<string, Location>(allLocations.map((entity) => [entity.id, hydrateEntity(entity, entity.assets)]));
+    // const propById = new Map(props.map((entity) => [(entity as any).id, entity]));
+
+    function createFramePromptRequest(
+      scene: Scene,
+      framePosition: "start" | "end",
+      previousScene?: Scene
+    ): FramePromptRequest {
+      try {
+        const charactersInScene = scene.characterIds.map((characterId) => characterById.get(characterId)!);
+        const locationInScene = locationById.get(scene.locationId)!;
+        const version = framePosition === "start" ?
+          (scene.assets['scene_start_frame']?.head ?? 1) :
+          (scene.assets['scene_end_frame']?.head ?? 1);
+        return {
+          framePosition,
+          scene,
+          characters: charactersInScene ?? [],
+          locations: [locationInScene],
+          previousScene: previousScene,
+          generationRules: project.generationRules ?? [],
+          metadata: {
+            // Deterministic ID generation for idempotency in distributed systems
+            custom_id: `${scene.id}_${framePosition}_v${version}`,
+            assetKey: framePosition == "start" ? "scene_start_frame" : "scene_end_frame",
+            version: version,
+          },
+        };
+      } catch (error) {
+        console.error(`[Error] Failed to create ${framePosition} request for scene ${scene.id}:`, error);
+        throw new Error(`Frame request construction failure: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    };
+
+    const framePromptRequests: FramePromptRequest[] = input.scenes.flatMap((_scene, index) => {
+      const previousId = index > 0 ? input.scenes[index - 1].id : undefined;
+      const previous = previousId ? sceneById.get(previousId) : undefined;
+      const current = sceneById.get(_scene.id)!;
+      console.log(`[Trace] Processing Scene ID: ${current.id} (Index: ${index})`);
+      return [
+        createFramePromptRequest(current, "start", previous),
+        createFramePromptRequest(current, "end", previous)
+      ]
+    });
+
+    const promptResultsEnvelope = await generateFrameGenerationPrompts(framePromptRequests, this.context);
 
     // Build requests for start and end frames for each scene
-    const requests: SceneFrameGenerationRequest[] = [];
-    for (const { id, name, version } of input.scenes) {
-      const scene = sceneById.get(id);
-      const description = (scene as any)?.description ?? "";
-
-      for (const framePosition of ["start", "end"] as const) {
-        const prompt = buildSceneFramePrompt(name, description, framePosition, input.generationRules);
-        requests.push({
-          id: `${id}_${framePosition}`,
-          projectId,
-          sceneId: id,
-          framePosition,
-          prompt,
-          referenceImages: { base: [], subject: [], style: [], control: [], content: [], mask: [] },
-          version,
-        });
+    const requests: SceneFrameGenerationRequest[] = promptResultsEnvelope.map((res, i) => {
+      const { scene: _scene, prompt, framePosition, metadata } = res;
+      return {
+        id: `${_scene.id}_${framePosition}`,
+        projectId,
+        sceneId: _scene.id,
+        framePosition,
+        prompt,
+        referenceImages: { base: [], subject: [], style: [], control: [], content: [], mask: [] },
+        // TODO Implement the image reference logic
+        version: metadata.version,
       }
-    }
+    });
 
-    // Delegate to the core function which handles image generation, asset
-    // persistence, entity enrichment, and ENTITY_UPDATED emission.
     return generateSceneFrames({ requests, attempt: input.attempt }, this.context);
   }
 }

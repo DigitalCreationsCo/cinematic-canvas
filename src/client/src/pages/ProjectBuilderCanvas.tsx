@@ -699,11 +699,75 @@ export default function ProjectBuilderCanvas() {
                 setStagedFiles={setStagedFiles}
                 projectId={projectId}
                 onClose={() => setStagedFiles([])}
-                onPlace={(placedImages) => {
-                  const nonEntityImages = placedImages.filter(
-                    (img) => img.useType === "image" || img.useType === "prop",
+                onPlace={async (placedImages) => {
+                  // ── Style refs: upload to GCS, register as project-wide style ref ──
+                  const styleRefImages = placedImages.filter(
+                    (img) => img.useType === "image",
                   );
-                  nonEntityImages.forEach((img) => {
+                  for (const img of styleRefImages) {
+                    try {
+                      const fileData = await fileToBase64(img.file);
+                      const uploadData = await api.assets.uploadImage.mutate({
+                        fileData,
+                        fileName: img.file.name,
+                        mimeType: img.file.type,
+                      });
+
+                      const styleRefId = uploadData.fileId;
+                      addNode(
+                        NodeFactory.createNode({
+                          type: "image",
+                          entityId: styleRefId,
+                          contextId: projectId,
+                          contextType: "project",
+                          posCanvas: calculateAutoLayoutPosition(nodes, "image"),
+                          scope: "project",
+                          nodeTypeFlag: "style_reference",
+                          label:
+                            img.name ||
+                            img.file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
+                        }),
+                      );
+
+                      // Attach the uploaded asset to the node
+                      useAssetStore.getState().mergeAssets(styleRefId, {
+                        image_file: {
+                          head: 1,
+                          best: 1,
+                          versions: [
+                            {
+                              version: 1,
+                              data: uploadData.publicUri,
+                              type: "image",
+                              metadata: {},
+                              createdAt: new Date(),
+                              startedAt: new Date(),
+                            },
+                          ],
+                        },
+                      });
+
+                      // Register as project-wide style reference
+                      const result = await api.projects.addStyleReferenceFromNode.mutate({
+                        projectId,
+                        fileId: uploadData.fileId,
+                      });
+                      if (result.success) {
+                        useProjectStore.getState().addStyleReference(result.gcsUri);
+                      }
+                    } catch (err) {
+                      console.error(
+                        "[ProjectBuilderCanvas] Failed to place style ref:",
+                        err,
+                      );
+                    }
+                  }
+
+                  // ── Props: just create a canvas node (no upload) ──
+                  const propImages = placedImages.filter(
+                    (img) => img.useType === "prop",
+                  );
+                  propImages.forEach((img) => {
                     addNode(
                       NodeFactory.createNode({
                         type: img.useType,
@@ -715,6 +779,7 @@ export default function ProjectBuilderCanvas() {
                       }),
                     );
                   });
+
                   setStagedFiles([]);
                 }}
               />

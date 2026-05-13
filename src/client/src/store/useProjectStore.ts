@@ -34,6 +34,12 @@ export interface ProjectStoreState {
   locations: Map<string, Location>;
   metadata: ProjectMetadata | null;
   generationRules: GenerationRules | null;
+  /**
+   * Project-wide style reference image URIs (e.g. GCS URLs).
+   * Automatically injected as StyleImage references into every
+   * generateImages call at the provider level.
+   */
+  styleReferences: string[];
 
   // --- computed: scenes currently on canvas -------------------------------
   scenesOnCanvas: Scene[];
@@ -97,6 +103,24 @@ export interface ProjectStoreState {
   // Metadata management
   updateMetadata: (updates: Partial<ProjectMetadata>) => void;
 
+  /**
+   * Optimistically add a style reference URL to the local store.
+   * The caller is responsible for syncing to the server via tRPC.
+   */
+  addStyleReference: (url: string) => void;
+
+  /**
+   * Optimistically remove a style reference URL from the local store.
+   * The caller is responsible for syncing to the server via tRPC.
+   */
+  removeStyleReference: (url: string) => void;
+
+  /**
+   * Replace the local generation rules array.
+   * The caller is responsible for syncing to the server via tRPC.
+   */
+  setGenerationRules: (rules: string[]) => void;
+
   // Session cleanup
   clearSession: () => void;
 }
@@ -112,6 +136,7 @@ export const useProjectStore = create<ProjectStoreState>()(
       locations: new Map<string, Location>(),
       metadata: null,
       generationRules: null,
+      styleReferences: [],
       metrics: null,
 
       activeAudioId: null,
@@ -142,6 +167,7 @@ export const useProjectStore = create<ProjectStoreState>()(
         set((state) => {
           state.metadata = project.metadata || null;
           state.generationRules = project.generationRules || null;
+          state.styleReferences = project.styleReferences ?? [];
           state.scenes = new Map(
             (project.scenes ?? []).map((s) => {
               const { assets: _, ...rest } = s;
@@ -282,6 +308,23 @@ export const useProjectStore = create<ProjectStoreState>()(
           }
         }),
 
+      addStyleReference: (url) =>
+        set((state) => {
+          if (!state.styleReferences.includes(url)) {
+            state.styleReferences = [...state.styleReferences, url];
+          }
+        }),
+
+      removeStyleReference: (url) =>
+        set((state) => {
+          state.styleReferences = state.styleReferences.filter((ref) => ref !== url);
+        }),
+
+      setGenerationRules: (rules) =>
+        set((state) => {
+          state.generationRules = rules;
+        }),
+
       setActiveAudioId: (id) =>
         set((state) => {
           state.activeAudioId = id;
@@ -300,6 +343,7 @@ export const useProjectStore = create<ProjectStoreState>()(
           state.viewedScenesHistory = [];
           state.entitySaveStatus = {};
           state.entityLastSavedAt = {};
+          state.styleReferences = [];
         }),
     })),
   ),

@@ -4,6 +4,9 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
+  esbuild: {
+    sourcemap: "both",
+  },
   test: {
     globals: true,
     testTimeout: 30000,

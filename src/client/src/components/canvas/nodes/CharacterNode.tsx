@@ -73,9 +73,11 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
         label={resolvedCharacter.name || 'Unnamed Character'}
         pendingCount={pendingCount}
         extras={
-          data.scope === 'world' || worldCharacter
-            ? <Badge variant="secondary" className="bg-accent/80 text-accent-foreground border border-accent backdrop-blur-sm text-[10px]">WORLD</Badge>
-            : undefined
+          <>
+            {data.scope === 'world' || worldCharacter
+              ? <Badge variant="secondary" className="bg-accent/80 text-accent-foreground border border-accent backdrop-blur-sm text-[10px]">WORLD</Badge>
+              : undefined}
+          </>
         }
       />
 

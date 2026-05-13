@@ -670,6 +670,259 @@ export function createAppRouter(deps: RouterDependencies) {
           }
         }),
 
+      /**
+       * Add a style reference from a public image URL.
+       *
+       * Downloads the image, uploads it to GCS, creates a `files` record with a
+       * linked `mediaObjects` row, and stores the GCS URI (mediaId) in the
+       * project's `styleReferences` array — NOT the user-provided URL.
+       *
+       * Only PNG, WebP, and JPEG images are accepted.
+       */
+      addStyleReference: teamProcedure
+        .input(
+          z.object({
+            projectId: z.string(),
+            url: z.string().url().describe("Public URL of the style reference image (png/webp/jpg)"),
+          }),
+        )
+        .output(
+          z.object({
+            success: z.boolean(),
+            message: z.string(),
+            gcsUri: z.string(),
+            fileId: z.string(),
+          }),
+        )
+        .mutation(async ({ input }) => {
+          const { projectId, url } = input;
+
+          // 1. Validate file extension
+          const VALID_EXTENSIONS = [".png", ".webp", ".jpg", ".jpeg"];
+          const urlLower = url.toLowerCase();
+          const extension = VALID_EXTENSIONS.find((ext) => urlLower.endsWith(ext));
+          if (!extension) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "URL must point to a .png, .webp, or .jpg image",
+            });
+          }
+
+          // 2. Download the image
+          let response: Response;
+          try {
+            response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+          } catch {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Failed to download image — unable to reach the URL",
+            });
+          }
+          if (!response.ok) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Failed to download image — server responded ${response.status} ${response.statusText}`,
+            });
+          }
+          const contentType = response.headers.get("content-type") || `image/${extension.replace(".", "")}`;
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          if (buffer.length === 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Downloaded image is empty",
+            });
+          }
+
+          // 3. Upload to GCS
+          const urlPath = new URL(url).pathname;
+          const originalName = urlPath.split("/").pop() || `style-reference${extension}`;
+          const destination = `${projectId}/style-references/${Date.now()}_${originalName}`;
+          const gcsUri = await storageManager.uploadBuffer(buffer, destination, contentType);
+
+          // 4. Upsert mediaObjects record
+          await db
+            .insert(schema.mediaObjects)
+            .values({ data: gcsUri, refCount: 1, status: "active" })
+            .onConflictDoUpdate({
+              target: schema.mediaObjects.data,
+              set: {
+                refCount: sql`${schema.mediaObjects.refCount} + 1`,
+                lastReferencedAt: new Date(),
+                status: "active",
+              },
+            });
+
+          // 5. Create files record
+          const fileId = generateId();
+          const name = originalName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ") || "Style Reference";
+          await db.insert(schema.files).values({
+            id: fileId,
+            projectId,
+            name,
+            description: "Style reference image",
+            fileType: "style_reference",
+            mediaId: gcsUri,
+            metadata: {
+              sourceUrl: url,
+              mimeType: contentType,
+              originalName,
+            },
+          });
+
+          // 6. Update project.styleReferences
+          try {
+            const project = await projectRepository.getProject(projectId);
+            const currentRefs = project.styleReferences ?? [];
+            if (currentRefs.includes(gcsUri)) {
+              return { success: false, message: "Style reference already exists.", gcsUri, fileId };
+            }
+            await projectRepository.updateProject(projectId, {
+              styleReferences: [...currentRefs, gcsUri],
+            });
+            return { success: true, message: "Style reference added.", gcsUri, fileId };
+          } catch (err) {
+            console.error("[Router] Failed to update project with style reference:", err);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to persist style reference to project.",
+            });
+          }
+        }),
+
+      /**
+       * Add a style reference from an existing file record (e.g. a canvas image
+       * node that was already uploaded to GCS). Takes the `fileId` returned by
+       * `uploadImage`, looks up the GCS URI, and registers it as a project-wide
+       * style reference.
+       */
+      addStyleReferenceFromNode: teamProcedure
+        .input(
+          z.object({
+            projectId: z.string(),
+            fileId: z.string().uuid().describe("File record ID from uploadImage"),
+          }),
+        )
+        .output(
+          z.object({
+            success: z.boolean(),
+            message: z.string(),
+            gcsUri: z.string(),
+          }),
+        )
+        .mutation(async ({ input }) => {
+          try {
+            // 1. Look up the file record to get the GCS URI (mediaId)
+            const [fileRecord] = await db
+              .select()
+              .from(schema.files)
+              .where(eq(schema.files.id, input.fileId))
+              .limit(1);
+
+            if (!fileRecord) {
+              throw new TRPCError({
+                code: "NOT_FOUND",
+                message: "File record not found",
+              });
+            }
+
+            const gcsUri = fileRecord.mediaId;
+
+            // 2. Update project.styleReferences
+            const project = await projectRepository.getProject(input.projectId);
+            const currentRefs = project.styleReferences ?? [];
+            if (currentRefs.includes(gcsUri)) {
+              return { success: false, message: "Style reference already exists.", gcsUri };
+            }
+            await projectRepository.updateProject(input.projectId, {
+              styleReferences: [...currentRefs, gcsUri],
+            });
+
+            return { success: true, message: "Style reference added from node.", gcsUri };
+          } catch (err) {
+            if (err instanceof TRPCError) throw err;
+            console.error("[Router] Failed to add style reference from node:", err);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to add style reference from node.",
+            });
+          }
+        }),
+
+      /**
+       * Remove a style reference (GCS URI) from the project's styleReferences
+       * array and decrement the associated mediaObjects refCount.
+       */
+      removeStyleReference: teamProcedure
+        .input(
+          z.object({
+            projectId: z.string(),
+            gcsUri: z.string().describe("GCS URI (mediaId) of the style reference to remove"),
+          }),
+        )
+        .mutation(async ({ input }) => {
+          try {
+            const project = await projectRepository.getProject(input.projectId);
+            const currentRefs = project.styleReferences ?? [];
+            if (!currentRefs.includes(input.gcsUri)) {
+              return { success: false as const, message: "Style reference not found." };
+            }
+
+            await projectRepository.updateProject(input.projectId, {
+              styleReferences: currentRefs.filter((ref) => ref !== input.gcsUri),
+            });
+
+            // Decrement mediaObjects refCount (fire-and-forget — the object may
+            // not exist if it was added before this flow was introduced)
+            try {
+              await db
+                .update(schema.mediaObjects)
+                .set({
+                  refCount: sql`GREATEST(${schema.mediaObjects.refCount} - 1, 0)`,
+                  lastReferencedAt: new Date(),
+                })
+                .where(eq(schema.mediaObjects.data, input.gcsUri));
+            } catch {
+              // Non-critical — mediaObjects cleanup is best-effort
+            }
+
+            return { success: true as const, message: "Style reference removed." };
+          } catch (err) {
+            console.error("[Router] Failed to remove style reference:", err);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to remove style reference.",
+            });
+          }
+        }),
+
+      /**
+       * Replace the project's generation rules.
+       * Generation rules are narrative/scene-level guidelines that constrain
+       * the LLM during entity generation.
+       */
+      updateGenerationRules: teamProcedure
+        .input(
+          z.object({
+            projectId: z.string(),
+            generationRules: z.array(z.string()),
+          }),
+        )
+        .mutation(async ({ input }) => {
+          try {
+            await projectRepository.updateProject(input.projectId, {
+              generationRules: input.generationRules,
+            });
+            return { success: true as const, message: "Generation rules updated." };
+          } catch (err) {
+            console.error("[Router] Failed to update generation rules:", err);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to update generation rules.",
+            });
+          }
+        }),
+
       // Status query for a previously issued command — placeholder for command tracking
       command: teamProcedure.input(z.object({ projectId: z.string(), commandId: z.string() })).query(async () => ({})),
 

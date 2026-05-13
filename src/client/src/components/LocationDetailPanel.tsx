@@ -169,7 +169,10 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
               {isLoading ? (
                 <Skeleton className="h-6 w-32 mb-1" />
               ) : (
-                <h2 className="font-semibold truncate">{location.name}</h2>
+                <div className="flex flex-row items-center gap-3">
+                  <h2 className="truncate">{location.name}</h2>
+                  <span className="text-muted-foreground">@{location.referenceId}</span>
+                </div>
               )}
               {isLoading ? (
                 <Skeleton className="h-4 w-20" />

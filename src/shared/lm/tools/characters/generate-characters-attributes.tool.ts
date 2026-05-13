@@ -10,7 +10,6 @@ import { CharacterBase } from "#shared/types/workflow.types.js";
 import { UploadResult } from "#shared/types/base.types.js";
 
 // INPUT
-
 const CharacterBasePartialWithIdAndImages = CharacterBase.partial().extend({
   id: z.uuid(),
   images: z.array(UploadResult).optional(),
@@ -24,7 +23,6 @@ export type GenerateCharactersInput = z.input<typeof GenerateCharactersInput>;
 type CharacterGenerateItem = z.input<typeof CharacterBasePartialWithIdAndImages>;
 
 // OUTPUT
-
 export type GenerateCharactersResultSuccess = {
   success: true;
   id: string;
@@ -56,47 +54,6 @@ function serialiseResults(
   });
 }
 
-async function run(
-  inputs: CharacterGenerateItem[],
-  context: ToolContext<TextModelController>,
-): Promise<GenerateCharactersResult[]> {
-  const { traceId } = context;
-
-  console.log(`${traceId}: Generating attributes for ${inputs.length} character(s)`);
-
-  const rawResults = await generateEntityAttributes(
-    {
-      schema: CharacterAttributes,
-      entities: inputs.map((entity) => ({
-        entity,
-        entityType: "character",
-        images: entity.images,
-      })),
-      entityDescription: "character profile",
-    },
-    context,
-  );
-
-  const attributeResults: GenerateCharactersResult[] = rawResults.map(({ entity, id, success, error }) => {
-    if (success) {
-      return { success: true, id, attributes: entity };
-    }
-    return { success: false, id, error };
-  });
-
-  // All subsequent steps operate only on items that succeeded here.
-  const successes = attributeResults.filter((r): r is GenerateCharactersResultSuccess => r.success);
-
-  if (successes.length === 0) {
-    console.warn(`${traceId}: No character attributes succeeded — skipping insert, asset save, and image generation`);
-    return attributeResults;
-  }
-
-  // Return the attribute-level results. The caller can inspect these to
-  // determine which characters were fully processed.
-  return attributeResults;
-}
-
 // ============================================================================
 // DEPS
 // ============================================================================
@@ -126,7 +83,7 @@ class GenerateCharacterAttributesTool extends StructuredTool<typeof GenerateChar
     const { traceId } = this.context;
     console.log(`${traceId}: GenerateCharacterAttributesTool invoked. count: ${characters.length}`);
 
-    const generated = await run(characters, this.context);
+    const generated = await this.run(characters);
 
     const output = serialiseResults(generated);
     console.log(`${traceId}: GenerateCharacterAttributesTool complete.`);
@@ -137,13 +94,44 @@ class GenerateCharacterAttributesTool extends StructuredTool<typeof GenerateChar
    * Programmatic interface for direct tool-to-tool calls.
    * Returns GenerateCharactersResult[] — same type as before.
    */
-  async run({ characters }: GenerateCharactersInput): Promise<GenerateCharactersResult[]> {
-    try {
-      return await run(characters, this.context);
-    } catch (e) {
-      console.error(e);
-      throw e;
+  async run(
+    inputs: CharacterGenerateItem[],
+  ): Promise<GenerateCharactersResult[]> {
+    const { traceId } = this.context;
+
+    console.log(`${traceId}: Generating attributes for ${inputs.length} character(s)`);
+
+    const rawResults = await generateEntityAttributes(
+      {
+        schema: CharacterAttributes,
+        entities: inputs.map((entity) => ({
+          entity,
+          entityType: "character",
+          images: entity.images,
+        })),
+        entityDescription: "character profile",
+      },
+      this.context,
+    );
+
+    const attributeResults: GenerateCharactersResult[] = rawResults.map(({ entity, id, success, error }) => {
+      if (success) {
+        return { success: true, id, attributes: entity };
+      }
+      return { success: false, id, error };
+    });
+
+    // All subsequent steps operate only on items that succeeded here.
+    const successes = attributeResults.filter((r): r is GenerateCharactersResultSuccess => r.success);
+
+    if (successes.length === 0) {
+      console.warn(`${traceId}: No character attributes succeeded — skipping insert, asset save, and image generation`);
+      return attributeResults;
     }
+
+    // Return the attribute-level results. The caller can inspect these to
+    // determine which characters were fully processed.
+    return attributeResults;
   }
 }
 

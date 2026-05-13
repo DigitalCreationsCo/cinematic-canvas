@@ -9,8 +9,9 @@ import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappers.js";
 import { TagRegistryService } from "#shared/services/tag-registry.js";
+import { LocationBase } from "#shared/types/workflow.types.js";
 
-const InsertLocationsInput = z.object({ locations: z.array(InsertLocation) });
+const InsertLocationsInput = z.object({ locations: z.array(LocationBase) });
 export type InsertLocationsInput = z.input<typeof InsertLocationsInput>;
 
 type ToolResultItem = { success: true; location: LocationWithAssets } | { success: false; error: string };
@@ -35,6 +36,15 @@ async function run(locationsData: InsertLocationsInput["locations"], context: In
     const insertedLocations = await context.projectRepository.createLocations(
       toInsertLocations[0].projectId,
       toInsertLocations,
+    );
+
+    await context.saveAssets?.(
+      { locationIds: locationsData.map((l) => l.id), projectId: context.projectId },
+      ["description"],
+      "text",
+      locationsData.map((l) => l.description),
+      [{ model: context.provider.textModel }],
+      /* setBest */ true,
     );
 
     for (let i = 0; i < insertedLocations.length; i++) {

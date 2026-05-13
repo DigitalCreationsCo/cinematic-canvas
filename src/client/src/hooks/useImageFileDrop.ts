@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import { generateId } from "#shared/utils/id.js";
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
 import { api } from '#client/lib/api.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { screenToWorld } from '#client/domain/canvas/CoordinateSystem.js';
@@ -126,60 +127,140 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
       }
     }
 
-    // Default behavior: create IMAGE node with dataUrl
-    const dataUrl = await readFileAsDataUrl(file);
-    const dimensions = await getImageDimensions(dataUrl);
+    // Default behavior: create IMAGE node and upload file to GCS
+    try {
+      const uploadData = await api.assets.uploadImage.mutate({
+        fileData: await fileToBase64(file),
+        fileName: file.name,
+        mimeType: file.type,
+      });
 
-    const imageId = generateId();
-    const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Image';
+      const dataUrl = await readFileAsDataUrl(file);
+      const dimensions = await getImageDimensions(dataUrl);
 
-    const assetVersion: AssetVersion = {
-      version: 1,
-      data: dataUrl,
-      type: 'image',
-      metadata: { width: dimensions.width, height: dimensions.height },
-      createdAt: new Date(),
-      startedAt: new Date(),
-    };
+      const imageId = uploadData.fileId;
+      const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Image';
 
-    const imageAsset: AssetHistory = {
-      head: 1,
-      best: 1,
-      versions: [assetVersion],
-    };
+      const assetVersion: AssetVersion = {
+        version: 1,
+        data: uploadData.publicUri,
+        type: 'image',
+        metadata: { width: dimensions.width, height: dimensions.height },
+        createdAt: new Date(),
+        startedAt: new Date(),
+      };
 
-    console.debug('[useImageFileDrop] Storing asset:', { imageId, assetKey: 'image_file', hasData: !!dataUrl });
-    useAssetStore.getState().setAssets(imageId, { image_file: imageAsset });
+      const imageAsset: AssetHistory = {
+        head: 1,
+        best: 1,
+        versions: [assetVersion],
+      };
 
-    const storedAssets = useAssetStore.getState().assets.get(imageId);
-    console.debug('[useImageFileDrop] Stored assets verification:', {
-      imageId,
-      stored: !!storedAssets,
-      hasImageFile: !!storedAssets?.image_file,
-      versionsCount: storedAssets?.image_file?.versions?.length
-    });
+      console.debug('[useImageFileDrop] Storing asset:', { imageId, assetKey: 'image_file', hasData: true });
+      useAssetStore.getState().setAssets(imageId, { image_file: imageAsset });
 
-    const imageNode = NodeFactory.createNode({
-      type: 'image',
-      entityId: imageId,
-      contextId: projectId,
-      contextType: 'project',
-      posCanvas: dropPosition,
-      scope: 'project',
-      nodeTypeFlag: 'import',
-      label: displayName,
-    });
+      const imageNode = NodeFactory.createNode({
+        type: 'image',
+        entityId: imageId,
+        contextId: projectId,
+        contextType: 'project',
+        posCanvas: dropPosition,
+        scope: 'project',
+        nodeTypeFlag: 'import',
+        label: displayName,
+      });
 
-    addNode(imageNode);
+      addNode(imageNode);
 
-    console.debug('[useImageFileDrop] Created ImageNode:', {
-      imageId,
-      fileName: file.name,
-      position: dropPosition,
-      hasDataUrl: !!dataUrl,
-    });
+      console.debug('[useImageFileDrop] Created ImageNode:', {
+        imageId,
+        fileName: file.name,
+        position: dropPosition,
+        hasUpload: true,
+      });
 
-    return { nodeId: imageNode.id };
+      return { nodeId: imageNode.id };
+    } catch (error) {
+      console.error('[useImageFileDrop] Failed to process image drop:', error);
+      return { nodeId: '' };
+    }
+  };
+
+  /**
+   * Uploads a dropped image file to GCS, creates a style_reference canvas node,
+   * and registers it as a project-wide style reference.
+   */
+  const handleStyleRefFile = async (
+    file: File,
+    dropPosition: { x: number; y: number },
+    projectId: string,
+  ): Promise<{ nodeId: string }> => {
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
+      console.warn('[useImageFileDrop] Unsupported file type for style ref:', file.name);
+      return { nodeId: '' };
+    }
+
+    try {
+      // 1. Upload file to GCS
+      const uploadData = await api.assets.uploadImage.mutate({
+        fileData: await fileToBase64(file),
+        fileName: file.name,
+        mimeType: file.type,
+      });
+
+      // 2. Create style_reference canvas node
+      const styleRefId = generateId();
+      const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Style Reference';
+
+      const imageNode = NodeFactory.createNode({
+        type: 'image',
+        entityId: styleRefId,
+        contextId: projectId,
+        contextType: 'project',
+        posCanvas: dropPosition,
+        scope: 'project',
+        nodeTypeFlag: 'style_reference',
+        label: displayName,
+      });
+
+      addNode(imageNode);
+
+      // 3. Attach uploaded asset to the node
+      useAssetStore.getState().mergeAssets(styleRefId, {
+        image_file: {
+          head: 1,
+          best: 1,
+          versions: [{
+            version: 1,
+            data: uploadData.publicUri,
+            type: 'image',
+            metadata: {},
+            createdAt: new Date(),
+            startedAt: new Date(),
+          }],
+        },
+      });
+
+      // 4. Register as project-wide style reference
+      try {
+        const result = await api.projects.addStyleReferenceFromNode.mutate({
+          projectId,
+          fileId: uploadData.fileId,
+        });
+        if (result.success) {
+          useProjectStore.getState().addStyleReference(result.gcsUri);
+        }
+      } catch (err) {
+        console.error('[useImageFileDrop] Failed to register style reference:', err);
+      }
+
+      console.debug('[useImageFileDrop] Created StyleRef from drop:', { styleRefId, fileName: file.name });
+      return { nodeId: imageNode.id };
+    } catch (error) {
+      console.error('[useImageFileDrop] Failed to create style reference:', error);
+      return { nodeId: '' };
+    }
   };
 
   const handleFileDrop = useCallback(
@@ -258,6 +339,7 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
     setWrapperRef: externalRef ? undefined : setWrapperRef,
     handleFileDrop,
     handleImageFile,
+    handleStyleRefFile,
     isSupportedExtension,
     SUPPORTED_EXTENSIONS,
   };

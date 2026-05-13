@@ -2,8 +2,7 @@ import { z } from "zod";
 import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
-import { CharacterWithAssets } from "#shared/types/workflow.types.js";
-import { InsertCharacter } from "#shared/types/schema.types.js";
+import { CharacterBase, CharacterWithAssets } from "#shared/types/workflow.types.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
@@ -14,7 +13,7 @@ import { TagRegistryService } from "#shared/services/tag-registry.js";
 // Input schema — what the orchestrator LLM sends when invoking this tool
 // ---------------------------------------------------------------------------
 
-const InsertCharactersInput = z.object({ characters: z.array(InsertCharacter) });
+const InsertCharactersInput = z.object({ characters: z.array(CharacterBase) });
 export type InsertCharactersInput = z.input<typeof InsertCharactersInput>;
 
 // ---------------------------------------------------------------------------
@@ -51,9 +50,19 @@ function serialiseResults(raw: Awaited<ReturnType<typeof run>>): string {
 async function run(charactersData: InsertCharactersInput["characters"], context: InsertCharactersToolDeps["context"]) {
   try {
     const toInsertCharacters = charactersData.map(mapDomainCharacterToInsertCharacter);
+
     const insertedCharacters = await context.projectRepository.createCharacters(
       toInsertCharacters[0].projectId,
       toInsertCharacters,
+    );
+
+    await context.saveAssets?.(
+      { characterIds: charactersData.map((c) => c.id), projectId: context.projectId },
+      ["description"],
+      "text",
+      charactersData.map((c) => c.description),
+      [{ model: context.provider.textModel }],
+      /* setBest */ true,
     );
 
     for (let i = 0; i < insertedCharacters.length; i++) {

@@ -5,14 +5,14 @@ import { createMockTextModel } from "#shared/mocks/mock-model.ts";
 import { mockProjectRepository } from "#shared/mocks/mock-project-repository.ts";
 
 // Target Tool & Context Types
-import { SceneParserTool } from "./scene-parser.tool.js";
+import { ParseEntitiesTool, createParseEntitiesTool } from "../parse-entities.tool.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 
 describe("parseSceneFromText Orchestration Suite", () => {
   let mockProvider: Mocked<TextModelController>;
   let mockKbService: any;
-  let tool: SceneParserTool;
+  let tool: ParseEntitiesTool;
   let projectId = generateId();
 
   const mockToolContext = {
@@ -31,10 +31,12 @@ describe("parseSceneFromText Orchestration Suite", () => {
     };
 
     // Instantiate the tool with mocked services
-    tool = new SceneParserTool({
-      textModel: mockProvider,
-      kbService: mockKbService,
-      projectRepository: mockProjectRepository,
+    tool = createParseEntitiesTool({
+      context: {
+        provider: mockProvider,
+        kbService: mockKbService,
+        projectRepository: mockProjectRepository,
+      }
     });
   });
 

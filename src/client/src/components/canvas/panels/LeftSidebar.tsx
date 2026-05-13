@@ -349,6 +349,19 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
             ],
           },
         });
+
+        // Register the uploaded image as a project-wide style reference
+        try {
+          const result = await api.projects.addStyleReferenceFromNode.mutate({
+            projectId: selectedProjectId,
+            fileId: uploadData.fileId,
+          });
+          if (result.success) {
+            useProjectStore.getState().addStyleReference(result.gcsUri);
+          }
+        } catch (err) {
+          console.error("[LeftSidebar] Failed to register node as project-wide style reference:", err);
+        }
       }
     } catch (error) {
       console.error("[LeftSidebar] Failed to create style reference:", error);

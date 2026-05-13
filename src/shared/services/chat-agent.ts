@@ -57,7 +57,7 @@ export type ChatGraphStreamOutput = Record<string, Partial<ChatAgentState>>;
 const DEFAULT_SYSTEM_PROMPT = (
   tools: StructuredTool[],
 ) => `You are a helpful AI assistant for Cinematic Canvas, a generative AI workspace for storytelling.
-  You have read access to the project data including characters, locations, scenes, and assets.
+  You have read access to the project data including characters, locations, props, scenes, shots, and assets.
 You have access to the following tools to help users manage their cinematic projects:
 ${tools.map(({ name, description }) => ({ name, description }))}
 
@@ -67,6 +67,11 @@ When responding to users:
 3. Provide context about what you're doing
 4. If you don't have enough information, ask follow-up questions
 
+Notes: 
+Characters may be referred to as 'actors'. Locations may be referred to as 'sets'. Props may be referred to as 'items'. 
+Sequence refers to the order of shots in the storyboard. 
+Style refs, or style references, are images used to guide the visual look of the generated content.
+Rules, or generation rules, are instructions used to guide image and video generation.
 `;
 
 export class ChatAgent {

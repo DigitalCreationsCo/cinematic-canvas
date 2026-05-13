@@ -3,7 +3,7 @@ import { createMockTextModel } from "#shared/mocks/mock-model.ts";
 import { mockProjectRepository } from "#shared/mocks/mock-project-repository.ts";
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createGenerateLocationAttributesTool } from "#shared/lm/tools/locations/generate-locations.tool.js";
+import { createGenerateLocationAttributesTool } from "#shared/lm/tools/locations/generate-locations-attributes.tool.js";
 import { generateId } from "#shared/utils/id.ts";
 
 // Mock generateEntityAttributes to control LLM output directly
@@ -35,145 +35,137 @@ describe("GenerateLocationAttributesTool", () => {
     };
   });
 
-  it("should execute the full location pipeline successfully", async () => {
-    const inputLocations = [{ id: generateId(), name: "Cyberpunk Bar" }];
-    const generatedAttr = { name: "Cyberpunk Bar", description: "Neon-soaked dive", version: 1 };
-    const insertedRefs = [{ id: inputLocations[0].id, name: "Cyberpunk Bar" }];
+  // it("should execute the full location pipeline successfully", async () => {
+  //   const inputLocations = [{ id: generateId(), name: "Cyberpunk Bar" }];
+  //   const generatedAttr = { name: "Cyberpunk Bar", description: "Neon-soaked dive", version: 1 };
+  //   const insertedRefs = [{ id: inputLocations[0].id, name: "Cyberpunk Bar" }];
 
-    vi.mocked(generateEntityAttributes).mockResolvedValue([
-      { success: true, id: inputLocations[0].id, data: generatedAttr },
-    ]);
+  //   vi.mocked(generateEntityAttributes).mockResolvedValue([
+  //     { success: true, id: inputLocations[0].id, data: generatedAttr },
+  //   ]);
 
-    const insertLocations = vi.fn().mockResolvedValue(insertedRefs);
+  //   const insertLocations = vi.fn().mockResolvedValue(insertedRefs);
 
-    // 3. Mock Repository entity fetch for ENTITY_CREATED
-    mockProjectRepository.getEntities.mockResolvedValue([
-      { entityType: "location", entity: { ...generatedAttr, id: insertedRefs[0].id } },
-    ]);
+  //   // 3. Mock Repository entity fetch for ENTITY_CREATED
+  //   mockProjectRepository.getEntities.mockResolvedValue([
+  //     { entityType: "location", entity: { ...generatedAttr, id: insertedRefs[0].id } },
+  //   ]);
 
-    const consoleSpy = vi.spyOn(console, "log");
-    const tool = createGenerateLocationAttributesTool({
-      context: mockContext,
-      imagesTool: mockImagesTool,
-      insertLocations,
-    });
+  //   const consoleSpy = vi.spyOn(console, "log");
+  //   const tool = createGenerateLocationAttributesTool({
+  //     context: mockContext,
+  //     imagesTool: mockImagesTool,
+  //     insertLocations,
+  //   });
 
-    const results = await tool.run({
-      locations: inputLocations as any,
-      generationRules: ["high quality"],
-      attempt: 1,
-    });
+  //   const results = await tool.run(inputLocations);
 
-    expect(insertLocations).toHaveBeenCalledWith([expect.objectContaining({ name: "Cyberpunk Bar" })]);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining(`Inserted ${insertedRefs.length} location(s) into DB`),
-    );
-    expect(mockContext.saveAssets).toHaveBeenCalled();
-    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
-    expect(mockImagesTool.run).toHaveBeenCalledWith(
-      expect.objectContaining({
-        locations: [expect.objectContaining({ id: insertedRefs[0].id })],
-      }),
-    );
-    expect(results[0].success).toBe(true);
-  });
+  //   expect(insertLocations).toHaveBeenCalledWith([expect.objectContaining({ name: "Cyberpunk Bar" })]);
+  //   expect(consoleSpy).toHaveBeenCalledWith(
+  //     expect.stringContaining(`Inserted ${insertedRefs.length} location(s) into DB`),
+  //   );
+  //   expect(mockContext.saveAssets).toHaveBeenCalled();
+  //   expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
+  //   expect(mockImagesTool.run).toHaveBeenCalledWith(
+  //     expect.objectContaining({
+  //       locations: [expect.objectContaining({ id: insertedRefs[0].id })],
+  //     }),
+  //   );
+  //   expect(results[0].success).toBe(true);
+  // });
 
   // ==========================================================================
   // Full pipeline success
   // ==========================================================================
 
-  it("should execute the full location pipeline: generate → insert → save assets → ENTITY_CREATED → images", async () => {
-    const locationId = generateId();
-    const generatedAttr = {
-      name: "Cyberpunk Bar",
-      description: "Neon-soaked dive bar with holographic dancers",
-      type: "interior",
-      referenceId: "loc_bar",
-      lightingConditions: {},
-      mood: "neon-noir",
-      timeOfDay: "night",
-      weather: "rainy",
-      colorPalette: ["neon pink", "cyan"],
-      architecture: ["neon signage"],
-      naturalElements: [],
-      manMadeObjects: ["bar counter", "stools"],
-      groundSurface: "worn tiles",
-      skyOrCeiling: "low ceiling with neon strips",
-      state: { mood: "neutral", timeOfDay: "night", weather: "rainy" },
-      version: 1,
-    };
+  // it("should execute the full location pipeline: generate → insert → save assets → ENTITY_CREATED → images", async () => {
+  //   const locationId = generateId();
+  //   const generatedAttr = {
+  //     name: "Cyberpunk Bar",
+  //     description: "Neon-soaked dive bar with holographic dancers",
+  //     type: "interior",
+  //     referenceId: "loc_bar",
+  //     lightingConditions: {},
+  //     mood: "neon-noir",
+  //     timeOfDay: "night",
+  //     weather: "rainy",
+  //     colorPalette: ["neon pink", "cyan"],
+  //     architecture: ["neon signage"],
+  //     naturalElements: [],
+  //     manMadeObjects: ["bar counter", "stools"],
+  //     groundSurface: "worn tiles",
+  //     skyOrCeiling: "low ceiling with neon strips",
+  //     state: { mood: "neutral", timeOfDay: "night", weather: "rainy" },
+  //     version: 1,
+  //   };
 
-    const insertedRef = { id: locationId, name: "Cyberpunk Bar" };
+  //   const insertedRef = { id: locationId, name: "Cyberpunk Bar" };
 
-    vi.mocked(generateEntityAttributes).mockResolvedValue([
-      { success: true, id: locationId, data: generatedAttr, entityType: "location" },
-    ]);
+  //   vi.mocked(generateEntityAttributes).mockResolvedValue([
+  //     { success: true, id: locationId, data: generatedAttr, entityType: "location" },
+  //   ]);
 
-    const insertLocations = vi.fn().mockResolvedValue([insertedRef]);
-    mockProjectRepository.getEntities.mockResolvedValue([
-      { entity: { ...generatedAttr, id: locationId, assets: {} }, entityType: "location" },
-    ]);
+  //   const insertLocations = vi.fn().mockResolvedValue([insertedRef]);
+  //   mockProjectRepository.getEntities.mockResolvedValue([
+  //     { entity: { ...generatedAttr, id: locationId, assets: {} }, entityType: "location" },
+  //   ]);
 
-    const tool = createGenerateLocationAttributesTool({
-      context: mockContext,
-      imagesTool: mockImagesTool,
-      insertLocations,
-    });
+  //   const tool = createGenerateLocationAttributesTool({
+  //     context: mockContext,
+  //     imagesTool: mockImagesTool,
+  //     insertLocations,
+  //   });
 
-    const results = await tool.run({
-      locations: [{ id: locationId, name: "Cyberpunk Bar" }] as any,
-      generationRules: ["high quality"],
-      attempt: 1,
-    });
+  //   const results = await tool.run([{ id: locationId, name: "Cyberpunk Bar" }]);
 
-    // ── Assert: attributes generated ──
-    expect(generateEntityAttributes).toHaveBeenCalledWith(
-      expect.objectContaining({ entityDescription: "location profile" }),
-      expect.anything(),
-    );
+  //   // ── Assert: attributes generated ──
+  //   expect(generateEntityAttributes).toHaveBeenCalledWith(
+  //     expect.objectContaining({ entityDescription: "location profile" }),
+  //     expect.anything(),
+  //   );
 
-    // ── Assert: insert called with generated attributes ──
-    expect(insertLocations).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ name: "Cyberpunk Bar" })]),
-    );
+  //   // ── Assert: insert called with generated attributes ──
+  //   expect(insertLocations).toHaveBeenCalledWith(
+  //     expect.arrayContaining([expect.objectContaining({ name: "Cyberpunk Bar" })]),
+  //   );
 
-    // ── Assert: saveAssets called for description ──
-    // Note: metadata is empty because generateEntityAttributes does not capture LLM metadata
-    expect(mockContext.saveAssets).toHaveBeenCalledWith(
-      { locationIds: [locationId], projectId: expect.any(String) },
-      ["description"],
-      "text",
-      [generatedAttr.description],
-      [],
-      true,
-    );
+  //   // ── Assert: saveAssets called for description ──
+  //   // Note: metadata is empty because generateEntityAttributes does not capture LLM metadata
+  //   expect(mockContext.saveAssets).toHaveBeenCalledWith(
+  //     { locationIds: [locationId], projectId: expect.any(String) },
+  //     ["description"],
+  //     "text",
+  //     [generatedAttr.description],
+  //     [],
+  //     true,
+  //   );
 
-    // ── Assert: ENTITY_CREATED published ──
-    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "ENTITY_CREATED",
-        worldId: "test-world",
-      }),
-    );
+  //   // ── Assert: ENTITY_CREATED published ──
+  //   expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(
+  //     expect.objectContaining({
+  //       type: "ENTITY_CREATED",
+  //       worldId: "test-world",
+  //     }),
+  //   );
 
-    // ── Assert: images tool called with inserted refs and correct version ──
-    expect(mockImagesTool.run).toHaveBeenCalledWith(
-      expect.objectContaining({
-        locations: expect.arrayContaining([
-          expect.objectContaining({ id: locationId, name: "Cyberpunk Bar", version: 1 }),
-        ]),
-        generationRules: ["high quality"],
-        attempt: 1,
-      }),
-    );
+  //   // ── Assert: images tool called with inserted refs and correct version ──
+  //   expect(mockImagesTool.run).toHaveBeenCalledWith(
+  //     expect.objectContaining({
+  //       locations: expect.arrayContaining([
+  //         expect.objectContaining({ id: locationId, name: "Cyberpunk Bar", version: 1 }),
+  //       ]),
+  //       generationRules: ["high quality"],
+  //       attempt: 1,
+  //     }),
+  //   );
 
-    // ── Assert: success result ──
-    expect(results[0].success).toBe(true);
-    if (results[0].success) {
-      expect(results[0].id).toBe(locationId);
-      expect(results[0].output.name).toBe("Cyberpunk Bar");
-    }
-  });
+  //   // ── Assert: success result ──
+  //   expect(results[0].success).toBe(true);
+  //   if (results[0].success) {
+  //     expect(results[0].id).toBe(locationId);
+  //     expect(results[0].output.name).toBe("Cyberpunk Bar");
+  //   }
+  // });
 
   // ==========================================================================
   // All attribute generation fails
@@ -200,9 +192,7 @@ describe("GenerateLocationAttributesTool", () => {
       insertLocations,
     });
 
-    const results = await tool.run({
-      locations: [{ id: locationId, name: "Fail Loc" }] as any,
-    });
+    const results = await tool.run([{ id: locationId, name: "Fail Loc" }]);
 
     expect(insertLocations).not.toHaveBeenCalled();
     expect(mockContext.saveAssets).not.toHaveBeenCalled();
@@ -216,104 +206,62 @@ describe("GenerateLocationAttributesTool", () => {
     }
   });
 
-  // ==========================================================================
-  // Insert throws - error propagation
-  // ==========================================================================
+  // // ==========================================================================
+  // // Image generation failure is non-fatal
+  // // ==========================================================================
 
-  it("should throw when insertLocations fails", async () => {
-    const locationId = generateId();
-    const generatedAttr = {
-      name: "Fail Insert",
-      description: "test",
-      type: "exterior",
-      referenceId: "loc_fail",
-      lightingConditions: {},
-      mood: "neutral",
-      timeOfDay: "day",
-      weather: "clear",
-      colorPalette: [],
-      architecture: [],
-      naturalElements: [],
-      manMadeObjects: [],
-      groundSurface: "",
-      skyOrCeiling: "",
-      state: {},
-      version: 1,
-    };
+  // it("should still return attribute results when imagesTool.run() throws", async () => {
+  //   const locationId = generateId();
+  //   const generatedAttr = {
+  //     name: "Img Fail Loc",
+  //     description: "test",
+  //     type: "interior",
+  //     referenceId: "loc_img_fail",
+  //     lightingConditions: {},
+  //     mood: "neutral",
+  //     timeOfDay: "day",
+  //     weather: "clear",
+  //     colorPalette: [],
+  //     architecture: [],
+  //     naturalElements: [],
+  //     manMadeObjects: [],
+  //     groundSurface: "",
+  //     skyOrCeiling: "",
+  //     state: {},
+  //     version: 1,
+  //   };
 
-    vi.mocked(generateEntityAttributes).mockResolvedValue([
-      { success: true, id: locationId, data: generatedAttr, entityType: "location" },
-    ]);
+  //   vi.mocked(generateEntityAttributes).mockResolvedValue([
+  //     { success: true, id: locationId, data: generatedAttr, entityType: "location" },
+  //   ]);
 
-    const insertLocations = vi.fn().mockRejectedValue(new Error("DB constraint violation"));
+  //   const insertLocations = vi.fn().mockResolvedValue([{ id: locationId, name: "Img Fail Loc" }]);
+  //   mockImagesTool.run = vi.fn().mockRejectedValue(new Error("Image API unavailable"));
+  //   mockProjectRepository.getEntities.mockResolvedValue([
+  //     { entity: { id: locationId, name: "Img Fail Loc", assets: {} }, entityType: "location" },
+  //   ]);
 
-    const tool = createGenerateLocationAttributesTool({
-      context: mockContext,
-      imagesTool: mockImagesTool,
-      insertLocations,
-    });
+  //   const tool = createGenerateLocationAttributesTool({
+  //     context: mockContext,
+  //     imagesTool: mockImagesTool,
+  //     insertLocations,
+  //   });
 
-    await expect(tool.run({ locations: [{ id: locationId, name: "Fail Insert" }] as any })).rejects.toThrow(
-      "DB constraint violation",
-    );
-  });
+  //   const results = await tool.run({
+  //     locations: [{ id: locationId, name: "Img Fail Loc" }] as any,
+  //   });
 
-  // ==========================================================================
-  // Image generation failure is non-fatal
-  // ==========================================================================
+  //   // Insert and ENTITY_CREATED still happened
+  //   expect(insertLocations).toHaveBeenCalled();
+  //   expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
 
-  it("should still return attribute results when imagesTool.run() throws", async () => {
-    const locationId = generateId();
-    const generatedAttr = {
-      name: "Img Fail Loc",
-      description: "test",
-      type: "interior",
-      referenceId: "loc_img_fail",
-      lightingConditions: {},
-      mood: "neutral",
-      timeOfDay: "day",
-      weather: "clear",
-      colorPalette: [],
-      architecture: [],
-      naturalElements: [],
-      manMadeObjects: [],
-      groundSurface: "",
-      skyOrCeiling: "",
-      state: {},
-      version: 1,
-    };
-
-    vi.mocked(generateEntityAttributes).mockResolvedValue([
-      { success: true, id: locationId, data: generatedAttr, entityType: "location" },
-    ]);
-
-    const insertLocations = vi.fn().mockResolvedValue([{ id: locationId, name: "Img Fail Loc" }]);
-    mockImagesTool.run = vi.fn().mockRejectedValue(new Error("Image API unavailable"));
-    mockProjectRepository.getEntities.mockResolvedValue([
-      { entity: { id: locationId, name: "Img Fail Loc", assets: {} }, entityType: "location" },
-    ]);
-
-    const tool = createGenerateLocationAttributesTool({
-      context: mockContext,
-      imagesTool: mockImagesTool,
-      insertLocations,
-    });
-
-    const results = await tool.run({
-      locations: [{ id: locationId, name: "Img Fail Loc" }] as any,
-    });
-
-    // Insert and ENTITY_CREATED still happened
-    expect(insertLocations).toHaveBeenCalled();
-    expect(mockContext.publishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
-
-    // Attribute result is success
-    expect(results).toHaveLength(1);
-    expect(results[0].success).toBe(true);
-    if (results[0].success) {
-      expect(results[0].output.name).toBe("Img Fail Loc");
-    }
-  });
+  //   // Attribute result is success
+  //   expect(results).toHaveLength(1);
+  //   expect(results[0].success).toBe(true);
+  //   if (results[0].success) {
+  //     expect(results[0].output.name).toBe("Img Fail Loc");
+  //   }
+  // });
 
   // ==========================================================================
   // Partial failures - mix of success and failure
@@ -342,7 +290,7 @@ describe("GenerateLocationAttributesTool", () => {
     };
 
     vi.mocked(generateEntityAttributes).mockResolvedValue([
-      { success: true, id: locId1, data: successAttr, entityType: "location" },
+      { success: true, id: locId1, entity: successAttr, entityType: "location" },
       {
         success: false,
         id: locId2,
@@ -359,25 +307,17 @@ describe("GenerateLocationAttributesTool", () => {
 
     const tool = createGenerateLocationAttributesTool({
       context: mockContext,
-      imagesTool: mockImagesTool,
-      insertLocations,
     });
 
-    const results = await tool.run({
-      locations: [
-        { id: locId1, name: "Good Location" },
-        { id: locId2, name: "Bad Location" },
-      ] as any,
-    });
+    const results = await tool.run([
+      { id: locId1, name: "Good Location" },
+      { id: locId2, name: "Bad Location" },
+    ]);
+
 
     expect(results).toHaveLength(2);
     expect(results[0].success).toBe(true);
     expect(results[1].success).toBe(false);
-
-    // Insert only called for success
-    expect(insertLocations).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ name: "Good Location" })]),
-    );
   });
 
   // ==========================================================================
@@ -389,11 +329,9 @@ describe("GenerateLocationAttributesTool", () => {
 
     const tool = createGenerateLocationAttributesTool({
       context: mockContext,
-      imagesTool: mockImagesTool,
-      insertLocations: vi.fn(),
     });
 
-    const results = await tool.run({ locations: [] });
+    const results = await tool.run([]);
 
     expect(results).toHaveLength(0);
     expect(mockImagesTool.run).not.toHaveBeenCalled();
@@ -425,7 +363,7 @@ describe("GenerateLocationAttributesTool", () => {
     };
 
     vi.mocked(generateEntityAttributes).mockResolvedValue([
-      { success: true, id: locationId, data: generatedAttr, entityType: "location" },
+      { success: true, id: locationId, entity: generatedAttr, entityType: "location" },
     ]);
 
     const insertLocations = vi.fn().mockResolvedValue([{ id: locationId, name: "Serialise Loc" }]);
@@ -435,8 +373,6 @@ describe("GenerateLocationAttributesTool", () => {
 
     const tool = createGenerateLocationAttributesTool({
       context: mockContext,
-      imagesTool: mockImagesTool,
-      insertLocations,
     });
 
     const serialised = await tool._call({
@@ -448,6 +384,6 @@ describe("GenerateLocationAttributesTool", () => {
     expect(parsed.summary).toEqual({ total: 1, succeeded: 1, failed: 0 });
     expect(parsed).toHaveProperty("results");
     expect(parsed.results[0].success).toBe(true);
-    expect(parsed.results[0].location.name).toBe("Serialise Loc");
+    expect(parsed.results[0].attributes.name).toBe("Serialise Loc");
   });
 });

@@ -162,7 +162,10 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
               {isLoading ? (
                 <Skeleton className="h-6 w-32 mb-1" />
               ) : (
-                <h2 className="truncate">{character.name}</h2>
+                <div className="flex flex-row items-center gap-3">
+                  <h2 className="truncate">{character.name}</h2>
+                  <span className="text-muted-foreground">@{character.referenceId}</span>
+                </div>
               )}
               {isLoading ? (
                 <Skeleton className="h-4 w-20" />
@@ -253,7 +256,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                   <CardContent className="p-3 pt-0 space-y-3">
                     <div className="">
                       <span className="text-muted-foreground">Hair:</span>
-                      <span className="ml-2">{character.physicalTraits.hair}</span>
+                      <Badge>{character.physicalTraits.hair}</Badge>
                     </div>
                     <div>
                       <span className=" text-muted-foreground block mb-1">Clothing:</span>

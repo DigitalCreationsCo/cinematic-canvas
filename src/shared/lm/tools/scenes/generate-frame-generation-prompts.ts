@@ -16,7 +16,6 @@ import { ThinkingLevel } from "#shared/lm/google/provider.js";
 
 /**
  * Input descriptor for a single frame prompt request.
- * Previously defined on FrameCompositionAgent — now lives alongside this tool.
  */
 export type FramePromptRequest = {
     framePosition: "start" | "end";
@@ -25,10 +24,16 @@ export type FramePromptRequest = {
     locations: Location[];
     previousScene?: Scene;
     generationRules?: string[];
-    metadata: { custom_id: string; assetKey: AssetKey; version: number };
+    metadata: {
+        custom_id: string; // unique identifier for batch internal processing
+        assetKey: AssetKey; // ??
+        version: number
+    }; // version tracking number
 };
 
-export type FramePromptResult = {
+export type FramePromptResultsEnvelope = {
+    framePosition: "start" | "end";
+    scene: Scene;
     prompt: string;
     metadata: {
         custom_id: string;
@@ -54,7 +59,7 @@ export type FramePromptResult = {
 export async function generateFrameGenerationPrompts(
     requests: FramePromptRequest[],
     context: ToolContext<TextModelController>
-): Promise<FramePromptResult[]> {
+): Promise<FramePromptResultsEnvelope[]> {
     if (requests.length === 0) return [];
 
     const { traceId } = context;
@@ -86,7 +91,6 @@ export async function generateFrameGenerationPrompts(
 
     const batchResults = await context.provider.generateBatchContent({
         projectId: context.projectId,
-        model: context.provider.textModel,
         requests: batchRequests,
         config: {
             abortSignal: context.options?.signal,
@@ -95,27 +99,38 @@ export async function generateFrameGenerationPrompts(
 
     return batchResults.map((res, index) => {
         const originalReq = requests[index];
-        let content = res.status === "SUCCESS" ? cleanJsonOutput(res.text!) : null;
+        let content: string | null = null;
+
+        try {
+            if (res.status === "SUCCESS" && res.text) {
+                content = cleanJsonOutput(res.text);
+            }
+        } catch (error) {
+            console.error(
+                { sceneId: originalReq.scene.id, customId: originalReq.metadata.custom_id, error: error instanceof Error ? error.message : String(error) },
+                `[${traceId}] ❌ Execution error in LLM output parsing.`
+            );
+        }
 
         if (!content) {
             console.warn(
                 { sceneId: originalReq.scene.id },
-                `[${traceId}] ⚠️ LLM returned empty response — falling back to raw instructions`
+                `[${traceId}] ⚠️ LLM returned empty/invalid response — falling back to raw instructions.`
             );
             content = batchRequests[index].messages[1].content.toString();
         }
 
-        // Append generation rules after LLM post-processing to avoid rules
-        // being transformed or stripped by the model.
         const finalPrompt = content + composeGenerationRules(originalReq.generationRules);
 
         return {
+            framePosition: originalReq.framePosition,
+            scene: originalReq.scene,
             prompt: finalPrompt,
             metadata: {
+                custom_id: originalReq.metadata.custom_id,
                 assetKey: originalReq.metadata.assetKey,
-                version: res.version,
-                custom_id: res.customId,
-                status: res.status,
+                status: res.status ?? "UNKNOWN_FAILURE",
+                version: originalReq.metadata.version,
             },
         };
     });

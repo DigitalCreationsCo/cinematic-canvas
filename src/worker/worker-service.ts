@@ -2030,42 +2030,39 @@ export class WorkerService {
                     attempt: job.attempts.currentAttempt,
                   }),
 
-                  createGenerateSceneAttributesTool({ context: toolContext }).run({
-                    scenes: [
-                      {
-                        partial: {
-                          ...sceneFields,
-                          sceneIndex,
-                          id: sceneFields.id,
-                          // characters: [
-                          //   ...resolvedExistingCharacters.map((c) => hydrateEntity(c, c.assets)),
-                          //   ...insertedCharacters,
-                          // ].map((c) => CharacterAttributes.parse(c)),
-                          // location: LocationAttributes.parse(hydrateEntity(sceneLocation, sceneLocation.assets)),
-                        },
-                        images: [
-                          ...(startFrameGcsUri && startFrameMimeType
-                            ? [
-                              {
-                                gcsUri: startFrameGcsUri,
-                                publicUri: startFrameGcsUri,
-                                mimeType: startFrameMimeType,
-                              },
-                            ]
-                            : []),
-                          ...(endFrameGcsUri && endFrameMimeType
-                            ? [
-                              {
-                                gcsUri: endFrameGcsUri,
-                                publicUri: endFrameGcsUri,
-                                mimeType: endFrameMimeType,
-                              },
-                            ]
-                            : []),
-                        ],
-                      },
-                    ],
-                  }),
+                  createGenerateSceneAttributesTool({ context: toolContext }).run([
+                    {
+                      ...sceneFields,
+                      sceneIndex,
+                      id: sceneFields.id,
+                      // characters: [
+                      //   ...resolvedExistingCharacters.map((c) => hydrateEntity(c, c.assets)),
+                      //   ...insertedCharacters,
+                      // ].map((c) => CharacterAttributes.parse(c)),
+                      // location: LocationAttributes.parse(hydrateEntity(sceneLocation, sceneLocation.assets)),
+                      images: [
+                        ...(startFrameGcsUri && startFrameMimeType
+                          ? [
+                            {
+                              gcsUri: startFrameGcsUri,
+                              publicUri: startFrameGcsUri,
+                              mimeType: startFrameMimeType,
+                            },
+                          ]
+                          : []),
+                        ...(endFrameGcsUri && endFrameMimeType
+                          ? [
+                            {
+                              gcsUri: endFrameGcsUri,
+                              publicUri: endFrameGcsUri,
+                              mimeType: endFrameMimeType,
+                            },
+                          ]
+                          : []),
+                      ],
+                    },
+                  ],
+                  ),
                 ]);
 
               const [characterImageUris, characterImageMetadatas] = generatedCharacterImagesResults
@@ -2115,7 +2112,7 @@ export class WorkerService {
               );
 
               // Insert scene
-              const sceneAttributesList = sceneAttributesResults.filter((r) => r.success).map((r) => r.output);
+              const sceneAttributesList = sceneAttributesResults.filter((r) => r.success).map((r) => ({ ...r.attributes, id: r.id })); // existing id is kept here. important!
               const allSceneCharacters = [...resolvedExistingCharacters, ...insertedCharacters];
               const characterReferenceIds = allSceneCharacters.map((c) => c.referenceId);
 
@@ -2241,10 +2238,10 @@ export class WorkerService {
 
               const characterAttributesResults = await createGenerateCharacterAttributesTool({
                 context: toolContext,
-              }).run({ characters: charactersData });
+              }).run(charactersData);
               const characterAttributesSuccess = characterAttributesResults
                 .filter((c) => c.success)
-                .map((c) => ({ ...c.attributes, projectId: job.projectId }));
+                .map((c) => ({ ...c.attributes, id: c.id, projectId: job.projectId }));
               const insertedCharacters = await createInsertCharactersTool({
                 context: toolContext,
               }).run({ characters: characterAttributesSuccess });
@@ -2324,7 +2321,7 @@ export class WorkerService {
               }).run({ locations: locationsData });
               const locationAttributesSuccess = locationAttributes
                 .filter((c) => c.success)
-                .map((c) => ({ ...c.output, projectId: job.projectId }));
+                .map((c) => ({ ...c.attributes, id: c.id, projectId: job.projectId }));
               const insertedLocations = await createInsertLocationsTool({
                 context: toolContext,
               }).run({ locations: locationAttributesSuccess });
@@ -2507,7 +2504,7 @@ export class WorkerService {
                         .map((r, i) => ({ r, origin: typedEntities[i] }))
                         .map(({ r, origin }) => ({
                           entityType: "prop" as const,
-                          data: { ...r.prop, id: origin.data.id },
+                          data: { ...r.entity, id: origin.data.id },
                           images: origin.images,
                         }));
                     }

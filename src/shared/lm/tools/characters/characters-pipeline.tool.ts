@@ -137,7 +137,7 @@ class GenerateCharactersPipelineTool extends StructuredTool<typeof GenerateChara
     console.log(`${traceId}: [Pipeline] Generating attributes for ${characters.length} character(s)`);
 
     const attributeResults =
-      await this.attributesTool.run({ characters });
+      await this.attributesTool.run(characters);
 
     const attributesSuccesses = attributeResults.filter((r): r is GenerateCharactersResultSuccess => r.success);
     if (attributesSuccesses.length === 0) {
@@ -149,7 +149,7 @@ class GenerateCharactersPipelineTool extends StructuredTool<typeof GenerateChara
       }));
     }
 
-    let insertResults: CharacterWithAssets[];
+    let insertResults: CharacterWithAssets[] = [];
     try {
 
       insertResults =
@@ -163,10 +163,10 @@ class GenerateCharactersPipelineTool extends StructuredTool<typeof GenerateChara
       throw e;
     }
 
-    // ── Step 3: Fetch full entities and emit ENTITY_CREATED ───────────────────
     let insertedEntities: CharacterWithAssets[] = [];
     if (this.context.publishPipelineEvent && insertResults.length > 0) {
       try {
+
         const fetched = await this.context.projectRepository.getEntities(
           insertResults.map((ref) => ({
             entityId: ref.id,

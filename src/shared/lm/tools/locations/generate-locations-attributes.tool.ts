@@ -15,7 +15,7 @@ const LocationBasePartialWithIdAndImages = LocationBase.partial().extend({
 const GenerateLocationsInput = z.object({
   locations: z.array(LocationBasePartialWithIdAndImages),
 });
-export type GenerateLocationsInput = z.infer<typeof GenerateLocationsInput>;
+export type GenerateLocationsInput = z.input<typeof GenerateLocationsInput>;
 
 // ============================================================================
 // RESULT TYPES — same pattern as GenerateCharactersResult
@@ -24,7 +24,7 @@ export type GenerateLocationsInput = z.infer<typeof GenerateLocationsInput>;
 export type GenerateLocationsResultSuccess = {
   success: true;
   id: string;
-  output: LocationAttributes;
+  attributes: LocationAttributes;
   metadata?: { model: string; prompt: string };
 };
 
@@ -34,12 +34,12 @@ export type GenerateLocationsResult = GenerateLocationsResultSuccess | { success
 // SERIALISER — used by _call (LangChain string interface only)
 // ============================================================================
 
-type ToolResultItem = { success: true; location: LocationAttributes } | { success: false; error: string };
+type ToolResultItem = { success: true; attributes: LocationAttributes } | { success: false; error: string };
 
-function serialiseResults(raw: { success: boolean; data?: LocationAttributes; error?: Error }[]): string {
+function serialiseResults(raw: ({ success: true; attributes: LocationAttributes; } | { success: false; data?: undefined; error?: Error })[]): string {
   const items: ToolResultItem[] = raw.map((r) =>
     r.success
-      ? { success: true, location: r.data as LocationAttributes }
+      ? { success: true, attributes: r.attributes }
       : { success: false, error: r.error?.message ?? "unknown" },
   );
 
@@ -64,20 +64,20 @@ async function run(
   const rawResults = await generateEntityAttributes(
     {
       schema: LocationAttributes,
-      entities: inputs.map((input) => ({
-        data: input,
+      entities: inputs.map((entity) => ({
+        entity,
         entityType: "location",
-        images: input.images,
+        images: entity.images,
       })),
       entityDescription: "location profile",
     },
     context,
   );
 
-  const attributeResults: GenerateLocationsResult[] = rawResults.map((result) =>
-    result.success
-      ? { success: true, id: result.id, output: result.data }
-      : { success: false, id: result.id, error: result.error },
+  const attributeResults: GenerateLocationsResult[] = rawResults.map(({ entity, id, success, error }) =>
+    success
+      ? { success: true, id, attributes: entity }
+      : { success: false, id, error: error }
   );
 
   // All subsequent steps operate only on items that succeeded here
@@ -122,11 +122,7 @@ class GenerateLocationAttributesTool extends StructuredTool<typeof GenerateLocat
 
     const generated = await run(locations, this.context);
 
-    const adapted = generated.map((r) =>
-      r.success ? { success: true, data: r.output } : { success: false, error: r.error },
-    );
-
-    const output = serialiseResults(adapted);
+    const output = serialiseResults(generated);
     console.log(`${traceId}: GenerateLocationAttributesTool complete.`);
     return output;
   }
@@ -134,7 +130,7 @@ class GenerateLocationAttributesTool extends StructuredTool<typeof GenerateLocat
   /**
    * Programmatic interface for direct tool-to-tool calls.
    */
-  async run({ locations }: GenerateLocationsInput): Promise<GenerateLocationsResult[]> {
+  async run(locations: GenerateLocationsInput["locations"]): Promise<GenerateLocationsResult[]> {
     try {
       return await run(locations, this.context);
     } catch (e) {

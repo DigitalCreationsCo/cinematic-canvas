@@ -6,7 +6,6 @@ import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { PropAttributes, PropBase } from "#shared/types/workflow.types.js";
 import { UploadResult } from "#shared/types/base.types.js";
-import { ProjectRepository } from "#shared/services/project-repository.js";
 
 const PropBasePartialWithIdAndImages = PropBase.partial().extend({
   id: z.string(),
@@ -16,24 +15,22 @@ const PropBasePartialWithIdAndImages = PropBase.partial().extend({
 const GeneratePropsInput = z.object({
   props: z.array(PropBasePartialWithIdAndImages),
 });
-export type GeneratePropsInput = z.infer<typeof GeneratePropsInput>;
+export type GeneratePropsInput = z.input<typeof GeneratePropsInput>;
 
 export type GeneratePropsResultSuccess = {
   success: true;
   id: string;
-  output: PropAttributes;
+  attributes: PropAttributes;
   metadata?: { model: string; prompt: string };
 };
 
 export type GeneratePropsResult = GeneratePropsResultSuccess | { success: false; id: string; error: Error };
 
-type ToolResultItem = { success: true; prop: PropAttributes } | { success: false; error: string };
+type ToolResultItem = { success: true; attributes: PropAttributes } | { success: false; error: string };
 
-function serialiseResults(raw: { success: boolean; data?: PropAttributes; error?: Error }[]): string {
+function serialiseResults(raw: ({ success: true; attributes: PropAttributes } | { success: false; error: Error })[]): string {
   const items: ToolResultItem[] = raw.map((r) =>
-    r.success
-      ? { success: true, prop: r.data as PropAttributes }
-      : { success: false, error: r.error?.message ?? "unknown" },
+    r.success ? { success: true, attributes: r.attributes } : { success: false, error: r.error?.message ?? "unknown" },
   );
 
   const succeeded = items.filter((i) => i.success).length;
@@ -57,23 +54,20 @@ async function run(
   const rawResults = await generateEntityAttributes(
     {
       schema: PropAttributes,
-      entities: inputs.map((p) => ({
-        data: p,
+      entities: inputs.map((entity) => ({
+        entity,
         entityType: "prop",
-        images: p.images,
+        images: entity.images,
       })),
       entityDescription: "prop profile",
     },
     context,
   );
 
-  const attributeResults: GeneratePropsResult[] = rawResults.map((result) =>
-    result.success
-      ? { success: true, id: result.id, output: result.data }
-      : { success: false, id: result.id, error: result.error },
+  const attributeResults: GeneratePropsResult[] = rawResults.map(({ entity, id, success, error }) =>
+    success ? { success: true, id, attributes: entity } : { success: false, id, error: error },
   );
 
-  // All subsequent steps operate only on items that succeeded here
   const successes = attributeResults.filter((r): r is GeneratePropsResultSuccess => r.success);
 
   if (successes.length === 0) {
@@ -115,11 +109,7 @@ class GeneratePropAttributesTool extends StructuredTool<typeof GeneratePropsInpu
 
     const generated = await run(props, this.context);
 
-    const adapted = generated.map((r) =>
-      r.success ? { success: true, data: r.output } : { success: false, error: r.error },
-    );
-
-    const output = serialiseResults(adapted);
+    const output = serialiseResults(generated);
     console.log(`${traceId}: GeneratePropAttributesTool complete.`);
     return output;
   }
@@ -127,7 +117,7 @@ class GeneratePropAttributesTool extends StructuredTool<typeof GeneratePropsInpu
   /**
    * Programmatic interface for direct tool-to-tool calls.
    */
-  async run({ props }: GeneratePropsInput): Promise<GeneratePropsResult[]> {
+  async run(props: GeneratePropsInput["props"]): Promise<GeneratePropsResult[]> {
     try {
       return await run(props, this.context);
     } catch (e) {

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
-import { ToolContext } from "#shared/lm/tools/tools.utils.js";
+import { serialiseResults, ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { PropWithAssets, PropAttributes, PropBase } from "#shared/types/workflow.types.js";
 import { UploadResult } from "#shared/types/base.types.js";
@@ -35,124 +35,18 @@ type InsertedPropRef = { id: string; name: string };
 export type GeneratePropsPipelineResultSuccess = {
   success: true;
   id: string;
-  prop: PropWithAssets;
+  entity: PropWithAssets;
 };
 
 export type GeneratePropsPipelineResult =
   | GeneratePropsPipelineResultSuccess
   | { success: false; id: string; error: Error };
 
-function serialiseResults(results: GeneratePropsPipelineResult[]): string {
-  const items = results.map((r) =>
-    r.success
-      ? { success: true, id: r.id, prop: r.prop }
-      : { success: false, id: r.id, error: (r.error as Error)?.message ?? "unknown" },
-  );
-
-  return JSON.stringify({
-    summary: {
-      total: items.length,
-      succeeded: items.filter((i) => i.success).length,
-      failed: items.filter((i) => !i.success).length,
-    },
-    results: items,
-  });
-}
-
-// ============================================================================
-// CORE RUN FUNCTION
-// ============================================================================
-
-async function run(
-  inputs: GeneratePropsPipelineInput["props"],
-  generationRules: string[],
-  attempt: number,
-  context: GeneratePropsPipelineDeps["context"],
-  attributesTool: GeneratePropAttributesTool,
-  imagesTool: GeneratePropImagesTool,
-  insertProps: GeneratePropsPipelineDeps["insertProps"],
-): Promise<GeneratePropsPipelineResult[]> {
-  const { projectId, traceId } = context;
-
-  console.log(`${traceId}: [Pipeline] Generating attributes for ${inputs.length} prop(s)`);
-
-  const attributeResults = await attributesTool.run({ props: inputs });
-  const successes = attributeResults.filter((r): r is GeneratePropsResultSuccess => r.success);
-
-  if (successes.length === 0) {
-    return attributeResults.map((r) => ({
-      success: false,
-      id: r.id,
-      error: r.success ? new Error("unreachable") : r.error,
-    }));
-  }
-
-  let insertedRefs: InsertedPropRef[];
-  try {
-    insertedRefs = await insertProps(successes.map((r) => ({ ...r.output, projectId })));
-  } catch (e) {
-    throw e;
-  }
-
-  let insertedEntities: PropWithAssets[] = [];
-  if (context.publishPipelineEvent && insertedRefs.length > 0) {
-    try {
-      const fetched = await context.projectRepository.getEntities(
-        insertedRefs.map((ref) => ({ entityId: ref.id, entityType: "prop" as const, entity: {} })),
-      );
-      insertedEntities = fetched.map(({ entity }) => entity as PropWithAssets);
-
-      await context.publishPipelineEvent({
-        type: "ENTITY_CREATED",
-        worldId: context.worldId,
-        payload: fetched.map(({ entity, entityType }) => ({
-          entityId: entity.id,
-          entityType: "prop" as "prop",
-          entity: entity as PropWithAssets,
-        })),
-      });
-    } catch (e) {
-      console.error(`${traceId}: [Pipeline] ENTITY_CREATED publish failed`, e);
-    }
-  }
-
-  const enrichedById = new Map<string, PropWithAssets>();
-  try {
-    const imageResults = await imagesTool.run({
-      props: insertedRefs.map((ref) => ({
-        id: ref.id,
-        name: ref.name,
-        version: (successes.find((s) => s.id === ref.id)?.output as any)?.version ?? attempt,
-      })),
-      generationRules,
-      attempt,
-    });
-
-    for (const result of imageResults) {
-      if (result.success && result.entity) enrichedById.set(result.id, result.entity);
-    }
-  } catch (e) {
-    console.error(`${traceId}: [Pipeline] imagesTool failure`, e);
-  }
-
-  const insertedById = new Map(insertedEntities.map((e) => [e.id, e]));
-  return attributeResults.map((r) => {
-    if (!r.success) return r;
-    const prop = enrichedById.get(r.id) ?? insertedById.get(r.id);
-    if (!prop) return { success: false, id: r.id, error: new Error("Missing after insert") };
-    return { success: true, id: r.id, prop };
-  });
-}
-
-// ============================================================================
-// TOOL CLASS
-// ============================================================================
-
 export interface GeneratePropsPipelineDeps {
   context: ToolContext<TextModelController> & { projectRepository: ProjectRepository };
   attributesTool: GeneratePropAttributesTool;
   imagesTool: GeneratePropImagesTool;
-  insertProps: (props: Array<PropAttributes & { projectId: string }>) => Promise<InsertedPropRef[]>;
+  insertProps: (props: Array<PropAttributes & { projectId: string }>) => Promise<PropWithAssets[]>;
 }
 
 class GeneratePropsPipelineTool extends StructuredTool<typeof GeneratePropsPipelineInput> {
@@ -167,31 +61,118 @@ class GeneratePropsPipelineTool extends StructuredTool<typeof GeneratePropsPipel
     super(params);
   }
 
-  async _call(input: GeneratePropsPipelineInput): Promise<string> {
-    const results = await run(
-      input.props,
-      input.generationRules,
-      input.attempt,
-      this.deps.context,
-      this.deps.attributesTool,
-      this.deps.imagesTool,
-      this.deps.insertProps,
-    );
+  async _call({ props, generationRules = [], attempt = 1 }: GeneratePropsPipelineInput): Promise<string> {
+    const results = await this.run({
+      props,
+      generationRules,
+      attempt,
+    });
     return serialiseResults(results);
   }
 
-  async run(input: GeneratePropsPipelineInput): Promise<GeneratePropsPipelineResult[]> {
-    return run(
-      input.props,
-      input.generationRules,
-      input.attempt,
-      this.deps.context,
-      this.deps.attributesTool,
-      this.deps.imagesTool,
-      this.deps.insertProps,
-    );
+  async run({
+    props,
+    generationRules,
+    attempt,
+  }: GeneratePropsPipelineInput): Promise<GeneratePropsPipelineResult[]> {
+    const { attributesTool, imagesTool, insertProps, context } = this.deps;
+    const { projectId, traceId } = context;
+
+    console.log(`${traceId}: [Pipeline] Generating attributes for ${props.length} prop(s)`);
+
+    const attributeResults = await attributesTool.run(props);
+    const successes = attributeResults.filter((r): r is GeneratePropsResultSuccess => r.success);
+
+    if (successes.length === 0) {
+      return attributeResults.map((r) => ({
+        success: false,
+        id: r.id,
+        error: r.success ? new Error("unreachable") : r.error,
+      }));
+    }
+
+    let insertResults: PropWithAssets[] = [];
+    try {
+
+      insertResults = await insertProps(successes.map(({ attributes, id }) => ({ ...attributes, id, projectId })));
+
+    } catch (e) {
+      throw e;
+    }
+
+    let insertedEntities: PropWithAssets[] = [];
+    if (context.publishPipelineEvent && insertResults.length > 0) {
+      try {
+
+        const fetched = await context.projectRepository.getEntities(
+          insertResults.map((ref) => ({ entityId: ref.id, entityType: "prop" as const, entity: ref })),
+        );
+
+        insertedEntities = fetched.map(({ entity }) => entity as PropWithAssets);
+
+        await context.publishPipelineEvent({
+          type: "ENTITY_CREATED",
+          worldId: context.worldId,
+          payload: fetched.map(({ entity, entityType }) => ({
+            entityId: entity.id,
+            entityType: "prop" as "prop",
+            entity: entity as PropWithAssets,
+          })),
+        });
+      } catch (e) {
+        console.error(`${traceId}: [Pipeline] ENTITY_CREATED publish failed`, e);
+      }
+    }
+
+    const enrichedById = new Map<string, PropWithAssets>();
+
+    try {
+      const imageResults = await imagesTool.run({
+        props: insertResults.map((ref) => {
+          const { attributes } = successes.find((s) => s.id === ref.id)!;
+          return {
+            ...attributes,
+            id: ref.id,
+            version: 1,
+          };
+        }),
+        generationRules,
+        attempt,
+      });
+
+      for (const result of imageResults) {
+        if (result.success && result.entity) enrichedById.set(result.id, result.entity);
+      }
+
+      const imageFailures = imageResults.filter((r) => !r.success);
+      if (imageFailures.length > 0) {
+        console.error(
+          `${traceId}: [Pipeline] Image generation failed for ${imageFailures.length} character(s)`,
+          imageFailures,
+        );
+      }
+
+      console.log(
+        `${traceId}: [Pipeline] Image generation complete. ` +
+        `succeeded=${imageResults.filter((r) => r.success).length} ` +
+        `failed=${imageFailures.length}`,
+      );
+    } catch (e) {
+      console.error(`${traceId}: [Pipeline] imagesTool failure`, e);
+    }
+
+    const insertedById = new Map(insertedEntities.map((e) => [e.id, e]));
+
+    return attributeResults.map((r) => {
+      if (!r.success) return r;
+      const entity = enrichedById.get(r.id) ?? insertedById.get(r.id);
+      if (!entity) return { success: false, id: r.id, error: new Error("Missing after insert") };
+      return { success: true, id: r.id, entity };
+    });
   }
 }
+
+export type { GeneratePropsPipelineTool };
 
 export function createGeneratePropsPipelineTool(
   deps: GeneratePropsPipelineDeps,

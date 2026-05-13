@@ -2,15 +2,14 @@ import { z } from "zod";
 import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
-import { PropWithAssets } from "#shared/types/workflow.types.js";
-import { InsertProp } from "#shared/types/schema.types.js";
+import { PropBase, PropWithAssets } from "#shared/types/workflow.types.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { mapDomainPropToInsertProp } from "#shared/entity/prop-mappers.js";
 import { TagRegistryService } from "#shared/services/tag-registry.js";
 
-const InsertPropsInput = z.object({ props: z.array(InsertProp) });
+const InsertPropsInput = z.object({ props: z.array(PropBase) });
 export type InsertPropsInput = z.input<typeof InsertPropsInput>;
 
 type ToolResultItem = { success: true; prop: PropWithAssets } | { success: false; error: string };

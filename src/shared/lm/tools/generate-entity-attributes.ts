@@ -4,8 +4,8 @@ import { BaseMessage } from "@langchain/core/messages";
 import { GenerateBatchContentParameters, TextModelController, UserMessage } from "#shared/lm/text-model-controller.js";
 import { getModelCompatibleSchema } from "#shared/utils/utils.js";
 import { getExecutionMode } from "#shared/config.js";
-import { z } from "zod";
 import { EntityCreatableType } from "#shared/types/entity.types.js";
+import { z } from "zod";
 
 export type GenerateEntityAttributesSuccessResultEntityEnvelope<T, P> = {
   success: true;
@@ -69,6 +69,7 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
   },
   context: ToolContext<TextModelController>,
 ): Promise<GenerateEntityAttributesResultEntityEnvelope<T, P>[]> {
+
   const { projectId, traceId } = context;
   const executionMode = getExecutionMode();
   const responseJsonSchema = getModelCompatibleSchema(schema);

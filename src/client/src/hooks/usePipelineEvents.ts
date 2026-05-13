@@ -256,6 +256,13 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
                 updateLocation(id, entity as any);
               }
             }
+            const first = updates.shift();
+            pushEvent({
+              id: generateId(),
+              type: "success",
+              message: `Updated ${first?.entityType} ${first?.entity.name}${updates.length ? ` and ${updates.length} more` : ""}`,
+              timestamp: new Date(parsed.timestamp),
+            });
             break;
           }
 
@@ -285,6 +292,13 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
                 }
               }
             }
+            const first = items.shift();
+            pushEvent({
+              id: generateId(),
+              type: "success",
+              message: `Created ${first?.entityType} ${first?.entity.name}${items.length ? ` and ${items.length} more` : ""}`,
+              timestamp: new Date(parsed.timestamp),
+            });
             break;
           }
 
