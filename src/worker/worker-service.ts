@@ -289,7 +289,7 @@ export class WorkerService {
           },
           `Error saving assets`,
         );
-        // throw error;
+        throw error;
       }
     }
     return saveAssets.bind(this);
