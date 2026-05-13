@@ -15,12 +15,15 @@ export interface ChatAgentConfig {
   conversationId: string;
   projectId: string;
   userId: string;
+  teamId: string;
   storyboard?: any;
   systemPrompt?: string;
   toolContext: ToolContext<TextModelController> & {
     projectRepository: ProjectRepository;
     incrementAttempt: IncrementAttemptHook;
     dispatcher: Dispatcher;
+    userId: string;
+    teamId: string;
   };
 }
 
@@ -71,7 +74,7 @@ export class ChatAgent {
   private config: ChatAgentConfig;
   private graph: StateGraph<ChatAgentState> | null = null;
   private abortController: AbortController | null = null;
-  private historyCache: Array<{ role: MessageRole; content: string }> | null = null;
+  private historyCache: ChatStateMessage[] | null = null;
   private tools: StructuredTool[] = [];
 
   constructor(config: ChatAgentConfig) {
@@ -241,15 +244,67 @@ Use this context to provide more informed and relevant responses about the proje
     };
   }
 
-  /** Load past messages from the DB to build conversation history for the graph. */
-  private async loadHistory(): Promise<Array<{ role: MessageRole; content: string }>> {
+  /**
+   * Load past messages from the DB and reconstruct the full message sequence
+   * including tool call / result metadata.
+   *
+   * AI messages that have `toolInteractions` in their metadata represent turns
+   * where the model called one or more tools.  We reconstruct the complete
+   * sub-sequence so the LLM sees explicit AIMessage(tool_calls=…)
+   * → ToolMessage(result) → AIMessage(final) and understands those tools
+   * were *already executed* — preventing duplicate invocations on subsequent
+   * requests.
+   */
+  private async loadHistory(): Promise<ChatStateMessage[]> {
     if (this.historyCache) return this.historyCache;
     const history = await chatService.getMessages(this.config.conversationId, 50);
-    this.historyCache = history.map((m) => ({
-      role: m.role as MessageRole,
-      content: m.content,
-    }));
-    return this.historyCache;
+
+    const result: ChatStateMessage[] = [];
+    for (const m of history) {
+      const role = m.role as MessageRole;
+      const content = m.content;
+      const meta = m.metadata as Record<string, unknown> | undefined;
+
+      if (role === "ai" && meta?.toolInteractions) {
+        // Reconstruct the full turn: AI(tool_calls) → ToolMessage[] → AI(final)
+        const interactions = meta.toolInteractions as Array<{
+          aiContent: string;
+          toolCalls: ToolCall[];
+          toolResults: Array<{
+            content: string;
+            tool_call_id: string;
+            name: string;
+          }>;
+        }>;
+
+        for (const interaction of interactions) {
+          // 1. The AI message that initiated the tool calls
+          result.push({
+            role: "ai",
+            content: interaction.aiContent,
+            tool_calls: interaction.toolCalls,
+          });
+          // 2. The tool result messages
+          for (const tr of interaction.toolResults) {
+            result.push({
+              role: "tool",
+              content: tr.content,
+              tool_call_id: tr.tool_call_id,
+              name: tr.name,
+            });
+          }
+        }
+
+        // 3. The AI message itself is the final response after tool execution
+        result.push({ role: "ai", content });
+      } else {
+        // Plain message — no tool metadata to expand
+        result.push({ role, content });
+      }
+    }
+
+    this.historyCache = result;
+    return result;
   }
 
   invalidateHistoryCache(): void {
@@ -334,9 +389,44 @@ Use this context to provide more informed and relevant responses about the proje
       const lastAIMsg = aiMessages[aiMessages.length - 1];
       fullResponse = lastAIMsg ? lastAIMsg.content : "";
 
+      // ── Persist tool interaction metadata ────────────────────────────────
+      // Extract tool calls + results that were generated during THIS graph run
+      // so the next request sees AIMessage(tool_calls) → ToolMessage(result)
+      // → AIMessage(final) and understands those tools were already executed.
+      const newMessages = finalState.messages.slice(initialMessages.length);
+      const toolInteractions: Array<{
+        aiContent: string;
+        toolCalls: ToolCall[];
+        toolResults: Array<{ content: string; tool_call_id: string; name: string }>;
+      }> = [];
+
+      let currentInteraction: ((typeof toolInteractions)[0]) | null = null;
+      for (const msg of newMessages) {
+        if (msg.role === "ai" && msg.tool_calls && msg.tool_calls.length > 0) {
+          currentInteraction = {
+            aiContent: msg.content,
+            toolCalls: msg.tool_calls,
+            toolResults: [],
+          };
+          toolInteractions.push(currentInteraction);
+        } else if (msg.role === "tool" && currentInteraction) {
+          currentInteraction.toolResults.push({
+            content: msg.content,
+            tool_call_id: msg.tool_call_id ?? "",
+            name: msg.name ?? "",
+          });
+        }
+      }
+
+      const metadata: Record<string, unknown> = {};
+      if (toolInteractions.length > 0) {
+        metadata.toolInteractions = toolInteractions;
+      }
+
       await chatService.updateMessage(assistantMessageId, {
         content: fullResponse,
         isComplete: true,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
       });
 
       yield {
