@@ -181,6 +181,10 @@ export const ProjectEntity = createSelectSchema(schema.projects, {
   status: AssetStatus,
   forceRegenerateSceneIds: z.array(z.string()).default([]).describe("List of scene IDs to force video regenerate"),
   guidanceLevel: z.number().default(2).describe("Entity-scoped guidance control for asset generation"),
+  styleReferences: z
+    .array(z.string())
+    .default([])
+    .describe("Project-wide style reference image URIs injected into every generateImages call"),
 });
 export type ProjectEntity = z.infer<typeof ProjectEntity>;
 
@@ -227,6 +231,10 @@ export const InsertProject = createInsertSchema(schema.projects, {
     .default([])
     .describe("history of generation rule guidelines"),
   guidanceLevel: GuidanceLevel,
+  styleReferences: z
+    .array(z.string())
+    .default([])
+    .describe("Project-wide style reference image URIs injected into every generateImages call"),
 }).extend({
   scenes: z.array(InsertScene).default([]),
   characters: z.array(InsertCharacter).default([]),

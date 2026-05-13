@@ -102,8 +102,26 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
   }: { model: string } & Parameters<ITextModelProvider["generateImages"]>[0]): Promise<EditImageResponse> {
     console.log({ params, provider: "google" }, `Generating images`);
 
-    if (params.model.includes("gemini")) {
-      const { referenceImages, config, model } = params;
+    // ── Inject project-wide style references ────────────────────────────────
+    // Convert plain URL strings to StyleImage[] and merge them into the
+    // caller-supplied referenceImages. This ensures consistent visual styling
+    // across ALL generated images without burdening individual callers with
+    // constructing ReferenceImage objects.
+    let { referenceImages, styleReferences, ...restParams } = params;
+    if (styleReferences && styleReferences.length > 0) {
+      const styleImages = styleReferences.map((url) => ({
+        referenceImage: { gcsUri: url },
+        config: { styleDescription: "Project-wide style reference" },
+        referenceType: "style" as const,
+      }));
+      referenceImages = {
+        ...(referenceImages ?? { base: [] }),
+        style: [...(referenceImages?.style ?? []), ...styleImages],
+      };
+    }
+
+    if (restParams.model.includes("gemini")) {
+      const { config, model } = restParams;
       let contents: Content[] = [{ role: "user", parts: [{ text: prompt }] }];
 
       if (referenceImages && Object.values(referenceImages).flat().length > 0) {
@@ -137,7 +155,6 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
       };
     }
 
-    const { referenceImages, ...restParams } = params;
     if (referenceImages && Object.values(referenceImages).flat().length > 0) {
       return this.lm.models.editImage({
         ...restParams,

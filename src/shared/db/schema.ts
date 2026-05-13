@@ -260,6 +260,14 @@ export const projects = pgTable(
     generationRules: text("generation_rules").array().default([]).notNull(),
     generationRulesHistory: jsonb("generation_rules_history").$type<string[][]>().default([]).notNull(),
     guidanceLevel: integer("guidance_level").default(2).notNull(),
+
+    /**
+     * Project-wide style reference image URIs (GCS URLs).
+     * These are automatically injected as StyleImage references into every
+     * generateImages call at the provider level for consistent visual styling.
+     */
+    styleReferences: text("style_references").array().default([]).notNull(),
+
     // SAC fork repository (created when project is forked from a licensed world)
     sacForkRepoId: text("sac_fork_repo_id"),
     sacForkRepoUrl: text("sac_fork_repo_url"),

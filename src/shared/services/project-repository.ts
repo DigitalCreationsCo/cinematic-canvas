@@ -796,6 +796,7 @@ export class ProjectRepository {
       if (updates.audioAnalysis) updatePayload.audioAnalysis = updates.audioAnalysis;
       if (updates.generationRules) updatePayload.generationRules = updates.generationRules;
       if (updates.generationRulesHistory) updatePayload.generationRulesHistory = updates.generationRulesHistory;
+      if (updates.styleReferences) updatePayload.styleReferences = updates.styleReferences;
 
       // Filter out null/undefined values to prevent overwriting existing properties
       if (updates.metadata) {

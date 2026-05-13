@@ -54,6 +54,7 @@ export const createMockProject = (overrides?: Partial<ProjectKV>): Project => {
     currentSceneIndex: overrides?.currentSceneIndex ?? 0,
     status: overrides?.status ?? "pending",
     forceRegenerateSceneIds: overrides?.forceRegenerateSceneIds ?? [],
+    styleReferences: overrides?.styleReferences ?? [],
 
     scenes,
     characters,

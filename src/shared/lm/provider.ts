@@ -251,6 +251,16 @@ export interface GenerateImagesParameters {
   model: string;
   prompt: string;
   referenceImages?: ReferenceImageInputs;
+
+  /**
+   * Project-wide style reference image URIs (e.g. GCS URLs).
+   * These are injected as StyleImage references at the provider level.
+   * Callers pass plain URL strings — the provider converts them into
+   * StyleImage objects and merges them with any caller-supplied
+   * referenceImages.
+   */
+  styleReferences?: string[];
+
   config: GenerateImagesConfig;
 }
 export interface GenerateVideosParameters {
