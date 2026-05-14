@@ -35,7 +35,7 @@ export interface ProjectStoreState {
   metadata: ProjectMetadata | null;
   generationRules: GenerationRules | null;
   /**
-   * Project-wide style reference image URIs (e.g. GCS URLs).
+   * Project-wide style reference media IDs (currently GCS URIs from media_objects.data).
    * Automatically injected as StyleImage references into every
    * generateImages call at the provider level.
    */
@@ -104,16 +104,16 @@ export interface ProjectStoreState {
   updateMetadata: (updates: Partial<ProjectMetadata>) => void;
 
   /**
-   * Optimistically add a style reference URL to the local store.
+   * Optimistically add a style reference media ID to the local store.
    * The caller is responsible for syncing to the server via tRPC.
    */
-  addStyleReference: (url: string) => void;
+  addStyleReference: (mediaId: string) => void;
 
   /**
-   * Optimistically remove a style reference URL from the local store.
+   * Optimistically remove a style reference media ID from the local store.
    * The caller is responsible for syncing to the server via tRPC.
    */
-  removeStyleReference: (url: string) => void;
+  removeStyleReference: (mediaId: string) => void;
 
   /**
    * Replace the local generation rules array.
@@ -308,16 +308,16 @@ export const useProjectStore = create<ProjectStoreState>()(
           }
         }),
 
-      addStyleReference: (url) =>
+      addStyleReference: (mediaId) =>
         set((state) => {
-          if (!state.styleReferences.includes(url)) {
-            state.styleReferences = [...state.styleReferences, url];
+          if (!state.styleReferences.includes(mediaId)) {
+            state.styleReferences = [...state.styleReferences, mediaId];
           }
         }),
 
-      removeStyleReference: (url) =>
+      removeStyleReference: (mediaId) =>
         set((state) => {
-          state.styleReferences = state.styleReferences.filter((ref) => ref !== url);
+          state.styleReferences = state.styleReferences.filter((ref) => ref !== mediaId);
         }),
 
       setGenerationRules: (rules) =>

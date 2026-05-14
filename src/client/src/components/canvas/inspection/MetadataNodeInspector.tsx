@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasNode } from "#client/domain/canvas/NodeTypes.js";
 import { useWorldStore } from "#client/store/useWorldStore.js";
 import { useProjectStore } from "#client/store/useProjectStore.js";
@@ -21,11 +21,25 @@ import {
   Crown,
   Edit3,
   Eye,
+  ImageIcon,
+  Plus,
+  Save,
+  Trash2,
+  X,
 } from "lucide-react";
 import { getAssetUrl } from "#shared/utils/assets.utils.js";
 import { useShallow } from "zustand/shallow";
 import { useAssetStore } from "#client/store/useAssetStore.js";
 import { AudioPlayer } from "#client/components/ui/audio-player.js";
+import { Button } from "#client/components/ui/button.js";
+import { Input } from "#client/components/ui/input.js";
+import { Textarea } from "#client/components/ui/textarea.js";
+import {
+  addStyleReference as addProjectStyleReference,
+  removeStyleReference as removeProjectStyleReference,
+  updateGenerationRules,
+} from "#client/lib/api.js";
+import { resolvePublicUrl } from "#shared/utils/utils.js";
 
 const ROLE_ICONS: Record<string, React.ElementType> = {
   owner: Crown,
@@ -66,6 +80,134 @@ function ProjectMetadataContent({
   projectStats,
 }: ProjectMetadataContentProps) {
   const assets = useAssetStore((s) => s.assets);
+  const styleReferences = useProjectStore((state) => state.styleReferences);
+  const addStyleReference = useProjectStore((state) => state.addStyleReference);
+  const removeStyleReference = useProjectStore((state) => state.removeStyleReference);
+  const setGenerationRules = useProjectStore((state) => state.setGenerationRules);
+  const [newRefUrl, setNewRefUrl] = useState("");
+  const [isAddingRef, setIsAddingRef] = useState(false);
+  const [styleRefError, setStyleRefError] = useState<string | null>(null);
+  const [removingRefs, setRemovingRefs] = useState<Set<string>>(new Set());
+  const [draftRules, setDraftRules] = useState<string[]>(generationRules ?? []);
+  const [rulesError, setRulesError] = useState<string | null>(null);
+  const [isSavingRules, setIsSavingRules] = useState(false);
+
+  useEffect(() => {
+    setDraftRules(generationRules ?? []);
+  }, [generationRules]);
+
+  const handleAddReference = useCallback(async () => {
+    const url = newRefUrl.trim();
+    if (!url || !selectedProjectId || isAddingRef) return;
+
+    setIsAddingRef(true);
+    setStyleRefError(null);
+
+    try {
+      const result = await addProjectStyleReference({
+        projectId: selectedProjectId,
+        url,
+      });
+      addStyleReference(result.gcsUri);
+      setNewRefUrl("");
+      if (!result.success) setStyleRefError(result.message);
+    } catch (err) {
+      console.error("[MetadataNodeInspector] Failed to add style reference:", err);
+      setStyleRefError(err instanceof Error ? err.message : "Failed to add style reference");
+    } finally {
+      setIsAddingRef(false);
+    }
+  }, [addStyleReference, isAddingRef, newRefUrl, selectedProjectId]);
+
+  const handleRemoveReference = useCallback(
+    async (mediaId: string) => {
+      if (!selectedProjectId) return;
+
+      setRemovingRefs((prev) => new Set(prev).add(mediaId));
+      removeStyleReference(mediaId);
+
+      try {
+        await removeProjectStyleReference({
+          projectId: selectedProjectId,
+          gcsUri: mediaId,
+        });
+      } catch (err) {
+        console.error("[MetadataNodeInspector] Failed to remove style reference:", err);
+        addStyleReference(mediaId);
+      } finally {
+        setRemovingRefs((prev) => {
+          const next = new Set(prev);
+          next.delete(mediaId);
+          return next;
+        });
+      }
+    },
+    [addStyleReference, removeStyleReference, selectedProjectId],
+  );
+
+  const handleStyleRefKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleAddReference();
+      }
+    },
+    [handleAddReference],
+  );
+
+  const normalizedDraftRules = useMemo(
+    () => draftRules.map((rule) => rule.trim()).filter(Boolean),
+    [draftRules],
+  );
+  const normalizedSavedRules = useMemo(() => generationRules ?? [], [generationRules]);
+  const rulesChanged = useMemo(
+    () => JSON.stringify(normalizedDraftRules) !== JSON.stringify(normalizedSavedRules),
+    [normalizedDraftRules, normalizedSavedRules],
+  );
+
+  const handleRuleChange = useCallback((index: number, value: string) => {
+    setDraftRules((prev) => prev.map((rule, idx) => (idx === index ? value : rule)));
+    setRulesError(null);
+  }, []);
+
+  const handleAddRule = useCallback(() => {
+    setDraftRules((prev) => [...prev, ""]);
+    setRulesError(null);
+  }, []);
+
+  const handleRemoveRule = useCallback((index: number) => {
+    setDraftRules((prev) => prev.filter((_, idx) => idx !== index));
+    setRulesError(null);
+  }, []);
+
+  const handleSaveRules = useCallback(async () => {
+    if (!selectedProjectId || isSavingRules) return;
+
+    setIsSavingRules(true);
+    setRulesError(null);
+    const nextRules = normalizedDraftRules;
+    setGenerationRules(nextRules);
+
+    try {
+      await updateGenerationRules({
+        projectId: selectedProjectId,
+        generationRules: nextRules,
+      });
+      setDraftRules(nextRules);
+    } catch (err) {
+      console.error("[MetadataNodeInspector] Failed to update generation rules:", err);
+      setGenerationRules(generationRules ?? []);
+      setRulesError(err instanceof Error ? err.message : "Failed to update generation rules");
+    } finally {
+      setIsSavingRules(false);
+    }
+  }, [
+    generationRules,
+    isSavingRules,
+    normalizedDraftRules,
+    selectedProjectId,
+    setGenerationRules,
+  ]);
 
   // ── Project/world metadata ─────────────────────────────────────────────────
   const current = useProjectStore(
@@ -277,20 +419,144 @@ function ProjectMetadataContent({
         </Card>
       )}
 
+      {/* Style References Card */}
+      <Card className="border-l-4 border-l-fuchsia-500 bg-gradient-to-br from-fuchsia-500/5 to-transparent">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <ImageIcon className="w-3.5 h-3.5" />
+            Style References
+            {styleReferences.length > 0 && (
+              <span className="font-mono text-[10px]">({styleReferences.length})</span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {styleReferences.length > 0 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {styleReferences.map((mediaId) => (
+                <div
+                  key={mediaId}
+                  className={`relative group aspect-square overflow-hidden border border-border bg-muted ${
+                    removingRefs.has(mediaId) ? "opacity-50 pointer-events-none" : ""
+                  }`}
+                >
+                  <img
+                    src={resolvePublicUrl(mediaId)}
+                    alt="Style reference"
+                    className="w-full h-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                      event.currentTarget.nextElementSibling?.classList.remove("hidden");
+                    }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-muted/80 hidden">
+                    <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveReference(mediaId)}
+                    className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center bg-destructive/90 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    title="Remove style reference"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">
+              No style references yet.
+            </p>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Input
+              className="h-8 text-xs"
+              placeholder="Paste PNG, WebP, or JPEG URL..."
+              value={newRefUrl}
+              onChange={(event) => setNewRefUrl(event.target.value)}
+              onKeyDown={handleStyleRefKeyDown}
+              disabled={isAddingRef}
+            />
+            <Button
+              className="h-8 w-8 shrink-0"
+              size="icon"
+              variant="ghost"
+              onClick={handleAddReference}
+              disabled={!newRefUrl.trim() || isAddingRef}
+              title="Add style reference"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+          {styleRefError && (
+            <p className="text-[10px] text-destructive">{styleRefError}</p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Generation Rules Card */}
       <Card className="border-l-4 ">
         <CardHeader className="pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <FileText className="w-3.5 h-3.5" />
-            Generation Rules
-          </CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5" />
+              Generation Rules
+            </CardTitle>
+            <div className="flex items-center gap-1">
+              <Button
+                className="h-7 px-2 text-xs"
+                size="sm"
+                variant="ghost"
+                onClick={handleAddRule}
+                title="Add generation rule"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add
+              </Button>
+              <Button
+                className="h-7 px-2 text-xs"
+                size="sm"
+                variant="ghost"
+                onClick={handleSaveRules}
+                disabled={!rulesChanged || isSavingRules}
+                title="Save generation rules"
+              >
+                <Save className="w-3.5 h-3.5" />
+                Save
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col space-y-3">
-          {generationRules?.map((rule, index) => (
-            <span key={`rule-${index}`} className="text-xs text-muted-foreground">
-              {rule}
-            </span>
-          ))}
+          {draftRules.length > 0 ? (
+            draftRules.map((rule, index) => (
+              <div key={`rule-${index}`} className="flex items-start gap-2">
+                <Textarea
+                  className="min-h-[64px] text-xs"
+                  value={rule}
+                  placeholder="Add a generation rule..."
+                  onChange={(event) => handleRuleChange(index, event.target.value)}
+                />
+                <Button
+                  className="h-8 w-8 shrink-0"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => handleRemoveRule(index)}
+                  title="Remove generation rule"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs text-muted-foreground italic">
+              No generation rules yet.
+            </p>
+          )}
+          {rulesError && (
+            <p className="text-[10px] text-destructive">{rulesError}</p>
+          )}
         </CardContent>
       </Card>
     </div>

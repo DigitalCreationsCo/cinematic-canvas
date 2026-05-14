@@ -3,13 +3,13 @@ import { generateId } from "#shared/utils/id.js";
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';
-import { api } from '#client/lib/api.js';
+import { api, addStyleReferenceFromNode } from '#client/lib/api.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { screenToWorld } from '#client/domain/canvas/CoordinateSystem.js';
 import type { AssetHistory, AssetVersion } from '#shared/types/assets.types.js';
 import { fileToBase64 } from '#shared/utils/utils.js';
 
-const SUPPORTED_EXTENSIONS = ['png', 'jpg', 'jpeg'];
+const SUPPORTED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp'];
 const STAGGER_OFFSET = 80;
 
 export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | null>) {
@@ -210,7 +210,7 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
       });
 
       // 2. Create style_reference canvas node
-      const styleRefId = generateId();
+      const styleRefId = uploadData.fileId;
       const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Style Reference';
 
       const imageNode = NodeFactory.createNode({
@@ -244,13 +244,11 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
 
       // 4. Register as project-wide style reference
       try {
-        const result = await api.projects.addStyleReferenceFromNode.mutate({
+        const result = await addStyleReferenceFromNode({
           projectId,
           fileId: uploadData.fileId,
         });
-        if (result.success) {
-          useProjectStore.getState().addStyleReference(result.gcsUri);
-        }
+        useProjectStore.getState().addStyleReference(result.gcsUri);
       } catch (err) {
         console.error('[useImageFileDrop] Failed to register style reference:', err);
       }

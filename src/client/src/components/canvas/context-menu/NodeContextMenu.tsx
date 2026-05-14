@@ -18,7 +18,7 @@ import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
 import { useProjectStore } from "#client/store/useProjectStore.js";
 import { debouncedPersistLayout } from "#client/store/middleware/canvasIndexedDBStorage.js";
 import { cn } from "#client/lib/utils.js";
-import { api } from "#client/lib/api.js";
+import { addStyleReferenceFromNode } from "#client/lib/api.js";
 
 interface NodeContextMenuProps {
   children: React.ReactNode;
@@ -124,13 +124,11 @@ export function NodeContextMenu({
 
     if (flag === "style_reference" && prevFlag !== "style_reference") {
       try {
-        const result = await api.projects.addStyleReferenceFromNode.mutate({
+        const result = await addStyleReferenceFromNode({
           projectId,
           fileId: node.data.entityId, // fileId matches entityId for dropped images
         });
-        if (result.success) {
-          useProjectStore.getState().addStyleReference(result.gcsUri);
-        }
+        useProjectStore.getState().addStyleReference(result.gcsUri);
       } catch (err) {
         console.error("Failed to set as style reference:", err);
       }

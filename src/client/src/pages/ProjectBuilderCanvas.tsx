@@ -53,7 +53,13 @@ import {
 import { resolveCanvasNodeCollisions } from "#client/utils/collisionDetection.js";
 import { getHybridNodeStorage } from "#client/services/hybridNodeStorage.js";
 import { supabase } from "#client/lib/supabase.js";
-import { resumePipeline, startPipeline, stopPipeline } from "#client/lib/api.js";
+import {
+  api,
+  addStyleReferenceFromNode,
+  resumePipeline,
+  startPipeline,
+  stopPipeline,
+} from "#client/lib/api.js";
 
 import ProjectDashboard from "#client/pages/ProjectDashboard.js";
 import { CanvasToolbar } from "#client/components/canvas/toolbar/CanvasToolbar.js";
@@ -68,6 +74,7 @@ import {
 } from "#client/domain/canvas/DEMO_NODES.js";
 import { useAuth } from "#client/lib/auth-context.js";
 import { useProjectStore } from "#client/store/useProjectStore.js";
+import { useAssetStore } from "#client/store/useAssetStore.js";
 import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import { RightSidebar } from "#client/components/canvas/panels/RightSidebar.js";
 import { DropFilesOverlay } from "#client/components/canvas/overlays/DropFilesOverlay.js";
@@ -84,6 +91,7 @@ import { useWorldStore } from "#client/store/useWorldStore.js";
 import { BulkFilesStagingPanel } from "#client/components/canvas/panels/BulkFilesStagingPanel.js";
 import { NotificationsPanel } from "#client/components/canvas/panels/NotificationsPanel.js";
 import { ToolsSidebar } from "#client/components/canvas/panels/ToolsSidebar.js";
+import { fileToBase64 } from "#shared/utils/utils.js";
 
 export default function ProjectBuilderCanvas() {
   // projectId from route; falls back to demo slug when accessed standalone.
@@ -702,7 +710,7 @@ export default function ProjectBuilderCanvas() {
                 onPlace={async (placedImages) => {
                   // ── Style refs: upload to GCS, register as project-wide style ref ──
                   const styleRefImages = placedImages.filter(
-                    (img) => img.useType === "image",
+                    (img) => img.useType === "style_reference",
                   );
                   for (const img of styleRefImages) {
                     try {
@@ -748,13 +756,11 @@ export default function ProjectBuilderCanvas() {
                       });
 
                       // Register as project-wide style reference
-                      const result = await api.projects.addStyleReferenceFromNode.mutate({
+                      const result = await addStyleReferenceFromNode({
                         projectId,
                         fileId: uploadData.fileId,
                       });
-                      if (result.success) {
-                        useProjectStore.getState().addStyleReference(result.gcsUri);
-                      }
+                      useProjectStore.getState().addStyleReference(result.gcsUri);
                     } catch (err) {
                       console.error(
                         "[ProjectBuilderCanvas] Failed to place style ref:",
@@ -770,11 +776,11 @@ export default function ProjectBuilderCanvas() {
                   propImages.forEach((img) => {
                     addNode(
                       NodeFactory.createNode({
-                        type: img.useType,
+                        type: "prop",
                         entityId: img.name,
                         contextId: projectId,
                         contextType: "project",
-                        posCanvas: calculateAutoLayoutPosition(nodes, img.useType),
+                        posCanvas: calculateAutoLayoutPosition(nodes, "prop"),
                         scope: "project",
                       }),
                     );

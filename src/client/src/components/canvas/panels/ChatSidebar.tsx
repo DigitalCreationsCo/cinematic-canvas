@@ -1,3 +1,5 @@
+// ChatSidebar.tsx — updated to use the extensible MentionTextarea API
+
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { X, MessageCircle, Send, Square, Plus, Loader2 } from "lucide-react";
@@ -13,8 +15,13 @@ import { useProjectStore } from "#client/store/useProjectStore.js";
 import { cn } from "#client/lib/utils.js";
 import { Button } from "#client/components/ui/button.js";
 import { Conversation, Message } from "#shared/types/chat.types.js";
+import {
+  MentionTextarea,
+  MentionTextareaHandle,
+} from "#client/components/editor/mention/MentionTextArea.js";
 
 function ChatView({
+  projectId,
   messages,
   isLoading,
   isStreaming,
@@ -23,6 +30,7 @@ function ChatView({
   onSendMessage,
   onStopStreaming,
 }: {
+  projectId: string;
   messages: Message[];
   isLoading: boolean;
   isStreaming: boolean;
@@ -31,11 +39,11 @@ function ChatView({
   onSendMessage: (content: string) => void;
   onStopStreaming: () => void;
 }) {
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<MentionTextareaHandle>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasMessages = messages.length > 0;
 
-  const { messageHistory, navigateHistory, loadMessageHistory } = useChatStore();
+  const { loadMessageHistory } = useChatStore();
   const chatInputFocusTrigger = useChatStore((s) => s.chatInputFocusTrigger);
 
   useEffect(() => {
@@ -54,32 +62,42 @@ function ChatView({
     }
   }, [chatInputFocusTrigger]);
 
+  // ── Controlled input state ─────────────────────────────────────────────────
+  // Plain-text value kept in React state; MentionTextarea syncs to it via its
+  // `value` prop.  `onUpdate` fires after every keystroke (mirrors onChange).
   const [input, setInput] = useState("");
 
-  const handleSubmit = (e: React.SubmitEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    onSendMessage(input.trim());
+  const submit = () => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    onSendMessage(trimmed);
     setInput("");
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // Typed as a div keyboard handler because MentionTextarea is a div host
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
+      // Let the mention popover handle Enter when it is open (internal handler
+      // fires first, so if a suggestion was selected this won't also submit).
       e.preventDefault();
-      handleSubmit(e);
-    } else if (e.key === "ArrowUp" && !input) {
+      submit();
+      return;
+    }
+
+    // History navigation — only when the input is empty so it doesn't
+    // interfere with normal cursor movement.
+    if (e.key === "ArrowUp" && !input) {
       e.preventDefault();
-      const {
-        messageHistory: hist,
-        historyIndex,
-        navigateHistory: nav,
-      } = useChatStore.getState();
+      const { messageHistory: hist, navigateHistory: nav } = useChatStore.getState();
       if (hist.length > 0) {
         nav("up");
         const newIndex = useChatStore.getState().historyIndex;
-        setInput(hist[newIndex] || "");
+        setInput(hist[newIndex] ?? "");
       }
-    } else if (e.key === "ArrowDown" && !input) {
+      return;
+    }
+
+    if (e.key === "ArrowDown" && !input) {
       e.preventDefault();
       const {
         messageHistory: hist,
@@ -89,19 +107,20 @@ function ChatView({
       if (hist.length > 0 && historyIndex >= 0) {
         nav("down");
         const newIndex = useChatStore.getState().historyIndex;
-        setInput(newIndex >= 0 ? hist[newIndex] : "");
+        setInput(newIndex >= 0 ? (hist[newIndex] ?? "") : "");
       }
     }
   };
 
   return (
     <div className={cn("flex flex-col h-full", !hasMessages && "justify-start")}>
+      {/* ── Message list ─────────────────────────────────────────────────── */}
       <div className="overflow-y-auto px-3 space-y-3">
         {messages.map((msg) => (
           <div
             key={msg.id}
             className={cn(
-              msg.role === 'ai' ? 'rounded-lg' : '',
+              msg.role === "ai" ? "rounded-lg" : "",
               "flex flex-col gap-1 p-3 text-sm select-text",
               msg.role === "ai" ? "bg-primary/10 ml-4" : "bg-transparent mr-4",
             )}
@@ -119,6 +138,7 @@ function ChatView({
             </p>
           </div>
         ))}
+
         {isStreaming && (
           <div className="flex flex-col gap-1 p-3 rounded-lg text-sm bg-primary/10 ml-4 select-text">
             <span className="text-xs text-muted-foreground font-medium">AI</span>
@@ -136,7 +156,7 @@ function ChatView({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Queued messages indicator */}
+      {/* ── Queued messages indicator ─────────────────────────────────────── */}
       {queuedMessages.length > 0 && (
         <div className="px-3 py-1.5">
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-none">
@@ -150,21 +170,30 @@ function ChatView({
         </div>
       )}
 
-      <form
-        onSubmit={handleSubmit}
-        className={cn("flex-1 p-3 group", hasMessages && "mt-4")}
-      >
+      {/* ── Input row ────────────────────────────────────────────────────── */}
+      {/*
+        Avoid a <form> with onSubmit here: the contentEditable div inside
+        MentionTextarea doesn't fire a submit event, so we handle sending
+        entirely via the onKeyDown handler above and the button's onClick.
+      */}
+      <div className={cn("flex-1 p-3 group", hasMessages && "mt-4")}>
         <div className="flex">
-          <textarea
+          <MentionTextarea
+            data-testid="input-chat"
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onUpdate={setInput}
+            projectId={projectId}
             onKeyDown={handleKeyDown}
+            rows={2}
             placeholder={
-              hasMessages ? "Ask AI..." : "Start a conversation with the assistant"
+              hasMessages
+                ? "Ask AI. Use @ to mention your project."
+                : "Chat with AI. Use @ to mention your project."
             }
             className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-l bg-background border border-input px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
+
           {isStreaming ? (
             <button
               type="button"
@@ -176,7 +205,8 @@ function ChatView({
             </button>
           ) : (
             <button
-              type="submit"
+              type="button"
+              onClick={submit}
               disabled={!input.trim()}
               className="shrink-0 p-2 bg-primary text-primary-foreground rounded-r hover:bg-primary/90 disabled:opacity-50 rounded-none transition-colors"
             >
@@ -184,7 +214,7 @@ function ChatView({
             </button>
           )}
         </div>
-      </form>
+      </div>
     </div>
   );
 }
@@ -315,6 +345,7 @@ export function ChatSidebar({ className }: { className?: string } = {}) {
 
       <div className="flex-1 overflow-hidden">
         <ChatView
+          projectId={activeProjectId!}
           messages={messages}
           isLoading={isLoading}
           isStreaming={isStreaming}

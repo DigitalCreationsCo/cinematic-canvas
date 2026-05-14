@@ -45,6 +45,59 @@ export const generateComposites = (input: Parameters<typeof api.projects.generat
   return api.projects.generateComposites.mutate(input);
 };
 
+export interface AddStyleReferenceInput {
+  projectId: string;
+  url: string;
+}
+
+export interface AddStyleReferenceResult {
+  success: boolean;
+  message: string;
+  gcsUri: string;
+  fileId: string;
+}
+
+export interface AddStyleReferenceFromNodeInput {
+  projectId: string;
+  fileId: string;
+}
+
+export interface AddStyleReferenceFromNodeResult {
+  success: boolean;
+  message: string;
+  gcsUri: string;
+}
+
+export interface RemoveStyleReferenceInput {
+  projectId: string;
+  gcsUri: string;
+}
+
+export const addStyleReference = (
+  input: AddStyleReferenceInput,
+): Promise<AddStyleReferenceResult> => {
+  return (api.projects as any).addStyleReference.mutate(input);
+};
+
+export const addStyleReferenceFromNode = (
+  input: AddStyleReferenceFromNodeInput,
+): Promise<AddStyleReferenceFromNodeResult> => {
+  return (api.projects as any).addStyleReferenceFromNode.mutate(input);
+};
+
+export const removeStyleReference = (
+  input: RemoveStyleReferenceInput,
+): Promise<{ success: boolean; message: string }> => {
+  return (api.projects as any).removeStyleReference.mutate(input);
+};
+
+export const updateGenerationRules = (input: {
+  projectId: string;
+  generationRules: string[];
+}): Promise<{ success: boolean; message: string }> => {
+  return (api.projects as any).updateGenerationRules.mutate(input);
+};
+
 export const createProject = (input: Parameters<typeof api.projects.create.mutate>[0]) => {
   return api.projects.create.mutate(input);
 };

@@ -184,7 +184,7 @@ export const ProjectEntity = createSelectSchema(schema.projects, {
   styleReferences: z
     .array(z.string())
     .default([])
-    .describe("Project-wide style reference image URIs injected into every generateImages call"),
+    .describe("Project-wide style reference media IDs injected into every generateImages call"),
 });
 export type ProjectEntity = z.infer<typeof ProjectEntity>;
 
@@ -234,7 +234,7 @@ export const InsertProject = createInsertSchema(schema.projects, {
   styleReferences: z
     .array(z.string())
     .default([])
-    .describe("Project-wide style reference image URIs injected into every generateImages call"),
+    .describe("Project-wide style reference media IDs injected into every generateImages call"),
 }).extend({
   scenes: z.array(InsertScene).default([]),
   characters: z.array(InsertCharacter).default([]),

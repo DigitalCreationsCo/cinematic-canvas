@@ -30,17 +30,17 @@ import { useWorldEntities } from "#client/hooks/useWorldEntities.js";
 import { NewEntityModal } from "./NewEntityModal.js";
 import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
 import { generateId } from "#shared/utils/id.js";
-import { api } from "#client/lib/api.js";
+import { api, addStyleReferenceFromNode } from "#client/lib/api.js";
 import { useAssetStore } from "#client/store/useAssetStore.js";
 import { getAllBestAssets } from "#shared/utils/assets.utils.js";
 import { AssetKey } from "#shared/types/assets.types.js";
 import { fileToBase64, resolvePublicUrl } from "#shared/utils/utils.js";
 import { Card } from "#client/components/ui/card.js";
+import { CanvasNodeType } from "#client/domain/canvas/NodeTypes.js";
 
 const COLLAPSE_DURATION = "90ms";
 const COLLAPSE_EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
 
-type AssetType = "character" | "location" | "audio" | "style" | "scene";
 type SidebarSection =
   | "characters"
   | "locations"
@@ -64,7 +64,7 @@ const SECTIONS: SectionConfig[] = [
   { key: "locations", icon: MapPin, label: "Sets", defaultOpen: false },
   { key: "scenes", icon: Clapperboard, label: "Scenes", defaultOpen: false },
   { key: "audio", icon: Music, label: "Audio", defaultOpen: false },
-  { key: "styleRefs", icon: Sparkles, label: "My Style Refs", defaultOpen: false },
+  { key: "styleRefs", icon: Sparkles, label: "Style", defaultOpen: false },
   { key: "screenplay", icon: FileText, label: "Screenplay", defaultOpen: false },
   { key: "notes", icon: StickyNote, label: "Notes", defaultOpen: false },
 ];
@@ -140,11 +140,11 @@ function CollapsibleSection({
 // Draggable Asset Component (moved from TopAssetPanel)
 interface DraggableAssetProps {
   id: string;
-  type: AssetType;
+  type: CanvasNodeType;
   name: string;
   img?: string;
   isOnCanvas: boolean;
-  onDragStart: (e: React.DragEvent, type: AssetType, entityId: string) => void;
+  onDragStart: (e: React.DragEvent, type: CanvasNodeType, entityId: string) => void;
   isWorldEntity?: boolean;
   sceneIndex?: number;
 }
@@ -220,7 +220,7 @@ type CombinedSidebarProps = {
 
 export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
   const { sequenceMode, setSequenceMode } = useCanvasUIStore();
-  const { characters, locations, scenes, selectedProjectId } = useProjectStore();
+  const { characters, locations, scenes, selectedProjectId, styleReferences } = useProjectStore();
   const { nodes } = useNodeStore();
   const { worldCharacters, worldLocations } = useWorldEntities();
 
@@ -261,7 +261,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
   const isEntityOnCanvas = (entityId: string) =>
     nodes.some((n) => n.data.entityId === entityId);
 
-  const handleDragStart = (e: React.DragEvent, type: AssetType, entityId: string) => {
+  const handleDragStart = (e: React.DragEvent, type: CanvasNodeType, entityId: string) => {
     e.dataTransfer.setData("application/json", JSON.stringify({ type, entityId }));
     e.dataTransfer.effectAllowed = "copy";
   };
@@ -305,11 +305,18 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
 
   const handleStyleRefDrop = async (file: File) => {
     try {
-      const styleRefId = generateId();
       const fileData = await fileToBase64(file);
       const displayName =
         file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ") || "Style Reference";
       const projectId = selectedProjectId || contextId || "";
+      const uploadData = selectedProjectId
+        ? await api.assets.uploadImage.mutate({
+          fileData,
+          fileName: displayName,
+          mimeType: file.type,
+        })
+        : null;
+      const styleRefId = uploadData?.fileId ?? generateId();
 
       const styleNode = NodeFactory.createNode({
         type: "image",
@@ -326,13 +333,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
 
       useNodeStore.getState().addNode(styleNode);
 
-      if (selectedProjectId) {
-        const uploadData = await api.assets.uploadImage.mutate({
-          fileData,
-          fileName: displayName,
-          mimeType: file.type,
-        });
-
+      if (selectedProjectId && uploadData) {
         useAssetStore.getState().mergeAssets(styleRefId, {
           image_file: {
             head: 1,
@@ -352,13 +353,11 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
 
         // Register the uploaded image as a project-wide style reference
         try {
-          const result = await api.projects.addStyleReferenceFromNode.mutate({
+          const result = await addStyleReferenceFromNode({
             projectId: selectedProjectId,
             fileId: uploadData.fileId,
           });
-          if (result.success) {
-            useProjectStore.getState().addStyleReference(result.gcsUri);
-          }
+          useProjectStore.getState().addStyleReference(result.gcsUri);
         } catch (err) {
           console.error("[LeftSidebar] Failed to register node as project-wide style reference:", err);
         }
@@ -423,6 +422,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
   const sceneList = Array.from(scenes.values());
   const wCharacterList = Object.values(worldCharacters);
   const wLocationList = Object.values(worldLocations);
+  const styleRefItems = Array.from(styleReferences.values());
 
   // Asset images
   const assetsRegistry = useAssetStore((state) => state.assets);
@@ -742,7 +742,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
                     <DraggableAsset
                       key={node.id}
                       id={data.entityId as string}
-                      type="style"
+                      type="image"
                       name={(data.label || "Style Ref") as string}
                       img={getBestAssetImage(data.entityId as string, "image_file")}
                       isOnCanvas={true}
@@ -753,6 +753,22 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
               {nodes.filter(
                 (n) => n.type === "image" && n.data.nodeTypeFlag === "style_reference",
               ).length === 0 && (
+                  <p className="text-[10px] text-muted-foreground px-2 py-1">
+                    No style refs found
+                  </p>
+                )}
+              {styleRefItems.map((mediaId) => (
+                <DraggableAsset
+                  key={mediaId}
+                  id={mediaId}
+                  type="image"
+                  name={""}
+                  img={resolvePublicUrl(mediaId)}
+                  isOnCanvas={isEntityOnCanvas(mediaId)}
+                  onDragStart={handleDragStart}
+                />
+              ))}
+              {styleRefItems.length === 0 && (
                 <p className="text-[10px] text-muted-foreground px-2 py-1">
                   No style refs found
                 </p>

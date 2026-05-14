@@ -117,8 +117,8 @@ export function NodeShell({
         // Selection ring.
         selected ? "node-selected" : "node",
         !isZoomedIn &&
-          selected &&
-          "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        selected &&
+        "ring-2 ring-primary ring-offset-2 ring-offset-background",
         // Soft-delete dimming.
         data.isSoftDeleted && "opacity-40 grayscale pointer-events-none",
         className,
@@ -197,7 +197,7 @@ export function NodeShell({
         />
       )}
 
-      {showNodeButtonsOverlay && (
+      {/* {showNodeButtonsOverlay && (
         <div className="absolute bottom-5 right-5 z-[100]">
           <button
             className="h-7 w-7 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-lg hover:scale-110 transition-all pointer-events-auto"
@@ -210,7 +210,7 @@ export function NodeShell({
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

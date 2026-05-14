@@ -26,7 +26,7 @@ export type GenerateEntityAttributesResultEntityEnvelope<T, P> =
     error: Error;
   };
 
-/** Build the prompt parts (text + optional image attachments) for one entity. */
+/** Build the prompt parts for attribute generation with optional image attachments for one entity. */
 function buildEntityPromptParts<T>(
   attributes: Partial<T>,
   entityDescription: string,
@@ -34,20 +34,20 @@ function buildEntityPromptParts<T>(
 ): BaseMessage["content"] {
   const alreadyFilled = Object.keys(filterDefined(attributes as Record<string, unknown>));
 
+  // DO NOT change these already-filled fields: ${alreadyFilled.length ? alreadyFilled.join(", ") : "(none — fill everything)"}. // removed instruction retained as a comment
+
   const prompt = `You are an expert creative writer and world builder.
-Complete the following ${entityDescription} by populating ONLY missing or empty fields.
-DO NOT change these already-filled fields: ${alreadyFilled.length ? alreadyFilled.join(", ") : "(none — fill everything)"}.
+Complete the following ${entityDescription}. Creatively populate missing or empty fields. Slightly refine existing values to realize the narrative and world consistency.
 
 Current (partial) data:
 ${JSON.stringify(attributes, null, 2)}
 
-Return ONLY valid JSON with ALL fields populated.
-Preserve filled fields exactly. Fill missing fields with rich, specific, internally consistent creative content.`;
+Return ONLY valid JSON with ALL fields populated.`;
 
   const content: BaseMessage["content"] = [{ type: "text", text: prompt }];
   images?.forEach((image) => {
     if (image.gcsUri && image.mimeType) {
-      content.push({ type: "file_data", fileData: { mimeType: image.mimeType, fileUri: image.gcsUri } });
+      content.push({ type: "file_data", fileData: { text: "Visual reference image", mimeType: image.mimeType, fileUri: image.gcsUri, } });
     }
   });
 

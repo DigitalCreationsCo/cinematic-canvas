@@ -141,6 +141,67 @@ export function createAppRouter(deps: RouterDependencies) {
     return eventBus.publishPipelineEvent(eventPayload);
   }
 
+  const STYLE_REFERENCE_MIME_BY_EXTENSION = new Map([
+    [".png", "image/png"],
+    [".webp", "image/webp"],
+    [".jpg", "image/jpeg"],
+    [".jpeg", "image/jpeg"],
+  ]);
+  const STYLE_REFERENCE_MIME_TYPES = new Set(STYLE_REFERENCE_MIME_BY_EXTENSION.values());
+
+  function normalizeStyleReferenceMimeType(contentTypeHeader: string | null | undefined): string | null {
+    const contentType = contentTypeHeader?.split(";")[0]?.trim().toLowerCase();
+    if (contentType === "image/jpg") return "image/jpeg";
+    if (contentType && STYLE_REFERENCE_MIME_TYPES.has(contentType)) return contentType;
+    return null;
+  }
+
+  function getStyleReferenceMimeType(url: string, contentTypeHeader: string | null): string {
+    const contentType = normalizeStyleReferenceMimeType(contentTypeHeader);
+    if (contentType) return contentType;
+
+    const pathname = new URL(url).pathname.toLowerCase();
+    for (const [extension, mimeType] of STYLE_REFERENCE_MIME_BY_EXTENSION.entries()) {
+      if (pathname.endsWith(extension)) {
+        return mimeType;
+      }
+    }
+
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "URL must point to a PNG, WebP, or JPEG image",
+    });
+  }
+
+  async function incrementMediaObjectRef(mediaId: string): Promise<void> {
+    await db
+      .insert(schema.mediaObjects)
+      .values({ data: mediaId, refCount: 1, status: "active" })
+      .onConflictDoUpdate({
+        target: schema.mediaObjects.data,
+        set: {
+          refCount: sql`${schema.mediaObjects.refCount} + 1`,
+          lastReferencedAt: new Date(),
+          status: "active",
+        },
+      });
+  }
+
+  async function addMediaIdToProjectStyleReferences(
+    projectId: string,
+    mediaId: string,
+  ): Promise<boolean> {
+    const project = await projectRepository.getProject(projectId);
+    const currentRefs = project.styleReferences ?? [];
+    if (currentRefs.includes(mediaId)) return false;
+
+    await projectRepository.updateProject(projectId, {
+      styleReferences: [...currentRefs, mediaId],
+    });
+    await incrementMediaObjectRef(mediaId);
+    return true;
+  }
+
   // ── Router ─────────────────────────────────────────────────────────────────
 
   return router({
@@ -697,18 +758,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .mutation(async ({ input }) => {
           const { projectId, url } = input;
 
-          // 1. Validate file extension
-          const VALID_EXTENSIONS = [".png", ".webp", ".jpg", ".jpeg"];
-          const urlLower = url.toLowerCase();
-          const extension = VALID_EXTENSIONS.find((ext) => urlLower.endsWith(ext));
-          if (!extension) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "URL must point to a .png, .webp, or .jpg image",
-            });
-          }
-
-          // 2. Download the image
+          // 1. Download the image
           let response: Response;
           try {
             response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
@@ -724,7 +774,10 @@ export function createAppRouter(deps: RouterDependencies) {
               message: `Failed to download image — server responded ${response.status} ${response.statusText}`,
             });
           }
-          const contentType = response.headers.get("content-type") || `image/${extension.replace(".", "")}`;
+
+          // 2. Validate the image type from Content-Type first, with URL
+          // pathname extension as a fallback for hosts that omit headers.
+          const contentType = getStyleReferenceMimeType(url, response.headers.get("content-type"));
           const arrayBuffer = await response.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
           if (buffer.length === 0) {
@@ -736,22 +789,25 @@ export function createAppRouter(deps: RouterDependencies) {
 
           // 3. Upload to GCS
           const urlPath = new URL(url).pathname;
-          const originalName = urlPath.split("/").pop() || `style-reference${extension}`;
+          const extension = [...STYLE_REFERENCE_MIME_BY_EXTENSION.entries()].find(
+            ([, mimeType]) => mimeType === contentType,
+          )?.[0] ?? ".jpg";
+          const rawOriginalName = urlPath.split("/").pop() || `style-reference${extension}`;
+          let decodedOriginalName = rawOriginalName;
+          try {
+            decodedOriginalName = decodeURIComponent(rawOriginalName);
+          } catch {
+            decodedOriginalName = rawOriginalName;
+          }
+          const hasSupportedExtension = [...STYLE_REFERENCE_MIME_BY_EXTENSION.keys()].some((ext) =>
+            decodedOriginalName.toLowerCase().endsWith(ext),
+          );
+          const originalName = hasSupportedExtension ? decodedOriginalName : `${decodedOriginalName}${extension}`;
           const destination = `${projectId}/style-references/${Date.now()}_${originalName}`;
           const gcsUri = await storageManager.uploadBuffer(buffer, destination, contentType);
 
-          // 4. Upsert mediaObjects record
-          await db
-            .insert(schema.mediaObjects)
-            .values({ data: gcsUri, refCount: 1, status: "active" })
-            .onConflictDoUpdate({
-              target: schema.mediaObjects.data,
-              set: {
-                refCount: sql`${schema.mediaObjects.refCount} + 1`,
-                lastReferencedAt: new Date(),
-                status: "active",
-              },
-            });
+          // 4. Persist the file reference against a mediaObjects row.
+          await incrementMediaObjectRef(gcsUri);
 
           // 5. Create files record
           const fileId = generateId();
@@ -772,15 +828,13 @@ export function createAppRouter(deps: RouterDependencies) {
 
           // 6. Update project.styleReferences
           try {
-            const project = await projectRepository.getProject(projectId);
-            const currentRefs = project.styleReferences ?? [];
-            if (currentRefs.includes(gcsUri)) {
-              return { success: false, message: "Style reference already exists.", gcsUri, fileId };
-            }
-            await projectRepository.updateProject(projectId, {
-              styleReferences: [...currentRefs, gcsUri],
-            });
-            return { success: true, message: "Style reference added.", gcsUri, fileId };
+            const added = await addMediaIdToProjectStyleReferences(projectId, gcsUri);
+            return {
+              success: added,
+              message: added ? "Style reference added." : "Style reference already exists.",
+              gcsUri,
+              fileId,
+            };
           } catch (err) {
             console.error("[Router] Failed to update project with style reference:", err);
             throw new TRPCError({
@@ -825,20 +879,37 @@ export function createAppRouter(deps: RouterDependencies) {
                 message: "File record not found",
               });
             }
+            if (fileRecord.projectId !== input.projectId) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "File record does not belong to this project",
+              });
+            }
 
             const gcsUri = fileRecord.mediaId;
+            const metadata = fileRecord.metadata as Record<string, unknown>;
+            const metadataMimeType =
+              typeof metadata.mimeType === "string"
+                ? metadata.mimeType
+                : typeof metadata.format === "string"
+                  ? metadata.format
+                  : null;
+            getStyleReferenceMimeType(gcsUri, metadataMimeType);
 
             // 2. Update project.styleReferences
-            const project = await projectRepository.getProject(input.projectId);
-            const currentRefs = project.styleReferences ?? [];
-            if (currentRefs.includes(gcsUri)) {
-              return { success: false, message: "Style reference already exists.", gcsUri };
+            const added = await addMediaIdToProjectStyleReferences(input.projectId, gcsUri);
+            if (fileRecord.fileType !== "style_reference") {
+              await db
+                .update(schema.files)
+                .set({ fileType: "style_reference", updatedAt: new Date() })
+                .where(eq(schema.files.id, input.fileId));
             }
-            await projectRepository.updateProject(input.projectId, {
-              styleReferences: [...currentRefs, gcsUri],
-            });
 
-            return { success: true, message: "Style reference added from node.", gcsUri };
+            return {
+              success: added,
+              message: added ? "Style reference added from node." : "Style reference already exists.",
+              gcsUri,
+            };
           } catch (err) {
             if (err instanceof TRPCError) throw err;
             console.error("[Router] Failed to add style reference from node:", err);
@@ -850,14 +921,14 @@ export function createAppRouter(deps: RouterDependencies) {
         }),
 
       /**
-       * Remove a style reference (GCS URI) from the project's styleReferences
+       * Remove a style reference media ID from the project's styleReferences
        * array and decrement the associated mediaObjects refCount.
        */
       removeStyleReference: teamProcedure
         .input(
           z.object({
             projectId: z.string(),
-            gcsUri: z.string().describe("GCS URI (mediaId) of the style reference to remove"),
+            gcsUri: z.string().describe("Media ID of the style reference to remove"),
           }),
         )
         .mutation(async ({ input }) => {

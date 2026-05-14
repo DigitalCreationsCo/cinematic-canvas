@@ -9,7 +9,7 @@ import { useWorldEntities } from '../../../hooks/useWorldEntities.js';
 import { NewEntityModal } from './NewEntityModal.js';
 import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
 import { generateId } from "#shared/utils/id.js";
-import { api } from '#client/lib/api.js';
+import { api, addStyleReferenceFromNode } from '#client/lib/api.js';
 import { useAssetStore } from '../../../store/useAssetStore.js';
 import { getAllBestAssets } from '../../../../../shared/utils/assets.utils.js';
 import { AssetKey } from "../../../../../shared/types/assets.types.js";
@@ -187,9 +187,15 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
   const handleStyleRefDrop = async (file: File) => {
     try {
-      const styleRefId = generateId();
-      const dataUrl = await readFileAsDataUrl(file);
       const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Style Reference';
+      const uploadData = selectedProjectId
+        ? await api.assets.uploadImage.mutate({
+            fileData: await fileToBase64(file),
+            fileName: file.name,
+            mimeType: file.type,
+          })
+        : null;
+      const styleRefId = uploadData?.fileId ?? generateId();
 
       const styleNode = NodeFactory.createNode({
         type: 'image',
@@ -206,14 +212,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
       useNodeStore.getState().addNode(styleNode);
 
-      if (selectedProjectId) {
-
-        const uploadData = await api.assets.uploadImage.mutate({
-          fileData: await fileToBase64(file),
-          fileName: file.name,
-          mimeType: file.type,
-        });
-
+      if (selectedProjectId && uploadData) {
         useAssetStore.getState().mergeAssets(styleRefId, {
           image_file: {
             head: 1,
@@ -231,13 +230,11 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
         // Register the uploaded image as a project-wide style reference
         try {
-          const result = await api.projects.addStyleReferenceFromNode.mutate({
+          const result = await addStyleReferenceFromNode({
             projectId: selectedProjectId,
             fileId: uploadData.fileId,
           });
-          if (result.success) {
-            useProjectStore.getState().addStyleReference(result.gcsUri);
-          }
+          useProjectStore.getState().addStyleReference(result.gcsUri);
         } catch (err) {
           console.error('[TopAssetPanel] Failed to register node as project-wide style reference:', err);
         }

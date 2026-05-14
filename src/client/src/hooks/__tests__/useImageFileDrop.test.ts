@@ -45,9 +45,14 @@ describe('useImageFileDrop', () => {
       expect(result.current.SUPPORTED_EXTENSIONS).toContain('jpeg');
     });
 
-    it('should have exactly 3 extensions', () => {
+    it('should contain webp', () => {
       const { result } = renderHook(() => useImageFileDrop());
-      expect(result.current.SUPPORTED_EXTENSIONS).toHaveLength(3);
+      expect(result.current.SUPPORTED_EXTENSIONS).toContain('webp');
+    });
+
+    it('should have exactly 4 extensions', () => {
+      const { result } = renderHook(() => useImageFileDrop());
+      expect(result.current.SUPPORTED_EXTENSIONS).toHaveLength(4);
     });
   });
 
@@ -65,6 +70,11 @@ describe('useImageFileDrop', () => {
     it('should return true for jpeg files', () => {
       const { result } = renderHook(() => useImageFileDrop());
       expect(result.current.isSupportedExtension('image.jpeg')).toBe(true);
+    });
+
+    it('should return true for webp files', () => {
+      const { result } = renderHook(() => useImageFileDrop());
+      expect(result.current.isSupportedExtension('image.webp')).toBe(true);
     });
 
     it('should return false for txt files', () => {

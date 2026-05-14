@@ -21,11 +21,13 @@ import { addNotification } from "#client/store/usePipelineStore.js";
 import { EntityImageType } from "#shared/types/entity.types.js";
 import { fileToBase64 } from "#shared/utils/utils.js";
 
+type BulkImageUseType = EntityImageType | "style_reference";
+
 interface StagedImage {
   id: string;
   file: File;
   previewUrl: string;
-  useType: EntityImageType | null;
+  useType: BulkImageUseType | null;
   name: string;
   /** True if this image has been dispatched / placed */
   placed: boolean;
@@ -43,14 +45,14 @@ export interface BulkFilesStagingPanelProps {
 export interface PlacedImage {
   file: File;
   previewUrl: string;
-  useType: EntityImageType;
+  useType: BulkImageUseType;
   name: string;
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const USE_TYPE_OPTIONS: {
-  type: EntityImageType;
+  type: BulkImageUseType;
   label: string;
   shortLabel: string;
   icon: React.ElementType;
@@ -99,7 +101,7 @@ const USE_TYPE_OPTIONS: {
     activeBorder: "border-amber-500/50",
   },
   {
-    type: "image",
+    type: "style_reference",
     label: "Style Ref",
     shortLabel: "Style",
     icon: Palette,
@@ -148,12 +150,12 @@ const USE_TYPE_OPTIONS: {
   // },
 ];
 
-const getOptionByType = (type: EntityImageType | null) =>
+const getOptionByType = (type: BulkImageUseType | null) =>
   USE_TYPE_OPTIONS.find((o) => o.type === type) ?? null;
 
 const isImageFile = (file: File) => file.type.startsWith("image/");
 
-const createStagedImage = (file: File, useType: EntityImageType | null): StagedImage => ({
+const createStagedImage = (file: File, useType: BulkImageUseType | null): StagedImage => ({
   id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   file,
   previewUrl: URL.createObjectURL(file),
@@ -202,7 +204,7 @@ function StagedImageCard({
   onTabToNext,
 }: {
   image: StagedImage;
-  onSetType: (id: string, type: EntityImageType) => void;
+  onSetType: (id: string, type: BulkImageUseType) => void;
   onSetName: (id: string, name: string) => void;
   onRemove: (id: string) => void;
   cardRef?: React.RefCallback<HTMLDivElement>;
@@ -318,7 +320,7 @@ export function BulkFilesStagingPanel({
     files.filter(isImageFile).map((file) => createStagedImage(file, null)),
   );
 
-  const [bulkType, setBulkType] = useState<EntityImageType | null>(null);
+  const [bulkType, setBulkType] = useState<BulkImageUseType | null>(null);
   const [isPlacing, setIsPlacing] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
@@ -420,7 +422,7 @@ export function BulkFilesStagingPanel({
     };
   }, [setStagedFiles]);
 
-  const setType = useCallback((id: string, type: EntityImageType) => {
+  const setType = useCallback((id: string, type: BulkImageUseType) => {
     setImages((prev) =>
       prev.map((img) => (img.id === id ? { ...img, useType: type } : img)),
     );
@@ -446,7 +448,7 @@ export function BulkFilesStagingPanel({
     [setStagedFiles],
   );
 
-  const applyBulkType = useCallback((type: EntityImageType) => {
+  const applyBulkType = useCallback((type: BulkImageUseType) => {
     setBulkType(type);
     setImages((prev) => prev.map((img) => ({ ...img, useType: type })));
   }, []);
@@ -479,7 +481,7 @@ export function BulkFilesStagingPanel({
       const toPlace = readyImages.map((img) => ({
         file: img.file,
         previewUrl: img.previewUrl,
-        useType: img.useType as EntityImageType,
+        useType: img.useType as BulkImageUseType,
         name: img.name.trim() || img.file.name.replace(/\.[^.]+$/, ""),
       }));
 
@@ -492,6 +494,7 @@ export function BulkFilesStagingPanel({
         entityTypeImages.map(async (img) => {
           const entityId = generateId();
           const fileData = await fileToBase64(img.file);
+          const entityType = img.useType as "character" | "location";
 
           // Upload asset
           const uploadData = await api.assets.uploadImage.mutate({
@@ -504,8 +507,7 @@ export function BulkFilesStagingPanel({
             img, // Keep reference for node creation
             entityId,
             payload: {
-              entityType:
-                img.useType === ("image" as const) ? ("file" as const) : img.useType,
+              entityType,
               data: {
                 id: entityId,
                 name: img.name,
@@ -524,9 +526,10 @@ export function BulkFilesStagingPanel({
         // 3. Update UI/Canvas for all created entities
         entityPayloads.forEach(({ img, entityId }) => {
           const position = { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 };
+          const entityType = img.useType as "character" | "location";
 
           const node = NodeFactory.createNode({
-            type: img.useType,
+            type: entityType,
             entityId,
             contextId: _projectId,
             contextType: "project",
@@ -535,7 +538,7 @@ export function BulkFilesStagingPanel({
           });
 
           const pendingNode = NodeFactory.createPendingNode({
-            type: img.useType,
+            type: entityType,
             entityId,
             contextId: _projectId,
             contextType: "project",
@@ -553,7 +556,7 @@ export function BulkFilesStagingPanel({
 
       // 4. Handle non-entity images (props/images)
       const nonEntityImages = toPlace.filter(
-        (img) => img.useType === "image" || img.useType === "prop",
+        (img) => img.useType === "style_reference" || img.useType === "prop",
       );
       if (nonEntityImages.length > 0) {
         onPlace(nonEntityImages);

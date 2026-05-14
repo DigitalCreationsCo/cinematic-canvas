@@ -17,20 +17,19 @@ import { GeneratePropImagesTool } from "#shared/lm/tools/props/generate-props-im
 // SCHEMA
 // ============================================================================
 
-const PropSeedSchema = PropBase.partial().extend({
+const PropBasePartialWithImages = PropBase.partial().extend({
   id: z.uuid(),
   images: z.array(UploadResult).optional(),
 });
 
 const GeneratePropsPipelineInput = z.object({
-  props: z.array(PropSeedSchema),
+  props: z.array(PropBasePartialWithImages),
   generationRules: z.array(z.string()),
   attempt: z.number(),
 });
 
 export type GeneratePropsPipelineInput = z.input<typeof GeneratePropsPipelineInput>;
 
-type InsertedPropRef = { id: string; name: string };
 
 export type GeneratePropsPipelineResultSuccess = {
   success: true;
@@ -46,7 +45,7 @@ export interface GeneratePropsPipelineDeps {
   context: ToolContext<TextModelController> & { projectRepository: ProjectRepository };
   attributesTool: GeneratePropAttributesTool;
   imagesTool: GeneratePropImagesTool;
-  insertProps: (props: Array<PropAttributes & { projectId: string }>) => Promise<PropWithAssets[]>;
+  insertProps: (props: Array<z.input<typeof PropBase>>) => Promise<PropWithAssets[]>;
 }
 
 class GeneratePropsPipelineTool extends StructuredTool<typeof GeneratePropsPipelineInput> {

@@ -84,7 +84,7 @@ export interface GenerateLocationsPipelineDeps {
   };
   attributesTool: GenerateLocationAttributesTool;
   imagesTool: GenerateLocationImagesTool;
-  insertLocations: (locations: Array<LocationAttributes & { projectId: string }>) => Promise<LocationWithAssets[]>;
+  insertLocations: (locations: Array<z.input<typeof LocationBase>>) => Promise<LocationWithAssets[]>;
 }
 
 class GenerateLocationsPipelineTool extends StructuredTool<typeof GenerateLocationsPipelineInput> {
@@ -113,7 +113,7 @@ class GenerateLocationsPipelineTool extends StructuredTool<typeof GenerateLocati
     console.log(`${traceId}: [Pipeline] Generating attributes for ${locations.length} location(s)`);
 
     const attributeResults =
-      await attributesTool.run({ locations, });
+      await attributesTool.run(locations);
 
     const successes = attributeResults.filter((r): r is GenerateLocationsResultSuccess => r.success);
 

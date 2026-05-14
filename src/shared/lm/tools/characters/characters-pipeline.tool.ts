@@ -4,7 +4,6 @@ import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
 import { serialiseResults, ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { CharacterAttributes } from "#shared/types/character.types.js";
 import { CharacterBase, CharacterWithAssets } from "#shared/types/workflow.types.js";
 import { UploadResult } from "#shared/types/base.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
@@ -70,7 +69,7 @@ export interface GenerateCharactersPipelineDeps {
    * @param characters - Array of fully-generated CharacterAttributes with projectId attached
    * @returns Minimal refs (id + name) for the persisted records
    */
-  insertCharacters: (characters: Array<CharacterAttributes & { projectId: string }>) => Promise<CharacterWithAssets[]>;
+  insertCharacters: (characters: Array<z.input<typeof CharacterBase>>) => Promise<CharacterWithAssets[]>;
   /**
    * Image tool instance injected by the owning agent.
    * Used internally to generate images for successfully inserted characters.

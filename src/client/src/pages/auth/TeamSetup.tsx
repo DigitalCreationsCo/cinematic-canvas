@@ -49,7 +49,7 @@ export const TeamSetup: React.FC<TeamSetupProps> = ({ onComplete }) => {
           <form onSubmit={handleJoinOrCreateTeam} className="space-y-6">
             <div className="space-y-2">
               <Input
-                placeholder="e.g. Acme Creative Studio"
+                placeholder="My Creative Studio"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 required

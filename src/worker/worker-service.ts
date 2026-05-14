@@ -1203,6 +1203,10 @@ export class WorkerService {
                     project.generationRules,
                     this.createSaveAssetsCallback(job, startTime),
                     this.jobControlPlane.createIncrementAttemptHook(job),
+                    {
+                      userId: job.userId,
+                      teamId: job.teamId
+                    }
                   );
 
                   try {
@@ -1277,6 +1281,10 @@ export class WorkerService {
                     project.generationRules,
                     this.createSaveAssetsCallback(job, startTime),
                     this.jobControlPlane.createIncrementAttemptHook(job),
+                    {
+                      userId: job.userId,
+                      teamId: job.teamId
+                    }
                   );
                   try {
                     const nextStoryboard = storyboardManager.applyUpdates(project.storyboard, {
@@ -1404,6 +1412,10 @@ export class WorkerService {
                     this.createSaveAssetsCallback(job, startTime),
                     this.createUpdateEntitiesCallback(job),
                     this.jobControlPlane.createIncrementAttemptHook(job),
+                    {
+                      userId: job.userId,
+                      teamId: job.teamId
+                    }
                   );
                   if (!result || !result.data) {
                     throw new Error("Frame generation returned invalid result");
@@ -2318,7 +2330,7 @@ export class WorkerService {
 
               const locationAttributes = await createGenerateLocationAttributesTool({
                 context: toolContext,
-              }).run({ locations: locationsData });
+              }).run(locationsData);
               const locationAttributesSuccess = locationAttributes
                 .filter((c) => c.success)
                 .map((c) => ({ ...c.attributes, id: c.id, projectId: job.projectId }));

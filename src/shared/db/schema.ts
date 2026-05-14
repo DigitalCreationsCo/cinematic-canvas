@@ -262,7 +262,7 @@ export const projects = pgTable(
     guidanceLevel: integer("guidance_level").default(2).notNull(),
 
     /**
-     * Project-wide style reference image URIs (GCS URLs).
+     * Project-wide style reference media IDs (media_objects.data; currently GCS URIs).
      * These are automatically injected as StyleImage references into every
      * generateImages call at the provider level for consistent visual styling.
      */
