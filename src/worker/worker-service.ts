@@ -1770,7 +1770,7 @@ export class WorkerService {
             }
 
             case "CREATE_SCENES_WITH_ENTITIES": {
-              const { sceneFields, startFrameGcsUri, startFrameMimeType, endFrameGcsUri, endFrameMimeType } =
+              const { sceneFields, startFrameGcsUri, startFrameMimeType, endFrameGcsUri, endFrameMimeType, mode, sceneIds } =
                 job.payload;
 
               const traceId = `CREATE_SCENES_WITH_ENTITIES_${job.projectId}_${startTime}`;

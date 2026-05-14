@@ -28,7 +28,7 @@
   --destructive: hsla(0, 84%, 60%, 1);
   --destructive-foreground: hsla(0, 0%, 98%, 1);
   --border: hsla(0, 0%, 85%, 1);
-  --input: hsla(0, 0%, 100%, 1);
+  --input: hsla(0, 0%, 85%, 1);
   --ring: hsla(0, 0%, 9%, 1);
 
   --color-gold: #c9a55a;
@@ -205,7 +205,7 @@
   --card-foreground: hsla(0, 0%, 98%, 1);
   --card-border: hsla(0, 0%, 12%, 1);
 
-  --popover: hsla(220, 20%, 20%, 1);
+  --popover: hsla(220, 20%, 15%, 1);
   --popover-foreground: hsla(0, 0%, 98%, 1);
   --popover-border: hsla(0, 0%, 16%, 1);
 
@@ -229,7 +229,7 @@
   --destructive-foreground: hsla(0, 0%, 98%, 1);
 
   --border: hsla(220, 20%, 40%, 1);
-  --input: hsla(0, 0%, 0%, 0);
+  --input: hsla(220, 20%, 40%, 1);
   --ring: hsla(0, 0%, 80%, 1);
 
   --sidebar: hsla(0, 0%, 5%, 1);
@@ -862,13 +862,12 @@
   }
 
   .node:hover {
-    border-color: var(--elevate-2);
+    border-color: var(--elevate-4);
   }
 
   .node-selected {
     border-width: 2px;
     border-color: var(--elevate-4);
-    box-shadow: var(--shadow-glass-drop);
     z-index: 10;
   }
 
@@ -876,9 +875,9 @@
     z-index: 10;
   }
 
-  .node-selected:hover {
+  /* .node-selected:hover {
     border-color: var(--elevate-2);
-  }
+  } */
 
   .border-gradient {
     position: relative;

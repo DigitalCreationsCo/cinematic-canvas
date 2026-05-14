@@ -244,7 +244,7 @@ export function NotificationsPanel({ className }: NotificationsPanelProps) {
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 shrink-0 backdrop-blur-xl bg-background/50 border-b border-border/50">
+          {/* <div className="flex items-center justify-between px-4 py-3 shrink-0 backdrop-blur-xl bg-background/50 border-b border-border/50">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">Notifications</span>
@@ -261,7 +261,7 @@ export function NotificationsPanel({ className }: NotificationsPanelProps) {
             >
               <X className="w-4 h-4 text-foreground" />
             </button>
-          </div>
+          </div> */}
 
           {/* Event list */}
           <div className="flex-1 overflow-hidden">
@@ -291,8 +291,6 @@ export function NotificationsPanel({ className }: NotificationsPanelProps) {
     </>
   );
 }
-
-// ── Re-exported for backward compat (was previously exported from GlobalNotifications) ──
 
 export function PerformanceMetrics() {
   const [gpuMem, setGpuMem] = useState({ used: 0, total: 24 });

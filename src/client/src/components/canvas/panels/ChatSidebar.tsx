@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, MessageCircle, Send, Square, Plus, Loader2 } from "lucide-react";
+import { X, MessageCircle, Send, Square, Plus, Loader2, ArrowDownLeft, CornerDownLeft } from "lucide-react";
 
 import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import {
@@ -176,7 +176,7 @@ function ChatView({
         MentionTextarea doesn't fire a submit event, so we handle sending
         entirely via the onKeyDown handler above and the button's onClick.
       */}
-      <div className={cn("flex-1 p-3 group", hasMessages && "mt-4")}>
+      <div className={cn("flex-1 p-3 pb-6 group", hasMessages && "mt-4")}>
         <div className="flex">
           <MentionTextarea
             data-testid="input-chat"
@@ -185,33 +185,35 @@ function ChatView({
             onUpdate={setInput}
             projectId={projectId}
             onKeyDown={handleKeyDown}
-            rows={2}
+            rows={3}
             placeholder={
               hasMessages
                 ? "Ask AI. Use @ to mention your project."
                 : "Chat with AI. Use @ to mention your project."
             }
-            className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-l bg-background border border-input px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-l px-3 py-2 text-sm"
           />
 
           {isStreaming ? (
-            <button
+            <Button
+              variant="outline"
               type="button"
               onClick={onStopStreaming}
               title="Stop generating"
-              className="shrink-0 p-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-none transition-colors"
+              className="shrink-0 p-2 bg-destructive text-destructive-foreground rounded-r hover:bg-destructive/90  transition-colors"
             >
               <Square className="w-4 h-4" />
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
+              variant="outline"
               type="button"
               onClick={submit}
               disabled={!input.trim()}
-              className="shrink-0 p-2 bg-primary text-primary-foreground rounded-r hover:bg-primary/90 disabled:opacity-50 rounded-none transition-colors"
+              className="shrink-0 p-2 bg-foreground text-primary-foreground rounded-r hover:bg-primary/90 disabled:opacity-50  transition-opacity duration-100"
             >
-              <Send className="w-4 h-4" />
-            </button>
+              <CornerDownLeft className="w-4 h-4" />
+            </Button>
           )}
         </div>
       </div>

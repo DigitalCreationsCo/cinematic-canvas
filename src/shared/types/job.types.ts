@@ -27,7 +27,7 @@ import {
   ACTIVE_JOB_STATES,
   JobType,
 } from "#shared/types/job.constants.js";
-import { IdentityBase } from "#shared/types/base.types.js";
+import { IdentityBase, VALID_DURATIONS } from "#shared/types/base.types.js";
 
 export * from "#shared/types/job.constants.js";
 export { Job, InsertJob } from "#shared/types/schema.types.js";
@@ -45,12 +45,28 @@ export type RecoveryConfig = z.infer<typeof RecoveryConfig>;
 // ============================================================================
 
 const CreateScenesWithEntitiesBase = z.object({
-  sceneFields: CreateSceneWithEntitiesInput,
-  sceneIds: z.array(IdentityBase.shape.id),
-  startFrameGcsUri: z.string().optional(),
-  startFrameMimeType: z.string().optional(),
-  endFrameGcsUri: z.string().optional(),
-  endFrameMimeType: z.string().optional(),
+  sceneFields: CreateSceneWithEntitiesInput.describe(
+    "Scene generation payload that informs the first scene in the sequence, and subsequent scenes will be derived from this payload."
+  ),
+  sceneIds: z
+    .array(IdentityBase.shape.id)
+    .describe("New or existing scene identifiers used for continuity, sequencing, dependency ordering, or contextual reference during generation."),
+  startFrameGcsUri: z
+    .string()
+    .optional()
+    .describe("Image URI for the starting reference frame. Used to guide opening composition, visual continuity, character positioning, or transition state."),
+  startFrameMimeType: z
+    .string()
+    .optional()
+    .describe("MIME type for the starting reference frame asset."),
+  endFrameGcsUri: z
+    .string()
+    .optional()
+    .describe("Image URI for the ending reference frame. Used to guide ending composition, transition targets, or continuity into downstream sequences."),
+  endFrameMimeType: z
+    .string()
+    .optional()
+    .describe("MIME type for the ending reference frame asset."),
 });
 
 export const jobPayloadSchemas = {
@@ -65,33 +81,39 @@ export const jobPayloadSchemas = {
   GENERATE_LOCATION_IMAGES: z.object({ locationIds: z.array(z.string()) }),
   GENERATE_ENTITIES: InsertEntitiesInput,
 
-  /**
-   * Unified schema that supports two generation modes:
-   *
-   * Mode 1 — Prompt-based multi-scene generation (SceneCreator):
-   *   Provide a high-level narrative prompt + sceneCount. The worker
-   *   decomposes the prompt into N scenes, extracting characters, locations,
-   *   and props from the narrative context.
-   *
-   * Mode 2 — Single-scene entity autofill (NewEntityModal):
-   *   Provide explicit sceneFields (partial SceneAttributes + inline entity
-   *   descriptions) for a single scene. The worker parses entity text,
-   *   creates/looks up entities, generates images, then creates the scene.
-   *
-   * Both modes share the charactersTextInput / locationTextInput fields for
-   * supplemental entity descriptions. When only sceneFields is present the
-   * worker uses the entity text embedded within it (legacy compat).
-   */
   CREATE_SCENES_WITH_ENTITIES: z.discriminatedUnion("mode", [
     CreateScenesWithEntitiesBase.extend({
-      mode: z.literal("scenes"),
-      sceneCount: z.number().min(1).max(50).default(1),
+      mode: z.literal("scenes").describe("Fixed scene-count generation mode."),
+      sceneCount: z.number().min(1).max(50).default(1).describe("Total number of scenes to generate from the narrative prompt. Must be between 1 and 50 scenes."),
     }),
     CreateScenesWithEntitiesBase.extend({
-      mode: z.literal("duration"),
-      duration: z.string().optional(),
+      mode: z.literal("duration").describe("Duration-based generation mode."),
+      duration: z.number().optional().describe(`Total target duration for the generated sequence, in seconds. The downstream worker segments the sequence into multiple scenes using supported scene duration intervals: ${VALID_DURATIONS.join(", ")}.`),
     }),
-  ]),
+  ]).describe(`Takes scene description or scene field data from the user. Dispatches a job to generate scenes and images. This tool can create multiple scenes in a single invocation. If any existing scene is meant to be included, include the existing sceneId in sceneIds parameter. All other sceneIds will be generated automatically by the tool.
+
+  Unified scene generation schema supporting two orchestration modes (duration mode not implemented yet):
+  Mode 1 — "scenes"
+  Generates a fixed number of scenes from a high-level narrative prompt.
+  The downstream worker decomposes the prompt into sceneCount scenes,
+  extracting characters, locations, props, and contextual relationships
+  from the associated project entities.
+ 
+  Mode 2 — "duration (DO NOT USE: NOT IMPLEMENTED YET!)"
+  Generates a timed sequence from a high-level narrative prompt.
+  The downstream worker decomposes the prompt into multiple scenes whose
+  durations align with the supported segment durations (${VALID_DURATIONS} seconds).
+  This mode is useful for music-backed sequences, cinematic timelines,
+  trailers, and continuous video generation workflows.
+ 
+  Shared Behavior
+  - Existing sceneIds may be used as contextual references, dependencies,
+    or continuation anchors during generation.
+  - Optional start/end frame assets can be provided to guide visual continuity,
+    transitions, composition, or motion direction.
+  - sceneFields defines the narrative direction applied to all
+    generated scenes.`),
+
   GENERATE_SCENE_FRAMES: z.object({
     sceneIds: z.array(z.string()).optional(),
     assetKeys: z.array(z.enum(["scene_start_frame", "scene_end_frame"])),
@@ -349,41 +371,41 @@ export type JobEventMetadata = {
  */
 export type JobEvent =
   | {
-      type: "JOB_DISPATCHED";
-      projectId: string;
-      userId: string;
-      teamId: string;
-      metadata: JobEventMetadata;
-    }
+    type: "JOB_DISPATCHED";
+    projectId: string;
+    userId: string;
+    teamId: string;
+    metadata: JobEventMetadata;
+  }
   | {
-      type: "JOB_STARTED";
-      projectId: string;
-      userId: string;
-      teamId: string;
-      metadata: JobEventMetadata;
-    }
+    type: "JOB_STARTED";
+    projectId: string;
+    userId: string;
+    teamId: string;
+    metadata: JobEventMetadata;
+  }
   | {
-      type: "JOB_COMPLETED";
-      projectId: string;
-      userId: string;
-      teamId: string;
-      metadata: JobEventMetadata;
-    }
+    type: "JOB_COMPLETED";
+    projectId: string;
+    userId: string;
+    teamId: string;
+    metadata: JobEventMetadata;
+  }
   | {
-      type: "JOB_FAILED";
-      projectId: string;
-      userId: string;
-      teamId: string;
-      metadata: JobEventMetadata;
-      error: string;
-    }
+    type: "JOB_FAILED";
+    projectId: string;
+    userId: string;
+    teamId: string;
+    metadata: JobEventMetadata;
+    error: string;
+  }
   | {
-      type: "JOB_CANCELLED";
-      projectId: string;
-      userId: string;
-      teamId: string;
-      metadata: JobEventMetadata;
-    };
+    type: "JOB_CANCELLED";
+    projectId: string;
+    userId: string;
+    teamId: string;
+    metadata: JobEventMetadata;
+  };
 
 /**
  * Builds a JobEventMetadata object from a Job (or any object with `type` and

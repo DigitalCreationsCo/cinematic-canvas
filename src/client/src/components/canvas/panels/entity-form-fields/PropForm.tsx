@@ -113,6 +113,7 @@ export default function PropForm({
                 Prop Type
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(propFields.type as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "type", v))}
               >

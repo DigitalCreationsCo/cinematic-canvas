@@ -114,6 +114,16 @@ export function WorldBuilderCanvas() {
   const { worlds } = useWorlds();
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        useCanvasUIStore.getState().selectNode(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
     if (!worldId || accessLoading) return;
 
     // BUG-5 fix: Guard against stale fetch responses when rapidly switching worlds.

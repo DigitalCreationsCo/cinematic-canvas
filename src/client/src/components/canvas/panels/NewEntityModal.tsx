@@ -408,7 +408,8 @@ export function NewEntityModal({
         ]);
 
         await api.entities.createScenesWithAutoFill.mutate({
-          projectId,
+          sceneIds: [entityId],
+          mode: 'scenes',
           sceneFields: sceneData,
           startFrameGcsUri: startFrameUpload?.gcsUri,
           startFrameMimeType: startFrameFile?.type,
@@ -439,12 +440,12 @@ export function NewEntityModal({
           data: { ...payload.data, id: entityId } as any,
           images: uploadResult
             ? [
-                {
-                  gcsUri: uploadResult.gcsUri,
-                  publicUri: uploadResult.publicUri,
-                  mimeType: imageFile!.type,
-                },
-              ]
+              {
+                gcsUri: uploadResult.gcsUri,
+                publicUri: uploadResult.publicUri,
+                mimeType: imageFile!.type,
+              },
+            ]
             : [],
         },
       ]);
@@ -535,14 +536,16 @@ export function NewEntityModal({
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           overlayClassName="bg-transparent"
-          className={cn(isDragging ? "ring-2 ring-primary ring-offset-2" : "border")}
+          className={cn(
+            "top-[100px] translate-y-0 bg-popover",
+            isDragging ? "ring-2 ring-primary ring-offset-2" : "border")}
         >
           <DialogHeader>
             <DialogTitle data-testid="title">
               New{" "}
               {entityType === "character" &&
-              initialImageFile &&
-              initialImageFile.type.startsWith("audio/")
+                initialImageFile &&
+                initialImageFile.type.startsWith("audio/")
                 ? "Audio"
                 : entityType.slice(0, 1).toLocaleUpperCase() + entityType.slice(1)}
             </DialogTitle>

@@ -63,6 +63,8 @@ export interface NodeShellProps {
 
   /** Extra Tailwind classNamees on the outer wrapper. */
   className?: string;
+  /** Inline styles applied to the outer wrapper (used for inverse scaling of fixed nodes). */
+  style?: React.CSSProperties;
 }
 
 // ============================================================================
@@ -80,6 +82,7 @@ export function NodeShell({
   sourceHandle,
   additionalTargetHandles,
   className,
+  style,
 }: NodeShellProps) {
   const selectNode = useCanvasUIStore((s) => s.selectNode);
   const openDeleteDialog = useCanvasUIStore((s) => s.openDeleteDialog);
@@ -88,7 +91,8 @@ export function NodeShell({
   const pendingCount = data.pendingChangeCount ?? 0;
   const [isHovered, setIsHovered] = useState(false);
 
-  const canDelete = type !== "metadata";
+  const isWorkspaceTool = data.isWorkspaceTool === true || data.nodeTypeFlag === "tool";
+  const canDelete = type !== "metadata" && !isWorkspaceTool;
   // Use the hook version to subscribe to viewport changes for automatic re-render
   const viewport = useNodeStore((s) => s.viewport);
   const isZoomedIn = viewport.zoom >= 0.3;
@@ -115,15 +119,15 @@ export function NodeShell({
         // Base card style — all nodes share this visual language.
         "card-cinematic-glass rounded-md overflow-visible transition-all duration-50",
         // Selection ring.
-        selected ? "node-selected" : "node",
-        !isZoomedIn &&
-        selected &&
-        "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        !isWorkspaceTool && (selected ? "node-selected" : "node"),
         // Soft-delete dimming.
         data.isSoftDeleted && "opacity-40 grayscale pointer-events-none",
         className,
       )}
-      onClick={() => selectNode(data.entityId)}
+      style={style}
+      onClick={() => {
+        if (!isWorkspaceTool) selectNode(data.entityId);
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

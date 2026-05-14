@@ -69,11 +69,6 @@ export const useSceneCreatorStore = create<SceneCreatorState>((set) => ({
 
   reset: () => {
     set({ nodeId: null, fields: {}, hasUnsavedData: false });
-    try {
-      sessionStorage.removeItem(CACHE_KEY);
-    } catch {
-      /* silently ignore */
-    }
   },
 }));
 

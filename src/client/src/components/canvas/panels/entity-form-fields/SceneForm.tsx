@@ -37,6 +37,7 @@ import {
   extractVisibleTextForValidation,
   SceneFormData,
 } from "#client/components/canvas/panels/entity-form-fields/entityFormValidation.js";
+import { VALID_DURATIONS } from "#shared/types/base.types.js";
 
 interface SceneFormProps extends Omit<EntityFormFieldsProps, "entityType"> {
   projectId: string;
@@ -205,6 +206,7 @@ export default function SceneForm({
                 Shot Type
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(sceneFields.shotType as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "shotType", v))}
               >
@@ -233,6 +235,7 @@ export default function SceneForm({
                 Camera Angle
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(sceneFields.cameraAngle as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "cameraAngle", v))}
               >
@@ -261,6 +264,7 @@ export default function SceneForm({
                 Camera Movement
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(sceneFields.cameraMovement as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "cameraMovement", v))}
               >
@@ -289,6 +293,7 @@ export default function SceneForm({
                 Transition Type
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(sceneFields.transitionType as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "transitionType", v))}
               >
@@ -325,6 +330,7 @@ export default function SceneForm({
                 Audio Sync
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(sceneFields.audioSync as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "audioSync", v))}
               >
@@ -399,6 +405,7 @@ export default function SceneForm({
                 Duration
               </EntityFieldLabel>
               <Select
+                clearable
                 value={
                   sceneFields.duration !== undefined ? String(sceneFields.duration) : ""
                 }
@@ -413,9 +420,11 @@ export default function SceneForm({
                   <SelectValue placeholder="Select duration" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="4">4 seconds</SelectItem>
-                  <SelectItem value="6">6 seconds</SelectItem>
-                  <SelectItem value="8">8 seconds</SelectItem>
+                  {VALID_DURATIONS.map((d) => (
+                    <SelectItem key={`duration-${d}`} value={String(d)}>
+                      {d} seconds
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <EntityFieldErrorMessage errors={errors} fieldPath="duration" />
@@ -458,6 +467,7 @@ export default function SceneForm({
                 Intensity
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(sceneFields.intensity as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "intensity", v))}
               >
@@ -484,6 +494,7 @@ export default function SceneForm({
                 Tempo
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(sceneFields.tempo as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "tempo", v))}
               >

@@ -445,7 +445,7 @@ export function createSceneCreatorConfig(opts?: {
 }): FormNodeConfig {
   return {
     label: "Scene Creator",
-    icon: <Film className="w-4 h-4" />,
+    // icon: <Film className="w-4 h-4" />,
 
     // ── Node handles ──────────────────────────────────────────────────
     targetHandle: {
@@ -579,17 +579,17 @@ export function createSceneCreatorConfig(opts?: {
             label: `Scene ${i + 1}`,
           });
           nodeStore.addNode(canvasNode);
-        }
 
-        // Show success toast (different message for pipeline vs. local)
-        addNotification({
-          id: generateId(),
-          type: "success",
-          message: pipelineQueued
-            ? `Queued ${sceneIds.length} scene${sceneIds.length !== 1 ? "s" : ""} for AI generation`
-            : `Created ${sceneIds.length} scene${sceneIds.length !== 1 ? "s" : ""} from prompt: "${stripped.slice(0, 60)}${stripped.length > 60 ? "…" : ""}"`,
-          timestamp: new Date(),
-        });
+          // Show success toast (different message for pipeline vs. local)
+          addNotification({
+            id: generateId(),
+            type: "success",
+            message: pipelineQueued
+              ? `Queued ${sceneIds.length} scene${sceneIds.length !== 1 ? "s" : ""} for AI generation`
+              : `Created ${sceneIds.length} scene${sceneIds.length !== 1 ? "s" : ""} from prompt: "${stripped.slice(0, 60)}${stripped.length > 60 ? "…" : ""}"`,
+            timestamp: new Date(),
+          });
+        }
       } catch (err) {
         console.error("[SceneCreator] Failed to create scenes:", err);
         addNotification({

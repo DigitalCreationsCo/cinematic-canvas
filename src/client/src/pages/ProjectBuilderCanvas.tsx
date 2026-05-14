@@ -124,6 +124,16 @@ export default function ProjectBuilderCanvas() {
   useCanvasPipelineSync(isDemo ? "" : projectId);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        useCanvasUIStore.getState().selectNode(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
     if (isDemo) return;
     setSelectedProject(projectId);
   }, [projectId, isDemo, setSelectedProject]);

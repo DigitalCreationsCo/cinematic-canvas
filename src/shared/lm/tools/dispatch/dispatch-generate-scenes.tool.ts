@@ -13,14 +13,12 @@ interface DispatchGenerateScenesToolDeps {
   };
 }
 
-// sceneFields: CreateSceneWithEntitiesInput,
-//   sceneIds: z.array(IdentityBase.shape.id),
 const DispatchScenesInput = jobPayloadSchemas["CREATE_SCENES_WITH_ENTITIES"];
 type DispatchScenesInput = z.infer<typeof DispatchScenesInput>;
 
 class DispatchGenerateScenesTool extends StructuredTool<typeof DispatchScenesInput> {
   name = "generate_scenes";
-  description = "Takes required info from the user and dispatches a job to generate scenes and images.";
+  description = jobPayloadSchemas["CREATE_SCENES_WITH_ENTITIES"].description!;
   schema = DispatchScenesInput;
 
   private readonly context: DispatchGenerateScenesToolDeps["context"];

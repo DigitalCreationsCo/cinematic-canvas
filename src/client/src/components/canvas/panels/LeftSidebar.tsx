@@ -675,7 +675,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
           </CollapsibleSection>
 
           {/* Audio Section */}
-          <CollapsibleSection
+          {/* <CollapsibleSection
             section={SECTIONS[4]}
             isOpen={openSections.audio}
             onToggle={() => toggleSection("audio")}
@@ -698,7 +698,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
             <p className="text-[10px] text-muted-foreground px-2 py-1">
               No audio assets found
             </p>
-          </CollapsibleSection>
+          </CollapsibleSection> */}
 
           {/* Style Refs Section */}
           <CollapsibleSection
@@ -732,31 +732,6 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
             }
           >
             <div className="flex flex-col gap-0.5 px-2 overflow-y-auto">
-              {nodes
-                .filter(
-                  (n) => n.type === "image" && n.data.nodeTypeFlag === "style_reference",
-                )
-                .map((node) => {
-                  const data = node.data as any;
-                  return (
-                    <DraggableAsset
-                      key={node.id}
-                      id={data.entityId as string}
-                      type="image"
-                      name={(data.label || "Style Ref") as string}
-                      img={getBestAssetImage(data.entityId as string, "image_file")}
-                      isOnCanvas={true}
-                      onDragStart={handleDragStart as any}
-                    />
-                  );
-                })}
-              {nodes.filter(
-                (n) => n.type === "image" && n.data.nodeTypeFlag === "style_reference",
-              ).length === 0 && (
-                  <p className="text-[10px] text-muted-foreground px-2 py-1">
-                    No style refs found
-                  </p>
-                )}
               {styleRefItems.map((mediaId) => (
                 <DraggableAsset
                   key={mediaId}
@@ -777,7 +752,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
           </CollapsibleSection>
 
           {/* Sequence Section */}
-          <CollapsibleSection
+          {/* <CollapsibleSection
             section={SECTIONS[0]}
             isOpen={openSections.sequence}
             onToggle={() => toggleSection("sequence")}
@@ -834,10 +809,10 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
                 </div>
               )}
             </div>
-          </CollapsibleSection>
+          </CollapsibleSection> */}
 
           {/* Screenplay Section */}
-          <CollapsibleSection
+          {/* <CollapsibleSection
             section={SECTIONS[6]}
             isOpen={openSections.screenplay}
             onToggle={() => toggleSection("screenplay")}
@@ -865,10 +840,10 @@ The assistant reads your screenplay to understand your long-form narrative.`}
                 </Button>
               </div>
             </div>
-          </CollapsibleSection>
+          </CollapsibleSection> */}
 
           {/* Notes Section */}
-          <CollapsibleSection
+          {/* <CollapsibleSection
             section={SECTIONS[7]}
             isOpen={openSections.notes}
             onToggle={() => toggleSection("notes")}
@@ -899,7 +874,7 @@ The assistant reads your screenplay to understand your long-form narrative.`}
                 </Button>
               </div>
             </div>
-          </CollapsibleSection>
+          </CollapsibleSection> */}
         </div>
       </ScrollArea>
 

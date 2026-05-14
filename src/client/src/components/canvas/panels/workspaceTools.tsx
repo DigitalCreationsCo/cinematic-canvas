@@ -3,7 +3,7 @@ import type { ComponentType } from "react";
 import type { CanvasNode } from "#client/domain/canvas/NodeTypes.js"; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { ScreenShareIcon } from "lucide-react";
 import { SceneInfiniteIcon } from "#shared/icons/scene-infinite.js";
-import { useUIMenuStore } from "#client/store/useUIMenuStore.js";
+import { useUIMenuStore, selectWorkspaceToolsSidebarOpen } from "#client/store/useUIMenuStore.js";
 import { useNodeStore } from "#client/store/useNodeStore.js";
 import { useProjectStore } from "#client/store/useProjectStore.js";
 import {
@@ -67,10 +67,38 @@ export const WORKSPACE_TOOLS: WorkspaceToolDefinition[] = [
 
 const TOOL_ID = "create-scenes";
 
-export function SceneCreatorToolManager() {
+// ============================================================================
+// STANDARDIZED WORKSPACE TOOL MANAGER
+// ============================================================================
+//
+// A generalized component that handles the lifecycle of tools that create
+// ephemeral canvas nodes and ensures idempotency.
+//
+// Mount <WorkspaceToolManager /> inside the canvas component tree.
+
+export interface WorkspaceToolManagerProps {
+  toolId: string;
+  nodeType: string;
+  nodeId: string | null;
+  hasUnsavedData: boolean;
+  setNodeId: (id: string | null) => void;
+  reset: () => void;
+  createNode: (entityId: string, projectId: string, onSuccess: () => void) => any;
+}
+
+export function WorkspaceToolManager({
+  toolId,
+  nodeType,
+  nodeId,
+  hasUnsavedData,
+  setNodeId,
+  reset,
+  createNode,
+}: WorkspaceToolManagerProps) {
   // ── Tool state ─────────────────────────────────────────────────────────
   const activeTools = useUIMenuStore((s) => s.activeTools);
-  const isActive = activeTools.includes(TOOL_ID);
+  const isSidebarOpen = useUIMenuStore(selectWorkspaceToolsSidebarOpen);
+  const isActive = activeTools.includes(toolId) && isSidebarOpen;
 
   // ── Canvas / project state ─────────────────────────────────────────────
   const addNode = useNodeStore((s) => s.addNode);
@@ -78,20 +106,24 @@ export function SceneCreatorToolManager() {
   const nodes = useNodeStore((s) => s.nodes);
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
 
-  // ── Scene creator store ────────────────────────────────────────────────
-  const sceneNodeId = useSceneCreatorStore((s) => s.nodeId);
-  const hasUnsavedData = useSceneCreatorStore((s) => s.hasUnsavedData);
-  const setNodeId = useSceneCreatorStore((s) => s.setNodeId);
-  const reset = useSceneCreatorStore((s) => s.reset);
-
-  // ── Close-confirmation AlertDialog state ──────────────────────────────
-  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  // No close-confirmation needed as data is cached
 
   // ── Transition detection ───────────────────────────────────────────────
-  // Always start from "inactive" so the effect correctly detects activation
-  // even when the tool is already active at first render (e.g., if the
-  // component mounts after the tool was toggled on).
   const prevActiveRef = useRef(false);
+  const nodeIdRef = useRef(nodeId);
+
+  useEffect(() => {
+    nodeIdRef.current = nodeId;
+  }, [nodeId]);
+
+  const onSuccess = useCallback(() => {
+    reset();
+    const currentId = nodeIdRef.current;
+    if (currentId) {
+      deleteNode(currentId, false);
+    }
+    useUIMenuStore.getState().toggleActiveTool(toolId);
+  }, [reset, toolId, deleteNode]);
 
   useEffect(() => {
     const prevActive = prevActiveRef.current;
@@ -99,10 +131,8 @@ export function SceneCreatorToolManager() {
 
     // ── TOOL ACTIVATED → create the node (idempotent) ─────────────────
     if (isActive && !prevActive) {
-      // Idempotency: if a scene-creator node already exists (e.g. from a
-      // previous activation that wasn't cleaned up), just track its ID.
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      const existingNode = nodes.find((n) => (n as any).type === "scene-creator");
+      // Idempotency
+      const existingNode = nodes.find((n) => (n as any).type === nodeType);
       if (existingNode) {
         setNodeId(existingNode.id);
         return;
@@ -110,70 +140,19 @@ export function SceneCreatorToolManager() {
 
       if (!selectedProjectId) return;
 
-      // Restore cached form fields (if any) so the user picks up where
-      // they left off — same sessionStorage pattern as NewEntityModal.
-      const cached = loadCachedSceneCreatorFields();
-
       const entityId = generateId();
-      const config = createSceneCreatorConfig({
-        onSuccess: () => {
-          // After successful scene generation:
-          // 1. Delete the ephemeral SceneCreator node from the canvas
-          // 2. Clear the sessionStorage cache
-          // 3. Reset the scene-creator store
-          // 4. Deactivate the tool
-          const nodeId = useSceneCreatorStore.getState().nodeId;
-          useSceneCreatorStore.getState().clearCache();
-          useSceneCreatorStore.getState().reset();
-          if (nodeId) {
-            useNodeStore.getState().deleteNode(nodeId, false);
-          }
-          useUIMenuStore.getState().toggleActiveTool(TOOL_ID);
-        },
-      });
+      const node = createNode(entityId, selectedProjectId, onSuccess);
 
-      const sceneCreatorNode = {
-        id: entityId,
-        type: "scene-creator" as const,
-        position: {
-          x: 300 + Math.random() * 200,
-          y: 200 + Math.random() * 200,
-        },
-        data: {
-          entityId,
-          contextId: selectedProjectId,
-          contextType: "project" as const,
-          scope: "project" as const,
-          isLocked: false,
-          pipelineSelected: false,
-          collapsed: false,
-          idxVersion: 1,
-          formConfig: {
-            ...config,
-            initialValues: cached ?? config.initialValues,
-          },
-        },
-      };
-
-      addNode(sceneCreatorNode as any);
+      addNode(node as any);
       setNodeId(entityId);
       return;
     }
 
-    // ── TOOL DEACTIVATED → remove the node (with confirm if dirty) ───
+    // ── TOOL DEACTIVATED → remove the node ───
     if (!isActive && prevActive) {
-      if (!sceneNodeId) return;
+      if (!nodeId) return;
 
-      // If the user has entered any data, show the AlertDialog
-      // confirmation before discarding — same pattern as NewEntityModal.
-      if (hasUnsavedData) {
-        setShowCloseConfirm(true);
-        return;
-      }
-
-      // Hard-delete (no soft-delete / trash) because this node is
-      // ephemeral — it only exists while the tool is active.
-      deleteNode(sceneNodeId, false);
+      deleteNode(nodeId, false);
       reset();
     }
   }, [
@@ -184,39 +163,127 @@ export function SceneCreatorToolManager() {
     deleteNode,
     setNodeId,
     reset,
-    sceneNodeId,
-    hasUnsavedData,
+    nodeId,
+    nodeType,
+    createNode,
+    onSuccess,
   ]);
 
-  // ── Confirm discard handlers ───────────────────────────────────────────
-  const confirmDiscard = useCallback(() => {
-    setShowCloseConfirm(false);
-    if (sceneNodeId) {
-      deleteNode(sceneNodeId, false);
-    }
-    reset();
-  }, [sceneNodeId, deleteNode, reset]);
+  useEffect(() => {
+    if (!nodeId || !isActive) return;
 
-  const cancelDiscard = useCallback(() => {
-    setShowCloseConfirm(false);
-    // Re-activate the tool so the user can continue editing.
-    useUIMenuStore.getState().toggleActiveTool(TOOL_ID);
+    // Keep the node fixed at right: 8px, top: 80px
+    const rightMargin = 8;
+    const topMargin = 80;
+    const width = 344; // w-86 is 21.5rem = 344px
+
+    const updatePosition = (viewport: { x: number; y: number; zoom: number }) => {
+      // Find the dynamic container inside ToolsSidebar.tsx
+      const container = document.getElementById("workspace-tool-container");
+
+      let screenX = 0;
+      let screenY = 0;
+
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        // The UI card is w-[344px] and anchored at right-3 (12px) inside the container.
+        // We set screenX to match the left edge of the UI card so Handles perfectly align.
+        screenX = rect.right - 12 - 344;
+        screenY = rect.top;
+      } else {
+        // Fallback if sidebar is missing
+        const width = 344;
+        const rightMargin = 8;
+        const topMargin = 80;
+        screenX = window.innerWidth - width - rightMargin;
+        screenY = topMargin;
+      }
+
+      const x = (screenX - viewport.x) / viewport.zoom;
+      const y = (screenY - viewport.y) / viewport.zoom;
+
+      const inverseScale = 1 / viewport.zoom;
+
+      useNodeStore.getState().updateNodePosition(nodeId, { x, y });
+      useNodeStore.getState().updateNodeData(nodeId, { inverseScale });
+    };
+
+    // Set initial position immediately
+    updatePosition(useNodeStore.getState().viewport);
+
+    // Subscribe to viewport changes so it stays fixed during pan/zoom
+    const unsub = useNodeStore.subscribe(
+      (state) => state.viewport,
+      (viewport) => updatePosition(viewport)
+    );
+
+    return unsub;
+  }, [nodeId, isActive]);
+
+  return null;
+}
+
+// ============================================================================
+// SPECIFIC TOOL INSTANCES
+// ============================================================================
+
+export function SceneCreatorToolManager() {
+  const nodeId = useSceneCreatorStore((s) => s.nodeId);
+  const hasUnsavedData = useSceneCreatorStore((s) => s.hasUnsavedData);
+  const setNodeId = useSceneCreatorStore((s) => s.setNodeId);
+  const reset = useSceneCreatorStore((s) => s.reset);
+
+  const createNode = useCallback((entityId: string, projectId: string, onSuccess: () => void) => {
+    const cached = loadCachedSceneCreatorFields();
+
+    const handleSuccess = () => {
+      useSceneCreatorStore.getState().clearCache();
+      onSuccess();
+    };
+
+    const config = createSceneCreatorConfig({ onSuccess: handleSuccess });
+
+    return {
+      id: entityId,
+      type: "scene-creator" as const,
+      // React Flow requires a position object, but we override it via className
+      position: { x: 0, y: 0 },
+      // Important: Ensure it is absolutely positioned and doesn't participate in collisions
+      draggable: false,
+      selectable: false,
+      deletable: false, // Prevents deletion via Backspace
+      // When fixed, the FormNode visually portals into the sidebar container.
+      // We set width to w-[344px] so it can overflow out the left side of the 280px sidebar.
+      // It retains its background and borders so it looks like a solid floating panel over the sidebar border.
+      className: "!w-[344px] z-50 shadow-2xl",
+      data: {
+        entityId,
+        contextId: projectId,
+        isWorkspaceTool: true,
+        contextType: "project" as const,
+        scope: "project" as const,
+        isLocked: false,
+        pipelineSelected: false,
+        collapsed: false,
+        idxVersion: 1,
+        formConfig: {
+          ...config,
+          initialValues: cached ?? config.initialValues,
+          isFixed: true,
+        },
+      },
+    };
   }, []);
 
   return (
-    <AlertDialog onOpenChange={setShowCloseConfirm}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Discard changes?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure? You will lose your form data.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={cancelDiscard}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDiscard}>Discard</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <WorkspaceToolManager
+      toolId={TOOL_ID}
+      nodeType="scene-creator"
+      nodeId={nodeId}
+      hasUnsavedData={hasUnsavedData}
+      setNodeId={setNodeId}
+      reset={reset}
+      createNode={createNode}
+    />
   );
 }

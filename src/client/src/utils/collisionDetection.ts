@@ -141,5 +141,13 @@ export function resolveCanvasNodeCollisions(
     margin: 10,
   },
 ): CanvasNode[] {
-  return resolveCollisions(nodes, options) as CanvasNode[];
+  // Filter out fixed/tool nodes (like scene-creator) that are explicitly not draggable
+  // so they don't get pushed by collision resolution.
+  const collidableNodes = nodes.filter(n => n.draggable !== false);
+  const fixedNodes = nodes.filter(n => n.draggable === false);
+
+  const resolved = resolveCollisions(collidableNodes as Node[], options) as CanvasNode[];
+  
+  // Re-merge the fixed nodes back into the array
+  return [...resolved, ...fixedNodes];
 }

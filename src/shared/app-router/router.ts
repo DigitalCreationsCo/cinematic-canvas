@@ -1313,7 +1313,8 @@ export function createAppRouter(deps: RouterDependencies) {
             return {
               message: "Scene creation queued.",
               projectId: ctx.projectId!,
-              sceneCount: input.sceneCount,
+              mode: input.mode,
+              sceneCount: input.mode === "duration" ? input.duration : input.sceneCount,
             };
           } catch (err) {
             console.error("[Router] Failed to queue scene creation:", err);

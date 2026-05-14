@@ -163,6 +163,7 @@ export default function CharacterForm({
                 Build
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(tf.physicalTraits?.build as string) || ""}
                 onValueChange={(v) =>
                   onChange(updateField(fields, "physicalTraits.build", v))
@@ -214,6 +215,7 @@ export default function CharacterForm({
                 Gender
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(tf.physicalTraits?.gender as string) || ""}
                 onValueChange={(v) =>
                   onChange(updateField(fields, "physicalTraits.gender", v))
@@ -430,6 +432,7 @@ export default function CharacterForm({
                 Position
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(tf.state?.position as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "state.position", v))}
               >
@@ -458,6 +461,7 @@ export default function CharacterForm({
                 Dirt Level
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(tf.state?.dirtLevel as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "state.dirtLevel", v))}
               >
@@ -486,6 +490,7 @@ export default function CharacterForm({
                 Exhaustion Level
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(tf.state?.exhaustionLevel as string) || ""}
                 onValueChange={(v) =>
                   onChange(updateField(fields, "state.exhaustionLevel", v))

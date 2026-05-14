@@ -150,6 +150,7 @@ export default function LocationForm({
                 Time of Day
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(locationFields.timeOfDay as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "timeOfDay", v))}
               >
@@ -181,6 +182,7 @@ export default function LocationForm({
                 Weather
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(locationFields.weather as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "weather", v))}
               >
@@ -212,6 +214,7 @@ export default function LocationForm({
                 Season
               </EntityFieldLabel>
               <Select
+                clearable
                 value={(tf.state?.season as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "state.season", v))}
               >

@@ -55,8 +55,10 @@
 // NOTE: Interactive elements inside the form (Input, Select, Textarea, etc.)
 // MUST have `className="nodrag"` so they don't interfere with canvas drag.
 
+import { motion } from "framer-motion";
 import { useCallback, useMemo, useState, type ComponentType } from "react";
-import type { NodeProps } from "@xyflow/react";
+import { createPortal } from "react-dom";
+import { useStore, type NodeProps } from "@xyflow/react";
 import { Button } from "#client/components/ui/button.js";
 import { cn } from "#client/lib/utils.js";
 import { NodeShell, NodeShellHeader, type NodeHandleConfig } from "./NodeShell.js";
@@ -160,6 +162,9 @@ export interface FormNodeConfig {
 
   /** Initial field values loaded into local state on mount. */
   initialValues?: Record<string, unknown>;
+
+  /** If true, renders the node outside the viewport using a Portal so it never moves/scales */
+  isFixed?: boolean;
 }
 
 // ============================================================================
@@ -258,7 +263,10 @@ export function FormNode({
     validateOnlyOnSubmit = false,
     requireAtLeastOneValue = true,
     initialValues,
+    isFixed = false,
   } = config;
+
+  const domNode = useStore((s) => s.domNode);
 
   // ── Form state ────────────────────────────────────────────────────────
   const [fields, setFields] = useState<Record<string, unknown>>(
@@ -356,7 +364,7 @@ export function FormNode({
   // Render renderFields as a React component so hooks work inside form fields.
   const FormFieldsComponent = renderFields as ComponentType<FormFieldRendererProps>;
 
-  return (
+  const content = (
     <NodeShell
       id={data.entityId}
       data={data}
@@ -366,6 +374,10 @@ export function FormNode({
       sourceHandle={sourceHandle}
       additionalTargetHandles={additionalTargetHandles}
       className={cn("w-86", className)}
+      style={!isFixed ? {
+        transform: data.inverseScale ? `scale(${data.inverseScale as number})` : undefined,
+        transformOrigin: "center",
+      } : undefined}
     >
       {/* ── Header ────────────────────────────────────────────────────── */}
       {showHeader && (
@@ -377,14 +389,6 @@ export function FormNode({
       )}
 
       {/* ── Form fields area ──────────────────────────────────────────── */}
-      {/*
-        Invoke renderFields as a JSX component so consumers can use React
-        hooks inside their field renderer (e.g. to subscribe to edge/asset
-        stores for connected image previews).
-
-        The type assertion is safe: (props) => ReactNode is compatible with
-        React.ComponentType, and JSX invocation enables hook support.
-      */}
       <div className={cn("flex flex-col gap-4 p-4", formClassName)}>
         <FormFieldsComponent
           entityId={data.entityId}
@@ -427,4 +431,35 @@ export function FormNode({
       )}
     </NodeShell>
   );
+
+  // If fixed, teleport it into the designated container so it bypasses all canvas pan/zoom transforms
+  if (isFixed) {
+    const container = document.getElementById("workspace-tool-container");
+    if (container) {
+      return createPortal(
+        <motion.div
+          className="absolute top-2 right-0 pointer-events-auto"
+          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          style={{ transformOrigin: "center" }}
+        >
+          {content}
+        </motion.div>,
+        container
+      );
+    }
+
+    // Fallback if container is missing but tool is fixed
+    if (domNode) {
+      return createPortal(
+        <div className="absolute right-2 top-20 z-[1000] pointer-events-auto">
+          {content}
+        </div>,
+        domNode
+      );
+    }
+  }
+
+  return content;
 }
