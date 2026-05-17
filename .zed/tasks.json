@@ -123,7 +123,7 @@
   // ── Application launchers ─────────────────────────────────────────────────
 
   {
-    "label": "Launch Worker",
+    "label": "Launch Worker (Typescript)",
     "command": "node",
     "args": [
       "--max-old-space-size=512",
@@ -133,7 +133,7 @@
     "use_new_terminal": true,
   },
   {
-    "label": "Launch Pipeline",
+    "label": "Launch Pipeline (Typescript)",
     "command": "node",
     "args": [
       "--max-old-space-size=512",
@@ -172,35 +172,35 @@
   // ── Build / Watch ─────────────────────────────────────────────────────────
 
   {
-    "label": "Watch Backend",
+    "label": "Watch Backend (Typescript)",
     "command": "npx tsc -b --watch",
     "use_new_terminal": true,
     "allow_concurrent_runs": false,
   },
   {
-    "label": "Watch Client (dev)",
+    "label": "Watch Client (dev) (Typescript)",
     "command": "npx vite dev --config src/server/vite.config.ts",
     "use_new_terminal": true,
     "allow_concurrent_runs": false,
   },
   {
-    "label": "Watch Client (build)",
+    "label": "Watch Client (build) (Typescript)",
     "command": "npx vite build --watch --config src/server/vite.config.ts --clearScreen false --outDir $ZED_WORKTREE_ROOT/dist/server/public --emptyOutDir false",
     "use_new_terminal": true,
     "allow_concurrent_runs": false,
   },
   {
-    "label": "Watch All (dev)",
+    "label": "Watch All (dev) (Typescript)",
     "command": "npx tsc -b --watch & npx vite dev --config src/server/vite.config.ts",
     "use_new_terminal": true,
   },
   {
-    "label": "Watch All (build)",
+    "label": "Watch All (build) (Typescript)",
     "command": "npx tsc -b --watch & npx vite build --watch --config src/server/vite.config.ts --clearScreen false --outDir $ZED_WORKTREE_ROOT/dist/server/public --emptyOutDir false",
     "use_new_terminal": true,
   },
   {
-    "label": "Build Project",
+    "label": "Build Project (Typescript)",
     "command": "npm run build",
     "use_new_terminal": true,
   },

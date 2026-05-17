@@ -1,0 +1,1 @@
+import{bB as c}from"./index-CzmBI_hJ.js";const a=[["path",{d:"M3.704 14.467a10 8 0 1 1 3.115 2.375",key:"wxgc5m"}],["path",{d:"M7 22a5 5 0 0 1-2-3.994",key:"1xp6a4"}],["circle",{cx:"5",cy:"16",r:"2",key:"18csp3"}]],o=c("lasso",a);export{a as __iconNode,o as default};

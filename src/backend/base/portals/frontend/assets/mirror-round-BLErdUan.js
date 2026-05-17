@@ -1,0 +1,1 @@
+import{bB as r}from"./index-CzmBI_hJ.js";const e=[["path",{d:"M10 6.6 8.6 8",key:"itrr7k"}],["path",{d:"M12 18v4",key:"jadmvz"}],["path",{d:"M15 7.5 9.5 13",key:"1vyrsv"}],["path",{d:"M7 22h10",key:"10w4w3"}],["circle",{cx:"12",cy:"10",r:"8",key:"1gshiw"}]],t=r("mirror-round",e);export{e as __iconNode,t as default};

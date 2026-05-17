@@ -1,0 +1,792 @@
+import asyncio
+import contextlib
+import json
+import os
+from pathlib import Path
+from shutil import copy2
+from typing import Any, Literal
+
+import aiofiles
+import orjson
+import yaml
+from px.constants import BASE_COMPONENTS_PATH
+from px.log.logger import logger
+from px.serialization.constants import MAX_ITEMS_LENGTH, MAX_TEXT_LENGTH
+from px.services.settings.constants import (
+    AGENTIC_VARIABLES,
+    VARIABLES_TO_GET_FROM_ENVIRONMENT,
+)
+from px.utils.util_strings import is_valid_database_url, sanitize_database_url
+from pydantic import Field, field_validator
+from pydantic.fields import FieldInfo
+from pydantic_settings import (
+    BaseSettings,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+from typing_extensions import override
+
+
+def is_list_of_any(field: FieldInfo) -> bool:
+    """Check if the given field is a list or an optional list of any type.
+
+    Args:
+        field (FieldInfo): The field to be checked.
+
+    Returns:
+        bool: True if the field is a list or a list of any type, False otherwise.
+    """
+    if field.annotation is None:
+        return False
+    try:
+        union_args = (
+            field.annotation.__args__ if hasattr(field.annotation, "__args__") else []
+        )
+
+        return field.annotation.__origin__ is list or any(
+            arg.__origin__ is list for arg in union_args if hasattr(arg, "__origin__")
+        )
+    except AttributeError:
+        return False
+
+
+class CustomSource(EnvSettingsSource):
+    @override
+    def prepare_field_value(
+        self, field_name: str, field: FieldInfo, value: Any, value_is_complex: bool
+    ) -> Any:  # type: ignore[misc]
+        # allow comma-separated list parsing
+
+        # fieldInfo contains the annotation of the field
+        if is_list_of_any(field):
+            if isinstance(value, str):
+                value = value.split(",")
+            if isinstance(value, list):
+                return value
+
+        return super().prepare_field_value(field_name, field, value, value_is_complex)
+
+
+class Settings(BaseSettings):
+    # Define the default PORTALS_DIR
+    config_dir: str | None = None
+    # Define if portals db should be saved in config dir or
+    # in the portals directory
+    save_db_in_config_dir: bool = False
+    """Define if portals database should be saved in PORTALS_CONFIG_DIR or in the portals directory
+    (i.e. in the package directory)."""
+
+    knowledge_bases_dir: str | None = "~/.portals/knowledge_bases"
+    """The directory to store knowledge bases."""
+
+    dev: bool = False
+    """If True, Portals will run in development mode."""
+    database_url: str | None = None
+    """Database URL for Portals. If not provided, Portals will use a SQLite database.
+    The driver shall be an async one like `sqlite+aiosqlite` (`sqlite` and `postgresql`
+    will be automatically converted to the async drivers `sqlite+aiosqlite` and
+    `postgresql+psycopg` respectively)."""
+    database_connection_retry: bool = False
+    """If True, Portals will retry to connect to the database if it fails."""
+    pool_size: int = 20
+    """The number of connections to keep open in the connection pool.
+    For high load scenarios, this should be increased based on expected concurrent users."""
+    max_overflow: int = 30
+    """The number of connections to allow that can be opened beyond the pool size.
+    Should be 2x the pool_size for optimal performance under load."""
+    db_connect_timeout: int = 30
+    """The number of seconds to wait before giving up on a lock to released or establishing a connection to the
+    database."""
+    migration_lock_namespace: str | None = None
+    """Optional namespace identifier for PostgreSQL advisory lock during migrations.
+    If not provided, a hash of the database URL will be used. Useful when multiple Portals
+    instances share the same database and need coordinated migration locking."""
+
+    root_path: str = ""
+    """ASGI root_path for deployments behind a reverse proxy that strips a URL
+    prefix (e.g. '/portals').  When set, the MCP SSE transport includes this
+    prefix in the POST-back URL so clients can reach the correct endpoint.
+    Can also be set via the PORTALS_ROOT_PATH environment variable."""
+
+    @field_validator("root_path", mode="before")
+    @classmethod
+    def validate_root_path(cls, value: Any) -> str:
+        if value is None:
+            return ""
+        if not isinstance(value, str):
+            msg = "root_path must be a string"
+            raise TypeError(msg)
+
+        value = value.strip()
+        if not value or value == "/":
+            return ""
+
+        if "://" in value or "?" in value or "#" in value:
+            msg = "root_path must be an ASGI path prefix only, without scheme, query string, or fragment"
+            raise ValueError(msg)
+
+        if not value.startswith("/"):
+            value = f"/{value}"
+
+        return value.rstrip("/")
+
+    mcp_base_url: str = ""
+    """External base URL used to build MCP server URLs in the UI configuration JSON
+    (e.g. 'https://portals.example.com'). When empty, the frontend falls back to
+    the browser's window.location.origin."""
+
+    mcp_server_timeout: int = 20
+    """The number of seconds to wait before giving up on a lock to released or establishing a connection to the
+    database."""
+
+    # ---------------------------------------------------------------------
+    # MCP Session-manager tuning
+    # ---------------------------------------------------------------------
+    mcp_max_sessions_per_server: int = 10
+    """Maximum number of MCP sessions to keep per unique server (command/url).
+    Mirrors the default constant MAX_SESSIONS_PER_SERVER in util.py. Adjust to
+    control resource usage or concurrency per server."""
+
+    mcp_session_idle_timeout: int = 400  # seconds
+    """How long (in seconds) an MCP session can stay idle before the background
+    cleanup task disposes of it. Defaults to 5 minutes."""
+
+    mcp_session_cleanup_interval: int = 120  # seconds
+    """Frequency (in seconds) at which the background cleanup task wakes up to
+    reap idle sessions."""
+
+    # sqlite configuration
+    sqlite_pragmas: dict | None = {
+        "synchronous": "NORMAL",
+        "journal_mode": "WAL",
+        "busy_timeout": 30000,
+    }
+    """SQLite pragmas to use when connecting to the database."""
+
+    db_driver_connection_settings: dict | None = None
+    """Database driver connection settings."""
+
+    db_connection_settings: dict | None = {
+        "pool_size": 20,  # Match the pool_size above
+        "max_overflow": 30,  # Match the max_overflow above
+        "pool_timeout": 30,  # Seconds to wait for a connection from pool
+        "pool_pre_ping": True,  # Check connection validity before using
+        "pool_recycle": 1800,  # Recycle connections after 30 minutes
+        "echo": False,  # Set to True for debugging only
+    }
+    """Database connection settings optimized for high load scenarios.
+    Note: These settings are most effective with PostgreSQL. For SQLite:
+    - Reduce pool_size and max_overflow if experiencing lock contention
+    - SQLite has limited concurrent write capability even with WAL mode
+    - Best for read-heavy or moderate write workloads
+
+    Settings:
+    - pool_size: Number of connections to maintain (increase for higher concurrency)
+    - max_overflow: Additional connections allowed beyond pool_size
+    - pool_timeout: Seconds to wait for an available connection
+    - pool_pre_ping: Validates connections before use to prevent stale connections
+    - pool_recycle: Seconds before connections are recycled (prevents timeouts)
+    - echo: Enable SQL query logging (development only)
+    """
+
+    use_noop_database: bool = False
+    """If True, disables all database operations and uses a no-op session.
+    Controlled by PORTALS_USE_NOOP_DATABASE env variable."""
+
+    # cache configuration
+    cache_type: Literal["async", "redis", "memory", "disk"] = "async"
+    """The cache type can be 'async' or 'redis'."""
+    cache_expire: int = 3600
+    """The cache expire in seconds."""
+    variable_store: str = "db"
+    """The store can be 'db' or 'kubernetes'."""
+
+    prometheus_enabled: bool = False
+    """If set to True, Portals will expose Prometheus metrics."""
+    prometheus_port: int = 9090
+    """The port on which Portals will expose Prometheus metrics. 9090 is the default port."""
+
+    disable_track_apikey_usage: bool = False
+    remove_api_keys: bool = False
+    components_path: list[str] = []
+    """List of paths to custom components.
+
+    Security: This setting defines an allow-list of custom components
+    permitted to execute, even when PORTALS_ALLOW_CUSTOM_COMPONENTS is False.
+    """
+    components_index_path: str | None = None
+    """Path or URL to a prebuilt component index JSON file.
+
+    If None, uses the built-in index at px/_assets/component_index.json.
+    Set to a file path (e.g., '/path/to/index.json') or URL (e.g., 'https://example.com/index.json')
+    to use a custom index.
+    """
+    langchain_cache: str = "InMemoryCache"
+    load_flows_path: str | None = None
+    bundle_urls: list[str] = []
+
+    # Redis
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_url: str | None = None
+    redis_cache_expire: int = 3600
+
+    # Sentry
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float | None = 1.0
+    sentry_profiles_sample_rate: float | None = 1.0
+
+    store: bool | None = True
+    store_url: str | None = "https://api.portals.store"
+    download_webhook_url: str | None = (
+        "https://api.portals.store/flows/trigger/ec611a61-8460-4438-b187-a4f65e5559d4"
+    )
+    like_webhook_url: str | None = (
+        "https://api.portals.store/flows/trigger/64275852-ec00-45c1-984e-3bff814732da"
+    )
+
+    storage_type: str = "local"
+    """Storage type for file storage. Defaults to 'local'. Supports 'local' and 's3'."""
+    object_storage_bucket_name: str | None = "portals-bucket"
+    """Object storage bucket name for file storage. Defaults to 'portals-bucket'."""
+    object_storage_prefix: str | None = "files"
+    """Object storage prefix for file storage. Defaults to 'files'."""
+    object_storage_tags: dict[str, str] | None = None
+    """Object storage tags for file storage."""
+
+    celery_enabled: bool = False
+
+    fallback_to_env_var: bool = True
+    """If set to True, Global Variables set in the UI will fallback to a environment variable
+    with the same name in case Portals fails to retrieve the variable value."""
+
+    store_environment_variables: bool = True
+    """Whether to store environment variables as Global Variables in the database."""
+    variables_to_get_from_environment: list[str] = VARIABLES_TO_GET_FROM_ENVIRONMENT
+    """List of environment variables to get from the environment and store in the database."""
+    worker_timeout: int = 300
+    """Timeout for the API calls in seconds."""
+    frontend_timeout: int = 0
+    """Timeout for the frontend API calls in seconds."""
+    user_agent: str = "portals"
+    """User agent for the API calls."""
+    backend_only: bool = False
+    """If set to True, Portals will not serve the frontend."""
+
+    # CORS Settings
+    cors_origins: list[str] | str = "*"
+    """Allowed origins for CORS. Can be a list of origins or '*' for all origins.
+    Default is '*' for backward compatibility. In production, specify exact origins."""
+    cors_allow_credentials: bool = True
+    """Whether to allow credentials in CORS requests.
+    Default is True for backward compatibility. In v2.0, this will be changed to False when using wildcard origins."""
+    cors_allow_methods: list[str] | str = "*"
+    """Allowed HTTP methods for CORS requests."""
+    cors_allow_headers: list[str] | str = "*"
+    """Allowed headers for CORS requests."""
+
+    # Telemetry
+    do_not_track: bool = False
+    """If set to True, Portals will not track telemetry."""
+    telemetry_base_url: str = "https://portals.gateway.scarf.sh"
+    transactions_storage_enabled: bool = True
+    """If set to True, Portals will track transactions between flows."""
+    vertex_builds_storage_enabled: bool = True
+    """If set to True, Portals will keep track of each vertex builds (outputs) in the UI for any flow."""
+
+    # Config
+    host: str = "localhost"
+    """The host on which Portals will run."""
+    port: int = 7860
+    """The port on which Portals will run."""
+    runtime_port: int | None = Field(default=None, exclude=True)
+    """TEMPORARY: The port detected at runtime after checking for conflicts.
+    This field is system-managed only and will be removed in future versions
+    when strict port enforcement is implemented (errors will be raised if port unavailable)."""
+    workers: int = 1
+    """The number of workers to run."""
+    log_level: str = "critical"
+    """The log level for Portals."""
+    log_file: str | None = "logs/portals.log"
+    """The path to log file for Portals."""
+    alembic_log_file: str = "alembic/alembic.log"
+    """The path to log file for Alembic for SQLAlchemy."""
+    alembic_log_to_stdout: bool = False
+    """If set to True, the log file will be ignored and Alembic will log to stdout."""
+    frontend_path: str | None = None
+    """The path to the frontend directory containing build files. This is for development purposes only.."""
+    open_browser: bool = False
+    """If set to True, Portals will open the browser on startup."""
+    auto_saving: bool = True
+    """If set to True, Portals will auto save flows."""
+    auto_saving_interval: int = 1000
+    """The interval in ms at which Portals will auto save flows."""
+    health_check_max_retries: int = 5
+    """The maximum number of retries for the health check."""
+    max_file_size_upload: int = 1024
+    """The maximum file size for the upload in MB."""
+    deactivate_tracing: bool = False
+    """If set to True, tracing will be deactivated."""
+    max_transactions_to_keep: int = 3000
+    """The maximum number of transactions to keep in the database."""
+    max_vertex_builds_to_keep: int = 3000
+    """The maximum number of vertex builds to keep in the database."""
+    max_vertex_builds_per_vertex: int = 50
+    """The maximum number of builds to keep per vertex. Older builds will be deleted."""
+    max_flow_version_entries_per_flow: int = 50
+    """Max version history entries per flow. Oldest entries pruned on next snapshot.
+
+    If retroactively lowered below the current count for a flow,
+    the oldest entries are deleted only when the next entry is created.
+    """
+    webhook_polling_interval: int = 0
+    """The polling interval for the webhook in ms. Set to 0 to disable (SSE provides real-time updates)."""
+    fs_flows_polling_interval: int = 10000
+    """The polling interval in milliseconds for synchronizing flows from the file system."""
+    ssl_cert_file: str | None = None
+    """Path to the SSL certificate file on the local system."""
+    ssl_key_file: str | None = None
+    """Path to the SSL key file on the local system."""
+    max_text_length: int = MAX_TEXT_LENGTH
+    """Maximum number of characters to store and display in the UI. Responses longer than this
+    will be truncated when displayed in the UI. Does not truncate responses between components nor outputs."""
+    max_items_length: int = MAX_ITEMS_LENGTH
+    """Maximum number of items to store and display in the UI. Lists longer than this
+    will be truncated when displayed in the UI. Does not affect data passed between components nor outputs."""
+
+    # MCP Server
+    mcp_server_enabled: bool = True
+    """If set to False, Portals will not enable the MCP server."""
+    mcp_server_enable_progress_notifications: bool = False
+    """If set to False, Portals will not send progress notifications in the MCP server."""
+
+    # Add projects to MCP servers automatically on creation
+    add_projects_to_mcp_servers: bool = True
+    """If set to True, newly created projects will be added to the user's MCP servers config automatically."""
+    # MCP Composer
+    mcp_composer_enabled: bool = True
+    """If set to False, Portals will not start the MCP Composer service."""
+    mcp_composer_version: str = "==0.1.0.8.10"
+    """Version constraint for mcp-composer when using uvx. Uses PEP 440 syntax."""
+
+    # Agentic Experience
+    agentic_experience: bool = False
+    """If set to True, Portals will start the agentic MCP server that provides tools for
+    flow/component operations, template search, and graph visualization."""
+
+    # Developer API
+    developer_api_enabled: bool = False
+    """If set to True, Portals will enable developer API endpoints for advanced debugging and introspection."""
+
+    # Public Flow Settings
+    public_flow_cleanup_interval: int = Field(default=3600, gt=600)
+    """The interval in seconds at which public temporary flows will be cleaned up.
+    Default is 1 hour (3600 seconds). Minimum is 600 seconds (10 minutes)."""
+    public_flow_expiration: int = Field(default=86400, gt=600)
+    """The time in seconds after which a public temporary flow will be considered expired and eligible for cleanup.
+    Default is 24 hours (86400 seconds). Minimum is 600 seconds (10 minutes)."""
+    event_delivery: Literal["polling", "streaming", "direct"] = "streaming"
+    """How to deliver build events to the frontend. Can be 'polling', 'streaming' or 'direct'."""
+    lazy_load_components: bool = False
+    """If set to True, Portals will only partially load components at startup and fully load them on demand.
+    This significantly reduces startup time but may cause a slight delay when a component is first used."""
+
+    # Starter Projects
+    create_starter_projects: bool = True
+    """If set to True, Portals will create starter projects. If False, skips all starter project setup.
+    Note that this doesn't check if the starter projects are already loaded in the db;
+    this is intended to be used to skip all startup project logic."""
+    update_starter_projects: bool = True
+    """If set to True, Portals will update starter projects."""
+
+    # Custom Component Security
+    allow_custom_components: bool = True
+    """If set to False, blocks execution of components whose code does not match a known
+    server template.
+
+    The server validates node code against its component template cache;
+    when the cache is not yet loaded (e.g., during startup), all flow execution is blocked
+    as a safety measure.
+
+    Note: PORTALS_COMPONENTS_PATH can be used to define an allow-list of custom components
+    that will be allowed to execute, even when allow_custom_components is False.
+
+    Note: this is a beta feature. For security in a multi-tenant environment,
+    use hardware-level isolation to restrict access."""
+
+    # SSRF Protection
+    ssrf_protection_enabled: bool = True
+    """If set to True, Portals will enable SSRF (Server-Side Request Forgery) protection.
+    When enabled, blocks requests to private IP ranges, localhost, and cloud metadata endpoints.
+    When False, no URL validation is performed, allowing requests to any destination
+    including internal services, private networks, and cloud metadata endpoints.
+    Default is True to protect against SSRF attacks including DNS rebinding.
+
+    Note: When ssrf_protection_enabled is disabled, the ssrf_allowed_hosts setting is ignored and has no effect."""
+    ssrf_allowed_hosts: list[str] = []
+    """Comma-separated list of hosts/IPs/CIDR ranges to allow despite SSRF protection.
+    Examples: 'internal-api.company.local,192.168.1.0/24,10.0.0.5,*.dev.internal'
+    Supports exact hostnames, wildcard domains (*.example.com), exact IPs, and CIDR ranges.
+
+    Note: This setting only takes effect when ssrf_protection_enabled is True.
+    When protection is disabled, all hosts are allowed regardless of this setting."""
+
+    @field_validator("runtime_port", mode="before")
+    @classmethod
+    def validate_runtime_port(cls, value):
+        """Parse port from Kubernetes service discovery env vars.
+
+        Kubernetes auto-creates env vars like PORTALS_RUNTIME_PORT=tcp://<ip>:<port>
+        for services, which collides with the PORTALS_ env prefix. Extract the port
+        number from URL-like values instead of failing.
+        """
+        if value is None:
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            if value.isdigit():
+                return int(value)
+            if "://" in value:
+                from urllib.parse import urlparse
+
+                try:
+                    parsed_port = urlparse(value).port
+                except ValueError:
+                    return None
+                if parsed_port is not None:
+                    return parsed_port
+        return None
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def validate_cors_origins(cls, value):
+        """Convert comma-separated string to list if needed.
+
+        Pydantic-settings on Python 3.14 parses the env var "*" into ["*"]
+        before this validator runs (the union list[str] | str resolves
+        differently). Collapse that back to the bare-string wildcard so
+        downstream consumers see the same shape on every Python version.
+        """
+        if isinstance(value, list) and value == ["*"]:
+            return "*"
+        if isinstance(value, str) and value != "*":
+            if "," in value:
+                # Convert comma-separated string to list
+                return [origin.strip() for origin in value.split(",")]
+            # Convert single origin to list for consistency
+            return [value]
+        return value
+
+    @field_validator("use_noop_database", mode="before")
+    @classmethod
+    def set_use_noop_database(cls, value):
+        if value:
+            logger.info(
+                "Running with NOOP database session. All DB operations are disabled."
+            )
+        return value
+
+    @field_validator("event_delivery", mode="before")
+    @classmethod
+    def set_event_delivery(cls, value, info):
+        # If workers > 1, we need to use direct delivery
+        # because polling and streaming are not supported
+        # in multi-worker environments
+        if info.data.get("workers", 1) > 1:
+            logger.warning(
+                "Multi-worker environment detected, using direct event delivery"
+            )
+            return "direct"
+        return value
+
+    @field_validator("user_agent", mode="after")
+    @classmethod
+    def set_user_agent(cls, value):
+        if not value:
+            value = "Portals"
+        import os
+
+        os.environ["USER_AGENT"] = value
+        logger.debug(f"Setting user agent to {value}")
+        return value
+
+    @field_validator("mcp_composer_version", mode="before")
+    @classmethod
+    def validate_mcp_composer_version(cls, value):
+        """Ensure the version string has a version specifier prefix.
+
+        If a bare version like '0.1.0.7' is provided, prepend '~=' to allow patch updates.
+        Supports PEP 440 specifiers: ==, !=, <=, >=, <, >, ~=, ===
+        """
+        if not value:
+            return "==0.1.0.8.10"  # Default
+
+        # Check if it already has a version specifier
+        # Order matters: check longer specifiers first to avoid false matches
+        specifiers = ["===", "==", "!=", "<=", ">=", "~=", "<", ">"]
+        if any(value.startswith(spec) for spec in specifiers):
+            return value
+
+        # If it's a bare version number, add ~= prefix
+        # This regex matches version numbers like 0.1.0.7, 1.2.3, etc.
+        import re
+
+        if re.match(r"^\d+(\.\d+)*", value):
+            logger.debug(f"Adding ~= prefix to bare version '{value}' -> '~={value}'")
+            return f"~={value}"
+
+        # If we can't determine, return as-is and let uvx handle it
+        return value
+
+    @field_validator("variables_to_get_from_environment", mode="before")
+    @classmethod
+    def set_variables_to_get_from_environment(cls, value):
+        import os
+
+        if isinstance(value, str):
+            value = value.split(",")
+
+        result = list(set(VARIABLES_TO_GET_FROM_ENVIRONMENT + value))
+
+        # Add agentic variables if agentic_experience is enabled
+        # Check env var directly since we can't access instance attributes in validator
+        if os.getenv("PORTALS_AGENTIC_EXPERIENCE", "true").lower() == "true":
+            result.extend(AGENTIC_VARIABLES)
+
+        return list(set(result))
+
+    @field_validator("log_file", mode="before")
+    @classmethod
+    def set_log_file(cls, value):
+        if isinstance(value, Path):
+            value = str(value)
+        return value
+
+    @field_validator("config_dir", mode="before")
+    @classmethod
+    def set_portals_dir(cls, value):
+        if not value:
+            from platformdirs import user_cache_dir
+
+            # Define the app name and author
+            app_name = "portals"
+            app_author = "portals"
+
+            # Get the cache directory for the application
+            cache_dir = user_cache_dir(app_name, app_author)
+
+            # Create a .portals directory inside the cache directory
+            value = Path(cache_dir)
+            value.mkdir(parents=True, exist_ok=True)
+
+        if isinstance(value, str):
+            value = Path(value)
+        # Resolve to absolute path to handle relative paths correctly
+        value = value.resolve()
+        if not value.exists():
+            value.mkdir(parents=True, exist_ok=True)
+
+        return str(value)
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def set_database_url(cls, value, info):
+        if value and not is_valid_database_url(value):
+            sanitized = sanitize_database_url(value)
+            msg = f"Invalid database_url provided: '{sanitized}'"
+            raise ValueError(msg)
+
+        if portals_database_url := os.getenv("PORTALS_DATABASE_URL"):
+            value = portals_database_url
+            logger.debug("Using PORTALS_DATABASE_URL env variable")
+        else:
+            # Originally, we used sqlite:///./portals.db
+            # so we need to migrate to the new format
+            # if there is a database in that location
+            if not info.data["config_dir"]:
+                msg = "config_dir not set, please set it or provide a database_url"
+                raise ValueError(msg)
+
+            from px.utils.version import get_version_info
+            from px.utils.version import is_pre_release as portals_is_pre_release
+
+            version = get_version_info()["version"]
+            is_pre_release = portals_is_pre_release(version)
+
+            if info.data["save_db_in_config_dir"]:
+                database_dir = info.data["config_dir"]
+            else:
+                # Use portals package path, not px, for backwards compatibility
+                try:
+                    import portals
+
+                    database_dir = Path(portals.__file__).parent.resolve()
+                except ImportError:
+                    database_dir = Path(__file__).parent.parent.parent.resolve()
+
+            pre_db_file_name = "portals-pre.db"
+            db_file_name = "portals.db"
+            new_pre_path = f"{database_dir}/{pre_db_file_name}"
+            new_path = f"{database_dir}/{db_file_name}"
+            final_path = None
+            if is_pre_release:
+                if Path(new_pre_path).exists():
+                    final_path = new_pre_path
+                elif Path(new_path).exists() and info.data["save_db_in_config_dir"]:
+                    # We need to copy the current db to the new location
+                    logger.debug("Copying existing database to new location")
+                    copy2(new_path, new_pre_path)
+                    logger.debug(f"Copied existing database to {new_pre_path}")
+                elif (
+                    Path(f"./{db_file_name}").exists()
+                    and info.data["save_db_in_config_dir"]
+                ):
+                    logger.debug("Copying existing database to new location")
+                    copy2(f"./{db_file_name}", new_pre_path)
+                    logger.debug(f"Copied existing database to {new_pre_path}")
+                else:
+                    logger.debug(f"Creating new database at {new_pre_path}")
+                    final_path = new_pre_path
+            elif Path(new_path).exists():
+                final_path = new_path
+            elif Path(f"./{db_file_name}").exists():
+                try:
+                    logger.debug("Copying existing database to new location")
+                    copy2(f"./{db_file_name}", new_path)
+                    logger.debug(f"Copied existing database to {new_path}")
+                except OSError:
+                    logger.exception("Failed to copy database, using default path")
+                    new_path = f"./{db_file_name}"
+            else:
+                final_path = new_path
+
+            if final_path is None:
+                final_path = new_pre_path if is_pre_release else new_path
+
+            value = f"sqlite:///{final_path}"
+
+        return value
+
+    @field_validator("components_path", mode="before")
+    @classmethod
+    def set_components_path(cls, value):
+        """Processes and updates the components path list, incorporating environment variable overrides.
+
+        If the `PORTALS_COMPONENTS_PATH` environment variable is set and points to an existing path, it is
+        appended to the provided list if not already present. If the input list is empty or missing, it is
+        set to an empty list.
+        """
+        if os.getenv("PORTALS_COMPONENTS_PATH"):
+            logger.debug("Adding PORTALS_COMPONENTS_PATH to components_path")
+            portals_component_path = os.getenv("PORTALS_COMPONENTS_PATH")
+            if (
+                Path(portals_component_path).exists()
+                and portals_component_path not in value
+            ):
+                if isinstance(portals_component_path, list):
+                    for path in portals_component_path:
+                        if path not in value:
+                            value.append(path)
+                    logger.debug(
+                        f"Extending {portals_component_path} to components_path"
+                    )
+                elif portals_component_path not in value:
+                    value.append(portals_component_path)
+                    logger.debug(
+                        f"Appending {portals_component_path} to components_path"
+                    )
+
+        if not value:
+            value = [BASE_COMPONENTS_PATH]
+        elif isinstance(value, Path):
+            value = [str(value)]
+        elif isinstance(value, list):
+            value = [str(p) if isinstance(p, Path) else p for p in value]
+        return value
+
+    model_config = SettingsConfigDict(
+        validate_assignment=True, extra="ignore", env_prefix="PORTALS_"
+    )
+
+    async def update_from_yaml(self, file_path: str, *, dev: bool = False) -> None:
+        new_settings = await load_settings_from_yaml(file_path)
+        self.components_path = new_settings.components_path or []
+        self.dev = dev
+
+    def update_settings(self, **kwargs) -> None:
+        for key, value in kwargs.items():
+            # value may contain sensitive information, so we don't want to log it
+            if not hasattr(self, key):
+                continue
+            if isinstance(getattr(self, key), list):
+                # value might be a '[something]' string
+                value_ = value
+                with contextlib.suppress(json.decoder.JSONDecodeError):
+                    value_ = orjson.loads(str(value))
+                if isinstance(value_, list):
+                    for item in value_:
+                        item_ = str(item) if isinstance(item, Path) else item
+                        if item_ not in getattr(self, key):
+                            getattr(self, key).append(item_)
+                else:
+                    value_ = str(value_) if isinstance(value_, Path) else value_
+                    if value_ not in getattr(self, key):
+                        getattr(self, key).append(value_)
+            else:
+                setattr(self, key, value)
+
+    @property
+    def voice_mode_available(self) -> bool:
+        """Check if voice mode is available by testing webrtcvad import."""
+        try:
+            import webrtcvad  # noqa: F401
+        except ImportError:
+            return False
+        else:
+            return True
+
+    @classmethod
+    @override
+    def settings_customise_sources(  # type: ignore[misc]
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (CustomSource(settings_cls),)
+
+
+def save_settings_to_yaml(settings: Settings, file_path: str) -> None:
+    with Path(file_path).open("w", encoding="utf-8") as f:
+        settings_dict = settings.model_dump()
+        yaml.dump(settings_dict, f)
+
+
+async def load_settings_from_yaml(file_path: str) -> Settings:
+    # Check if a string is a valid path or a file name
+    if "/" not in file_path:
+        # Get current path
+        current_path = Path(__file__).resolve().parent
+        file_path_ = Path(current_path) / file_path
+    else:
+        file_path_ = Path(file_path)
+
+    async with aiofiles.open(file_path_.name, encoding="utf-8") as f:
+        content = await f.read()
+        settings_dict = yaml.safe_load(content)
+        settings_dict = {k.upper(): v for k, v in settings_dict.items()}
+
+        for key in settings_dict:
+            if key not in Settings.model_fields:
+                msg = f"Key {key} not found in settings"
+                raise KeyError(msg)
+            await logger.adebug(
+                f"Loading {len(settings_dict[key])} {key} from {file_path}"
+            )
+
+    return await asyncio.to_thread(Settings, **settings_dict)

@@ -1,0 +1,1 @@
+import{bB as c}from"./index-CzmBI_hJ.js";const e=[["circle",{cx:"12",cy:"12",r:"10",key:"1mglay"}],["path",{d:"m16 12-4-4-4 4",key:"177agl"}],["path",{d:"M12 16V8",key:"1sbj14"}]],o=c("circle-arrow-up",e);export{e as __iconNode,o as default};

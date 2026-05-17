@@ -15,6 +15,87 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 [
+  {
+    "label": "Debug Backend (Python)",
+    "adapter": "Debugpy",
+    "request": "launch",
+    "module": "uvicorn",
+    "args": [
+      "--factory",
+      "portals.main:create_app",
+      "--port",
+      "7860",
+      "--reload",
+      "--log-level",
+      "debug",
+      "--loop",
+      "asyncio",
+      "--reload-include",
+      "./src/backend/*",
+      "--reload-include",
+      "./src/lfx/*",
+      "--reload-exclude",
+      "*.db*",
+      "--reload-exclude",
+      "./tmp_toolguard/*",
+    ],
+    "justMyCode": false,
+    "env": {
+      "PORTALS_LOG_LEVEL": "debug",
+      "PORTALS_PROMETHEUS_PORT": "9090",
+    },
+  },
+  {
+    "label": "Debug CLI (Python)",
+    "adapter": "Debugpy",
+    "request": "launch",
+    "module": "portals",
+    "args": [
+      "run",
+      "--frontend-path",
+      "$ZED_WORKTREE_ROOT/src/backend/base/portals/frontend",
+      "--env-file",
+      "$ZED_WORKTREE_ROOT/.env",
+    ],
+    "justMyCode": false,
+  },
+  {
+    "label": "Python: Remote Attach",
+    "adapter": "Debugpy",
+    "request": "attach",
+    "justMyCode": true,
+    "connect": {
+      "host": "localhost",
+      "port": 5678,
+    },
+    "pathMappings": [
+      {
+        "localRoot": "$ZED_WORKTREE_ROOT",
+        "remoteRoot": ".",
+      },
+    ],
+  },
+  {
+    "label": "Debug Frontend",
+    "adapter": "JavaScript",
+    "request": "launch",
+    "url": "http://localhost:3000/",
+    "webRoot": "$ZED_WORKTREE_ROOT/src/frontend",
+  },
+  {
+    "label": "Python: Debug Tests",
+    "adapter": "Python",
+    "request": "launch",
+    "program": "$ZED_FILE",
+    "justMyCode": false,
+  },
+  {
+    "label": "Python Debugger: Python File",
+    "adapter": "Debugpy",
+    "request": "launch",
+    "program": "$ZED_FILE",
+  },
+
   // ── Preferred: Task starts runner, this attaches ──────────────────────────
   {
     "label": "Attach to Vitest",
@@ -38,13 +119,11 @@
 
   {
     "adapter": "JavaScript",
-    "label": "Debug active file",
+    "label": "Debug current test",
     "type": "node",
     "request": "launch",
     "program": "node_modules/vitest/vitest.mjs",
-    "args": [
-      "src/client/src/components/canvas/panels/entity-form-fields/entityFormValidation.test.ts",
-    ],
+    "args": ["$ZED_FILE"],
   },
 
   // ── Alternative: Zed both launches AND debugs Vitest ──────────────────────
@@ -89,7 +168,7 @@
   // so the monolith process itself opens the inspector on port 9235.
   // Start "Launch Monolith" first, then run this config to attach.
   {
-    "label": "Attach to Monolith",
+    "label": "Attach to Monolith (Typescript)",
     "adapter": "JavaScript",
     "type": "node",
     "request": "attach",
@@ -100,7 +179,7 @@
 
   // ── Server / Worker / Pipeline debug configs (unchanged) ──────────────────
   {
-    "label": "Launch Server",
+    "label": "Launch Server (Typescript)",
     "adapter": "JavaScript",
     "type": "node",
     "request": "launch",
@@ -123,7 +202,7 @@
     },
   },
   {
-    "label": "Attach to Server",
+    "label": "Attach to Server (Typescript)",
     "adapter": "JavaScript",
     "type": "node",
     "request": "attach",
@@ -132,7 +211,7 @@
     "skipFiles": ["<node_internals>/**"],
   },
   {
-    "label": "Launch Worker",
+    "label": "Launch Worker (Typescript)",
     "adapter": "JavaScript",
     "type": "node",
     "request": "launch",
@@ -155,7 +234,7 @@
     },
   },
   {
-    "label": "Launch Pipeline",
+    "label": "Launch Pipeline (Typescript)",
     "adapter": "JavaScript",
     "type": "node",
     "request": "launch",
@@ -178,7 +257,7 @@
     },
   },
   {
-    "label": "Debug Current File",
+    "label": "Debug Current File (Javascript)",
     "adapter": "JavaScript",
     "request": "launch",
     "command": "node",

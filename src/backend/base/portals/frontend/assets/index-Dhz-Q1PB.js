@@ -1,0 +1,1 @@
+import{j as t,r as n}from"./index-CzmBI_hJ.js";const s=({className:r,...o})=>t.jsx("svg",{xmlns:"http://www.w3.org/2000/svg",width:"6",height:"6",viewBox:"0 0 6 6",fill:"none",className:r,...o,children:t.jsx("circle",{cx:"3",cy:"3",r:"3",fill:"#F87171"})}),e=n.forwardRef((r,o)=>t.jsx(s,{ref:o,...r}));export{e as IndicatorIcon};

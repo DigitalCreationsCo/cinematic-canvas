@@ -1,0 +1,11 @@
+Installing backend dependencies
+Running backend respecting the .env file
+uv run uvicorn \
+		--factory portals.main:create_app \
+		--host 0.0.0.0 \
+		--port 7860 \
+		 --reload \
+		--env-file .env \
+		--loop asyncio \
+		--workers 1
+□ Stopping Server...▢ Stopping Server...▣ Stopping Server...
