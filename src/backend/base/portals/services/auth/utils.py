@@ -440,3 +440,26 @@ async def get_current_active_user_mcp(
     user: User = Depends(get_current_user_mcp),
 ) -> User:
     return await _auth_service().get_current_active_user_mcp(user)
+
+
+def require_subscription_tier(*required_tiers: str):
+    """Dependency that requires the user to have one of the specified subscription tiers.
+
+    Usage:
+        @router.get("/pro-feature")
+        async def pro_feature(user: User = Depends(require_subscription_tier("pro", "enterprise"))):
+            ...
+    """
+
+    async def _tier_checker(
+        user: User = Depends(get_current_active_user),
+    ) -> User:
+        user_tier = (user.subscription_tier or "free").lower()
+        if user_tier not in required_tiers:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"This feature requires a {', '.join(required_tiers)} subscription.",
+            )
+        return user
+
+    return _tier_checker

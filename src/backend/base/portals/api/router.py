@@ -22,6 +22,8 @@ from portals.api.v1 import (
     projects_router,
     starter_projects_router,
     store_router,
+    stripe_webhook_router,
+    subscription_router,
     teams_router,
     traces_router,
     users_router,
@@ -55,6 +57,8 @@ router_v1.include_router(chat_router)
 router_v1.include_router(endpoints_router)
 router_v1.include_router(validate_router)
 router_v1.include_router(store_router)
+router_v1.include_router(stripe_webhook_router)
+router_v1.include_router(subscription_router)
 router_v1.include_router(flows_router)
 router_v1.include_router(flow_events_router)
 router_v1.include_router(flow_version_router)

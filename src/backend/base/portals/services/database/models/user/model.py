@@ -11,7 +11,9 @@ from portals.schema.serialize import UUIDstr
 if TYPE_CHECKING:
     from portals.services.database.models.api_key.model import ApiKey
     from portals.services.database.models.deployment.model import Deployment
-    from portals.services.database.models.deployment_provider_account.model import DeploymentProviderAccount
+    from portals.services.database.models.deployment_provider_account.model import (
+        DeploymentProviderAccount,
+    )
     from portals.services.database.models.file.model import File
     from portals.services.database.models.flow.model import Flow
     from portals.services.database.models.folder.model import Folder
@@ -72,13 +74,23 @@ class User(SQLModel, table=True):  # type: ignore[call-arg]
     optins: dict[str, Any] | None = Field(
         sa_column=Column(JSON, default=lambda: UserOptin().model_dump(), nullable=True)
     )
+    stripe_customer_id: str | None = Field(default=None, nullable=True)
+    stripe_subscription_id: str | None = Field(default=None, nullable=True)
+    subscription_tier: str | None = Field(default="free", nullable=True)
+    subscription_status: str | None = Field(default="active", nullable=True)
+    current_period_end: datetime | None = Field(default=None, nullable=True)
+    cancel_at_period_end: bool = Field(default=False)
 
 
 class UserCreate(SQLModel):
     username: str = Field()
     password: str = Field()
     optins: dict[str, Any] | None = Field(
-        default={"github_starred": False, "dialog_dismissed": False, "discord_clicked": False}
+        default={
+            "github_starred": False,
+            "dialog_dismissed": False,
+            "discord_clicked": False,
+        }
     )
 
 
@@ -93,6 +105,12 @@ class UserRead(SQLModel):
     updated_at: datetime = Field()
     last_login_at: datetime | None = Field(nullable=True)
     optins: dict[str, Any] | None = Field(default=None)
+    stripe_customer_id: str | None = Field(default=None)
+    stripe_subscription_id: str | None = Field(default=None)
+    subscription_tier: str | None = Field(default="free")
+    subscription_status: str | None = Field(default="active")
+    current_period_end: datetime | None = Field(default=None)
+    cancel_at_period_end: bool = Field(default=False)
 
 
 class UserUpdate(SQLModel):
@@ -103,3 +121,9 @@ class UserUpdate(SQLModel):
     is_superuser: bool | None = None
     last_login_at: datetime | None = None
     optins: dict[str, Any] | None = None
+    stripe_customer_id: str | None = None
+    stripe_subscription_id: str | None = None
+    subscription_tier: str | None = None
+    subscription_status: str | None = None
+    current_period_end: datetime | None = None
+    cancel_at_period_end: bool | None = None

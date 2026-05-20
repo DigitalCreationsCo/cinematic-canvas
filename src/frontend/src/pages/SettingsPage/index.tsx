@@ -1,5 +1,5 @@
-import { Outlet, type To } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Outlet, type To } from "react-router-dom";
 import SideBarButtonsComponent from "@/components/core/sidebarComponent";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { CustomStoreSidebar } from "@/customization/components/custom-store-sidebar";
@@ -104,6 +104,17 @@ export default function SettingsPage(): JSX.Element {
   );
 
   // TODO: Remove this on cleanup
+  sidebarNavItems.push({
+    title: "Billing",
+    href: "/settings/billing",
+    icon: (
+      <ForwardedIconComponent
+        name="CreditCard"
+        className="w-4 flex-shrink-0 justify-start stroke-[1.5]"
+      />
+    ),
+  });
+
   if (!ENABLE_DATASTAX_PORTALS) {
     const portalsItems = CustomStoreSidebar(true, ENABLE_PORTALS_STORE);
     sidebarNavItems.splice(2, 0, ...portalsItems);

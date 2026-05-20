@@ -12,6 +12,7 @@ maintainers = [
 
 dependencies = [
     "px~=0.4.3",
+    "stripe>=11.0.0,<12.0.0",
     "fastapi>=0.135.0,<1.0.0",
     "httpx[http2]>=0.27,<1.0.0",
     "aiofile>=3.9.0,<4.0.0",

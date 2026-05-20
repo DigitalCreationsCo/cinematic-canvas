@@ -33,6 +33,7 @@ import SourceChunksPage from "./pages/MainPage/pages/knowledgePage/sourceChunksP
 import CollectionPage from "./pages/MainPage/pages/main-page";
 import SettingsPage from "./pages/SettingsPage";
 import ApiKeysPage from "./pages/SettingsPage/pages/ApiKeysPage";
+import BillingPage from "./pages/SettingsPage/pages/BillingPage";
 import GeneralPage from "./pages/SettingsPage/pages/GeneralPage";
 import GlobalVariablesPage from "./pages/SettingsPage/pages/GlobalVariablesPage";
 import MCPServersPage from "./pages/SettingsPage/pages/MCPServersPage";
@@ -169,6 +170,7 @@ const router = createBrowserRouter(
                   />
                   <Route path="shortcuts" element={<ShortcutsPage />} />
                   <Route path="messages" element={<MessagesPage />} />
+                  <Route path="billing" element={<BillingPage />} />
                   {CustomRoutesStore()}
                 </Route>
                 {CustomRoutesStorePages()}
