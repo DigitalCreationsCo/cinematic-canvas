@@ -17,6 +17,7 @@ from portals.api.v1.openai_responses import router as openai_responses_router
 from portals.api.v1.projects import router as projects_router
 from portals.api.v1.starter_projects import router as starter_projects_router
 from portals.api.v1.store import router as store_router
+from portals.api.v1.teams import router as teams_router
 from portals.api.v1.traces import router as traces_router
 from portals.api.v1.users import router as users_router
 from portals.api.v1.validate import router as validate_router
@@ -43,6 +44,7 @@ __all__ = [
     "projects_router",
     "starter_projects_router",
     "store_router",
+    "teams_router",
     "traces_router",
     "users_router",
     "validate_router",

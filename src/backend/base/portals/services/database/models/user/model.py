@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from portals.services.database.models.file.model import File
     from portals.services.database.models.flow.model import Flow
     from portals.services.database.models.folder.model import Folder
+    from portals.services.database.models.teams.model import UserTeamLink
     from portals.services.database.models.variable.model import Variable
 
 
@@ -61,6 +62,10 @@ class User(SQLModel, table=True):  # type: ignore[call-arg]
         sa_relationship_kwargs={"cascade": "delete"},
     )
     folders: list["Folder"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "delete"},
+    )
+    team_links: list["UserTeamLink"] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"cascade": "delete"},
     )
