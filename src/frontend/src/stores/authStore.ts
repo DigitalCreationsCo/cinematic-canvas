@@ -1,5 +1,3 @@
-// authStore.js
-
 import { create } from "zustand";
 import {
   PORTALS_ACCESS_TOKEN,
@@ -7,9 +5,18 @@ import {
   PORTALS_REFRESH_TOKEN,
 } from "@/constants/constants";
 import type { AuthStoreType } from "@/types/zustand/auth";
-import { cookieManager, getCookiesInstance } from "@/utils/cookie-manager";
+import { cookieManager } from "@/utils/cookie-manager";
 
-const useAuthStore = create<AuthStoreType>((set, get) => ({
+interface TeamState {
+  activeTeamId: string | null;
+  availableTeams: Array<{ id: string; name: string }> | null;
+  setActiveTeamId: (teamId: string | null) => void;
+  setAvailableTeams: (
+    teams: Array<{ id: string; name: string }> | null,
+  ) => void;
+}
+
+const useAuthStore = create<AuthStoreType & TeamState>((set, get) => ({
   isAdmin: false,
   // Authentication state is now determined by session validation, not cookie reads
   // This allows HttpOnly cookies to work properly
@@ -20,6 +27,9 @@ const useAuthStore = create<AuthStoreType>((set, get) => ({
   apiKey: null,
   authenticationErrorCount: 0,
 
+  activeTeamId: null,
+  availableTeams: null,
+
   setIsAdmin: (isAdmin) => set({ isAdmin }),
   setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
   setAccessToken: (accessToken) => set({ accessToken }),
@@ -28,6 +38,9 @@ const useAuthStore = create<AuthStoreType>((set, get) => ({
   setApiKey: (apiKey) => set({ apiKey }),
   setAuthenticationErrorCount: (authenticationErrorCount) =>
     set({ authenticationErrorCount }),
+
+  setActiveTeamId: (activeTeamId) => set({ activeTeamId }),
+  setAvailableTeams: (availableTeams) => set({ availableTeams }),
 
   logout: async () => {
     localStorage.removeItem(PORTALS_ACCESS_TOKEN);
@@ -46,6 +59,8 @@ const useAuthStore = create<AuthStoreType>((set, get) => ({
       isAuthenticated: false,
       autoLogin: false,
       apiKey: null,
+      activeTeamId: null,
+      availableTeams: null,
     });
   },
 }));

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -35,7 +33,7 @@ class UserMinimal(BaseModel):
 class Team(SQLModel, table=True):  # type: ignore[call-arg]
     __tablename__ = "teams"
 
-    id: UUIDstr = Field(default_factory=uuid4, primary_key=True, unique=True)
+    id: UUIDstr = Field(default_factory=uuid4, primary_key=True)
     name: str = Field(index=True)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -47,7 +45,7 @@ class Team(SQLModel, table=True):  # type: ignore[call-arg]
     )
 
     # ORM-only — back-populated by UserTeamLink.team
-    members: list[UserTeamLink] = Relationship(
+    members: list["UserTeamLink"] = Relationship(
         back_populates="team",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
@@ -77,7 +75,7 @@ class TeamRead(SQLModel):
 class UserTeamLink(SQLModel, table=True):  # type: ignore[call-arg]
     __tablename__ = "users_to_teams"
 
-    id: UUIDstr = Field(default_factory=uuid4, primary_key=True, unique=True)
+    id: UUIDstr = Field(default_factory=uuid4, primary_key=True)
     user_id: UUIDstr = Field(
         foreign_key="user.id",
         ondelete="CASCADE",
@@ -95,7 +93,7 @@ class UserTeamLink(SQLModel, table=True):  # type: ignore[call-arg]
     )
 
     # ORM relationships
-    user: User | None = Relationship(back_populates="team_links")
+    user: "User" = Relationship(back_populates="team_links")
     team: Team | None = Relationship(back_populates="members")
 
     __table_args__ = (

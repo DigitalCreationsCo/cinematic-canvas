@@ -2,7 +2,7 @@
   "show_completions_on_input": true,
   "languages": {
     "TypeScript": {
-      "language_servers": ["vtsls"],
+      "language_servers": ["vtsls", "biome"],
       "show_completions_on_input": true,
       "tab_size": 2,
       "format_on_save": "on",
@@ -25,7 +25,7 @@
       ],
     },
     "TSX": {
-      "language_servers": ["vtsls"],
+      "language_servers": ["vtsls", "biome"],
       "show_completions_on_input": true,
       "format_on_save": "on",
       "formatter": [
@@ -44,6 +44,12 @@
     },
   },
   "lsp": {
+    "biome": {
+      "binary": {
+        "path": "/var/biome-2.2.3/bin/biome",
+        "arguments": ["lsp-proxy"],
+      },
+    },
     "vtsls": {
       "settings": {
         "typescript": {

@@ -12,6 +12,7 @@ export const URLs = {
   BUILDS: `monitor/builds`,
   STORE: `store`,
   USERS: "users",
+  TEAMS: "teams",
   LOGOUT: `logout`,
   LOGIN: `login`,
   SESSION: `session`,
