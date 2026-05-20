@@ -4,6 +4,9 @@ from pathlib import Path
 from typing import Literal
 
 from passlib.context import CryptContext
+from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from px.log.logger import logger
 from px.services.settings.constants import DEFAULT_SUPERUSER, DEFAULT_SUPERUSER_PASSWORD
 from px.services.settings.utils import (
@@ -13,8 +16,6 @@ from px.services.settings.utils import (
     write_public_key_to_file,
     write_secret_to_file,
 )
-from pydantic import Field, SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class JWTAlgorithm(str, Enum):
@@ -68,7 +69,7 @@ class AuthSettings(BaseSettings):
     )
 
     AUTO_LOGIN: bool = Field(
-        default=True,  # TODO: Set to False in v2.0
+        default=False,
         description=(
             "Enable automatic login with default credentials. "
             "SECURITY WARNING: This bypasses authentication and should only be used in development environments. "
