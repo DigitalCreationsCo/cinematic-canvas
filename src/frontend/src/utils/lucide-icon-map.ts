@@ -14,7 +14,12 @@ import { lazy } from "react";
  * If you need icons not listed here, add them in kebab-case.
  */
 
-const iconModules: Record<string, () => Promise<{ default: any }>> = {
+// Lucide icon modules return React SVG components
+type LucideIconModule = Promise<{
+  default: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+}>;
+
+const iconModules: Record<string, () => LucideIconModule> = {
   activity: () => import("lucide-react/dist/esm/icons/activity.js"),
   "arrow-right-left": () =>
     import("lucide-react/dist/esm/icons/arrow-right-left.js"),
@@ -28,8 +33,7 @@ const iconModules: Record<string, () => Promise<{ default: any }>> = {
   "brain-circuit": () => import("lucide-react/dist/esm/icons/brain-circuit.js"),
   "brain-cog": () => import("lucide-react/dist/esm/icons/brain-cog.js"),
   cable: () => import("lucide-react/dist/esm/icons/cable.js"),
-  "chevron-right": () =>
-    import("lucide-react/dist/esm/icons/chevron-right.js"),
+  "chevron-right": () => import("lucide-react/dist/esm/icons/chevron-right.js"),
   "chevrons-up-down": () =>
     import("lucide-react/dist/esm/icons/chevrons-up-down.js"),
   "circle-alert": () => import("lucide-react/dist/esm/icons/circle-alert.js"),
@@ -47,8 +51,7 @@ const iconModules: Record<string, () => Promise<{ default: any }>> = {
   "file-sliders": () => import("lucide-react/dist/esm/icons/file-sliders.js"),
   "flask-conical": () => import("lucide-react/dist/esm/icons/flask-conical.js"),
   gift: () => import("lucide-react/dist/esm/icons/gift.js"),
-  "grip-vertical": () =>
-    import("lucide-react/dist/esm/icons/grip-vertical.js"),
+  "grip-vertical": () => import("lucide-react/dist/esm/icons/grip-vertical.js"),
   group: () => import("lucide-react/dist/esm/icons/group.js"),
   hammer: () => import("lucide-react/dist/esm/icons/hammer.js"),
   "help-circle": () => import("lucide-react/dist/esm/icons/help-circle.js"),
@@ -71,8 +74,7 @@ const iconModules: Record<string, () => Promise<{ default: any }>> = {
   "pocket-knife": () => import("lucide-react/dist/esm/icons/pocket-knife.js"),
   scissors: () => import("lucide-react/dist/esm/icons/scissors.js"),
   search: () => import("lucide-react/dist/esm/icons/search.js"),
-  "settings-2": () =>
-    import("lucide-react/dist/esm/icons/settings-2.js"),
+  "settings-2": () => import("lucide-react/dist/esm/icons/settings-2.js"),
   "sliders-horizontal": () =>
     import("lucide-react/dist/esm/icons/sliders-horizontal.js"),
   "square-terminal": () =>
@@ -84,8 +86,7 @@ const iconModules: Record<string, () => Promise<{ default: any }>> = {
   "triangle-alert": () =>
     import("lucide-react/dist/esm/icons/triangle-alert.js"),
   upload: () => import("lucide-react/dist/esm/icons/upload.js"),
-  "wand-sparkles": () =>
-    import("lucide-react/dist/esm/icons/wand-sparkles.js"),
+  "wand-sparkles": () => import("lucide-react/dist/esm/icons/wand-sparkles.js"),
   x: () => import("lucide-react/dist/esm/icons/x.js"),
   zap: () => import("lucide-react/dist/esm/icons/zap.js"),
 };
@@ -98,7 +99,9 @@ export function lucideIconExists(name: string): boolean {
 /** Build a React.lazy wrapper for the icon, or null if missing. */
 export function getLucideIconLazy(
   name: string,
-): React.LazyExoticComponent<React.ComponentType<any>> | null {
+): React.LazyExoticComponent<
+  React.ComponentType<React.SVGProps<SVGSVGElement>>
+> | null {
   const importer = iconModules[name];
   if (!importer) return null;
   return lazy(importer);
