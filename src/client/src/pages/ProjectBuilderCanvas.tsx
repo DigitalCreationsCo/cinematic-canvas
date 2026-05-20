@@ -90,6 +90,7 @@ import Header from "#client/components/Header.js";
 import { useWorldStore } from "#client/store/useWorldStore.js";
 import { BulkFilesStagingPanel } from "#client/components/canvas/panels/BulkFilesStagingPanel.js";
 import { NotificationsPanel } from "#client/components/canvas/panels/NotificationsPanel.js";
+import { useNotificationBridge } from "#client/hooks/useNotificationBridge.js";
 import { ToolsSidebar } from "#client/components/canvas/panels/ToolsSidebar.js";
 import { fileToBase64 } from "#shared/utils/utils.js";
 
@@ -122,6 +123,7 @@ export default function ProjectBuilderCanvas() {
 
   usePipelineEvents({ projectId: isDemo ? null : projectId });
   useCanvasPipelineSync(isDemo ? "" : projectId);
+  useNotificationBridge();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

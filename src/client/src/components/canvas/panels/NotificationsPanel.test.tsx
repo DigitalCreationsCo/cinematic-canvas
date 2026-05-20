@@ -2,52 +2,78 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { NotificationsPanel } from "#client/components/canvas/panels/NotificationsPanel.js";
 
-// Mock stores
-vi.mock("#client/store/useUIMenuStore.js", () => {
-  const selectAuxiliarySidebarWidth = () => 0;
-  return {
-    selectAuxiliarySidebarWidth,
-    useUIMenuStore: (selector: (s: any) => any) => {
-      const state = {
-        notificationsPanelOpen: true,
-        closeNotificationsPanel: vi.fn(),
-        auxiliarySidebarWidth: 0,
-      };
-      return selector(state);
-    },
-  };
-});
+const mockUseNotifications = vi.fn();
+
+vi.mock("#client/hooks/useNotifications.js", () => ({
+  useNotifications: (...args: any[]) => mockUseNotifications(...args),
+}));
 
 vi.mock("#client/store/usePipelineStore.js", () => ({
   usePipelineStore: (selector: (s: any) => any) => {
     const state = {
       events: [],
+      pushEvent: vi.fn(),
+      clearEvents: vi.fn(),
+      status: "idle",
+      interrupt: null,
     };
     return selector(state);
   },
-}));
-
-vi.mock("#client/store/useCanvasUIStore.js", () => ({
-  useCanvasUIStore: (selector: (s: any) => any) => {
-    const state = {
-      rightSidebarOpen: false,
-    };
-    return selector(state);
-  },
-  RIGHT_SIDEBAR_DEFAULT_WIDTH: 384,
-  SIDEBAR_GAP: 12,
-}));
-
-vi.mock("#client/hooks/useNotifications.js", () => ({
-  useNotifications: () => ({
-    notifications: [],
-    dismiss: vi.fn(),
-  }),
 }));
 
 describe("NotificationsPanel", () => {
-  it("renders the panel header when open", () => {
+  beforeEach(() => {
+    mockUseNotifications.mockReturnValue({
+      notifications: [],
+      interrupt: null,
+      dismiss: vi.fn(),
+    });
+  });
+
+  it("renders nothing when there are no notifications or interrupt", () => {
+    const { container } = render(<NotificationsPanel />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("renders toast notifications when present", () => {
+    mockUseNotifications.mockReturnValue({
+      notifications: [
+        {
+          id: "1",
+          type: "info",
+          message: "Pipeline started",
+          timestamp: new Date(),
+        },
+        {
+          id: "2",
+          type: "error",
+          message: "Something went wrong",
+          timestamp: new Date(),
+        },
+      ],
+      interrupt: null,
+      dismiss: vi.fn(),
+    });
+
     render(<NotificationsPanel />);
-    expect(screen.getByText(/Notifications/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pipeline started/i)).toBeInTheDocument();
+    expect(screen.getByText(/Something went wrong/i)).toBeInTheDocument();
+  });
+
+  it("renders interrupt banner when interrupt is present", () => {
+    mockUseNotifications.mockReturnValue({
+      notifications: [],
+      interrupt: {
+        commandId: "cmd-1",
+        error: "Manual intervention needed",
+        jobType: "generation",
+        originalParams: {},
+      },
+      dismiss: vi.fn(),
+    });
+
+    render(<NotificationsPanel />);
+    expect(screen.getByText(/INTERVENTION REQUIRED/i)).toBeInTheDocument();
+    expect(screen.getByText(/Manual intervention needed/i)).toBeInTheDocument();
   });
 });

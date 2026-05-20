@@ -18,11 +18,42 @@ import FlowMenu from "./components/FlowMenu";
 export default function AppHeader(): JSX.Element {
   const { t } = useTranslation();
   const notificationCenter = useAlertStore((state) => state.notificationCenter);
+  const addNotificationToHistory = useAlertStore(
+    (state) => state.addNotificationToHistory,
+  );
+  const setNotificationCenter = useAlertStore(
+    (state) => state.setNotificationCenter,
+  );
   const navigate = useCustomNavigate();
   const [activeState, setActiveState] = useState<"notifications" | null>(null);
   const notificationRef = useRef<HTMLButtonElement | null>(null);
   const notificationContentRef = useRef<HTMLDivElement | null>(null);
   useTheme();
+
+  // Bridge: listen for pipeline notifications from the client app
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.title) return;
+
+      // Map pipeline event types to frontend alert types
+      const alertType =
+        detail.type === "warn" || detail.type === "error"
+          ? ("error" as const)
+          : detail.type === "success"
+            ? ("success" as const)
+            : ("notice" as const);
+
+      addNotificationToHistory({
+        type: alertType,
+        title: detail.title,
+      });
+      setNotificationCenter(true);
+    };
+
+    window.addEventListener("pipeline-notification", handler);
+    return () => window.removeEventListener("pipeline-notification", handler);
+  }, [addNotificationToHistory, setNotificationCenter]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

@@ -18,7 +18,7 @@ import styles from "./Header.module.css";
 import { cn } from "#client/lib/utils.js";
 import { trpc } from "#client/lib/trpc.js";
 import { useChatStore } from "#client/store/useChatStore.js";
-import { Loader, Play, Square, ToolCase, MessageCircle, Bell } from "lucide-react";
+import { Loader, Play, Square, ToolCase, MessageCircle } from "lucide-react";
 
 const TeamSwitcher = () => {
   const { activeTeamId, setActiveTeamId } = useAuth();
@@ -195,10 +195,6 @@ const Header = () => {
     useChatStore.getState().focusChatInput();
   }, []);
 
-  const handleToggleNotifications = useCallback(() => {
-    useUIMenuStore.getState().toggleNotificationsPanel();
-  }, []);
-
   const handleToggleWorkspaceToolsSidebar = useCallback(() => {
     useUIMenuStore.getState().toggleWorkspaceToolsSidebar();
   }, []);
@@ -241,22 +237,6 @@ const Header = () => {
           />
 
           <div id="assistant-toolbar-slot" className="flex items-center gap-4 z-10" />
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 pt-4.5 pb-4.5 px-5 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
-                onClick={handleToggleNotifications}
-              >
-                <Bell className="w-5! h-5! shrink-0" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="z-[110]">
-              Notifications
-            </TooltipContent>
-          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>

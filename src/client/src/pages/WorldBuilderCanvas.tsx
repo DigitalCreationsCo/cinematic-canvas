@@ -60,6 +60,7 @@ import { LeftSidebar } from "../components/canvas/panels/LeftSidebar.js";
 import { RightSidebar } from "../components/canvas/panels/RightSidebar.js";
 import { ChatSidebar } from "../components/canvas/panels/ChatSidebar.js";
 import { NotificationsPanel } from "../components/canvas/panels/NotificationsPanel.js";
+import { useNotificationBridge } from "../hooks/useNotificationBridge.js";
 import { ToolsSidebar } from "../components/canvas/panels/ToolsSidebar.js";
 import { CanvasToolbar } from "../components/canvas/toolbar/CanvasToolbar.js";
 
@@ -108,6 +109,7 @@ export function WorldBuilderCanvas() {
   const setInterrupt = usePipelineStore((s) => s.setInterrupt);
   const addMessage = usePipelineStore((s) => s.pushEvent);
   const { activeTeamId, user } = useAuth();
+  useNotificationBridge();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
 
   const { data: accessData, isLoading: accessLoading } = useWorldAccess(worldId);

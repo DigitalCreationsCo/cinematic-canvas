@@ -1,4 +1,4 @@
-import { Loader, Play, Square, MessageCircle, Bell } from "lucide-react";
+import { Loader, Play, Square, MessageCircle } from "lucide-react";
 import { Button } from "#client/components/ui/button.js";
 import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import { createPortal } from "react-dom";
@@ -45,7 +45,6 @@ export function AssistantToolbar({
 }: AssistantToolbarProps) {
   const status = usePipelineStore((s) => s.status);
   const total = useProjectStore((state) => state.scenes.size || 0);
-  const events = usePipelineStore((s) => s.events);
   const [slot, setSlot] = useState<Element | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -57,8 +56,6 @@ export function AssistantToolbar({
   const isWorkspaceToolsSidebarOpen = useUIMenuStore(
     (s) => s.activeAuxiliarySidebar === "tools",
   );
-  const toggleNotificationsPanel = useUIMenuStore((s) => s.toggleNotificationsPanel);
-  const notificationsPanelOpen = useUIMenuStore((s) => s.notificationsPanelOpen);
   const isChatSidebarOpen = useUIMenuStore((s) => s.activeAuxiliarySidebar === "chat");
 
   const jobs = useJobStore((state) => state.jobs);
@@ -80,10 +77,6 @@ export function AssistantToolbar({
     useUIMenuStore.getState().openChatSidebar();
     useChatStore.getState().setViewMode("chat");
     useChatStore.getState().focusChatInput();
-  }, []);
-
-  const handleToggleNotifications = useCallback(() => {
-    useUIMenuStore.getState().toggleNotificationsPanel();
   }, []);
 
   // Handle dropdown visibility with delay for job completion signal
