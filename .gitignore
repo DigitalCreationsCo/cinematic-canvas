@@ -59,6 +59,10 @@ wheels/
 *~
 .keeper
 
+# SQLite database files
+*.db-shm
+*.db-wal
+
 # OS
 .DS_Store
 Thumbs.db

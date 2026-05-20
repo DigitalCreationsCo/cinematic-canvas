@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Index, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 from portals.schema.serialize import UUIDstr
@@ -100,6 +100,8 @@ class UserTeamLink(SQLModel, table=True):  # type: ignore[call-arg]
 
     __table_args__ = (
         UniqueConstraint("user_id", "team_id", name="uq_user_team"),
+        Index("ix_users_to_teams_team_id", "team_id"),
+        Index("ix_users_to_teams_user_id", "user_id"),
     )
 
 

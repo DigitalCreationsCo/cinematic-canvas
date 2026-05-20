@@ -9,6 +9,7 @@ from .flow_version_deployment_attachment import FlowVersionDeploymentAttachment
 from .folder import Folder
 from .jobs import Job
 from .message import MessageTable
+from .teams.model import Team, UserTeamLink
 from .traces.model import SpanTable, TraceTable
 from .transactions import TransactionTable
 from .user import User
@@ -28,8 +29,10 @@ __all__ = [
     "SSOConfig",
     "SSOUserProfile",
     "SpanTable",
+    "Team",
     "TraceTable",
     "TransactionTable",
     "User",
+    "UserTeamLink",
     "Variable",
 ]
