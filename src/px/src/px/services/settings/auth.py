@@ -69,7 +69,7 @@ class AuthSettings(BaseSettings):
     )
 
     AUTO_LOGIN: bool = Field(
-        default=True,  # TODO: Set to False in v2.0
+        default=False,
         description=(
             "Enable automatic login with default credentials. "
             "SECURITY WARNING: This bypasses authentication and should only be used in development environments. "
@@ -135,7 +135,9 @@ class AuthSettings(BaseSettings):
 
     pwd_context: CryptContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-    model_config = SettingsConfigDict(validate_assignment=True, extra="ignore", env_prefix="PORTALS_")
+    model_config = SettingsConfigDict(
+        validate_assignment=True, extra="ignore", env_prefix="PORTALS_"
+    )
 
     def reset_credentials(self) -> None:
         # Preserve the configured username but scrub the password from memory to avoid plaintext exposure.
@@ -150,7 +152,9 @@ class AuthSettings(BaseSettings):
     def validate_superuser(cls, value, info):
         # When AUTO_LOGIN is enabled, force superuser to use default values.
         if info.data.get("AUTO_LOGIN"):
-            logger.debug("Auto login is enabled, forcing superuser to use default values")
+            logger.debug(
+                "Auto login is enabled, forcing superuser to use default values"
+            )
             if info.field_name == "SUPERUSER":
                 if value != DEFAULT_SUPERUSER:
                     logger.debug("Resetting superuser to default value")
@@ -175,7 +179,9 @@ class AuthSettings(BaseSettings):
 
         if value:
             logger.debug("Secret key provided")
-            secret_value = value.get_secret_value() if isinstance(value, SecretStr) else value
+            secret_value = (
+                value.get_secret_value() if isinstance(value, SecretStr) else value
+            )
             write_secret_to_file(secret_key_path, secret_value)
         elif secret_key_path.exists():
             value = read_secret_from_file(secret_key_path)
@@ -189,7 +195,11 @@ class AuthSettings(BaseSettings):
             write_secret_to_file(secret_key_path, value)
             logger.debug("Saved secret key")
 
-        return value if isinstance(value, SecretStr) else SecretStr(value).get_secret_value()
+        return (
+            value
+            if isinstance(value, SecretStr)
+            else SecretStr(value).get_secret_value()
+        )
 
     @model_validator(mode="after")
     def setup_rsa_keys(self):
@@ -198,7 +208,9 @@ class AuthSettings(BaseSettings):
             return self
 
         config_dir = self.CONFIG_DIR
-        private_key_value = self.PRIVATE_KEY.get_secret_value() if self.PRIVATE_KEY else ""
+        private_key_value = (
+            self.PRIVATE_KEY.get_secret_value() if self.PRIVATE_KEY else ""
+        )
 
         if not config_dir:
             # No config dir - generate keys in memory if not provided

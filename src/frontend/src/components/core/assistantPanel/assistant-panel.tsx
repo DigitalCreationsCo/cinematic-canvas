@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
+import { useProvisionedModels } from "@/components/core/assistantPanel/hooks/use-provisioned-models";
 import type { AgenticStepType } from "@/controllers/API/queries/agentic";
 import { cn } from "@/utils/utils";
 import type {
@@ -10,7 +11,7 @@ import { AssistantHeader } from "./components/assistant-header";
 import { AssistantInput } from "./components/assistant-input";
 import { AssistantMessageItem } from "./components/assistant-message";
 import { AssistantNoModelsState } from "./components/assistant-no-models-state";
-import { useAssistantChat, useEnabledModels, useSessionHistory } from "./hooks";
+import { useAssistantChat, useSessionHistory } from "./hooks";
 
 // Module-level draft cache — survives panel unmount/remount
 let draftMessageCache = "";
@@ -77,7 +78,8 @@ function AssistantInputWithScroll({
 }
 
 export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
-  const { hasEnabledModels } = useEnabledModels();
+  // const { hasEnabledModels } = useEnabledModels();
+  const { hasAvailableModels, availableModels } = useProvisionedModels();
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -259,7 +261,7 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
           onDeleteSession={deleteSession}
           isExpanded={useExpandedSize}
         />
-        {!hasEnabledModels && !hasMessages ? (
+        {!hasAvailableModels && !hasMessages ? (
           <AssistantNoModelsState />
         ) : hasMessages ? (
           <StickToBottom
@@ -273,17 +275,17 @@ export function AssistantPanel({ isOpen, onClose }: AssistantPanelProps) {
                   key={msg.id}
                   message={msg}
                   onApprove={handleApproveAndClose}
-                  onRetry={hasEnabledModels ? handleRetry : undefined}
+                  onRetry={hasAvailableModels ? handleRetry : undefined}
                 />
               ))}
             </StickToBottom.Content>
             <AssistantInputWithScroll
               onSend={handleSend}
               onStop={handleStopGeneration}
-              disabled={!hasEnabledModels || isProcessing}
+              disabled={!hasAvailableModels || isProcessing}
               isProcessing={isProcessing}
               currentStep={currentStep}
-              autoFocus={isOpen && hasEnabledModels}
+              autoFocus={isOpen && hasAvailableModels}
               draftMessage={draftMessageCache}
               onDraftChange={(draft) => {
                 draftMessageCache = draft;

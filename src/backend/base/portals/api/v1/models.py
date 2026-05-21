@@ -4,6 +4,8 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from loguru import logger
+from px.base.models.model_metadata import is_provisioned_provider
 from px.base.models.model_utils import replace_with_live_models
 from px.base.models.unified_models import (
     get_model_provider_metadata,
@@ -12,7 +14,6 @@ from px.base.models.unified_models import (
     get_provider_all_variables,
     get_unified_models_detailed,
 )
-from loguru import logger
 from pydantic import BaseModel, field_validator
 
 from portals.api.utils import CurrentActiveUser, DbSession
@@ -28,10 +29,29 @@ DISABLED_MODELS_VAR = "__disabled_models__"
 ENABLED_MODELS_VAR = "__enabled_models__"
 DEFAULT_LANGUAGE_MODEL_VAR = "__default_language_model__"
 DEFAULT_EMBEDDING_MODEL_VAR = "__default_embedding_model__"
+# New default-model variables for generative media types
+DEFAULT_IMAGE_MODEL_VAR = "__default_image_model__"
+DEFAULT_VIDEO_MODEL_VAR = "__default_video_model__"
 
 # Security limits
 MAX_STRING_LENGTH = 200  # Maximum length for model IDs and provider names
 MAX_BATCH_UPDATE_SIZE = 100  # Maximum number of models that can be updated at once
+
+# Mapping from API-level model_type strings to storage variable names
+_DEFAULT_MODEL_VAR_MAP: dict[str, str] = {
+    "language": DEFAULT_LANGUAGE_MODEL_VAR,
+    "embedding": DEFAULT_EMBEDDING_MODEL_VAR,
+    "image": DEFAULT_IMAGE_MODEL_VAR,
+    "video": DEFAULT_VIDEO_MODEL_VAR,
+}
+
+# Valid model_type values accepted by the default-model endpoints
+VALID_DEFAULT_MODEL_TYPES: frozenset[str] = frozenset(_DEFAULT_MODEL_VAR_MAP.keys())
+
+
+def _default_model_var(model_type: str) -> str:
+    """Resolve the variable name used to persist the default model for a given type."""
+    return _DEFAULT_MODEL_VAR_MAP[model_type]
 
 
 def get_provider_from_variable_name(variable_name: str) -> str | None:
@@ -44,7 +64,6 @@ def get_provider_from_variable_name(variable_name: str) -> str | None:
         The provider name (e.g., "OpenAI") or None if not a model provider variable
     """
     provider_mapping = get_model_provider_variable_mapping()
-    # Reverse the mapping to get provider from variable name
     for provider, var_name in provider_mapping.items():
         if var_name == variable_name:
             return provider
@@ -52,21 +71,14 @@ def get_provider_from_variable_name(variable_name: str) -> str | None:
 
 
 def get_model_names_for_provider(provider: str) -> set[str]:
-    """Get all model names for a given provider.
-
-    Args:
-        provider: The provider name (e.g., "OpenAI")
-
-    Returns:
-        A set of model names for that provider
-    """
+    """Get all model names for a given provider."""
     models_by_provider = get_unified_models_detailed(
         providers=[provider],
         include_unsupported=True,
         include_deprecated=True,
     )
 
-    model_names = set()
+    model_names: set[str] = set()
     for provider_dict in models_by_provider:
         if provider_dict.get("provider") == provider:
             for model in provider_dict.get("models", []):
@@ -121,7 +133,9 @@ class ValidateProviderResponse(BaseModel):
     error: str | None = None
 
 
-@router.get("/providers", status_code=200, dependencies=[Depends(get_current_active_user)])
+@router.get(
+    "/providers", status_code=200, dependencies=[Depends(get_current_active_user)]
+)
 async def list_model_providers() -> list[str]:
     """Return available model providers."""
     return get_model_providers()
@@ -130,11 +144,32 @@ async def list_model_providers() -> list[str]:
 @router.get("", status_code=200)
 async def list_models(
     *,
-    provider: Annotated[list[str] | None, Query(description="Repeat to include multiple providers")] = None,
+    provider: Annotated[
+        list[str] | None, Query(description="Repeat to include multiple providers")
+    ] = None,
     model_name: str | None = None,
-    model_type: str | None = None,
+    model_type: Annotated[
+        str | None,
+        Query(
+            description=(
+                "Filter by model type. "
+                "Accepted values: 'llm', 'embeddings', 'image_generation', 'video_generation'."
+            )
+        ),
+    ] = None,
     include_unsupported: bool = False,
     include_deprecated: bool = False,
+    # provisioned filter
+    provisioned: Annotated[
+        bool | None,
+        Query(
+            description=(
+                "When true, return only platform-provisioned models. "
+                "When false, return only BYOK models. "
+                "Omit to return all models."
+            )
+        ),
+    ] = None,
     # common metadata filters
     tool_calling: bool | None = None,
     reasoning: bool | None = None,
@@ -147,7 +182,13 @@ async def list_models(
 ):
     """Return model catalog filtered by query parameters.
 
-    Pass providers as repeated query params, e.g. `?provider=OpenAI&provider=Anthropic`.
+    Pass providers as repeated query params, e.g. ``?provider=OpenAI&provider=Anthropic``.
+
+    The ``model_type`` parameter now accepts:
+    - ``llm``              — language models
+    - ``embeddings``       — embedding models
+    - ``image_generation`` — image-generation models
+    - ``video_generation`` — video-generation models
     """
     selected_providers: list[str] | None = provider
     metadata_filters = {
@@ -163,69 +204,92 @@ async def list_models(
         if v is not None
     }
 
-    # Get enabled providers status (now just checks if variables exist)
-    enabled_providers_result = await get_enabled_providers(session=session, current_user=current_user)
+    # Get enabled providers status (checks if BYOK variables exist)
+    enabled_providers_result = await get_enabled_providers(
+        session=session, current_user=current_user
+    )
     provider_configured_status = enabled_providers_result.get("provider_status", {})
 
     # Get enabled models map for current user to determine "active" providers
-    enabled_models_result = await get_enabled_models(session=session, current_user=current_user)
+    enabled_models_result = await get_enabled_models(
+        session=session, current_user=current_user
+    )
     enabled_models_map = enabled_models_result.get("enabled_models", {})
 
-    # Get default model if model_type is specified
+    # Get default model if model_type is specified (used only for sort ordering)
     default_provider = None
     if model_type:
         try:
             default_model_result = await get_default_model(
-                session=session, current_user=current_user, model_type=model_type
+                session=session,
+                current_user=current_user,
+                model_type=_catalog_type_to_api_type(model_type),
             )
             if default_model_result.get("default_model"):
                 default_provider = default_model_result["default_model"].get("provider")
         except Exception:  # noqa: BLE001
-            # Default model fetch failed, continue without it
-            # This is not critical for the main operation - we suppress to avoid breaking the list
-            logger.debug("Failed to fetch default model, continuing without it", exc_info=True)
+            logger.debug(
+                "Failed to fetch default model, continuing without it", exc_info=True
+            )
 
-    # Get filtered models - pass providers directly to avoid filtering after
+    # Fetch filtered catalog
     filtered_models = get_unified_models_detailed(
         providers=selected_providers,
         model_name=model_name,
         include_unsupported=include_unsupported,
         include_deprecated=include_deprecated,
         model_type=model_type,
+        provisioned=provisioned,
         **metadata_filters,
     )
 
-    # Add configured and enabled status to each provider
+    # Annotate each provider dict with configured/enabled status
     for provider_dict in filtered_models:
         prov_name = provider_dict.get("provider")
-        provider_dict["is_configured"] = provider_configured_status.get(prov_name, False)
 
-        # Provider is "enabled" (active) if it has at least one enabled model
-        prov_models_status = enabled_models_map.get(prov_name, {})
-        has_active_model = any(prov_models_status.values())
-        provider_dict["is_enabled"] = has_active_model
+        # Provisioned providers are always configured — no user credentials needed
+        if is_provisioned_provider(prov_name):
+            provider_dict["is_configured"] = True
+            provider_dict["is_enabled"] = True
+        else:
+            provider_dict["is_configured"] = provider_configured_status.get(
+                prov_name, False
+            )
+            prov_models_status = enabled_models_map.get(prov_name, {})
+            provider_dict["is_enabled"] = any(prov_models_status.values())
 
     # Replace static models with live models for providers that support it
-    configured_providers = {p for p, configured in provider_configured_status.items() if configured}
-    replace_with_live_models(filtered_models, current_user.id, configured_providers, model_type)
+    configured_providers = {
+        p for p, configured in provider_configured_status.items() if configured
+    }
+    replace_with_live_models(
+        filtered_models, current_user.id, configured_providers, model_type
+    )
 
-    # Sort providers:
-    # 1. Provider with default model first
-    # 2. Configured providers next
-    # 3. Alphabetically after that
-    def sort_key(provider_dict):
+    # Sort: default provider → configured BYOK → alphabetical
+    def sort_key(provider_dict: dict) -> tuple:
         provider_name = provider_dict.get("provider", "")
-        # Use is_configured for sorting priority (so they appear at top when ready)
         is_configured = provider_dict.get("is_configured", False)
         is_default = provider_name == default_provider
-
-        # Return tuple for sorting: (not is_default, not is_configured, provider_name)
-        # This way default comes first (False < True), then configured, then alphabetical
         return (not is_default, not is_configured, provider_name)
 
     filtered_models.sort(key=sort_key)
 
     return filtered_models
+
+
+def _catalog_type_to_api_type(catalog_type: str) -> str:
+    """Map an internal catalog model_type to its API default-model type string.
+
+    Used when fetching the default model from the default-model endpoints,
+    which use a different (shorter) vocabulary than the catalog.
+    """
+    return {
+        "llm": "language",
+        "embeddings": "embedding",
+        "image_generation": "image",
+        "video_generation": "video",
+    }.get(catalog_type, catalog_type)
 
 
 @router.get("/provider-variable-mapping", status_code=200)
@@ -240,6 +304,9 @@ async def get_model_provider_mapping() -> dict[str, list[dict]]:
     - is_secret: Whether to treat as credential
     - is_list: Whether it accepts multiple values
     - options: Predefined options for dropdowns
+
+    Provisioned providers map to an empty list — they have no user-configurable
+    variables.
     """
     metadata = get_model_provider_metadata()
     return {provider: meta.get("variables", []) for provider, meta in metadata.items()}
@@ -254,9 +321,9 @@ async def get_enabled_providers(
 ):
     """Get enabled providers for the current user.
 
-    Providers are considered enabled if they have a credential variable stored.
-    API key validation is performed when credentials are saved, not on every read,
-    to avoid latency from external API calls.
+    BYOK providers are considered enabled if they have all required credential
+    variables stored.  Provisioned providers are *always* enabled — the platform
+    manages their credentials.
     """
     variable_service = get_variable_service()
     try:
@@ -265,26 +332,34 @@ async def get_enabled_providers(
                 status_code=500,
                 detail="Variable service is not an instance of DatabaseVariableService",
             )
-        # Get all variables (VariableRead objects)
-        all_variables = await variable_service.get_all(user_id=current_user.id, session=session)
 
-        # Build a set of all variable names we have
+        all_variables = await variable_service.get_all(
+            user_id=current_user.id, session=session
+        )
         all_variable_names = {var.name for var in all_variables}
 
-        # Get the provider-variable mapping
-        provider_variable_map = get_model_provider_variable_mapping()
+        # provider_variable_map = get_model_provider_variable_mapping()
+        # get_model_provider_variable_mapping() already excludes provisioned providers,
+        # so we source the full provider list from the metadata directly and layer in
+        # provisioned providers as unconditionally enabled.
+        metadata = get_model_provider_metadata()
 
-        # Check which providers have all required variables saved
-        enabled_providers = []
-        provider_status = {}
+        enabled_providers: list[str] = []
+        provider_status: dict[str, bool] = {}
 
-        for provider in provider_variable_map:
-            # Get ALL variables for this provider
+        for provider, meta in metadata.items():
+            if meta.get("provisioned", False):
+                # Platform-provisioned: always enabled, no stored variables required
+                provider_status[provider] = True
+                enabled_providers.append(provider)
+                continue
+
+            # BYOK: check that all required variables are present
             provider_vars = get_provider_all_variables(provider)
-
-            # Check if all REQUIRED variables are present
             required_vars = [v for v in provider_vars if v.get("required", False)]
-            all_required_present = all(v.get("variable_key") in all_variable_names for v in required_vars)
+            all_required_present = all(
+                v.get("variable_key") in all_variable_names for v in required_vars
+            )
 
             provider_status[provider] = all_required_present
             if all_required_present:
@@ -296,12 +371,15 @@ async def get_enabled_providers(
         }
 
         if providers:
-            # Filter enabled_providers and provider_status by requested providers
-            filtered_enabled = [p for p in result["enabled_providers"] if p in providers]
+            filtered_enabled = [
+                p for p in result["enabled_providers"] if p in providers
+            ]
             provider_status_dict = result.get("provider_status", {})
             if not isinstance(provider_status_dict, dict):
                 provider_status_dict = {}
-            filtered_status = {p: v for p, v in provider_status_dict.items() if p in providers}
+            filtered_status = {
+                p: v for p, v in provider_status_dict.items() if p in providers
+            }
             return {
                 "enabled_providers": filtered_enabled,
                 "provider_status": filtered_status,
@@ -318,30 +396,43 @@ async def get_enabled_providers(
         return result
 
 
-@router.post("/validate-provider", status_code=200, response_model=ValidateProviderResponse)
+@router.post(
+    "/validate-provider", status_code=200, response_model=ValidateProviderResponse
+)
 async def validate_provider(
     request: ValidateProviderRequest,
     current_user: CurrentActiveUser,  # noqa: ARG001
 ) -> ValidateProviderResponse:
     """Validate provider credentials before saving.
 
-    This endpoint checks if the provided credentials are valid by attempting
-    to connect to the provider. Use this for real-time validation in the UI.
+    Provisioned providers are always considered valid — there are no user
+    credentials to validate.
     """
+    if is_provisioned_provider(request.provider):
+        return ValidateProviderResponse(valid=True, error=None)
+
     from px.base.models.unified_models import validate_model_provider_key
 
     try:
-        # Validate the credentials
         validate_model_provider_key(request.provider, request.variables)
         return ValidateProviderResponse(valid=True, error=None)
     except ValueError as e:
         return ValidateProviderResponse(valid=False, error=str(e))
-    except (ConnectionError, TimeoutError, RuntimeError, KeyError, AttributeError, TypeError) as e:
+    except (
+        ConnectionError,
+        TimeoutError,
+        RuntimeError,
+        KeyError,
+        AttributeError,
+        TypeError,
+    ) as e:
         logger.exception("Unexpected error validating provider %s", request.provider)
         return ValidateProviderResponse(valid=False, error=f"Validation failed: {e}")
 
 
-async def _get_disabled_models(session: DbSession, current_user: CurrentActiveUser) -> set[str]:
+async def _get_disabled_models(
+    session: DbSession, current_user: CurrentActiveUser
+) -> set[str]:
     """Helper function to get the set of disabled model IDs."""
     variable_service = get_variable_service()
     if not isinstance(variable_service, DatabaseVariableService):
@@ -351,29 +442,32 @@ async def _get_disabled_models(session: DbSession, current_user: CurrentActiveUs
         var = await variable_service.get_variable_object(
             user_id=current_user.id, name=DISABLED_MODELS_VAR, session=session
         )
-        if var.value:  # This checks for both None and empty string
+        if var.value:
             try:
                 parsed_value = json.loads(var.value)
-                # Validate it's a list of strings
                 if not isinstance(parsed_value, list):
-                    logger.warning("Invalid disabled models format for user %s: not a list", current_user.id)
+                    logger.warning(
+                        "Invalid disabled models format for user %s: not a list",
+                        current_user.id,
+                    )
                     return set()
-                # Ensure all items are strings
                 return {str(item) for item in parsed_value if isinstance(item, str)}
             except (json.JSONDecodeError, TypeError):
-                logger.warning("Failed to parse disabled models for user %s", current_user.id, exc_info=True)
+                logger.warning(
+                    "Failed to parse disabled models for user %s",
+                    current_user.id,
+                    exc_info=True,
+                )
                 return set()
     except ValueError:
-        # Variable not found, return empty set
         pass
     return set()
 
 
-async def _get_enabled_models(session: DbSession, current_user: CurrentActiveUser) -> set[str]:
-    """Helper function to get the set of explicitly enabled model IDs.
-
-    These are models that were NOT default but were explicitly enabled by the user.
-    """
+async def _get_enabled_models(
+    session: DbSession, current_user: CurrentActiveUser
+) -> set[str]:
+    """Helper function to get the set of explicitly enabled model IDs."""
     variable_service = get_variable_service()
     if not isinstance(variable_service, DatabaseVariableService):
         return set()
@@ -382,38 +476,36 @@ async def _get_enabled_models(session: DbSession, current_user: CurrentActiveUse
         var = await variable_service.get_variable_object(
             user_id=current_user.id, name=ENABLED_MODELS_VAR, session=session
         )
-        # Strip whitespace and check if value is non-empty
         if var.value and (value_stripped := var.value.strip()):
             try:
                 parsed_value = json.loads(value_stripped)
-                # Validate it's a list of strings
                 if not isinstance(parsed_value, list):
-                    logger.warning("Invalid enabled models format for user %s: not a list", current_user.id)
+                    logger.warning(
+                        "Invalid enabled models format for user %s: not a list",
+                        current_user.id,
+                    )
                     return set()
-                # Ensure all items are strings
                 return {str(item) for item in parsed_value if isinstance(item, str)}
             except (json.JSONDecodeError, TypeError):
-                # Log at debug level to avoid flooding logs with expected edge cases
-                logger.debug("Failed to parse enabled models for user %s: %s", current_user.id, var.value)
+                logger.debug(
+                    "Failed to parse enabled models for user %s: %s",
+                    current_user.id,
+                    var.value,
+                )
                 return set()
     except ValueError:
-        # Variable not found, return empty set
         pass
     return set()
 
 
 def _build_model_default_flags() -> dict[str, bool]:
-    """Build a map of model names to their default flag status.
-
-    Returns:
-        Dictionary mapping model names to whether they are default models
-    """
+    """Build a map of model names to their default flag status."""
     all_models_by_provider = get_unified_models_detailed(
         include_unsupported=True,
         include_deprecated=True,
     )
 
-    is_default_model = {}
+    is_default_model: dict[str, bool] = {}
     for provider_dict in all_models_by_provider:
         for model in provider_dict.get("models", []):
             model_name = model.get("model_name")
@@ -423,35 +515,6 @@ def _build_model_default_flags() -> dict[str, bool]:
     return is_default_model
 
 
-def _update_model_sets(
-    updates: list[ModelStatusUpdate],
-    disabled_models: set[str],
-    explicitly_enabled_models: set[str],
-    is_default_model: dict[str, bool],
-) -> None:
-    """Update disabled and enabled model sets based on user requests.
-
-    Args:
-        updates: List of model status updates from user
-        disabled_models: Set of disabled model IDs (modified in place)
-        explicitly_enabled_models: Set of explicitly enabled model IDs (modified in place)
-        is_default_model: Map of model names to their default flag status
-    """
-    for update in updates:
-        model_is_default = is_default_model.get(update.model_id, False)
-
-        if update.enabled:
-            # User wants to enable the model
-            disabled_models.discard(update.model_id)
-            # If it's not a default model, add to explicitly enabled list
-            if not model_is_default:
-                explicitly_enabled_models.add(update.model_id)
-        else:
-            # User wants to disable the model
-            disabled_models.add(update.model_id)
-            explicitly_enabled_models.discard(update.model_id)
-
-
 async def _save_model_list_variable(
     variable_service: DatabaseVariableService,
     session: DbSession,
@@ -459,18 +522,7 @@ async def _save_model_list_variable(
     var_name: str,
     model_set: set[str],
 ) -> None:
-    """Save or update a model list variable.
-
-    Args:
-        variable_service: The database variable service
-        session: Database session
-        current_user: Current active user
-        var_name: Name of the variable to save
-        model_set: Set of model names to save
-
-    Raises:
-        HTTPException: If there's an error saving the variable
-    """
+    """Save or update a model list variable."""
     from portals.services.database.models.variable.model import VariableUpdate
 
     models_json = json.dumps(list(model_set))
@@ -483,21 +535,23 @@ async def _save_model_list_variable(
             msg = f"Variable {var_name} not found"
             raise ValueError(msg)
 
-        # Update or delete based on whether there are models
         if model_set or var_name == DISABLED_MODELS_VAR:
-            # Always update disabled models, even if empty
-            # Only update enabled models if non-empty
             await variable_service.update_variable_fields(
                 user_id=current_user.id,
                 variable_id=existing_var.id,
-                variable=VariableUpdate(id=existing_var.id, name=var_name, value=models_json, type=GENERIC_TYPE),
+                variable=VariableUpdate(
+                    id=existing_var.id,
+                    name=var_name,
+                    value=models_json,
+                    type=GENERIC_TYPE,
+                ),
                 session=session,
             )
         else:
-            # No explicitly enabled models, delete the variable
-            await variable_service.delete_variable(user_id=current_user.id, name=var_name, session=session)
+            await variable_service.delete_variable(
+                user_id=current_user.id, name=var_name, session=session
+            )
     except ValueError:
-        # Variable not found, create new one if there are models
         if model_set:
             await variable_service.create_variable(
                 user_id=current_user.id,
@@ -527,77 +581,88 @@ async def get_enabled_models(
     current_user: CurrentActiveUser,
     model_names: Annotated[list[str] | None, Query()] = None,
 ):
-    """Get enabled models for the current user."""
-    # Get all models - this returns a list of provider dicts with nested models
+    """Get enabled models for the current user.
+
+    Provisioned models are enabled by default as long as they are not
+    explicitly disabled by the user.
+    """
     all_models_by_provider = get_unified_models_detailed(
         include_unsupported=True,
         include_deprecated=True,
     )
 
     # Get enabled providers status
-    enabled_providers_result = await get_enabled_providers(session=session, current_user=current_user)
+    enabled_providers_result = await get_enabled_providers(
+        session=session, current_user=current_user
+    )
     provider_status = enabled_providers_result.get("provider_status", {})
 
-    # Replace static models with live models for providers that support it
-    configured_providers = {p for p, configured in provider_status.items() if configured}
-    replace_with_live_models(all_models_by_provider, current_user.id, configured_providers)
+    configured_providers = {
+        p for p, configured in provider_status.items() if configured
+    }
+    replace_with_live_models(
+        all_models_by_provider, current_user.id, configured_providers
+    )
 
-    # Get disabled and explicitly enabled models lists
-    disabled_models = await _get_disabled_models(session=session, current_user=current_user)
-    explicitly_enabled_models = await _get_enabled_models(session=session, current_user=current_user)
+    disabled_models = await _get_disabled_models(
+        session=session, current_user=current_user
+    )
+    explicitly_enabled_models = await _get_enabled_models(
+        session=session, current_user=current_user
+    )
 
-    # Build model status based on provider enablement
     enabled_models: dict[str, dict[str, bool]] = {}
 
-    # Iterate through providers and their models
     for provider_dict in all_models_by_provider:
         provider = provider_dict.get("provider")
         models = provider_dict.get("models", [])
 
-        # Initialize provider dict if not exists
         if provider not in enabled_models:
             enabled_models[provider] = {}
+
+        # Provisioned providers are always enabled at the provider level
+        provider_enabled = provider_status.get(provider, False)
 
         for model in models:
             model_name = model.get("model_name")
             metadata = model.get("metadata", {})
 
-            # Check if model is deprecated or not supported
             is_deprecated = metadata.get("deprecated", False)
             is_not_supported = metadata.get("not_supported", False)
             is_default = metadata.get("default", False)
-
-            # Model is enabled if:
-            # 1. Provider is enabled
-            # 2. Model is not deprecated/unsupported
-            # 3. Model is either:
-            #    - Marked as default (default=True), OR
-            #    - Explicitly enabled by user (in explicitly_enabled_models), AND
-            #    - NOT explicitly disabled by user (not in disabled_models)
-            is_enabled = (
-                provider_status.get(provider, False)
-                and not is_deprecated
-                and not is_not_supported
-                and (is_default or model_name in explicitly_enabled_models)
-                and model_name not in disabled_models
+            model_is_provisioned = metadata.get(
+                "provisioned", is_provisioned_provider(provider)
             )
-            # Store model status per provider (true/false)
+
+            # Provisioned models: enabled when default (or explicitly enabled) and not disabled
+            # BYOK models: additionally require the provider to be configured
+            if model_is_provisioned:
+                is_enabled = (
+                    not is_deprecated
+                    and not is_not_supported
+                    and (is_default or model_name in explicitly_enabled_models)
+                    and model_name not in disabled_models
+                )
+            else:
+                is_enabled = (
+                    provider_enabled
+                    and not is_deprecated
+                    and not is_not_supported
+                    and (is_default or model_name in explicitly_enabled_models)
+                    and model_name not in disabled_models
+                )
+
             enabled_models[provider][model_name] = is_enabled
 
-    result = {
-        "enabled_models": enabled_models,
-    }
+    result = {"enabled_models": enabled_models}
 
     if model_names:
-        # Filter enabled_models by requested models
         filtered_enabled: dict[str, dict[str, bool]] = {}
         for provider, models_dict in enabled_models.items():
-            filtered_models = {m: v for m, v in models_dict.items() if m in model_names}
-            if filtered_models:
-                filtered_enabled[provider] = filtered_models
-        return {
-            "enabled_models": filtered_enabled,
-        }
+            filtered = {m: v for m, v in models_dict.items() if m in model_names}
+            if filtered:
+                filtered_enabled[provider] = filtered
+        return {"enabled_models": filtered_enabled}
 
     return result
 
@@ -612,7 +677,9 @@ async def update_enabled_models(
     """Update enabled status for specific models.
 
     Accepts a list of model IDs with their desired enabled status.
-    This only affects model-level enablement - provider credentials must still be configured.
+    For BYOK models this only affects model-level enablement — provider
+    credentials must still be configured separately.
+    For provisioned models credential validation is skipped entirely.
     """
     variable_service = get_variable_service()
     if not isinstance(variable_service, DatabaseVariableService):
@@ -621,78 +688,121 @@ async def update_enabled_models(
             detail="Variable service is not an instance of DatabaseVariableService",
         )
 
-    # Limit batch size to prevent abuse
     if len(updates) > MAX_BATCH_UPDATE_SIZE:
         raise HTTPException(
             status_code=400,
             detail=f"Cannot update more than {MAX_BATCH_UPDATE_SIZE} models at once",
         )
 
-    # Get current disabled and explicitly enabled models
-    disabled_models = await _get_disabled_models(session=session, current_user=current_user)
-    explicitly_enabled_models = await _get_enabled_models(session=session, current_user=current_user)
-
-    # Build map of model names to their default flag
+    disabled_models = await _get_disabled_models(
+        session=session, current_user=current_user
+    )
+    explicitly_enabled_models = await _get_enabled_models(
+        session=session, current_user=current_user
+    )
     is_default_model = _build_model_default_flags()
 
-    # Update model sets based on user requests
-    # For any model being enabled, validate the provider credentials
     for update in updates:
         if update.enabled:
-            from px.base.models.unified_models import get_all_variables_for_provider, validate_model_provider_key
+            # Skip credential validation entirely for provisioned providers —
+            # the platform manages those credentials.
+            if is_provisioned_provider(update.provider):
+                logger.debug(
+                    "Skipping credential validation for provisioned provider %s model %s",
+                    update.provider,
+                    update.model_id,
+                )
+            else:
+                from px.base.models.unified_models import (
+                    get_all_variables_for_provider,
+                    validate_model_provider_key,
+                )
 
-            # Get variables from DB or environment
-            variables = get_all_variables_for_provider(current_user.id, update.provider)
+                variables = get_all_variables_for_provider(
+                    current_user.id, update.provider
+                )
 
-            try:
-                # Validate the credentials
-                validate_model_provider_key(update.provider, variables, model_name=update.model_id)
-            except ValueError as e:
-                # Validation failed - return 400 with error message
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Validation failed for {update.provider}: {e}",
-                ) from e
-            except Exception as e:
-                logger.exception("Unexpected error validating provider %s", update.provider)
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Validation failed for {update.provider}: {e}",
-                ) from e
+                try:
+                    validate_model_provider_key(
+                        update.provider, variables, model_name=update.model_id
+                    )
+                except ValueError as e:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Validation failed for {update.provider}: {e}",
+                    ) from e
+                except Exception as e:
+                    logger.exception(
+                        "Unexpected error validating provider %s", update.provider
+                    )
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Validation failed for {update.provider}: {e}",
+                    ) from e
 
-    _update_model_sets(updates, disabled_models, explicitly_enabled_models, is_default_model)
+    _update_model_sets(
+        updates, disabled_models, explicitly_enabled_models, is_default_model
+    )
 
-    # Log the operation for audit trail
     logger.info(
         "User %s updated model status: %d models affected",
         current_user.id,
         len(updates),
     )
 
-    # Save updated model lists
-    await _save_model_list_variable(variable_service, session, current_user, DISABLED_MODELS_VAR, disabled_models)
     await _save_model_list_variable(
-        variable_service, session, current_user, ENABLED_MODELS_VAR, explicitly_enabled_models
+        variable_service, session, current_user, DISABLED_MODELS_VAR, disabled_models
+    )
+    await _save_model_list_variable(
+        variable_service,
+        session,
+        current_user,
+        ENABLED_MODELS_VAR,
+        explicitly_enabled_models,
     )
 
-    # Return the updated model status
     return {
         "disabled_models": list(disabled_models),
         "enabled_models": list(explicitly_enabled_models),
     }
 
 
+def _update_model_sets(
+    updates: list[ModelStatusUpdate],
+    disabled_models: set[str],
+    explicitly_enabled_models: set[str],
+    is_default_model: dict[str, bool],
+) -> None:
+    """Update disabled and enabled model sets based on user requests (in place)."""
+    for update in updates:
+        model_is_default = is_default_model.get(update.model_id, False)
+
+        if update.enabled:
+            disabled_models.discard(update.model_id)
+            if not model_is_default:
+                explicitly_enabled_models.add(update.model_id)
+        else:
+            disabled_models.add(update.model_id)
+            explicitly_enabled_models.discard(update.model_id)
+
+
 class DefaultModelRequest(BaseModel):
-    """Request model for setting default model."""
+    """Request model for setting default model.
+
+    ``model_type`` accepted values:
+    - ``"language"``  — default LLM
+    - ``"embedding"`` — default embedding model
+    - ``"image"``     — default image-generation model
+    - ``"video"``     — default video-generation model
+    """
 
     model_name: str
     provider: str
-    model_type: str  # 'language' or 'embedding'
+    model_type: str
 
     @field_validator("model_name", "provider")
     @classmethod
     def validate_non_empty_string(cls, v: str) -> str:
-        """Ensure strings are non-empty and reasonable length."""
         if not v or not v.strip():
             msg = "Field cannot be empty"
             raise ValueError(msg)
@@ -704,9 +814,8 @@ class DefaultModelRequest(BaseModel):
     @field_validator("model_type")
     @classmethod
     def validate_model_type(cls, v: str) -> str:
-        """Ensure model_type is valid."""
-        if v not in ("language", "embedding"):
-            msg = "model_type must be 'language' or 'embedding'"
+        if v not in VALID_DEFAULT_MODEL_TYPES:
+            msg = f"model_type must be one of: {', '.join(sorted(VALID_DEFAULT_MODEL_TYPES))}"
             raise ValueError(msg)
         return v
 
@@ -716,33 +825,56 @@ async def get_default_model(
     *,
     session: DbSession,
     current_user: CurrentActiveUser,
-    model_type: Annotated[str, Query(description="Type of model: 'language' or 'embedding'")] = "language",
+    model_type: Annotated[
+        str,
+        Query(
+            description=(
+                "Type of model. "
+                "Accepted values: 'language', 'embedding', 'image', 'video'."
+            )
+        ),
+    ] = "language",
 ):
-    """Get the default model for the current user."""
+    """Get the default model for the current user.
+
+    Supports all model types: ``language``, ``embedding``, ``image``, ``video``.
+    """
+    if model_type not in VALID_DEFAULT_MODEL_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"model_type must be one of: {', '.join(sorted(VALID_DEFAULT_MODEL_TYPES))}",
+        )
+
     variable_service = get_variable_service()
     if not isinstance(variable_service, DatabaseVariableService):
         return {"default_model": None}
 
-    var_name = DEFAULT_LANGUAGE_MODEL_VAR if model_type == "language" else DEFAULT_EMBEDDING_MODEL_VAR
+    var_name = _default_model_var(model_type)
 
     try:
-        var = await variable_service.get_variable_object(user_id=current_user.id, name=var_name, session=session)
+        var = await variable_service.get_variable_object(
+            user_id=current_user.id, name=var_name, session=session
+        )
         if var.value:
             try:
                 parsed_value = json.loads(var.value)
             except (json.JSONDecodeError, TypeError):
-                logger.warning("Failed to parse default model for user %s", current_user.id, exc_info=True)
+                logger.warning(
+                    "Failed to parse default model for user %s",
+                    current_user.id,
+                    exc_info=True,
+                )
                 return {"default_model": None}
             else:
-                # Validate structure
                 if not isinstance(parsed_value, dict) or not all(
                     k in parsed_value for k in ("model_name", "provider", "model_type")
                 ):
-                    logger.warning("Invalid default model format for user %s", current_user.id)
+                    logger.warning(
+                        "Invalid default model format for user %s", current_user.id
+                    )
                     return {"default_model": None}
                 return {"default_model": parsed_value}
     except ValueError:
-        # Variable not found
         pass
     return {"default_model": None}
 
@@ -754,7 +886,10 @@ async def set_default_model(
     current_user: CurrentActiveUser,
     request: DefaultModelRequest,
 ):
-    """Set the default model for the current user."""
+    """Set the default model for the current user.
+
+    Supports all model types: ``language``, ``embedding``, ``image``, ``video``.
+    """
     variable_service = get_variable_service()
     if not isinstance(variable_service, DatabaseVariableService):
         raise HTTPException(
@@ -762,9 +897,8 @@ async def set_default_model(
             detail="Variable service is not an instance of DatabaseVariableService",
         )
 
-    var_name = DEFAULT_LANGUAGE_MODEL_VAR if request.model_type == "language" else DEFAULT_EMBEDDING_MODEL_VAR
+    var_name = _default_model_var(request.model_type)
 
-    # Log the operation for audit trail
     logger.info(
         "User %s setting default %s model to %s (%s)",
         current_user.id,
@@ -773,7 +907,6 @@ async def set_default_model(
         request.provider,
     )
 
-    # Prepare the model data
     model_data = {
         "model_name": request.model_name,
         "provider": request.provider,
@@ -781,25 +914,25 @@ async def set_default_model(
     }
     model_json = json.dumps(model_data)
 
-    # Check if the variable already exists
     try:
         existing_var = await variable_service.get_variable_object(
             user_id=current_user.id, name=var_name, session=session
         )
         if existing_var is None or existing_var.id is None:
-            msg = f"Variable {DISABLED_MODELS_VAR} not found"
+            msg = f"Variable {var_name} not found"
             raise ValueError(msg)
-        # Update existing variable
+
         from portals.services.database.models.variable.model import VariableUpdate
 
         await variable_service.update_variable_fields(
             user_id=current_user.id,
             variable_id=existing_var.id,
-            variable=VariableUpdate(id=existing_var.id, name=var_name, value=model_json, type=GENERIC_TYPE),
+            variable=VariableUpdate(
+                id=existing_var.id, name=var_name, value=model_json, type=GENERIC_TYPE
+            ),
             session=session,
         )
     except ValueError:
-        # Variable not found, create new one
         await variable_service.create_variable(
             user_id=current_user.id,
             name=var_name,
@@ -810,10 +943,7 @@ async def set_default_model(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(
-            "Failed to set default model for user %s",
-            current_user.id,
-        )
+        logger.exception("Failed to set default model for user %s", current_user.id)
         raise HTTPException(
             status_code=500,
             detail="Failed to set default model. Please try again later.",
@@ -827,9 +957,26 @@ async def clear_default_model(
     *,
     session: DbSession,
     current_user: CurrentActiveUser,
-    model_type: Annotated[str, Query(description="Type of model: 'language' or 'embedding'")] = "language",
+    model_type: Annotated[
+        str,
+        Query(
+            description=(
+                "Type of model. "
+                "Accepted values: 'language', 'embedding', 'image', 'video'."
+            )
+        ),
+    ] = "language",
 ):
-    """Clear the default model for the current user."""
+    """Clear the default model for the current user.
+
+    Supports all model types: ``language``, ``embedding``, ``image``, ``video``.
+    """
+    if model_type not in VALID_DEFAULT_MODEL_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"model_type must be one of: {', '.join(sorted(VALID_DEFAULT_MODEL_TYPES))}",
+        )
+
     variable_service = get_variable_service()
     if not isinstance(variable_service, DatabaseVariableService):
         raise HTTPException(
@@ -837,31 +984,23 @@ async def clear_default_model(
             detail="Variable service is not an instance of DatabaseVariableService",
         )
 
-    var_name = DEFAULT_LANGUAGE_MODEL_VAR if model_type == "language" else DEFAULT_EMBEDDING_MODEL_VAR
+    var_name = _default_model_var(model_type)
 
-    # Log the operation for audit trail
-    logger.info(
-        "User %s clearing default %s model",
-        current_user.id,
-        model_type,
-    )
+    logger.info("User %s clearing default %s model", current_user.id, model_type)
 
-    # Check if the variable exists and delete it
     try:
         existing_var = await variable_service.get_variable_object(
             user_id=current_user.id, name=var_name, session=session
         )
-        await variable_service.delete_variable(user_id=current_user.id, name=existing_var.name, session=session)
+        await variable_service.delete_variable(
+            user_id=current_user.id, name=existing_var.name, session=session
+        )
     except ValueError:
-        # Variable not found, nothing to delete
         pass
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(
-            "Failed to clear default model for user %s",
-            current_user.id,
-        )
+        logger.exception("Failed to clear default model for user %s", current_user.id)
         raise HTTPException(
             status_code=500,
             detail="Failed to clear default model. Please try again later.",

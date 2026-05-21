@@ -5,7 +5,12 @@ import ProviderListItem from "./ProviderListItem";
 import { Provider } from "./types";
 
 // Supported model types for filtering providers
-type ModelType = "llm" | "embeddings" | "all";
+type ModelType =
+  | "llm"
+  | "embeddings"
+  | "image_generation"
+  | "video_generation"
+  | "all";
 
 export interface ProviderListProps {
   modelType: ModelType;

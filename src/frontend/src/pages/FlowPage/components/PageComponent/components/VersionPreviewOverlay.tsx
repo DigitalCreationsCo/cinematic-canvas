@@ -1,4 +1,5 @@
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
 import useFlowsManagerStore from "@/stores/flowsManagerStore";
 import useVersionPreviewStore from "@/stores/versionPreviewStore";
 import { CanvasBadge } from "./CanvasBanner";
@@ -10,6 +11,7 @@ export default function VersionPreviewOverlay() {
   const previewId = useVersionPreviewStore((s) => s.previewId);
   const isPreviewLoading = useVersionPreviewStore((s) => s.isPreviewLoading);
   const currentFlowId = useFlowsManagerStore((state) => state.currentFlowId);
+  const hasUnsavedChanges = useUnsavedChanges();
 
   if (previewLabel === null) return null;
 
@@ -39,7 +41,7 @@ export default function VersionPreviewOverlay() {
         </div>
       )}
 
-      {previewLabel === "Current Draft" && (
+      {previewLabel === "Current Draft" && hasUnsavedChanges && (
         <SaveSnapshotButton flowId={currentFlowId} />
       )}
 

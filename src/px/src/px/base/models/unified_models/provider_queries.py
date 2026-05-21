@@ -20,6 +20,28 @@ from px.base.models.openai_constants import (
 )
 from px.base.models.watsonx_constants import WATSONX_MODELS_DETAILED
 
+# ---------------------------------------------------------------------------
+# Image and video generation model constants.
+#
+# These modules are imported with a graceful fallback so that deployments
+# which do not yet ship those constants continue to work.  Once the constant
+# files exist the try/except blocks can be removed.
+# ---------------------------------------------------------------------------
+
+try:
+    from px.base.models.image_generation_constants import (
+        IMAGE_GENERATION_MODELS_DETAILED,
+    )
+except ImportError:
+    IMAGE_GENERATION_MODELS_DETAILED: list[dict] = []
+
+try:
+    from px.base.models.video_generation_constants import (
+        VIDEO_GENERATION_MODELS_DETAILED,
+    )
+except ImportError:
+    VIDEO_GENERATION_MODELS_DETAILED: list[dict] = []
+
 
 @lru_cache(maxsize=1)
 def get_model_provider_metadata() -> dict:
@@ -93,7 +115,9 @@ def _get_all_provider_specific_field_names() -> set[str]:
 
 def get_model_providers() -> list[str]:
     """Return a sorted list of unique provider names."""
-    return sorted({md.get("provider", "Unknown") for group in MODELS_DETAILED for md in group})
+    return sorted(
+        {md.get("provider", "Unknown") for group in MODELS_DETAILED for md in group}
+    )
 
 
 def get_provider_for_model_name(model_name: str) -> str:
@@ -124,4 +148,17 @@ def get_provider_from_variable_key(variable_key: str) -> str | None:
         for var in meta.get("variables", []):
             if var.get("variable_key") == variable_key:
                 return provider
+    return None
+
+
+def get_model_type_for_model_name(model_name: str) -> str | None:
+    """Return the model_type string for a given model name, or None if not found.
+
+    Searches all groups in MODELS_DETAILED.  Useful for resolving which default-
+    model variable to use when the caller only knows the model name.
+    """
+    for group in MODELS_DETAILED:
+        for md in group:
+            if md.get("name") == model_name:
+                return md.get("model_type")
     return None

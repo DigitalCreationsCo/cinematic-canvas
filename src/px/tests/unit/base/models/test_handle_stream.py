@@ -31,7 +31,9 @@ def _make_probe(*, connected: bool, session_id, event_manager=None):
     probe.is_connected_to_chat_output = MagicMock(return_value=connected)
     # ``graph`` is a read-only property on Component (-> self._vertex.graph),
     # so wire the underlying _vertex instead of trying to assign graph directly.
-    probe._vertex = SimpleNamespace(graph=SimpleNamespace(session_id=session_id, flow_id=None))
+    probe._vertex = SimpleNamespace(
+        graph=SimpleNamespace(session_id=session_id, flow_id=None)
+    )
     probe.icon = "brain"
     probe._id = "probe-1"
     probe._event_manager = event_manager
@@ -90,7 +92,9 @@ async def test_handle_stream_falls_back_to_invoke_when_no_event_manager():
 @pytest.mark.asyncio
 async def test_handle_stream_uses_send_message_when_session_id_and_event_manager_present():
     """Both session_id and event_manager present -> original streaming + persistence path."""
-    probe = _make_probe(connected=True, session_id="sess-123", event_manager=MagicMock())
+    probe = _make_probe(
+        connected=True, session_id="sess-123", event_manager=MagicMock()
+    )
     probe.send_message.return_value = SimpleNamespace(text="streamed text")
     runnable = SimpleNamespace(astream=MagicMock(), ainvoke=AsyncMock())
 
@@ -106,7 +110,9 @@ async def test_handle_stream_uses_send_message_when_session_id_and_event_manager
 @pytest.mark.asyncio
 async def test_handle_stream_invokes_directly_when_not_connected_to_chat_output():
     """Pre-existing branch: not connected -> ainvoke regardless of session_id."""
-    probe = _make_probe(connected=False, session_id="sess-123", event_manager=MagicMock())
+    probe = _make_probe(
+        connected=False, session_id="sess-123", event_manager=MagicMock()
+    )
     runnable = SimpleNamespace(
         astream=MagicMock(),
         ainvoke=AsyncMock(return_value=SimpleNamespace(content="direct")),

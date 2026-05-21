@@ -11,10 +11,13 @@ class ModelMetadata(TypedDict, total=False):
     reasoning: bool  # Reasoning models (defaults to False)
     search: bool  # Search models (defaults to False)
     preview: bool  # Whether model is in preview/beta (defaults to False)
-    not_supported: bool  # Whether model is not supported or deprecated (defaults to False)
+    not_supported: (
+        bool  # Whether model is not supported or deprecated (defaults to False)
+    )
     deprecated: bool  # Whether model is deprecated (defaults to False)
     default: bool  # Whether model is a default/recommended option (defaults to False)
     model_type: str  # Type of model (defaults to "llm" or "embeddings")
+    provisioned: bool  # Whether model is platform-provisioned (no user BYOK key needed)
 
 
 def create_model_metadata(
@@ -30,6 +33,7 @@ def create_model_metadata(
     deprecated: bool = False,
     default: bool = False,
     model_type: str = "llm",
+    provisioned: bool = False,
 ) -> ModelMetadata:
     """Helper function to create ModelMetadata with explicit defaults."""
     return ModelMetadata(
@@ -44,13 +48,21 @@ def create_model_metadata(
         deprecated=deprecated,
         default=default,
         model_type=model_type,
+        provisioned=provisioned,
     )
 
 
 LIVE_MODEL_PROVIDERS: list[str] = ["Ollama", "IBM WatsonX"]
 
 # Provider metadata configuration
-# Defines the variables (credentials, URLs, etc.) required for each model provider
+# Defines the variables (credentials, URLs, etc.) required for each model provider.
+#
+# Provider-level keys:
+#   - icon: Icon name for UI
+#   - provisioned: True if the platform manages credentials (no user BYOK needed)
+#   - variables: List of variable descriptors (empty for provisioned providers)
+#   - api_docs_url: Link to provider documentation
+#   - mapping: LangChain class/param mapping
 #
 # Variable attributes (top-level - for UI settings screen):
 #   - variable_name: Display name for the variable
@@ -67,10 +79,10 @@ LIVE_MODEL_PROVIDERS: list[str] = ["Ollama", "IBM WatsonX"]
 #   - required: Whether the variable is required in components (False = falls back to env var)
 #   - advanced: Whether to show the variable in the advanced section of components
 #   - info: Help text/description shown in the component input
-#
 MODEL_PROVIDER_METADATA: dict[str, Any] = {
     "OpenAI": {
         "icon": "OpenAI",
+        "provisioned": False,
         "max_tokens_field_name": "max_tokens",
         "variables": [
             {
@@ -97,6 +109,7 @@ MODEL_PROVIDER_METADATA: dict[str, Any] = {
     },
     "Anthropic": {
         "icon": "Anthropic",
+        "provisioned": False,
         "max_tokens_field_name": "max_tokens",
         "variables": [
             {
@@ -123,6 +136,7 @@ MODEL_PROVIDER_METADATA: dict[str, Any] = {
     },
     "Google Generative AI": {
         "icon": "GoogleGenerativeAI",
+        "provisioned": True,
         "max_tokens_field_name": "max_output_tokens",
         "variables": [
             {
@@ -149,6 +163,7 @@ MODEL_PROVIDER_METADATA: dict[str, Any] = {
     },
     "Ollama": {
         "icon": "Ollama",
+        "provisioned": False,
         "max_tokens_field_name": "max_tokens",
         "variables": [
             {
@@ -175,6 +190,7 @@ MODEL_PROVIDER_METADATA: dict[str, Any] = {
     },
     "Groq": {
         "icon": "Groq",
+        "provisioned": False,
         "max_tokens_field_name": "max_tokens",
         "variables": [
             {
@@ -201,6 +217,7 @@ MODEL_PROVIDER_METADATA: dict[str, Any] = {
     },
     "Azure OpenAI": {
         "icon": "Azure",
+        "provisioned": False,
         "max_tokens_field_name": "max_tokens",
         "variables": [
             {
@@ -227,6 +244,7 @@ MODEL_PROVIDER_METADATA: dict[str, Any] = {
     },
     "IBM WatsonX": {
         "icon": "WatsonxAI",
+        "provisioned": False,
         "max_tokens_field_name": "max_tokens",
         "variables": [
             {
@@ -290,6 +308,20 @@ MODEL_PROVIDER_METADATA: dict[str, Any] = {
         },
     },
 }
+
+
+def is_provisioned_provider(provider: str) -> bool:
+    """Return True if the provider is platform-provisioned (no user BYOK key required)."""
+    return MODEL_PROVIDER_METADATA.get(provider, {}).get("provisioned", False)
+
+
+def get_all_provisioned_providers() -> list[str]:
+    """Return a list of all platform-provisioned provider names."""
+    return [
+        name
+        for name, meta in MODEL_PROVIDER_METADATA.items()
+        if meta.get("provisioned", False)
+    ]
 
 
 def get_provider_param_mapping(provider: str) -> dict[str, str]:

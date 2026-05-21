@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 from uuid import UUID
 
 from alembic.util.exc import CommandError
@@ -14,11 +16,55 @@ if TYPE_CHECKING:
     from portals.services.database.service import DatabaseService
 
 
+def _ensure_sqlite_directory_exists(database_url: str) -> None:
+    """Parses the database connection string and programmatically provisions the
+
+    parent directory structure on the local filesystem if a file-based SQLite
+    database configuration is detected.
+    """
+    if not database_url:
+        return
+
+    try:
+        parsed_url = urlparse(database_url)
+
+        # Capture both standard 'sqlite://' and asynchronous 'sqlite+aiosqlite://' drivers
+        if parsed_url.scheme.startswith("sqlite"):
+            database_file_path_str = parsed_url.path
+
+            # Skip evaluation for in-memory temporary database allocations
+            if database_file_path_str == ":memory:":
+                return
+
+            if database_file_path_str:
+                database_file_path = Path(database_file_path_str)
+                parent_directory = database_file_path.parent
+
+                # Concurrently-safe directory instantiation to handle multi-worker processes
+                if not parent_directory.exists():
+                    parent_directory.mkdir(parents=True, exist_ok=True)
+                    logger.info(
+                        f"Successfully provisioned missing parent directory structure: {parent_directory}"
+                    )
+    except Exception as exc:
+        logger.exception(
+            f"Failsafe execution halted: Unable to verify or create directory paths for URL: {database_url}"
+        )
+        raise RuntimeError(
+            f"Pre-flight database filesystem initialization failed: {exc}"
+        ) from exc
+
+
 async def initialize_database(*, fix_migration: bool = False) -> None:
     await logger.adebug("Initializing database")
     from portals.services.deps import get_db_service
 
     database_service: DatabaseService = get_db_service()
+
+    # Extract connection settings and verify host file paths prior to engine initialization
+    configured_database_url = database_service.settings_service.settings.database_url
+    _ensure_sqlite_directory_exists(configured_database_url)
+
     await database_service.ensure_postgresql_version()
     try:
         if database_service.settings_service.settings.database_connection_retry:
@@ -47,7 +93,9 @@ async def initialize_database(*, fix_migration: bool = False) -> None:
             or "Can't locate revision identified by" in error_message
         ):
             # Wrong revision in the DB: delete alembic_version and re-run migrations
-            logger.warning("Wrong revision in DB, deleting alembic_version table and running migrations again")
+            logger.warning(
+                "Wrong revision in DB, deleting alembic_version table and running migrations again"
+            )
             from portals.services.deps import session_scope
 
             async with session_scope() as session:

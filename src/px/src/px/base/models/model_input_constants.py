@@ -12,6 +12,8 @@ class ModelProvidersDict(TypedDict):
     component_class: LCModelComponent
     icon: str
     is_active: bool
+    # Whether the provider is platform-provisioned (no user BYOK credentials)
+    is_provisioned: bool
 
 
 def get_filtered_inputs(component_class, provider_name: str | None = None):
@@ -28,8 +30,9 @@ def get_filtered_inputs(component_class, provider_name: str | None = None):
 def process_inputs(component_data: Input, provider_name: str | None = None):
     """Processes and modifies an input configuration based on its type or name.
 
-    Adjusts properties such as value, advanced status, real-time refresh, and additional information for specific
-    input types or names to ensure correct behavior in the UI and provider integration.
+    Adjusts properties such as value, advanced status, real-time refresh, and
+    additional information for specific input types or names to ensure correct
+    behaviour in the UI and provider integration.
 
     Args:
         component_data: The input configuration to process.
@@ -86,6 +89,11 @@ def create_input_fields_dict(inputs: list[Input], prefix: str) -> dict[str, Inpu
     return {f"{prefix}{input_.name}": input_.to_dict() for input_ in inputs}
 
 
+# ---------------------------------------------------------------------------
+# BYOK provider input helpers
+# ---------------------------------------------------------------------------
+
+
 def _get_ollama_inputs_and_fields():
     try:
         from px.components.ollama.ollama import ChatOllamaComponent
@@ -101,7 +109,9 @@ def _get_watsonx_inputs_and_fields():
     try:
         from px.components.ibm.watsonx import WatsonxAIComponent
 
-        watsonx_inputs = get_filtered_inputs(WatsonxAIComponent, provider_name="IBM watsonx.ai")
+        watsonx_inputs = get_filtered_inputs(
+            WatsonxAIComponent, provider_name="IBM watsonx.ai"
+        )
     except ImportError as e:
         msg = "IBM watsonx.ai is not installed. Please install it with `pip install langchain-ibm-watsonx`."
         raise ImportError(msg) from e
@@ -110,7 +120,9 @@ def _get_watsonx_inputs_and_fields():
 
 def _get_google_generative_ai_inputs_and_fields():
     try:
-        from px.components.google.google_generative_ai import GoogleGenerativeAIComponent
+        from px.components.google.google_generative_ai import (
+            GoogleGenerativeAIComponent,
+        )
 
         google_generative_ai_inputs = get_filtered_inputs(GoogleGenerativeAIComponent)
     except ImportError as e:
@@ -119,7 +131,9 @@ def _get_google_generative_ai_inputs_and_fields():
             "`pip install langchain-google-generative-ai`."
         )
         raise ImportError(msg) from e
-    return google_generative_ai_inputs, create_input_fields_dict(google_generative_ai_inputs, "")
+    return google_generative_ai_inputs, create_input_fields_dict(
+        google_generative_ai_inputs, ""
+    )
 
 
 def _get_openai_inputs_and_fields():
@@ -199,9 +213,69 @@ def _get_sambanova_inputs_and_fields():
     return sambanova_inputs, create_input_fields_dict(sambanova_inputs, "")
 
 
+# ---------------------------------------------------------------------------
+# Image-generation provider input helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_openai_image_generation_inputs_and_fields():
+    """Return inputs for the OpenAI image-generation component (BYOK).
+
+    Falls back to an empty set if the component is not yet available so that
+    the rest of the system continues to boot.
+    """
+    try:
+        from px.components.openai.openai_image_generation import (
+            OpenAIImageGenerationComponent,
+        )
+
+        inputs = get_filtered_inputs(OpenAIImageGenerationComponent)
+    except ImportError as e:
+        msg = (
+            "OpenAI image generation component is not installed. "
+            "Please install it with `pip install langchain-openai`."
+        )
+        raise ImportError(msg) from e
+    return inputs, create_input_fields_dict(inputs, "")
+
+
+# ---------------------------------------------------------------------------
+# Provisioned provider helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_provisioned_entry(
+    provider_name: str,
+    component_class_path: str,
+    icon: str,
+    *,
+    is_active: bool = True,
+) -> "ModelProvidersDict":
+    """Build a ModelProvidersDict stub for a platform-provisioned provider.
+
+    Provisioned providers have no user-facing inputs (no BYOK credentials),
+    so ``fields`` and ``inputs`` are empty and ``component_class`` is None.
+    The ``is_provisioned`` flag is set to True so callers can detect this.
+    """
+    return {
+        "fields": {},
+        "inputs": [],
+        "prefix": "",
+        "component_class": None,  # Resolved at runtime by the platform layer
+        "icon": icon,
+        "is_active": is_active,
+        "is_provisioned": True,
+    }
+
+
+# ---------------------------------------------------------------------------
+# MODEL_PROVIDERS_DICT assembly
+# ---------------------------------------------------------------------------
+
 MODEL_PROVIDERS_DICT: dict[str, ModelProvidersDict] = {}
 
-# Try to add each provider
+# BYOK providers — assembled the same way as before, with is_provisioned=False
+
 try:
     from px.components.openai.openai_chat_model import OpenAIModelComponent
 
@@ -213,6 +287,7 @@ try:
         "component_class": OpenAIModelComponent(),
         "icon": OpenAIModelComponent.icon,
         "is_active": True,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
@@ -228,6 +303,7 @@ try:
         "component_class": AzureChatOpenAIComponent(),
         "icon": AzureChatOpenAIComponent.icon,
         "is_active": False,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
@@ -243,6 +319,7 @@ try:
         "component_class": GroqModel(),
         "icon": GroqModel.icon,
         "is_active": False,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
@@ -258,6 +335,7 @@ try:
         "component_class": AnthropicModelComponent(),
         "icon": AnthropicModelComponent.icon,
         "is_active": True,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
@@ -273,6 +351,7 @@ try:
         "component_class": NVIDIAModelComponent(),
         "icon": NVIDIAModelComponent.icon,
         "is_active": False,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
@@ -288,6 +367,7 @@ try:
         "component_class": AmazonBedrockComponent(),
         "icon": AmazonBedrockComponent.icon,
         "is_active": False,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
@@ -295,7 +375,9 @@ except ImportError:
 try:
     from px.components.google.google_generative_ai import GoogleGenerativeAIComponent
 
-    google_generative_ai_inputs, google_generative_ai_fields = _get_google_generative_ai_inputs_and_fields()
+    google_generative_ai_inputs, google_generative_ai_fields = (
+        _get_google_generative_ai_inputs_and_fields()
+    )
     MODEL_PROVIDERS_DICT["Google Generative AI"] = {
         "fields": google_generative_ai_fields,
         "inputs": google_generative_ai_inputs,
@@ -303,6 +385,7 @@ try:
         "component_class": GoogleGenerativeAIComponent(),
         "icon": GoogleGenerativeAIComponent.icon,
         "is_active": True,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
@@ -318,6 +401,7 @@ try:
         "component_class": SambaNovaComponent(),
         "icon": SambaNovaComponent.icon,
         "is_active": False,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
@@ -333,6 +417,7 @@ try:
         "component_class": WatsonxAIComponent(),
         "icon": WatsonxAIComponent.icon,
         "is_active": True,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
@@ -348,18 +433,73 @@ try:
         "component_class": ChatOllamaComponent(),
         "icon": ChatOllamaComponent.icon,
         "is_active": True,
+        "is_provisioned": False,
     }
 except ImportError:
     pass
 
-# Expose only active providers ----------------------------------------------
+# BYOK image-generation providers
+try:
+    from px.components.openai.openai_image_generation import (
+        OpenAIImageGenerationComponent,
+    )
+
+    openai_img_inputs, openai_img_fields = (
+        _get_openai_image_generation_inputs_and_fields()
+    )
+    MODEL_PROVIDERS_DICT["OpenAI Image Generation"] = {
+        "fields": openai_img_fields,
+        "inputs": openai_img_inputs,
+        "prefix": "",
+        "component_class": OpenAIImageGenerationComponent(),
+        "icon": OpenAIImageGenerationComponent.icon,
+        "is_active": True,
+        "is_provisioned": False,
+    }
+except ImportError:
+    pass
+
+# Platform-provisioned providers — always active, no user inputs required.
+# Additional provisioned providers (e.g. "Platform Video Generation") are
+# registered here as stubs.  The actual model invocation is handled by the
+# platform layer at runtime.
+MODEL_PROVIDERS_DICT["Platform LLM"] = _make_provisioned_entry(
+    "Platform LLM",
+    "px.components.platform.provisioned_llm.ProvisionedLLMComponent",
+    icon="Platform",
+    is_active=True,
+)
+
+MODEL_PROVIDERS_DICT["Platform Image Generation"] = _make_provisioned_entry(
+    "Platform Image Generation",
+    "px.components.platform.provisioned_image_generation.ProvisionedImageGenerationComponent",
+    icon="Platform",
+    is_active=True,
+)
+
+MODEL_PROVIDERS_DICT["Platform Video Generation"] = _make_provisioned_entry(
+    "Platform Video Generation",
+    "px.components.platform.provisioned_video_generation.ProvisionedVideoGenerationComponent",
+    icon="Platform",
+    is_active=True,
+)
+
+# ---------------------------------------------------------------------------
+# Derived convenience collections
+# ---------------------------------------------------------------------------
+
+# Expose only active providers
 ACTIVE_MODEL_PROVIDERS_DICT: dict[str, ModelProvidersDict] = {
-    name: prov for name, prov in MODEL_PROVIDERS_DICT.items() if prov.get("is_active", True)
+    name: prov
+    for name, prov in MODEL_PROVIDERS_DICT.items()
+    if prov.get("is_active", True)
 }
 
 MODEL_PROVIDERS: list[str] = list(ACTIVE_MODEL_PROVIDERS_DICT.keys())
 
-ALL_PROVIDER_FIELDS: list[str] = [field for prov in ACTIVE_MODEL_PROVIDERS_DICT.values() for field in prov["fields"]]
+ALL_PROVIDER_FIELDS: list[str] = [
+    field for prov in ACTIVE_MODEL_PROVIDERS_DICT.values() for field in prov["fields"]
+]
 
 MODEL_DYNAMIC_UPDATE_FIELDS = [
     "api_key",
@@ -371,8 +511,23 @@ MODEL_DYNAMIC_UPDATE_FIELDS = [
     "url",
 ]
 
-MODELS_METADATA = {name: {"icon": prov["icon"]} for name, prov in ACTIVE_MODEL_PROVIDERS_DICT.items()}
+MODELS_METADATA = {
+    name: {"icon": prov["icon"]} for name, prov in ACTIVE_MODEL_PROVIDERS_DICT.items()
+}
 
-MODEL_PROVIDERS_LIST = ["Anthropic", "Google Generative AI", "OpenAI", "IBM watsonx.ai", "Ollama"]
+# Legacy ordered list — keeps existing LLM providers; provisioned providers appear after
+MODEL_PROVIDERS_LIST = [
+    "Anthropic",
+    "Google Generative AI",
+    "OpenAI",
+    "IBM watsonx.ai",
+    "Ollama",
+    # Provisioned providers
+    "Platform LLM",
+    "Platform Image Generation",
+    "Platform Video Generation",
+]
 
-MODEL_OPTIONS_METADATA = [MODELS_METADATA[key] for key in MODEL_PROVIDERS_LIST if key in MODELS_METADATA]
+MODEL_OPTIONS_METADATA = [
+    MODELS_METADATA[key] for key in MODEL_PROVIDERS_LIST if key in MODELS_METADATA
+]

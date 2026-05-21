@@ -23,16 +23,16 @@ interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    id: "search",
-    icon: "search",
-    label: "sidebar.nav.search",
-    tooltip: "sidebar.nav.search",
-  },
-  {
     id: "versions",
     icon: "IconRotate",
     label: "sidebar.nav.versions",
     tooltip: "sidebar.nav.versionHistory",
+  },
+  {
+    id: "search",
+    icon: "search",
+    label: "sidebar.nav.search",
+    tooltip: "sidebar.nav.search",
   },
   {
     id: "components",
