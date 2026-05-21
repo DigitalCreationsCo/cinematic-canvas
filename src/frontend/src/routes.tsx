@@ -186,13 +186,31 @@ const router = createBrowserRouter(
                   }
                 />
               </Route>
-              <Route path="flow/:id/">
+
+              {/* removed for project-centric routing */}
+              {/*<Route path="flow/:id/">
                 <Route path="" element={<CustomDashboardWrapperPage />}>
                   <Route path="folder/:folderId/" element={<FlowPage />} />
                   <Route path="" element={<FlowPage />} />
                 </Route>
                 <Route path="view" element={<ViewPage />} />
+              </Route>*/}
+
+              {/* New project-centric routing */}
+              <Route path="folder/:folderId/">
+                <Route path="flow/:id/">
+                  <Route path="" element={<CustomDashboardWrapperPage />}>
+                    <Route index element={<FlowPage />} />
+                  </Route>
+                  <Route path="view" element={<ViewPage />} />
+                </Route>
               </Route>
+
+              {/* Backward-compat: redirect old /flow/:id URLs to /all (no folder context available) */}
+              <Route
+                path="flow/:id/*"
+                element={<CustomNavigate replace to="/all" />}
+              />
             </Route>
           </Route>
           <Route

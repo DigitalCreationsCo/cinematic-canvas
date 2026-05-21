@@ -47,7 +47,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
-        exclude: '(^docs/|^SECURITY\.md$|src/lfx/src/lfx/_assets/component_index\.json$|src/lfx/README\.md$)'
+        exclude: '(^docs/|^SECURITY\.md$|src/lfx/src/lfx/_assets/component_index\.json$|src/lfx/README\.md$|^src/frontend/src/locales/.*\.json$)'
   - repo: local
     hooks:
       - id: local-biome-check

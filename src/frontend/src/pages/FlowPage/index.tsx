@@ -33,11 +33,14 @@ import {
 import Page from "./components/PageComponent";
 import { FlowInsightsContent } from "./components/TraceComponent/FlowInsightsContent";
 
+// FlowPage is now folder-aware
 function FlowPageMainContent({
   flowId,
+  folderId,
   setIsLoading,
 }: {
   flowId?: string;
+  folderId?: string;
   setIsLoading: (isLoading: boolean) => void;
 }): JSX.Element {
   const { activeSection } = useSidebar();
@@ -82,7 +85,9 @@ export default function FlowPage({ view }: { view?: boolean }): JSX.Element {
   const blocker = useBlocker(changesNotSaved || isBuilding);
 
   const setOnFlowPage = useFlowStore((state) => state.setOnFlowPage);
-  const { id } = useParams();
+
+  const { id, folderId } = useParams();
+
   const navigate = useCustomNavigate();
   const saveFlow = useSaveFlow();
 
@@ -128,7 +133,7 @@ export default function FlowPage({ view }: { view?: boolean }): JSX.Element {
     } else if (changesNotSaved) {
       if (blocker.proceed) blocker.proceed();
     } else {
-      navigate("/all");
+      navigate(folderId ? `/all/folder/${folderId}` : "/all"); // ← returns to project
     }
   };
 
@@ -302,7 +307,12 @@ export default function FlowPage({ view }: { view?: boolean }): JSX.Element {
               >
                 <FlowSearchProvider>
                   {/* FlowSidebarComponent - stays in place */}
-                  {!view && <FlowSidebarComponent isLoading={isLoading} />}
+                  {!view && (
+                    <FlowSidebarComponent
+                      isLoading={isLoading}
+                      folderId={folderId}
+                    />
+                  )}
 
                   <main
                     className={cn(
@@ -315,6 +325,7 @@ export default function FlowPage({ view }: { view?: boolean }): JSX.Element {
                     <div className="h-full w-full">
                       <FlowPageMainContent
                         flowId={id}
+                        folderId={folderId}
                         setIsLoading={setIsLoading}
                       />
                     </div>

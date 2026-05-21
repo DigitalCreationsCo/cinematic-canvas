@@ -29,6 +29,12 @@ export const NAV_ITEMS: NavItem[] = [
     tooltip: "sidebar.nav.search",
   },
   {
+    id: "versions",
+    icon: "IconRotate",
+    label: "sidebar.nav.versions",
+    tooltip: "sidebar.nav.versionHistory",
+  },
+  {
     id: "components",
     icon: "component",
     label: "sidebar.nav.components",
@@ -47,14 +53,8 @@ export const NAV_ITEMS: NavItem[] = [
     tooltip: "sidebar.nav.bundles",
   },
   {
-    id: "versions",
-    icon: "History",
-    label: "sidebar.nav.versions",
-    tooltip: "sidebar.nav.versionHistory",
-  },
-  {
     id: "traces",
-    icon: "Activity",
+    icon: "History",
     label: "sidebar.nav.traces",
     tooltip: "sidebar.nav.traces",
   },

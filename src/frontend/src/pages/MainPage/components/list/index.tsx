@@ -49,7 +49,9 @@ const ListComponent = ({
 
   const { getIcon } = useGetTemplateStyle(flowData);
 
-  const editFlowLink = `/flow/${flowData.id}${folderId ? `/folder/${folderId}` : ""}`;
+  const editFlowLink = folderId
+    ? `/folder/${folderId}/flow/${flowData.id}`
+    : `/flow/${flowData.id}`;
 
   const handleClick = async () => {
     if (shiftPressed) {

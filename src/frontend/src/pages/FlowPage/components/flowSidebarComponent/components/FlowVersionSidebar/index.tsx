@@ -36,7 +36,7 @@ export default function FlowVersionSidebarContent({
     <>
       <div className="flex h-full flex-col">
         <SidebarGroupLabel className="flex items-center justify-between px-3 pt-3">
-          <span>Version History</span>
+          <span>Versions</span>
           {versions && versions.length > 0 && (
             <span className="font-normal text-foreground/50">
               {versions.length}

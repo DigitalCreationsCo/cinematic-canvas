@@ -1,6 +1,5 @@
 import Fuse from "fuse.js";
 import { cloneDeep, debounce } from "lodash";
-import { useTranslation } from "react-i18next";
 import {
   createContext,
   memo,
@@ -12,6 +11,7 @@ import {
   useState,
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
 } from "@/customization/feature-flags";
 import { useAddComponent } from "@/hooks/use-add-component";
 import { useShortcutsStore } from "@/stores/shortcuts";
+import { MCPServerInfoType } from "@/types/mcp";
 import { setLocalStorage } from "@/utils/local-storage-util";
 import {
   nodeColors,
@@ -37,13 +38,20 @@ import {
 } from "@/utils/styleUtils";
 import { cn, getBooleanFromStorage } from "@/utils/utils";
 import useFlowStore from "../../../../stores/flowStore";
+import useFlowsManagerStore from "../../../../stores/flowsManagerStore";
 import { useTypesStore } from "../../../../stores/typesStore";
-import type { APIClassType } from "../../../../types/api";
+import type {
+  APIClassType,
+  APITemplateType,
+  CustomFieldsType,
+  OutputFieldType,
+} from "../../../../types/api";
 import isWrappedWithClass from "../PageComponent/utils/is-wrapped-with-class";
 import { CategoryGroup } from "./components/categoryGroup";
 import NoResultsMessage from "./components/emptySearchComponent";
 import FlowVersionSidebarContent from "./components/FlowVersionSidebarContent";
 import McpSidebarGroup from "./components/McpSidebarGroup";
+import { ProjectFlowsGroup } from "./components/projectFlowsGroup";
 import MemoizedSidebarGroup from "./components/sidebarBundles";
 import SidebarMenuButtons from "./components/sidebarFooterButtons";
 import { SidebarHeaderComponent } from "./components/sidebarHeader";
@@ -58,6 +66,70 @@ import { filteredDataFn } from "./helpers/filtered-data";
 import { normalizeString } from "./helpers/normalize-string";
 import sensitiveSort from "./helpers/sensitive-sort";
 import { traditionalSearchMetadata } from "./helpers/traditional-search-metadata";
+
+interface FuseData {
+  category: string;
+  key: string;
+  base_classes?: string[] | undefined;
+  description: string;
+  template: APITemplateType;
+  display_name: string;
+  icon?: string;
+  edited?: boolean;
+  is_input?: boolean;
+  is_output?: boolean;
+  conditional_paths?: Array<string>;
+  input_types?: Array<string>;
+  output_types?: Array<string>;
+  custom_fields?: CustomFieldsType;
+  beta?: boolean;
+  legacy?: boolean;
+  replacement?: string[];
+  documentation: string;
+  error?: string;
+  official?: boolean;
+  outputs?: Array<OutputFieldType>;
+  last_updated?: string;
+}
+
+interface MCPSearchData {
+  mcpServerName: string;
+  category: string;
+  key: string;
+  template: {
+    mcp_server: {
+      value: MCPServerInfoType;
+      type: string;
+      required: boolean;
+      placeholder?: string;
+      list: boolean;
+      show: boolean;
+      readonly: boolean;
+      password?: boolean;
+      multiline?: boolean;
+      dynamic?: boolean;
+      proxy?: {
+        id: string;
+        field: string;
+      };
+      input_types?: Array<string>;
+      display_name?: string;
+      name?: string;
+      real_time_refresh?: boolean;
+      refresh_button?: boolean;
+      refresh_button_text?: string;
+      combobox?: boolean;
+      info?: string;
+      options?: [];
+      active_tab?: number;
+      icon?: string;
+      text?: string;
+      temp_file?: boolean;
+      separator?: string;
+    };
+  };
+  last_updated?: string;
+}
 
 const CATEGORIES = SIDEBAR_CATEGORIES;
 const BUNDLES = SIDEBAR_BUNDLES;
@@ -148,11 +220,17 @@ export function FlowSearchProvider({
 
 interface FlowSidebarComponentProps {
   isLoading?: boolean;
+  folderId?: string;
   showLegacy?: boolean;
   setShowLegacy?: (value: boolean) => void;
+  onAddFlow?: () => void; // ← new: optional "add flow" handler
 }
 
-export function FlowSidebarComponent({ isLoading }: FlowSidebarComponentProps) {
+export function FlowSidebarComponent({
+  isLoading,
+  folderId,
+  onAddFlow,
+}: FlowSidebarComponentProps) {
   const { t } = useTranslation();
   const rawData = useTypesStore((state) => state.data);
 
@@ -253,8 +331,7 @@ export function FlowSidebarComponent({ isLoading }: FlowSidebarComponentProps) {
     return () => debouncedSetSearch.cancel();
   }, [search, debouncedSetSearch]);
 
-  // State
-  const [fuse, setFuse] = useState<Fuse<any> | null>(null);
+  const [fuse, setFuse] = useState<Fuse<FuseData> | null>(null);
   const [openCategories, setOpenCategories] = useState<string[]>([]);
   const [showConfig, setShowConfig] = useState(false);
   const [showBeta, setShowBeta] = useState(showBetaStorage);
@@ -270,7 +347,7 @@ export function FlowSidebarComponent({ isLoading }: FlowSidebarComponentProps) {
     setShowLegacy(value);
     setLocalStorage("showLegacy", value.toString());
   }, []);
-  const [mcpSearchData, setMcpSearchData] = useState<any[]>([]);
+  const [mcpSearchData, setMcpSearchData] = useState<MCPSearchData[]>([]);
 
   // Create base data that includes MCP category when available
   const baseData = useMemo(() => {
@@ -295,7 +372,8 @@ export function FlowSidebarComponent({ isLoading }: FlowSidebarComponentProps) {
         },
       }));
 
-      const mcpCategoryData: Record<string, any> = {};
+      const mcpCategoryData: Record<string, (typeof newMcpSearchData)[number]> =
+        {};
       newMcpSearchData.forEach((mcp) => {
         mcpCategoryData[mcp.display_name] = mcp;
       });
@@ -542,10 +620,7 @@ export function FlowSidebarComponent({ isLoading }: FlowSidebarComponentProps) {
   );
 
   const onDragStart = useCallback(
-    (
-      event: React.DragEvent<any>,
-      data: { type: string; node?: APIClassType },
-    ) => {
+    (event: React.DragEvent, data: { type: string; node?: APIClassType }) => {
       var crt = event.currentTarget.cloneNode(true);
       crt.style.position = "absolute";
       crt.style.width = "215px";
@@ -685,6 +760,14 @@ export function FlowSidebarComponent({ isLoading }: FlowSidebarComponentProps) {
     setFilterData(baseData);
   }, [setFilterEdge, setFilterComponent, setFilterData, baseData]);
 
+  const allFlows = useFlowsManagerStore((state) => state.flows);
+  const currentFlowId = useFlowsManagerStore((state) => state.currentFlowId);
+
+  const projectFlows = useMemo(() => {
+    if (!folderId || !allFlows) return [];
+    return allFlows.filter((flow) => flow.folder_id === folderId);
+  }, [allFlows, folderId]);
+
   return (
     <Sidebar
       collapsible="offcanvas"
@@ -706,7 +789,18 @@ export function FlowSidebarComponent({ isLoading }: FlowSidebarComponentProps) {
           )}
         >
           {showVersions && currentFlowForVersions?.id ? (
-            <FlowVersionSidebarContent flowId={currentFlowForVersions.id} />
+            <>
+              {/* ── Project flows ── always visible in normal (non-version) mode */}
+              {folderId && showVersions && (
+                <ProjectFlowsGroup
+                  flows={projectFlows}
+                  folderId={folderId}
+                  currentFlowId={currentFlowId}
+                  onAddFlow={onAddFlow}
+                />
+              )}
+              <FlowVersionSidebarContent flowId={currentFlowForVersions.id} />
+            </>
           ) : (
             <>
               {isFullSidebarPanelMounted && (
@@ -861,7 +955,9 @@ export default memo(
   ) => {
     return (
       prevProps.showLegacy === nextProps.showLegacy &&
-      prevProps.setShowLegacy === nextProps.setShowLegacy
+      prevProps.setShowLegacy === nextProps.setShowLegacy &&
+      prevProps.folderId === nextProps.folderId &&
+      prevProps.onAddFlow === nextProps.onAddFlow
     );
   },
 );

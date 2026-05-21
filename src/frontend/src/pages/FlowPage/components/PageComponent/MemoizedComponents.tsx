@@ -1,6 +1,7 @@
 import { Background, Panel } from "@xyflow/react";
 import { cloneDeep } from "lodash";
 import { memo, useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import CanvasControlButton from "@/components/core/canvasControlsComponent/CanvasControlButton";
@@ -110,6 +111,8 @@ export const MemoizedCanvasControls = memo(
 export const MemoizedSidebarTrigger = memo(() => {
   const { open, toggleSidebar, setActiveSection } = useSidebar();
   const { focusSearch, isSearchFocused } = useSearchContext();
+  const { t } = useTranslation();
+
   if (ENABLE_NEW_SIDEBAR) {
     return (
       <Panel
@@ -125,7 +128,7 @@ export const MemoizedSidebarTrigger = memo(() => {
             iconName={item.icon}
             iconClasses={item.id === "mcp" ? "h-8 w-8" : ""}
             key={item.id}
-            tooltipText={item.tooltip}
+            tooltipText={t(item.tooltip)}
             onClick={() => {
               setActiveSection(item.id);
               if (!open) {
