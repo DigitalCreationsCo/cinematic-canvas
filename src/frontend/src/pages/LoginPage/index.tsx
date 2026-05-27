@@ -75,10 +75,10 @@ export default function LoginPage(): JSX.Element {
     >
       <div className="flex h-full w-full flex-col items-center justify-center bg-muted">
         <div className="flex w-72 flex-col items-center justify-center gap-2">
-          <PortalsLogo
+          {/*<PortalsLogo
             title="Portals logo"
             className="mb-4 h-10 w-10 scale-[1.5]"
-          />
+          />*/}
           <span className="mb-6 text-2xl font-semibold text-primary">
             {t("auth.loginTitle")}
           </span>

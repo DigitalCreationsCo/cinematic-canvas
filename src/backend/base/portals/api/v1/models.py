@@ -133,9 +133,7 @@ class ValidateProviderResponse(BaseModel):
     error: str | None = None
 
 
-@router.get(
-    "/providers", status_code=200, dependencies=[Depends(get_current_active_user)]
-)
+@router.get("/providers", status_code=200, dependencies=[Depends(get_current_active_user)])
 async def list_model_providers() -> list[str]:
     """Return available model providers."""
     return get_model_providers()
@@ -144,16 +142,13 @@ async def list_model_providers() -> list[str]:
 @router.get("", status_code=200)
 async def list_models(
     *,
-    provider: Annotated[
-        list[str] | None, Query(description="Repeat to include multiple providers")
-    ] = None,
+    provider: Annotated[list[str] | None, Query(description="Repeat to include multiple providers")] = None,
     model_name: str | None = None,
     model_type: Annotated[
         str | None,
         Query(
             description=(
-                "Filter by model type. "
-                "Accepted values: 'llm', 'embeddings', 'image_generation', 'video_generation'."
+                "Filter by model type. Accepted values: 'llm', 'embeddings', 'image_generation', 'video_generation'."
             )
         ),
     ] = None,
@@ -205,15 +200,11 @@ async def list_models(
     }
 
     # Get enabled providers status (checks if BYOK variables exist)
-    enabled_providers_result = await get_enabled_providers(
-        session=session, current_user=current_user
-    )
+    enabled_providers_result = await get_enabled_providers(session=session, current_user=current_user)
     provider_configured_status = enabled_providers_result.get("provider_status", {})
 
     # Get enabled models map for current user to determine "active" providers
-    enabled_models_result = await get_enabled_models(
-        session=session, current_user=current_user
-    )
+    enabled_models_result = await get_enabled_models(session=session, current_user=current_user)
     enabled_models_map = enabled_models_result.get("enabled_models", {})
 
     # Get default model if model_type is specified (used only for sort ordering)
@@ -228,9 +219,7 @@ async def list_models(
             if default_model_result.get("default_model"):
                 default_provider = default_model_result["default_model"].get("provider")
         except Exception:  # noqa: BLE001
-            logger.debug(
-                "Failed to fetch default model, continuing without it", exc_info=True
-            )
+            logger.debug("Failed to fetch default model, continuing without it", exc_info=True)
 
     # Fetch filtered catalog
     filtered_models = get_unified_models_detailed(
@@ -252,19 +241,13 @@ async def list_models(
             provider_dict["is_configured"] = True
             provider_dict["is_enabled"] = True
         else:
-            provider_dict["is_configured"] = provider_configured_status.get(
-                prov_name, False
-            )
+            provider_dict["is_configured"] = provider_configured_status.get(prov_name, False)
             prov_models_status = enabled_models_map.get(prov_name, {})
             provider_dict["is_enabled"] = any(prov_models_status.values())
 
     # Replace static models with live models for providers that support it
-    configured_providers = {
-        p for p, configured in provider_configured_status.items() if configured
-    }
-    replace_with_live_models(
-        filtered_models, current_user.id, configured_providers, model_type
-    )
+    configured_providers = {p for p, configured in provider_configured_status.items() if configured}
+    replace_with_live_models(filtered_models, current_user.id, configured_providers, model_type)
 
     # Sort: default provider → configured BYOK → alphabetical
     def sort_key(provider_dict: dict) -> tuple:
@@ -333,9 +316,7 @@ async def get_enabled_providers(
                 detail="Variable service is not an instance of DatabaseVariableService",
             )
 
-        all_variables = await variable_service.get_all(
-            user_id=current_user.id, session=session
-        )
+        all_variables = await variable_service.get_all(user_id=current_user.id, session=session)
         all_variable_names = {var.name for var in all_variables}
 
         # provider_variable_map = get_model_provider_variable_mapping()
@@ -357,9 +338,7 @@ async def get_enabled_providers(
             # BYOK: check that all required variables are present
             provider_vars = get_provider_all_variables(provider)
             required_vars = [v for v in provider_vars if v.get("required", False)]
-            all_required_present = all(
-                v.get("variable_key") in all_variable_names for v in required_vars
-            )
+            all_required_present = all(v.get("variable_key") in all_variable_names for v in required_vars)
 
             provider_status[provider] = all_required_present
             if all_required_present:
@@ -371,15 +350,11 @@ async def get_enabled_providers(
         }
 
         if providers:
-            filtered_enabled = [
-                p for p in result["enabled_providers"] if p in providers
-            ]
+            filtered_enabled = [p for p in result["enabled_providers"] if p in providers]
             provider_status_dict = result.get("provider_status", {})
             if not isinstance(provider_status_dict, dict):
                 provider_status_dict = {}
-            filtered_status = {
-                p: v for p, v in provider_status_dict.items() if p in providers
-            }
+            filtered_status = {p: v for p, v in provider_status_dict.items() if p in providers}
             return {
                 "enabled_providers": filtered_enabled,
                 "provider_status": filtered_status,
@@ -396,9 +371,7 @@ async def get_enabled_providers(
         return result
 
 
-@router.post(
-    "/validate-provider", status_code=200, response_model=ValidateProviderResponse
-)
+@router.post("/validate-provider", status_code=200, response_model=ValidateProviderResponse)
 async def validate_provider(
     request: ValidateProviderRequest,
     current_user: CurrentActiveUser,  # noqa: ARG001
@@ -430,9 +403,7 @@ async def validate_provider(
         return ValidateProviderResponse(valid=False, error=f"Validation failed: {e}")
 
 
-async def _get_disabled_models(
-    session: DbSession, current_user: CurrentActiveUser
-) -> set[str]:
+async def _get_disabled_models(session: DbSession, current_user: CurrentActiveUser) -> set[str]:
     """Helper function to get the set of disabled model IDs."""
     variable_service = get_variable_service()
     if not isinstance(variable_service, DatabaseVariableService):
@@ -464,9 +435,7 @@ async def _get_disabled_models(
     return set()
 
 
-async def _get_enabled_models(
-    session: DbSession, current_user: CurrentActiveUser
-) -> set[str]:
+async def _get_enabled_models(session: DbSession, current_user: CurrentActiveUser) -> set[str]:
     """Helper function to get the set of explicitly enabled model IDs."""
     variable_service = get_variable_service()
     if not isinstance(variable_service, DatabaseVariableService):
@@ -548,9 +517,7 @@ async def _save_model_list_variable(
                 session=session,
             )
         else:
-            await variable_service.delete_variable(
-                user_id=current_user.id, name=var_name, session=session
-            )
+            await variable_service.delete_variable(user_id=current_user.id, name=var_name, session=session)
     except ValueError:
         if model_set:
             await variable_service.create_variable(
@@ -592,24 +559,14 @@ async def get_enabled_models(
     )
 
     # Get enabled providers status
-    enabled_providers_result = await get_enabled_providers(
-        session=session, current_user=current_user
-    )
+    enabled_providers_result = await get_enabled_providers(session=session, current_user=current_user)
     provider_status = enabled_providers_result.get("provider_status", {})
 
-    configured_providers = {
-        p for p, configured in provider_status.items() if configured
-    }
-    replace_with_live_models(
-        all_models_by_provider, current_user.id, configured_providers
-    )
+    configured_providers = {p for p, configured in provider_status.items() if configured}
+    replace_with_live_models(all_models_by_provider, current_user.id, configured_providers)
 
-    disabled_models = await _get_disabled_models(
-        session=session, current_user=current_user
-    )
-    explicitly_enabled_models = await _get_enabled_models(
-        session=session, current_user=current_user
-    )
+    disabled_models = await _get_disabled_models(session=session, current_user=current_user)
+    explicitly_enabled_models = await _get_enabled_models(session=session, current_user=current_user)
 
     enabled_models: dict[str, dict[str, bool]] = {}
 
@@ -630,9 +587,7 @@ async def get_enabled_models(
             is_deprecated = metadata.get("deprecated", False)
             is_not_supported = metadata.get("not_supported", False)
             is_default = metadata.get("default", False)
-            model_is_provisioned = metadata.get(
-                "provisioned", is_provisioned_provider(provider)
-            )
+            model_is_provisioned = metadata.get("provisioned", is_provisioned_provider(provider))
 
             # Provisioned models: enabled when default (or explicitly enabled) and not disabled
             # BYOK models: additionally require the provider to be configured
@@ -694,12 +649,8 @@ async def update_enabled_models(
             detail=f"Cannot update more than {MAX_BATCH_UPDATE_SIZE} models at once",
         )
 
-    disabled_models = await _get_disabled_models(
-        session=session, current_user=current_user
-    )
-    explicitly_enabled_models = await _get_enabled_models(
-        session=session, current_user=current_user
-    )
+    disabled_models = await _get_disabled_models(session=session, current_user=current_user)
+    explicitly_enabled_models = await _get_enabled_models(session=session, current_user=current_user)
     is_default_model = _build_model_default_flags()
 
     for update in updates:
@@ -718,31 +669,23 @@ async def update_enabled_models(
                     validate_model_provider_key,
                 )
 
-                variables = get_all_variables_for_provider(
-                    current_user.id, update.provider
-                )
+                variables = get_all_variables_for_provider(current_user.id, update.provider)
 
                 try:
-                    validate_model_provider_key(
-                        update.provider, variables, model_name=update.model_id
-                    )
+                    validate_model_provider_key(update.provider, variables, model_name=update.model_id)
                 except ValueError as e:
                     raise HTTPException(
                         status_code=400,
                         detail=f"Validation failed for {update.provider}: {e}",
                     ) from e
                 except Exception as e:
-                    logger.exception(
-                        "Unexpected error validating provider %s", update.provider
-                    )
+                    logger.exception("Unexpected error validating provider %s", update.provider)
                     raise HTTPException(
                         status_code=400,
                         detail=f"Validation failed for {update.provider}: {e}",
                     ) from e
 
-    _update_model_sets(
-        updates, disabled_models, explicitly_enabled_models, is_default_model
-    )
+    _update_model_sets(updates, disabled_models, explicitly_enabled_models, is_default_model)
 
     logger.info(
         "User %s updated model status: %d models affected",
@@ -750,9 +693,7 @@ async def update_enabled_models(
         len(updates),
     )
 
-    await _save_model_list_variable(
-        variable_service, session, current_user, DISABLED_MODELS_VAR, disabled_models
-    )
+    await _save_model_list_variable(variable_service, session, current_user, DISABLED_MODELS_VAR, disabled_models)
     await _save_model_list_variable(
         variable_service,
         session,
@@ -827,12 +768,7 @@ async def get_default_model(
     current_user: CurrentActiveUser,
     model_type: Annotated[
         str,
-        Query(
-            description=(
-                "Type of model. "
-                "Accepted values: 'language', 'embedding', 'image', 'video'."
-            )
-        ),
+        Query(description=("Type of model. Accepted values: 'language', 'embedding', 'image', 'video'.")),
     ] = "language",
 ):
     """Get the default model for the current user.
@@ -852,9 +788,7 @@ async def get_default_model(
     var_name = _default_model_var(model_type)
 
     try:
-        var = await variable_service.get_variable_object(
-            user_id=current_user.id, name=var_name, session=session
-        )
+        var = await variable_service.get_variable_object(user_id=current_user.id, name=var_name, session=session)
         if var.value:
             try:
                 parsed_value = json.loads(var.value)
@@ -869,9 +803,7 @@ async def get_default_model(
                 if not isinstance(parsed_value, dict) or not all(
                     k in parsed_value for k in ("model_name", "provider", "model_type")
                 ):
-                    logger.warning(
-                        "Invalid default model format for user %s", current_user.id
-                    )
+                    logger.warning("Invalid default model format for user %s", current_user.id)
                     return {"default_model": None}
                 return {"default_model": parsed_value}
     except ValueError:
@@ -927,9 +859,7 @@ async def set_default_model(
         await variable_service.update_variable_fields(
             user_id=current_user.id,
             variable_id=existing_var.id,
-            variable=VariableUpdate(
-                id=existing_var.id, name=var_name, value=model_json, type=GENERIC_TYPE
-            ),
+            variable=VariableUpdate(id=existing_var.id, name=var_name, value=model_json, type=GENERIC_TYPE),
             session=session,
         )
     except ValueError:
@@ -959,12 +889,7 @@ async def clear_default_model(
     current_user: CurrentActiveUser,
     model_type: Annotated[
         str,
-        Query(
-            description=(
-                "Type of model. "
-                "Accepted values: 'language', 'embedding', 'image', 'video'."
-            )
-        ),
+        Query(description=("Type of model. Accepted values: 'language', 'embedding', 'image', 'video'.")),
     ] = "language",
 ):
     """Clear the default model for the current user.
@@ -992,9 +917,7 @@ async def clear_default_model(
         existing_var = await variable_service.get_variable_object(
             user_id=current_user.id, name=var_name, session=session
         )
-        await variable_service.delete_variable(
-            user_id=current_user.id, name=existing_var.name, session=session
-        )
+        await variable_service.delete_variable(user_id=current_user.id, name=existing_var.name, session=session)
     except ValueError:
         pass
     except HTTPException:

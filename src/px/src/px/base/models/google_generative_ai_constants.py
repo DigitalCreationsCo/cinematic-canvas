@@ -123,3 +123,30 @@ GOOGLE_GENERATIVE_AI_EMBEDDING_MODELS_DETAILED = [
     )
     for name in GOOGLE_GENERATIVE_AI_EMBEDDING_MODELS
 ]
+
+
+IMAGE_GENERATION_MODELS = ["models/gemini-2.5-flash-image"]
+
+IMAGE_GENERATION_MODELS_DETAILED = [
+    create_model_metadata(
+        provider="Google Generative AI",
+        name=name,
+        icon="GoogleGenerativeAI",
+        model_type="image_generation",
+        default=True,
+    )
+    for name in IMAGE_GENERATION_MODELS
+]
+
+VIDEO_GENERATION_MODELS = ["models/veo-2.0-generate-exp"]
+
+VIDEO_GENERATION_MODELS_DETAILED = [
+    create_model_metadata(
+        provider="Google Generative AI",
+        name=name,
+        icon="GoogleGenerativeAI",
+        model_type="video_generation",
+        default=True,
+    )
+    for name in VIDEO_GENERATION_MODELS
+]

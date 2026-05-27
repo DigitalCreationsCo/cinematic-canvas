@@ -1,6 +1,7 @@
 from .starter_projects import (
     basic_prompting_graph,
     blog_writer_graph,
+    cinematic_project_graph,
     document_qa_graph,
     memory_chatbot_graph,
     vector_store_rag_graph,
@@ -9,6 +10,7 @@ from .starter_projects import (
 
 def get_starter_projects_graphs():
     return [
+        cinematic_project_graph(),
         basic_prompting_graph(),
         blog_writer_graph(),
         document_qa_graph(),

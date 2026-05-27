@@ -23,6 +23,13 @@ export class UsersAndTeamsDbService {
     return user.teams;
   }
 
+  async getTeamById(teamId: string) {
+    const team = await db.query.teams.findFirst({
+      where: { id: teamId }
+    });
+    return team;
+  };
+
   async joinOrCreateTeam(userId: string, userEmail: string, name: string) {
     const [existingTeam] = await db
       .select()

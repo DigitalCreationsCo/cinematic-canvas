@@ -458,6 +458,9 @@ export const assetVersions = pgTable(
   }),
 );
 
+/**
+ * Media objects reference stored objects - solving deduplication and garbage collection for unused assets by pointing to a single stored object.
+ */
 export const mediaObjects = pgTable("media_objects", {
   data: text("data").primaryKey(),
   refCount: integer("ref_count").default(0).notNull(),

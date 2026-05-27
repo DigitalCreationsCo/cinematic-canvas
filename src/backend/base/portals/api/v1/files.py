@@ -10,6 +10,9 @@ from uuid import UUID
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from px.services.settings.service import SettingsService
+from px.utils.helpers import build_content_type_from_extension
+
 from portals.api.utils import (
     CurrentActiveUser,
     DbSession,
@@ -20,8 +23,6 @@ from portals.api.v1.schemas import UploadFileResponse
 from portals.services.database.models.flow.model import Flow
 from portals.services.deps import get_settings_service, get_storage_service
 from portals.services.storage.service import StorageService
-from px.services.settings.service import SettingsService
-from px.utils.helpers import build_content_type_from_extension
 
 router = APIRouter(tags=["Files"], prefix="/files")
 
@@ -55,9 +56,7 @@ def _get_allowed_profile_picture_folders(settings_service: SettingsService) -> s
         import logging
 
         logger = logging.getLogger(__name__)
-        logger.exception(
-            "Exception occurred while getting allowed profile picture folders"
-        )
+        logger.exception("Exception occurred while getting allowed profile picture folders")
 
     # Sensible defaults ensure tests and OOTB behavior
     return allowed or {"People", "Space"}
@@ -101,18 +100,12 @@ async def upload_file(
     # Authorization handled by get_flow dependency
     try:
         file_content = await file.read()
-        timestamp = (
-            datetime.now(tz=timezone.utc).astimezone().strftime("%Y-%m-%d_%H-%M-%S")
-        )
+        timestamp = datetime.now(tz=timezone.utc).astimezone().strftime("%Y-%m-%d_%H-%M-%S")
         file_name = file.filename or hashlib.sha256(file_content).hexdigest()
         full_file_name = f"{timestamp}_{file_name}"
         folder = str(flow.id)
-        await storage_service.save_file(
-            flow_id=folder, file_name=full_file_name, data=file_content
-        )
-        return UploadFileResponse(
-            flow_id=str(flow.id), file_path=f"{folder}/{full_file_name}"
-        )
+        await storage_service.save_file(flow_id=folder, file_name=full_file_name, data=file_content)
+        return UploadFileResponse(flow_id=str(flow.id), file_path=f"{folder}/{full_file_name}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -128,31 +121,23 @@ async def download_file(
     extension = file_name.split(".")[-1]
 
     if not extension:
-        raise HTTPException(
-            status_code=500, detail=f"Extension not found for file {file_name}"
-        )
+        raise HTTPException(status_code=500, detail=f"Extension not found for file {file_name}")
     try:
         content_type = build_content_type_from_extension(extension)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
     if not content_type:
-        raise HTTPException(
-            status_code=500, detail=f"Content type not found for extension {extension}"
-        )
+        raise HTTPException(status_code=500, detail=f"Content type not found for extension {extension}")
 
     try:
-        file_content = await storage_service.get_file(
-            flow_id=flow_id_str, file_name=file_name
-        )
+        file_content = await storage_service.get_file(flow_id=flow_id_str, file_name=file_name)
         headers = {
             "Content-Disposition": f"attachment; filename={file_name} filename*=UTF-8''{file_name}",
             "Content-Type": "application/octet-stream",
             "Content-Length": str(len(file_content)),
         }
-        return StreamingResponse(
-            BytesIO(file_content), media_type=content_type, headers=headers
-        )
+        return StreamingResponse(BytesIO(file_content), media_type=content_type, headers=headers)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -169,27 +154,19 @@ async def download_image(
     flow_id_str = str(flow.id)
 
     if not extension:
-        raise HTTPException(
-            status_code=500, detail=f"Extension not found for file {file_name}"
-        )
+        raise HTTPException(status_code=500, detail=f"Extension not found for file {file_name}")
     try:
         content_type = build_content_type_from_extension(extension)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
     if not content_type:
-        raise HTTPException(
-            status_code=500, detail=f"Content type not found for extension {extension}"
-        )
+        raise HTTPException(status_code=500, detail=f"Content type not found for extension {extension}")
     if not content_type.startswith("image"):
-        raise HTTPException(
-            status_code=500, detail=f"Content type {content_type} is not an image"
-        )
+        raise HTTPException(status_code=500, detail=f"Content type {content_type} is not an image")
 
     try:
-        file_content = await storage_service.get_file(
-            flow_id=flow_id_str, file_name=file_name
-        )
+        file_content = await storage_service.get_file(flow_id=flow_id_str, file_name=file_name)
         return StreamingResponse(BytesIO(file_content), media_type=content_type)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -225,18 +202,13 @@ async def download_profile_picture(
         config_path = Path(config_dir).resolve()  # type: ignore[arg-type]
 
         # Construct the file path
-        file_path = (
-            config_path / "profile_pictures" / safe_folder / safe_file
-        ).resolve()
+        file_path = (config_path / "profile_pictures" / safe_folder / safe_file).resolve()
 
         # SECURITY: Verify the resolved path is still within the allowed directory
         # This prevents path traversal even if symbolic links are involved.
         # Uses os.path.normpath + startswith (the pattern recognised by CodeQL as a sanitiser).
         allowed_base = str((config_path / "profile_pictures").resolve())
-        if not (
-            str(file_path).startswith(allowed_base + os.sep)
-            or str(file_path) == allowed_base
-        ):
+        if not (str(file_path).startswith(allowed_base + os.sep) or str(file_path) == allowed_base):
             raise HTTPException(status_code=404, detail="Profile picture not found")
 
         # Fallback to package bundled profile pictures if not found in config_dir
@@ -249,10 +221,7 @@ async def download_profile_picture(
             # SECURITY: Verify package path is also within allowed directory
             allowed_package_base = str(package_base.resolve())
             pkg_path_str = str(package_path)
-            if not (
-                pkg_path_str.startswith(allowed_package_base + os.sep)
-                or pkg_path_str == allowed_package_base
-            ):
+            if not (pkg_path_str.startswith(allowed_package_base + os.sep) or pkg_path_str == allowed_package_base):
                 raise HTTPException(status_code=404, detail="Profile picture not found")
 
             if package_path.exists():
@@ -296,9 +265,7 @@ async def list_profile_pictures(
             for folder in sorted(allowed_folders):
                 p = cfg_base / folder
                 if p.exists():
-                    results += [
-                        f"{folder}/{f.name}" for f in p.iterdir() if f.is_file()
-                    ]
+                    results += [f"{folder}/{f.name}" for f in p.iterdir() if f.is_file()]
 
         # Fallback to package if config_dir produced no results
         if not results:
@@ -308,9 +275,7 @@ async def list_profile_pictures(
             for folder in sorted(allowed_folders):
                 p = package_base / folder
                 if p.exists():
-                    results += [
-                        f"{folder}/{f.name}" for f in p.iterdir() if f.is_file()
-                    ]
+                    results += [f"{folder}/{f.name}" for f in p.iterdir() if f.is_file()]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 

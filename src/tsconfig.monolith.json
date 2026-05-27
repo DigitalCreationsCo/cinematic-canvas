@@ -1,33 +1,30 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "ignoreConfigErrors": true,
     "composite": true,
     "rootDir": ".",
     "outDir": "../dist",
     "paths": {
-      "#*": [
-        "./*"
-      ]
-    }
+      "#*": ["./*"],
+    },
   },
-  "include": [
-    "monolith.ts"
-  ],
+  "include": ["monolith.ts"],
   "references": [
     {
-      "path": "./shared"
+      "path": "./shared",
     },
     {
-      "path": "./worker"
+      "path": "./worker",
     },
     {
-      "path": "./client"
+      "path": "./client",
     },
     {
-      "path": "./pipeline"
+      "path": "./pipeline",
     },
     {
-      "path": "./server"
-    }
-  ]
+      "path": "./server",
+    },
+  ],
 }

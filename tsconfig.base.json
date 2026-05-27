@@ -7,11 +7,7 @@
     "rootDir": ".",
     "outDir": "./dist",
     "pretty": true,
-    "lib": [
-      "esnext",
-      "dom",
-      "dom.iterable"
-    ],
+    "lib": ["esnext", "dom", "dom.iterable"],
     "isolatedModules": true,
     "declaration": true,
     "declarationMap": true,
@@ -26,14 +22,12 @@
     "preserveConstEnums": true,
     "jsx": "react-jsx",
     "newLine": "lf",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "verbatimModuleSyntax": false,
     "noUncheckedIndexedAccess": false,
     "exactOptionalPropertyTypes": false,
     "noFallthroughCasesInSwitch": false,
-    "useDefineForClassFields": false
+    "useDefineForClassFields": false,
   },
   "exclude": [
     "**/node_modules",
@@ -42,6 +36,6 @@
     "**/*.test.*",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "**/coverage"
-  ]
+    "**/coverage",
+  ],
 }

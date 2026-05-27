@@ -29,14 +29,14 @@ from px.base.models.watsonx_constants import WATSONX_MODELS_DETAILED
 # ---------------------------------------------------------------------------
 
 try:
-    from px.base.models.image_generation_constants import (
+    from px.base.models.google_generative_ai_constants import (
         IMAGE_GENERATION_MODELS_DETAILED,
     )
 except ImportError:
     IMAGE_GENERATION_MODELS_DETAILED: list[dict] = []
 
 try:
-    from px.base.models.video_generation_constants import (
+    from px.base.models.google_generative_ai_constants import (
         VIDEO_GENERATION_MODELS_DETAILED,
     )
 except ImportError:
@@ -64,6 +64,8 @@ def get_models_detailed() -> list[list[dict]]:
         OLLAMA_MODELS_DETAILED,
         OLLAMA_EMBEDDING_MODELS_DETAILED,
         WATSONX_MODELS_DETAILED,
+        IMAGE_GENERATION_MODELS_DETAILED,
+        VIDEO_GENERATION_MODELS_DETAILED,
     ]
 
 
@@ -115,9 +117,7 @@ def _get_all_provider_specific_field_names() -> set[str]:
 
 def get_model_providers() -> list[str]:
     """Return a sorted list of unique provider names."""
-    return sorted(
-        {md.get("provider", "Unknown") for group in MODELS_DETAILED for md in group}
-    )
+    return sorted({md.get("provider", "Unknown") for group in MODELS_DETAILED for md in group})
 
 
 def get_provider_for_model_name(model_name: str) -> str:

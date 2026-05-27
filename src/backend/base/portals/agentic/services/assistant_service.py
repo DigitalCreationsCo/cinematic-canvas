@@ -7,6 +7,8 @@ from contextlib import aclosing
 from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException
+from px.log.logger import logger
+
 from portals.agentic.helpers.code_extraction import extract_component_code
 from portals.agentic.helpers.code_security import scan_code_security
 from portals.agentic.helpers.error_handling import extract_friendly_error
@@ -37,7 +39,6 @@ from portals.agentic.services.flow_types import (
     FlowExecutionError,
 )
 from portals.agentic.services.helpers.intent_classification import classify_intent
-from px.log.logger import logger
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine
@@ -129,9 +130,7 @@ async def execute_flow_with_validation(
         logger.warning(f"Validation failed (attempt {attempt}): {validation.error}")
 
         if attempt > max_retries:
-            logger.error(
-                f"Max retries ({max_retries}) reached. Returning last result with error."
-            )
+            logger.error(f"Max retries ({max_retries}) reached. Returning last result with error.")
             return {
                 **result,
                 "validated": False,
@@ -139,9 +138,7 @@ async def execute_flow_with_validation(
                 "validation_attempts": attempt,
             }
 
-        current_input = VALIDATION_RETRY_TEMPLATE.format(
-            error=validation.error, code=code
-        )
+        current_input = VALIDATION_RETRY_TEMPLATE.format(error=validation.error, code=code)
         logger.info("Retrying with error context...")
 
     # Safety return: the while loop always returns via internal checks above
@@ -210,9 +207,7 @@ async def execute_flow_with_validation_streaming(
 
     # Check if this is a component generation request based on LLM classification
     is_component_request = intent_result.intent == "generate_component"
-    logger.info(
-        f"Intent classification: {intent_result.intent} (is_component_request={is_component_request})"
-    )
+    logger.info(f"Intent classification: {intent_result.intent} (is_component_request={is_component_request})")
 
     # Create cancel event for propagating cancellation to flow executor
     cancel_event = asyncio.Event()
@@ -236,14 +231,10 @@ async def execute_flow_with_validation_streaming(
                 yield format_cancelled_event()
                 return
 
-            logger.debug(
-                f"Starting attempt {attempt}, is_disconnected provided: {is_disconnected is not None}"
-            )
+            logger.debug(f"Starting attempt {attempt}, is_disconnected provided: {is_disconnected is not None}")
 
             # Step 1: Generating (different step name based on intent)
-            step_name: StepType = (
-                "generating_component" if is_component_request else "generating"
-            )
+            step_name: StepType = "generating_component" if is_component_request else "generating"
             yield format_progress_event(
                 step_name,
                 attempt + 1,
@@ -301,9 +292,7 @@ async def execute_flow_with_validation_streaming(
                 return
 
             if execution_error is not None:
-                logger.error(
-                    f"Flow execution failed (attempt {attempt + 1}): {execution_error}"
-                )
+                logger.error(f"Flow execution failed (attempt {attempt + 1}): {execution_error}")
 
                 # Q&A has no retry semantics — emit error and exit immediately
                 if not is_component_request:
@@ -436,9 +425,7 @@ async def execute_flow_with_validation_streaming(
                 # before the component is handed to the user.
                 runtime_error = await validate_component_runtime(code, user_id=user_id)
                 if runtime_error:
-                    logger.warning(
-                        f"Runtime validation failed (attempt {attempt}): {runtime_error}"
-                    )
+                    logger.warning(f"Runtime validation failed (attempt {attempt}): {runtime_error}")
                     validation = type(validation)(
                         is_valid=False,
                         code=code,
@@ -447,9 +434,7 @@ async def execute_flow_with_validation_streaming(
                     )
 
             if validation.is_valid:
-                logger.info(
-                    f"Component '{validation.class_name}' validated successfully"
-                )
+                logger.info(f"Component '{validation.class_name}' validated successfully")
                 yield format_progress_event(
                     "validated",
                     attempt,
@@ -507,9 +492,7 @@ async def execute_flow_with_validation_streaming(
             )
             await asyncio.sleep(VALIDATION_UI_DELAY_SECONDS)
 
-            current_input = VALIDATION_RETRY_TEMPLATE.format(
-                error=validation.error, code=code
-            )
+            current_input = VALIDATION_RETRY_TEMPLATE.format(error=validation.error, code=code)
     finally:
         # Always set cancel event when generator exits to stop any pending flow execution
         logger.debug("Assistant generator exiting, setting cancel event")

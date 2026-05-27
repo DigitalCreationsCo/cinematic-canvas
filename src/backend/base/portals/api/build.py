@@ -6,6 +6,7 @@ import uuid
 from collections.abc import AsyncIterator
 
 from fastapi import BackgroundTasks, HTTPException, Response
+from px.components.tools.global_tools import inject_global_tools_into_vertex, is_agent_vertex
 from px.graph.graph.base import Graph
 from px.graph.utils import log_vertex_build
 from px.log.logger import logger
@@ -50,7 +51,7 @@ def _log_component_input_telemetry(
                 ComponentInputsPayload(
                     component_run_id=component_run_id,
                     component_id=vertex_id,
-                    component_name=vertex_id.split("-")[0],
+                    component_name=vertex_id.split("-", maxsplit=1)[0],
                     component_inputs=inputs_dict,
                 ),
             )
@@ -71,27 +72,7 @@ async def start_flow_build(
     flow_name: str | None = None,
     source_flow_id: uuid.UUID | None = None,
 ) -> str:
-    """Start the flow build process by setting up the queue and starting the build task.
-
-    Args:
-        flow_id: The flow ID used for tracking, sessions, and messages.
-        background_tasks: FastAPI background tasks for async operations.
-        inputs: Optional input values for the flow.
-        data: Optional flow data request.
-        files: Optional list of file paths.
-        stop_component_id: Optional component ID to stop at.
-        start_component_id: Optional component ID to start from.
-        log_builds: Whether to log build events.
-        current_user: The currently authenticated user.
-        queue_service: The job queue service instance.
-        flow_name: Optional flow name override.
-        source_flow_id: If provided, the actual flow ID to load from DB.
-            Used by public flows where flow_id is a virtual UUID for session isolation
-            but the flow data must be loaded from the original flow in the database.
-
-    Returns:
-        the job_id.
-    """
+    """Start the flow build process by setting up the queue and starting the build task."""
     job_id = str(uuid.uuid4())
     try:
         _, event_manager = queue_service.create_queue(job_id)
@@ -135,34 +116,28 @@ async def get_flow_events_response(
                 event_task=event_task,
             )
 
-        # Polling mode - get all available events
+        # Polling mode — get all available events
         try:
             events: list = []
-            # Get all available events from the queue without blocking
             while not main_queue.empty():
                 _, value, _ = await main_queue.get()
                 if value is None:
-                    # End of stream, trigger end event
                     if event_task is not None:
                         event_task.cancel()
                     event_manager.on_end(data={})
-                    # Include the end event
                     events.append(None)
                     break
                 events.append(value.decode("utf-8"))
 
-            # If no events were available, wait for one (with timeout)
             if not events:
                 _, value, _ = await main_queue.get()
                 if value is None:
-                    # End of stream, trigger end event
                     if event_task is not None:
                         event_task.cancel()
                     event_manager.on_end(data={})
                 else:
                     events.append(value.decode("utf-8"))
 
-            # Return as NDJSON format - each line is a complete JSON object
             content = "\n".join([event for event in events if event is not None])
             return Response(content=content, media_type="application/x-ndjson")
         except asyncio.CancelledError as exc:
@@ -170,7 +145,7 @@ async def get_flow_events_response(
             raise HTTPException(status_code=499, detail="Event polling was cancelled") from exc
         except asyncio.TimeoutError:
             await logger.awarning(f"Timeout while waiting for events for job {job_id}")
-            return Response(content="", media_type="application/x-ndjson")  # Return empty response instead of error
+            return Response(content="", media_type="application/x-ndjson")
 
     except JobQueueNotFoundError as exc:
         await logger.aerror(f"Job not found: {job_id}. Error: {exc!s}")
@@ -229,13 +204,7 @@ async def generate_flow_events(
     flow_name: str | None = None,
     source_flow_id: uuid.UUID | None = None,
 ) -> None:
-    """Generate events for flow building process.
-
-    This function handles the core flow building logic and generates appropriate events:
-    - Building and validating the graph
-    - Processing vertices
-    - Handling errors and cleanup
-    """
+    """Generate events for flow building process."""
     chat_service = get_chat_service()
     telemetry_service = get_telemetry_service()
     if not inputs:
@@ -248,7 +217,6 @@ async def generate_flow_events(
         run_id = str(uuid.uuid4())
         try:
             flow_id_str = str(flow_id)
-            # Create a fresh session for database operations
             async with session_scope() as fresh_session:
                 graph = await create_graph(fresh_session, flow_id_str, flow_name)
 
@@ -258,9 +226,6 @@ async def generate_flow_events(
             for vertex_id in first_layer:
                 graph.run_manager.add_to_vertices_being_run(vertex_id)
 
-            # Now vertices is a list of lists
-            # We need to get the id of each vertex
-            # and return the same structure but only with the ids
             components_count = len(graph.vertices)
             vertices_to_run = list(graph.vertices_to_run.union(get_top_level_vertices(graph, graph.vertices_to_run)))
 
@@ -302,8 +267,6 @@ async def generate_flow_events(
             effective_session_id = flow_id_str
 
         if not data:
-            # For public flows, source_flow_id is the real DB ID, flow_id is virtual.
-            # Load from DB using the real ID, then override graph.flow_id with virtual.
             db_flow_id = source_flow_id if source_flow_id is not None else flow_id
             graph = await build_graph_from_db(
                 flow_id=db_flow_id,
@@ -344,6 +307,20 @@ async def generate_flow_events(
 
         try:
             vertex = graph.get_vertex(vertex_id)
+
+            if is_agent_vertex(vertex):
+                try:
+                    inject_global_tools_into_vertex(
+                        vertex,
+                        flow_id=flow_id,  # already available here
+                        event_manager=event_manager,  # already available here
+                    )
+                    await logger.adebug(f"Global tools injected into agent vertex {vertex_id}")
+                except Exception as exc:  # noqa: BLE001
+                    # Tool injection is non-critical — log and continue
+                    await logger.awarning(f"Global tool injection failed for {vertex_id}: {exc}")
+            # ─────────────────────────────────────────────────────────────────
+
             try:
                 lock = chat_service.async_cache_locks[flow_id_str]
                 vertex_build_result = await graph.build_vertex(
@@ -382,7 +359,6 @@ async def generate_flow_events(
 
             result_data_response.message = artifacts
 
-            # Log the vertex build
             if not vertex.will_stream and log_builds:
                 background_tasks.add_task(
                     log_vertex_build,
@@ -397,23 +373,15 @@ async def generate_flow_events(
                 await chat_service.set_cache(flow_id_str, graph)
 
             timedelta = time.perf_counter() - start_time
-
             duration = format_elapsed_time(timedelta)
             result_data_response.duration = duration
             result_data_response.timedelta = timedelta
             vertex.add_build_time(timedelta)
-            # Capture both inactivated and conditionally excluded vertices
+
             inactivated_vertices = list(graph.inactivated_vertices.union(graph.conditionally_excluded_vertices))
             graph.reset_inactivated_vertices()
             graph.reset_activated_vertices()
 
-            # Note: Do not reset conditionally_excluded_vertices each iteration
-            # This is handled by the ConditionalRouter component
-
-            # graph.stop_vertex tells us if the user asked
-            # to stop the build of the graph at a certain vertex
-            # if it is in next_vertices_ids, we need to remove other
-            # vertices from next_vertices_ids
             if graph.stop_vertex and graph.stop_vertex in next_runnable_vertices:
                 next_runnable_vertices = [graph.stop_vertex]
 
@@ -430,14 +398,12 @@ async def generate_flow_events(
                 data=result_data_response,
             )
 
-            # Extract and send component input telemetry (separate payload)
             _log_component_input_telemetry(vertex, vertex_id, graph.run_id, background_tasks, telemetry_service)
 
-            # Send component execution telemetry
             background_tasks.add_task(
                 telemetry_service.log_package_component,
                 ComponentPayload(
-                    component_name=vertex_id.split("-")[0],
+                    component_name=vertex_id.split("-", maxsplit=1)[0],
                     component_id=vertex_id,
                     component_seconds=int(time.perf_counter() - start_time),
                     component_success=valid,
@@ -447,14 +413,12 @@ async def generate_flow_events(
             )
         except Exception as exc:
             if "vertex" in locals():
-                # Extract and send component input telemetry even on error (separate payload)
                 _log_component_input_telemetry(vertex, vertex_id, graph.run_id, background_tasks, telemetry_service)
 
-            # Send component execution telemetry (error case)
             background_tasks.add_task(
                 telemetry_service.log_package_component,
                 ComponentPayload(
-                    component_name=vertex_id.split("-")[0],
+                    component_name=vertex_id.split("-", maxsplit=1)[0],
                     component_id=vertex_id,
                     component_seconds=int(time.perf_counter() - start_time),
                     component_success=False,
@@ -474,25 +438,15 @@ async def generate_flow_events(
         event_manager: EventManager,
         vertex_timedeltas: list[float],
     ) -> None:
-        """Build vertices and handle their events.
-
-        Args:
-            vertex_id: The ID of the vertex to build
-            graph: The graph instance
-            event_manager: Manager for handling events
-            vertex_timedeltas: Shared list to accumulate each vertex's timedelta
-        """
         try:
             vertex_build_response: VertexBuildResponse = await _build_vertex(vertex_id, graph, event_manager)
         except asyncio.CancelledError as exc:
             await logger.ainfo(f"Build cancelled: {exc}")
             raise
 
-        # Accumulate the vertex timedelta
         if vertex_build_response.data.timedelta is not None:
             vertex_timedeltas.append(vertex_build_response.data.timedelta)
 
-        # send built event or error event
         try:
             vertex_build_response_json = vertex_build_response.model_dump_json()
             build_data = json.loads(vertex_build_response_json)
@@ -564,52 +518,31 @@ async def cancel_flow_build(
     job_id: str,
     queue_service: JobQueueService,
 ) -> bool:
-    """Cancel an ongoing flow build job.
-
-    Args:
-        job_id: The unique identifier of the job to cancel
-        queue_service: The service managing job queues
-
-    Returns:
-        True if the job was successfully canceled or doesn't need cancellation
-        False if the cancellation failed
-
-    Raises:
-        ValueError: If the job doesn't exist
-        asyncio.CancelledError: If the task cancellation failed
-    """
-    # Get the event task and event manager for the job
+    """Cancel an ongoing flow build job."""
     _, _, event_task, _ = queue_service.get_queue_data(job_id)
 
     if event_task is None:
         await logger.awarning(f"No event task found for job_id {job_id}")
-        return True  # Nothing to cancel is still a success
+        return True
 
     if event_task.done():
         await logger.ainfo(f"Task for job_id {job_id} is already completed")
-        return True  # Nothing to cancel is still a success
+        return True
 
-    # Store the task reference to check status after cleanup
     task_before_cleanup = event_task
 
     try:
-        # Perform cleanup using the queue service
         await queue_service.cleanup_job(job_id)
     except asyncio.CancelledError:
-        # Check if the task was actually cancelled
         if task_before_cleanup.cancelled():
             await logger.ainfo(f"Successfully cancelled flow build for job_id {job_id} (CancelledError caught)")
             return True
-        # If the task wasn't cancelled, re-raise the exception
         await logger.aerror(f"CancelledError caught but task for job_id {job_id} was not cancelled")
         raise
 
-    # If no exception was raised, verify that the task was actually cancelled
-    # The task should be done (cancelled) after cleanup
     if task_before_cleanup.cancelled():
         await logger.ainfo(f"Successfully cancelled flow build for job_id {job_id}")
         return True
 
-    # If we get here, the task wasn't cancelled properly
     await logger.aerror(f"Failed to cancel flow build for job_id {job_id}, task is still running")
     return False
