@@ -265,31 +265,52 @@ export class TextModelController extends BaseChatModel<ProviderChatModelCallOpti
   async generateImages(
     params: { model?: string } & Omit<Parameters<ITextModelProvider["generateImages"]>[0], "model">,
   ): ReturnType<ITextModelProvider["generateImages"]> {
-    try {
-      await GlobalCooldown.wait();
-      const timeStartMs = Date.now();
-      const result = await this.provider.generateImages({
-        ...params,
-        model: params.model || this.modelCurrentImage,
-      });
-      PromptLogger.log({
-        model: params.model || this.modelCurrentImage,
-        type: "image",
-        input: params.prompt,
-        parameters: params,
-        provider: this.nameProvider,
-        output: result,
-        timeRequestStartMs: timeStartMs,
-        timeRequestEndMs: Date.now(),
-        tags: [],
-      });
-      this.handleGenerationSuccess("image");
-      GlobalCooldown.markCallComplete();
-      return result;
-    } catch (error) {
-      GlobalCooldown.markCallComplete();
-      this.handleGenerationError("image", error);
-      throw error;
+    const MAX_RETRIES = 3;
+    let retryDelayMs = 2000;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await GlobalCooldown.wait();
+        const timeStartMs = Date.now();
+        const result = await this.provider.generateImages({
+          ...params,
+          model: params.model || this.modelCurrentImage,
+        });
+        PromptLogger.log({
+          model: params.model || this.modelCurrentImage,
+          type: "image",
+          input: params.prompt,
+          parameters: params,
+          provider: this.nameProvider,
+          output: result,
+          timeRequestStartMs: timeStartMs,
+          timeRequestEndMs: Date.now(),
+          tags: [],
+        });
+        this.handleGenerationSuccess("image");
+        GlobalCooldown.markCallComplete();
+        return result;
+      } catch (error) {
+        GlobalCooldown.markCallComplete();
+        this.handleGenerationError("image", error);
+
+        // Retry on rate limit (429) with exponential backoff.
+        // handleGenerationError already round-robins the model, so the retry
+        // may hit a different endpoint with fresh quota.
+        const isRateLimit = (error as any)?.status === 429 || (error as any)?.code === 429;
+        if (isRateLimit && attempt < MAX_RETRIES) {
+          console.warn(
+            { attempt, maxRetries: MAX_RETRIES, nextModel: this.modelCurrentImage },
+            `Rate limit (429) on image generation. Backoff ${retryDelayMs}ms then retry.`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+          retryDelayMs *= 2; // exponential backoff
+          continue;
+        }
+
+        // Non-retryable or exhausted: throw
+        throw error;
+      }
     }
   }
 
