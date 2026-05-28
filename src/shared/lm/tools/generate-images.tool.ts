@@ -145,10 +145,19 @@ async function generateImagesParallel(
     context: ToolContext<TextModelController>
 ): Promise<GenerateImageResult[]> {
     const { traceId } = context;
-    console.log(`[${traceId}] Parallel: generating for ${requests.length} request(s)`);
+    const STAGGER_MS = 1500;
+    console.log(`[${traceId}] Parallel: generating for ${requests.length} request(s) (stagger=${STAGGER_MS}ms)`);
 
     return Promise.all(
-        requests.map(async (req): Promise<GenerateImageResult> => {
+        requests.map(async (req, index): Promise<GenerateImageResult> => {
+            // Stagger each request by index * STAGGER_MS to avoid rate limits.
+            // Index-based staggering works correctly with Promise.all because
+            // `index` is captured at callback creation time (before any await),
+            // unlike GlobalCooldown which all callbacks read simultaneously.
+            if (index > 0) {
+                await new Promise((resolve) => setTimeout(resolve, index * STAGGER_MS));
+            }
+
             const count = req.count ?? 3;
             try {
                 const response = await context.provider.generateImages({

@@ -419,6 +419,12 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
 
     const results = await Promise.all(
       requests.map(async (req, indexReq) => {
+        // Stagger requests by index * 1500ms to avoid rate limits on image generation,
+        // mirroring the pattern in executeSimulatedContentBatch. Index-based staggering
+        // works with Promise.all because `indexReq` is captured at callback creation time,
+        // before any await is reached (unlike a shared-state cooldown).
+        await new Promise((resolve) => setTimeout(resolve, indexReq * delayStaggerBaseMs));
+
         const reqToContents = convertMessagesToGoogle(req.messages);
 
         try {
