@@ -120,7 +120,10 @@ export class ContinuityManagerAgent {
     }
 
     let iterationCount = 0;
-    const maxIterations = totalRequiredTasks + 1; // Strict upper bound
+    // The DAG depth is bounded by the longest dependency chain, which is at most scenes.length
+    // (each pass unblocks one deferred layer). Using totalRequiredTasks is too tight and
+    // would abort valid multi-layer chains prematurely.
+    const maxIterations = scenes.length + 1;
 
     while (completedTasks.size + failedTasks.size < totalRequiredTasks) {
       iterationCount++;
@@ -208,7 +211,12 @@ export class ContinuityManagerAgent {
 
         } catch (error) {
           console.error(logContext, `[ContinuityManager] Frame generation iteration failed`, error);
-          currentIterationPromptRequests.forEach(req => failedTasks.add(`${req.scene.id}_${req.metadata?.assetKey}`));
+          // Only mark the tasks that were actively dispatched in this iteration as failed.
+          // Do NOT mark deferred tasks (not present in currentIterationPromptRequests) as failed —
+          // they have not been attempted yet and must remain eligible for future iterations.
+          qualityItems.forEach(item =>
+            failedTasks.add(`${item.scene.id}_${item.request.framePosition === "start" ? "scene_start_frame" : "scene_end_frame"}`)
+          );
         }
       }
 
@@ -241,12 +249,20 @@ export class ContinuityManagerAgent {
 
     sendEntityUpdate(finalUpdates.map(u => ({ id: u.id, entityType: "scene", entity: u })));
 
+    // Merge computed status into the scene objects so callers (worker-service)
+    // persist the correct complete/pending status rather than the raw input.
+    const statusBySceneId = new Map(finalUpdates.map(u => [u.id, u.status]));
+    const updatedScenes = scenes.map(s => ({
+      ...s,
+      status: statusBySceneId.get(s.id) ?? s.status,
+    }));
+
     const deferredSceneIds = scenes
       .filter(s => !scopeAssetKeys.every(k => completedTasks.has(`${s.id}_${k}`) || failedTasks.has(`${s.id}_${k}`)))
       .map(s => s.id);
 
     return {
-      data: { updatedScenes: scenes, deferredSceneIds },
+      data: { updatedScenes, deferredSceneIds },
       metadata: { model: this.imageModel.imageModel, attempts: iterationCount, acceptedAttempt: 1 },
     };
   }
@@ -287,11 +303,26 @@ export class ContinuityManagerAgent {
 
     const generatedPrompts = await generateFrameGenerationPrompts(promptRequests, promptToolContext);
 
+    // Build a lookup of prompt by scene-frame key from the LLM results.
+    // Each prompt carries the original custom_id + assetKey in its metadata, so
+    // we can match regardless of LLM reordering, deduplication, or re-emission.
+    const promptBySceneFrameKey = new Map<string, string>();
+    for (const p of generatedPrompts) {
+      const key = `${p.metadata.custom_id}:${p.metadata.assetKey}`;
+      if (p.prompt) {
+        promptBySceneFrameKey.set(key, p.prompt);
+      }
+    }
+
     const items: SceneFrameQualityItem[] = [];
 
-    for (let i = 0; i < generatedPrompts.length; i++) {
-      const { prompt } = generatedPrompts[ i ];
-      const { scene, assetKey } = contexts[ i ];
+    for (const { scene, assetKey } of contexts) {
+      const key = `${scene.id}:${assetKey}`;
+      const prompt = promptBySceneFrameKey.get(key);
+      if (!prompt) {
+        console.warn({ sceneId: scene.id, assetKey }, `[ContinuityManager] No LLM prompt returned — skipping frame`);
+        continue;
+      }
 
       // Bypass LLM generation (overridePrompt provided), extract base context
       const inputs = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
@@ -379,15 +410,14 @@ export class ContinuityManagerAgent {
     const { characters, locations, scenes } = project;
     const generationRules = project.generationRules || [];
 
-    const previousSceneIndex = scenes.findIndex((s) => s.id === scene.id) - 1;
-    const previousScene = previousSceneIndex >= 0 ? scenes[previousSceneIndex] : undefined;
+    const previousScene = scenes.find((s) => s.sceneIndex === scene.sceneIndex - 1);
 
     const previousAssets = getAllBestAssets(previousScene?.assets);
     const currentAssets = getAllBestAssets(scene.assets);
 
-    const prevSceneEndFrame = previousAssets["scene_end_frame"]?.data;
-    const sceneStartFrame = currentAssets["scene_start_frame"]?.data;
-    const sceneEndFrame = currentAssets["scene_end_frame"]?.data;
+    const prevSceneEndFrame = previousAssets[ "scene_end_frame" ]?.data;
+    const sceneStartFrame = currentAssets[ "scene_start_frame" ]?.data;
+    const sceneEndFrame = currentAssets[ "scene_end_frame" ]?.data;
 
     const previousSceneEndReferenceImage: BaseImage | undefined = prevSceneEndFrame
       ? { referenceType: "base", referenceImage: { gcsUri: prevSceneEndFrame, mimeType: imageMimeType } }
@@ -411,7 +441,7 @@ export class ContinuityManagerAgent {
         const assets = getAllBestAssets(c.assets);
         return {
           referenceType: "subject" as const,
-          referenceImage: { gcsUri: assets["character_image"]?.data, mimeType: imageMimeType },
+          referenceImage: { gcsUri: assets[ "character_image" ]?.data, mimeType: imageMimeType },
           config: {
             subjectType: "SUBJECT_TYPE_PERSON" as const,
             subjectDescription: `${c.name}:\nHair: ${c.physicalTraits.hair}\nClothing: ${typeof c.physicalTraits.clothing === "string"
@@ -432,7 +462,7 @@ export class ContinuityManagerAgent {
     const locationReferenceImages: BaseImage[] = [
       {
         referenceType: "base" as const,
-        referenceImage: { gcsUri: locationAssets["location_image"]?.data, mimeType: imageMimeType },
+        referenceImage: { gcsUri: locationAssets[ "location_image" ]?.data, mimeType: imageMimeType },
       },
     ].filter((r) => r.referenceImage.gcsUri);
 
@@ -444,7 +474,7 @@ export class ContinuityManagerAgent {
       const metaPrompt = composeEnhancedSceneGenerationPromptMeta(scene, charactersInScene, locations, previousScene);
 
       const response = await this.lm.generateContent({
-        messages: [new SystemMessage({ content: systemPrompt }), new UserMessage({ content: metaPrompt })],
+        messages: [ new SystemMessage({ content: systemPrompt }), new UserMessage({ content: metaPrompt }) ],
         config: {
           abortSignal: this.options?.signal,
           // thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
@@ -484,12 +514,12 @@ export class ContinuityManagerAgent {
     }
   ): Promise<GenerativeResultGenerateCharacterAssets> {
     const opStartTime = Date.now();
-    const projectId = characters[0].projectId;
+    const projectId = characters[ 0 ].projectId;
     const traceId = `generate_character_assets_${projectId}_${opStartTime}`;
     const executionMode = getExecutionMode();
 
     if (this.qualityAgent.qualityConfig.enabled) {
-      const contextMap = new Map<string, { character: Character; version: number; prompt: string }>();
+      const contextMap = new Map<string, { character: Character; version: number; prompt: string; }>();
 
       const result = await QualityRetryHandler.executeBatch(
         characters,
@@ -508,7 +538,7 @@ export class ContinuityManagerAgent {
           generate: async (_characters, attempt) => {
             const characterWithVersions = await Promise.all(
               _characters.map(async (char) => {
-                const [version] = await this.assetManager.getNextVersionNumber({ projectId, characterIds: [char.id] }, [
+                const [ version ] = await this.assetManager.getNextVersionNumber({ projectId, characterIds: [ char.id ] }, [
                   "character_image",
                 ]);
                 return { ...char, version };
@@ -541,7 +571,7 @@ export class ContinuityManagerAgent {
                 metadata.push(imageMetadata);
               });
 
-            saveAssets({ projectId, characterIds }, ["character_image"], "image", src, metadata, true);
+            saveAssets({ projectId, characterIds }, [ "character_image" ], "image", src, metadata, true);
             return result;
           },
           evaluate: async () => ({ score: 1, grade: "A", reasoning: "Pass", pass: true }) as any,
@@ -558,13 +588,13 @@ export class ContinuityManagerAgent {
     ) {
       // Inline batch path for PARALLEL/BATCH without quality checking.
       // TODO: migrate to generateCharacterImages tool (which handles modes internally).
-      const contextMap = new Map<string, { character: Character; version: number; prompt: string }>();
-      const batchRequests: GenerateBatchImagesParameters["requests"] = [];
+      const contextMap = new Map<string, { character: Character; version: number; prompt: string; }>();
+      const batchRequests: GenerateBatchImagesParameters[ "requests" ] = [];
 
       for (const char of characters) {
         let ctx = contextMap.get(char.id);
         if (!ctx) {
-          const [version] = await this.assetManager.getNextVersionNumber({ projectId, characterIds: [char.id] }, [
+          const [ version ] = await this.assetManager.getNextVersionNumber({ projectId, characterIds: [ char.id ] }, [
             "character_image",
           ]);
           const prompt = buildCharacterImagePrompt(char, generationRules);
@@ -573,12 +603,12 @@ export class ContinuityManagerAgent {
         }
 
         batchRequests.push({
-          messages: [new UserMessage({ content: ctx.prompt })],
+          messages: [ new UserMessage({ content: ctx.prompt }) ],
           metadata: { custom_id: char.id, version: ctx.version, assetKey: "character_image" },
           config: {
             abortSignal: this.options?.signal,
             candidateCount: 1,
-            responseModalities: [Modality.IMAGE],
+            responseModalities: [ Modality.IMAGE ],
             seed: Math.floor(Math.random() * 1000000),
             imageConfig: { ...aspectRatios.vertical, outputMimeType: imageMimeType },
           },
@@ -626,11 +656,11 @@ export class ContinuityManagerAgent {
               });
               const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
               saveAssets(
-                { projectId, characterIds: [item.id] },
-                ["character_image"],
+                { projectId, characterIds: [ item.id ] },
+                [ "character_image" ],
                 "image",
-                [src],
-                [{ model: this.lm.imageModel, prompt: ctx.prompt, promptModel: this.lm.textModel }],
+                [ src ],
+                [ { model: this.lm.imageModel, prompt: ctx.prompt, promptModel: this.lm.textModel } ],
                 true,
               );
               console.log(` ✓ Saved character image: ${this.storageManager.getPublicUrl(src)}`);
@@ -646,9 +676,9 @@ export class ContinuityManagerAgent {
       // SEQUENTIAL path without quality checking
       for (const character of characters) {
         console.log(`\n🎨 Checking for existing reference images for ${characters.length} characters...`);
-        const [version] = await this.assetManager.getNextVersionNumber(
-          { projectId: character.projectId, characterIds: [character.id] },
-          ["character_image"],
+        const [ version ] = await this.assetManager.getNextVersionNumber(
+          { projectId: character.projectId, characterIds: [ character.id ] },
+          [ "character_image" ],
         );
         const imageExists = hasAssetVersion(character.assets, "character_image", version);
 
@@ -658,7 +688,7 @@ export class ContinuityManagerAgent {
           console.log(` → Generating: ${character.name}`);
           try {
             const imagePrompt = buildCharacterImagePrompt(character, generationRules);
-            const [imageData] = extractGeneratedResponse(
+            const [ imageData ] = extractGeneratedResponse(
               "image",
               await executeWithRetry(
                 (params) =>
@@ -697,11 +727,11 @@ export class ContinuityManagerAgent {
             const gcsUri = await this.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
 
             saveAssets(
-              { projectId, characterIds: [character.id] },
-              ["character_image"],
+              { projectId, characterIds: [ character.id ] },
+              [ "character_image" ],
               "image",
-              [gcsUri],
-              [{ model: this.lm.imageModel, prompt: imagePrompt, promptModel: this.lm.textModel }],
+              [ gcsUri ],
+              [ { model: this.lm.imageModel, prompt: imagePrompt, promptModel: this.lm.textModel } ],
               true,
             );
             console.log(` ✓ Saved character image: ${this.storageManager.getPublicUrl(gcsUri)}`);
@@ -742,15 +772,15 @@ export class ContinuityManagerAgent {
     generationRules: string[],
     saveAssets: SaveAssetsCallback,
     incrementAttempt: IncrementAttemptHook,
-    context: { userId: string, teamId: string }
+    context: { userId: string, teamId: string; }
   ): Promise<GenerativeResultGenerateLocationAssets> {
     const opStartTime = Date.now();
-    const projectId = locations[0].projectId;
+    const projectId = locations[ 0 ].projectId;
     const traceId = `generate_location_assets_${projectId}_${opStartTime}`;
 
     const locationsWithVersions = await Promise.all(
       locations.map(async (loc) => {
-        const [version] = await this.assetManager.getNextVersionNumber({ projectId, locationIds: [loc.id] }, [
+        const [ version ] = await this.assetManager.getNextVersionNumber({ projectId, locationIds: [ loc.id ] }, [
           "location_image",
         ]);
         return { ...loc, version };
@@ -808,7 +838,7 @@ export class ContinuityManagerAgent {
               });
 
             if (locationIds.length > 0) {
-              saveAssets({ projectId, locationIds }, ["location_image"], "image", src, metadata, true);
+              saveAssets({ projectId, locationIds }, [ "location_image" ], "image", src, metadata, true);
             }
             return result;
           },
@@ -841,7 +871,7 @@ export class ContinuityManagerAgent {
       });
 
       if (locationIds.length > 0) {
-        saveAssets({ projectId, locationIds }, ["location_image"], "image", src, metadata, true);
+        saveAssets({ projectId, locationIds }, [ "location_image" ], "image", src, metadata, true);
       }
     }
 

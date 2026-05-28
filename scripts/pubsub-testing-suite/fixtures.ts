@@ -38,8 +38,8 @@ export const PIPELINE_JOB_TYPES: PublishableEventType[] = [
   "PROCESS_AUDIO_TO_SCENES",
   "ENHANCE_STORYBOARD",
   "SEMANTIC_ANALYSIS",
-  "GENERATE_CHARACTER_ASSETS",
-  "GENERATE_LOCATION_ASSETS",
+  "GENERATE_CHARACTER_IMAGES",
+  "GENERATE_LOCATION_IMAGES",
   "GENERATE_SCENE_FRAMES",
   "GENERATE_SCENE_VIDEO",
   "RENDER_VIDEO",
@@ -321,7 +321,7 @@ const TestScenarios = {
         },
       ),
       createTestJob(
-        "GENERATE_CHARACTER_ASSETS",
+        "GENERATE_CHARACTER_IMAGES",
         {
           projectId: pid,
           uniqueKey: `char-assets-${timestamp}`,
@@ -333,7 +333,7 @@ const TestScenarios = {
         },
       ),
       createTestJob(
-        "GENERATE_LOCATION_ASSETS",
+        "GENERATE_LOCATION_IMAGES",
         {
           projectId: pid,
           uniqueKey: `loc-assets-${timestamp}`,
@@ -391,7 +391,7 @@ const TestScenarios = {
     const timestamp = Date.now();
     return Promise.all([
       createTestJob(
-        "GENERATE_CHARACTER_ASSETS",
+        "GENERATE_CHARACTER_IMAGES",
         {
           projectId: pid,
           uniqueKey: `batch-char-${timestamp}`,
@@ -400,7 +400,7 @@ const TestScenarios = {
         context,
       ),
       createTestJob(
-        "GENERATE_LOCATION_ASSETS",
+        "GENERATE_LOCATION_IMAGES",
         {
           projectId: pid,
           uniqueKey: `batch-loc-${timestamp}`,

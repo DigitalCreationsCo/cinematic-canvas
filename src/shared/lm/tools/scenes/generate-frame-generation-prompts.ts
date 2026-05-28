@@ -84,7 +84,7 @@ export async function generateFrameGenerationPrompts(
             metadata: { ...req.metadata },
             config: {
                 abortSignal: context.options?.signal,
-                thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+                // thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
             },
         };
     });

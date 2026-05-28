@@ -14,10 +14,10 @@
   "license": "MIT",
   "scripts": {
     "dev:server": "node -max-old-space-size=512 --import tsx scripts/dev-runner.ts src/server/index.ts",
-    "worker": "node -max-old-space-size=512 scripts/dev-runner.ts tsx --watch src/worker/index.ts",
-    "pipeline": "node -max-old-space-size=512 scripts/dev-runner.ts tsx --watch src/pipeline/index.ts",
+    "worker": "node -max-old-space-size=512 --import tsx scripts/dev-runner.ts --watch src/worker/index.ts",
+    "pipeline": "node -max-old-space-size=512 --import tsx scripts/dev-runner.ts --watch src/pipeline/index.ts",
     "workflow": "node -max-old-space-size=512 scripts/dev-runner.ts src/pipeline/execute.ts",
-    "dev": "NODE_OPTIONS=\"-max-old-space-size=512 --import tsx\" vite-node --watch src/monolith.ts",
+    "dev": "NODE_OPTIONS=\"--import tsx\" vite-node --watch src/monolith.ts",
     "start": "NODE_ENV=production node dist/monolith.js",
     "debug:monolith": "tsx --inspect src/monolith.ts",
     "watch": "npx tsc -b -w",

@@ -1,7 +1,7 @@
 {
-    "editor.fontSize": 12,
+    "editor.fontSize": 11.5,
     "editor.lineHeight": 1.25,
-    "terminal.integrated.fontSize": 12,
+    "terminal.integrated.fontSize": 9,
     "files.autoSave": "off",
     "js/ts.tsdk.path": "node_modules/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true,

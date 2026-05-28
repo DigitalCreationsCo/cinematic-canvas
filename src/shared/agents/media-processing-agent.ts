@@ -121,6 +121,7 @@ export class MediaProcessingAgent {
      * requirements of the segmentation philosophy.
      */
     const response = await this.lm.generateContent({
+      model: 'gemini-3.1-flash-lite',
       messages: [
         new UserMessage({
           content: [

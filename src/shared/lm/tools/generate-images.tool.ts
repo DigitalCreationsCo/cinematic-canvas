@@ -109,7 +109,7 @@ async function generateImagesSequential(
     const results: GenerateImageResult[] = [];
 
     for (const req of requests) {
-        const count = req.count ?? 3;
+        const count = req.count ?? 1;
         console.log(`[${traceId}] Sequential: generating ${count} image(s) for ${req.id}`);
 
         try {
@@ -158,7 +158,7 @@ async function generateImagesParallel(
                 await new Promise((resolve) => setTimeout(resolve, index * STAGGER_MS));
             }
 
-            const count = req.count ?? 3;
+            const count = req.count ?? 1;
             try {
                 const response = await context.provider.generateImages({
                     prompt: req.prompt,

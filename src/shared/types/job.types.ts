@@ -204,7 +204,7 @@ export type JobGenerateCharacters = JobBaseFields & {
 };
 export type JobGenerateCharacterAssets = JobBaseFields & {
   type: "GENERATE_CHARACTER_IMAGES";
-  payload: { characterIds: string[] };
+  payload?: { characterIds?: string[]; };
   result: GenerativeResultGenerateCharacterAssets["data"];
 };
 
@@ -215,7 +215,7 @@ export type JobGenerateLocations = JobBaseFields & {
 };
 export type JobGenerateLocationAssets = JobBaseFields & {
   type: "GENERATE_LOCATION_IMAGES";
-  payload: { locationIds: string[] };
+  payload?: { locationIds?: string[]; };
   result: GenerativeResultGenerateLocationAssets["data"];
 };
 export type JobGenerateEntities = JobBaseFields & {

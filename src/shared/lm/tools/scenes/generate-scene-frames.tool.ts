@@ -200,50 +200,65 @@ export async function generateSceneFrames(
 
   const resultsMap = new Map(imageResults.map((res) => [res.id, res]));
 
-  const results: SceneFrameGenerationResult[] = requests.map((req) => {
+  const results: SceneFrameGenerationResult[] = [];
+  for (const req of requests) {
     const res = resultsMap.get(req.id);
 
     if (!res) {
-      return {
+      results.push({
         success: false,
         id: req.id,
         sceneId: req.sceneId,
         framePosition: req.framePosition,
         error: new Error(`No result returned for request ID: ${req.id}`),
-      };
+      });
+      continue;
     }
 
     if (!res.success) {
       console.error(`[${traceId}] generateSceneFrames: failed for ${res.id}:`, res.error);
-      return {
+      results.push({
         success: false,
         id: res.id,
         sceneId: req.sceneId,
         framePosition: req.framePosition,
         error: res.error,
-      };
+      });
+      continue;
     }
 
     const assetKey = req.framePosition === "start" ? "scene_start_frame" : "scene_end_frame";
 
-    context.saveAssets?.(
-      { projectId: req.projectId, sceneIds: [req.sceneId] },
-      [assetKey],
-      "image",
-      res.outputs.map((o) => o.uri),
-      res.outputs.map(() => ({ model: res.metadata.model, prompt: res.metadata.prompt })),
-      true,
-    );
+    try {
+      await context.saveAssets?.(
+        { projectId: req.projectId, sceneIds: [req.sceneId] },
+        [assetKey],
+        "image",
+        res.outputs.map((o) => o.uri),
+        res.outputs.map(() => ({ model: res.metadata.model, prompt: res.metadata.prompt })),
+        true,
+      );
+    } catch (error) {
+      console.error(`[${traceId}] generateSceneFrames: saveAssets failed for ${req.id}:`, error);
+      results.push({
+        success: false,
+        id: res.id,
+        sceneId: req.sceneId,
+        framePosition: req.framePosition,
+        error: error as Error,
+      });
+      continue;
+    }
 
-    return {
+    results.push({
       success: true,
       id: res.id,
       sceneId: req.sceneId,
       framePosition: req.framePosition,
       outputs: res.outputs,
       metadata: res.metadata,
-    };
-  });
+    });
+  }
 
   const successCount = results.filter((r) => r.success).length;
   console.log(`[${traceId}] generateSceneFrames: ${successCount}/${results.length} succeeded`);
@@ -318,45 +333,31 @@ class GenerateSceneFramesTool extends StructuredTool<typeof GenerateSceneFramesT
     return this.generateFrames(input);
   }
 
-  private async generateFrames(
-    input: z.infer<typeof GenerateSceneFramesToolInput>,
-  ): Promise<SceneFrameGenerationResult[]> {
-
+  private async generateFrames(input: z.infer<typeof GenerateSceneFramesToolInput>): Promise<SceneFrameGenerationResult[]> {
     const { projectRepository, projectId } = this.context;
 
-    // Fetch full scene entities from DB so we can build prompts from descriptions
     const project = await projectRepository.getProjectFullState(projectId);
     const allScenes = project.scenes;
     const allCharacters = project.characters;
     const allLocations = project.locations;
-    // const props = project.props;
 
-    // Build scene lookup by id
     const sceneById = new Map<string, Scene>(allScenes.map((entity) => [entity.id, hydrateEntity(entity, entity.assets)]));
     const characterById = new Map<string, Character>(allCharacters.map((entity) => [entity.id, hydrateEntity(entity, entity.assets)]));
     const locationById = new Map<string, Location>(allLocations.map((entity) => [entity.id, hydrateEntity(entity, entity.assets)]));
-    // const propById = new Map(props.map((entity) => [(entity as any).id, entity]));
 
-    function createFramePromptRequest(
-      scene: Scene,
-      framePosition: "start" | "end",
-      previousScene?: Scene
-    ): FramePromptRequest {
+    function createFramePromptRequest(scene: Scene, framePosition: "start" | "end", previousScene?: Scene): FramePromptRequest {
       try {
-        const charactersInScene = scene.characterIds.map((characterId) => characterById.get(characterId)!);
+        const charactersInScene = scene.characterIds.map((id) => characterById.get(id)!);
         const locationInScene = locationById.get(scene.locationId)!;
         const version = framePosition === "start" ?
           (scene.assets['scene_start_frame']?.head ?? 1) :
           (scene.assets['scene_end_frame']?.head ?? 1);
+
         return {
-          framePosition,
-          scene,
-          characters: charactersInScene ?? [],
-          locations: [locationInScene],
-          previousScene: previousScene,
-          generationRules: project.generationRules ?? [],
+          framePosition, scene,
+          characters: charactersInScene ?? [], locations: [locationInScene],
+          previousScene: previousScene, generationRules: project.generationRules ?? [],
           metadata: {
-            // Deterministic ID generation for idempotency in distributed systems
             custom_id: `${scene.id}_${framePosition}_v${version}`,
             assetKey: framePosition == "start" ? "scene_start_frame" : "scene_end_frame",
             version: version,
@@ -364,37 +365,31 @@ class GenerateSceneFramesTool extends StructuredTool<typeof GenerateSceneFramesT
         };
       } catch (error) {
         console.error(`[Error] Failed to create ${framePosition} request for scene ${scene.id}:`, error);
-        throw new Error(`Frame request construction failure: ${error instanceof Error ? error.message : "Unknown error"}`);
+        throw new Error(`Frame request construction failure.`);
       }
-    };
+    }
 
     const framePromptRequests: FramePromptRequest[] = input.scenes.flatMap((_scene, index) => {
-      const previousId = index > 0 ? input.scenes[index - 1].id : undefined;
-      const previous = previousId ? sceneById.get(previousId) : undefined;
       const current = sceneById.get(_scene.id)!;
-      console.log(`[Trace] Processing Scene ID: ${current.id} (Index: ${index})`);
+      // CRITICAL FIX: Find strictly via narrative sceneIndex in global scope, not local array mapping
+      const previous = allScenes.find(s => s.sceneIndex === current.sceneIndex - 1);
+
+      console.log(`[Trace] Processing Scene ID: ${current.id} (Global Index: ${current.sceneIndex})`);
       return [
-        createFramePromptRequest(current, "start", previous),
-        createFramePromptRequest(current, "end", previous)
+        createFramePromptRequest(current, "start", previous as Scene),
+        createFramePromptRequest(current, "end", previous as Scene)
       ]
     });
 
     const promptResultsEnvelope = await generateFrameGenerationPrompts(framePromptRequests, this.context);
 
-    // Build requests for start and end frames for each scene
-    const requests: SceneFrameGenerationRequest[] = promptResultsEnvelope.map((res, i) => {
-      const { scene: _scene, prompt, framePosition, metadata } = res;
-      return {
-        id: `${_scene.id}_${framePosition}`,
-        projectId,
-        sceneId: _scene.id,
-        framePosition,
-        prompt,
-        referenceImages: { base: [], subject: [], style: [], control: [], content: [], mask: [] },
-        // TODO Implement the image reference logic
-        version: metadata.version,
-      }
-    });
+    const requests: SceneFrameGenerationRequest[] = promptResultsEnvelope.map((res) => ({
+      id: `${res.scene.id}_${res.framePosition}`,
+      projectId, sceneId: res.scene.id,
+      framePosition: res.framePosition, prompt: res.prompt,
+      referenceImages: { base: [], subject: [], style: [], control: [], content: [], mask: [] },
+      version: res.metadata.version,
+    }));
 
     return generateSceneFrames({ requests, attempt: input.attempt }, this.context);
   }

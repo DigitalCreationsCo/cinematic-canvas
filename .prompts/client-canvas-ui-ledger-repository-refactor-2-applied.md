@@ -1240,7 +1240,7 @@ const buildPipelinePayload = (projectId: string): StartPipelineCommand['payload'
 ### What runs in parallel
 
 The LangGraph backend dispatches these jobs concurrently:
-- **Character asset generation:** All characters generated simultaneously (one `GENERATE_CHARACTER_ASSETS` job per character, all dispatched at once)
+- **Character asset generation:** All characters generated simultaneously (one `GENERATE_CHARACTER_IMAGES` job per character, all dispatched at once)
 - **Location asset generation:** All locations generated simultaneously
 - **Scene frame generation:** Multiple scenes generate start/end frames concurrently
 

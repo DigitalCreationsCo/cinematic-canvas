@@ -15,6 +15,7 @@ import { Dispatcher } from "#shared/services/dispatcher.js";
 import { interceptNodeErrorAndDoInterrupt } from "#pipeline/helpers/interrupts.js";
 import { getExecutionMode, ExecutionMode, getMaxParallelJobs, getMaxRetries } from "#shared/config.js";
 import { resolvePublicUrl } from "#shared/utils/utils.js";
+import { createHash } from "node:crypto";
 
 // ============================================================================
 // CINEMATIC VIDEO FRAMEWORK - TypeScript Implementation
@@ -380,7 +381,7 @@ export class CinematicVideoWorkflow {
             nodeName,
             jobType: "SEMANTIC_ANALYSIS",
             assetKey: "generation_rules",
-            entityId: this.projectId,
+            entityId: `${this.projectId}_semantic_analysis`,
             teamId: state.teamId,
             userId: state.userId,
           });
@@ -645,53 +646,25 @@ export class CinematicVideoWorkflow {
           console.log({ nodeName, executionMode: this.EXECUTION_MODE, projectId: state.projectId });
           const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
-          if (this.EXECUTION_MODE === "SEQUENTIAL") {
-            // const jobs = await Promise.all(scenes.flatMap((scene) => {
-            //   const assetKeys = [ "scene_start_frame", "scene_end_frame" ] as const;
-            //   return assetKeys.map(async (key) => {
-            //     return {
-            //       uniqueKey: `scene-${scene.id}-${key}`,
-            //       type: "GENERATE_SCENE_FRAMES" as const,
-            //       assetKey: key,
-            //       payload: {
-            //         assetKeys: [ key ],
-            //         sceneId: scene.id,
-            //         sceneIndex: scene.sceneIndex,
-            //       },
-            //     };
-            //   });
-            // }));
-            // // sequential mode dispatchs multiple individual jobs (batch) - generation is processed in isolation
-            // await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_FRAMES">(nodeName, jobs);
+          const sceneIds = scenes.map((s) => s.id);
 
-            await this.dispatcher.ensureJob({
-              workflowId: state.id,
-              nodeName,
-              jobType: "GENERATE_SCENE_FRAMES",
-              assetKey: "scene_start_frame",
-              entityId: this.projectId,
-              teamId: state.teamId,
-              userId: state.userId,
-              payload: {
-                assetKeys: ["scene_start_frame", "scene_end_frame"],
-                sceneIds: scenes.map((scene) => scene.id),
-              },
-            });
-          } else {
-            // parallel mode dispatches a single job with batch parameters - generation is processed in batch
-            await this.dispatcher.ensureJob({
-              workflowId: state.id,
-              nodeName,
-              jobType: "GENERATE_SCENE_FRAMES",
-              assetKey: "scene_start_frame",
-              entityId: this.projectId,
-              teamId: state.teamId,
-              userId: state.userId,
-              payload: {
-                assetKeys: ["scene_start_frame", "scene_end_frame"],
-              },
-            });
-          }
+          const idsHash = createHash("md5")
+            .update(JSON.stringify([ ...sceneIds ].sort()))
+            .digest("hex")
+            .substring(0, 8);
+
+          await this.dispatcher.ensureJob({
+            workflowId: state.id,
+            nodeName,
+            jobType: "GENERATE_SCENE_FRAMES",
+            assetKey: "scene_start_frame",
+            entityId: this.projectId + idsHash,
+            teamId: state.teamId,
+            userId: state.userId,
+            payload: {
+              assetKeys: [ "scene_start_frame", "scene_end_frame" ],
+            },
+          });
 
           console.log(`[${nodeName}]: Completed\n`);
           return {

@@ -247,6 +247,7 @@ export type PipelineEvent =
   | SceneSkippedEvent
   | SceneCompletedEvent
   | WorkflowCompletedEvent
+  | WorkflowPausedEvent
   | WorkflowFailedEvent
   | LlmInterventionNeededEvent
   | InterventionResolvedEvent
@@ -374,6 +375,8 @@ export type SceneSkippedEvent = PubSubMessage<"SCENE_SKIPPED", { sceneId: string
 export type SceneCompletedEvent = PubSubMessage<"SCENE_COMPLETED", { sceneId: string; videoUrl?: string }>;
 
 export type WorkflowCompletedEvent = PubSubMessage<"WORKFLOW_COMPLETED">;
+
+export type WorkflowPausedEvent = PubSubMessage<"WORKFLOW_PAUSED">;
 
 export type WorkflowFailedEvent = PubSubMessage<"WORKFLOW_FAILED", { error: string; nodeName?: string }>;
 

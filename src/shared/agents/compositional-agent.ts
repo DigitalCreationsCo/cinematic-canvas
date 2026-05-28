@@ -130,9 +130,9 @@ export class CompositionalAgent {
           abortSignal: this.options?.signal,
           responseJsonSchema: getModelCompatibleSchema(StoryboardAttributes),
           temperature: 0.8,
-          thinkingConfig: {
-            thinkingLevel: ThinkingLevel.HIGH,
-          },
+          // thinkingConfig: {
+          //   thinkingLevel: ThinkingLevel.HIGH,
+          // },
         },
       });
 
@@ -241,9 +241,9 @@ export class CompositionalAgent {
           config: {
             abortSignal: this.options?.signal,
             responseJsonSchema: getModelCompatibleSchema(SceneBatch),
-            thinkingConfig: {
-              thinkingLevel: ThinkingLevel.HIGH,
-            },
+            // thinkingConfig: {
+            //   thinkingLevel: ThinkingLevel.HIGH,
+            // },
           },
         });
         const content = response.text;
@@ -334,9 +334,9 @@ export class CompositionalAgent {
         config: {
           abortSignal: this.options?.signal,
           responseJsonSchema: getModelCompatibleSchema(InitialStoryboardContext),
-          thinkingConfig: {
-            thinkingLevel: ThinkingLevel.HIGH,
-          },
+          // thinkingConfig: {
+          //   thinkingLevel: ThinkingLevel.HIGH,
+          // },
         },
       });
       const content = response.text;

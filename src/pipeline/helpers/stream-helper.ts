@@ -1,7 +1,7 @@
 // src/pipeline/helpers/stream-helper.ts
-import { WorkflowState } from "../../shared/types/workflow.types.js";
+import { InterruptValue, WorkflowState } from "../../shared/types/workflow.types.js";
 import { RunnableConfig } from "@langchain/core/runnables";
-import { scanForInterrupt } from "./interrupts.js";
+import { scanForTerminalInterrupt, scanStateSnapshotForTerminalInterrupt } from "./interrupts.js";
 import { PipelineEvent } from "../../shared/types/pipeline.types.js";
 import { Command, CompiledStateGraph } from "@langchain/langgraph";
 import { extractInterruptValue } from "../../shared/utils/errors.js";
@@ -26,7 +26,26 @@ export async function handleStream(
             const [updateType, state] = update;
             const workflowState = state as WorkflowState;
 
-            await scanForInterrupt(packet, workflowState, publishEvent);
+            const interruptValue = scanForTerminalInterrupt(packet, workflowState, commandName, publishEvent);
+
+            if (interruptValue) {
+                await publishEvent({
+                    type: "LLM_INTERVENTION_NEEDED",
+                    projectId,
+                    worldId,
+                    teamId,
+                    userId,
+                    payload: {
+                        type: interruptValue.type,
+                        error: interruptValue.error,
+                        params: interruptValue.params,
+                        functionName: interruptValue.functionName,
+                        nodeName: interruptValue.nodeName,
+                        attemptCount: interruptValue.attempts
+                    },
+                    timestamp: new Date().toISOString()
+                });
+            }
         }
     } catch (error: any) {
 
@@ -64,35 +83,25 @@ export async function handleStream(
             return;
         }
 
-        // Graph is suspended. Inspect tasks to determine suspension root cause.
-        const pendingTasks = stateSnapshot.tasks || [];
-        if (pendingTasks.length > 0) {
-            const primarySuspendedTask = pendingTasks[0];
-            const activeTaskInterrupts = primarySuspendedTask.interrupts || [];
+        const interruptValue = scanStateSnapshotForTerminalInterrupt(packet, stateSnapshot, commandName, publishEvent);
 
-            if (activeTaskInterrupts.length > 0) {
-                const interruptPayload = activeTaskInterrupts[0].value as any;
-                const suspensionType = interruptPayload?.type;
-
-                const nonTerminalInterrupts = ['waiting_for_job', 'waiting_for_batch'];
-                const terminalInterrupts = ['user_approval_before_video_gen', 'user_approval_after_storyboard_gen', 'lm_intervention'];
-
-                if (terminalInterrupts.includes(suspensionType)) {
-                    console.log({ commandName, projectId, suspensionType }, `Terminal interrupt identified. Emitting completion.`);
-                    await publishEvent({
-                        type: "WORKFLOW_COMPLETED",
-                        projectId,
-                        worldId,
-                        teamId,
-                        userId,
-                        timestamp: new Date().toISOString()
-                    });
-                } else if (nonTerminalInterrupts.includes(suspensionType)) {
-                    console.log({ commandName, projectId, suspensionType }, `Asynchronous node pause detected. Preserving active workflow state.`);
-                } else {
-                    console.warn({ commandName, projectId, suspensionType }, `Unrecognized interrupt type. Suppressing completion emission.`);
-                }
-            }
+        if (interruptValue) {
+            await publishEvent({
+                type: "LLM_INTERVENTION_NEEDED",
+                projectId,
+                worldId,
+                teamId,
+                userId,
+                payload: {
+                    type: interruptValue.type,
+                    error: interruptValue.error,
+                    params: interruptValue.params,
+                    functionName: interruptValue.functionName,
+                    nodeName: interruptValue.nodeName,
+                    attemptCount: interruptValue.attempts
+                },
+                timestamp: new Date().toISOString()
+            });
         }
     }
 }

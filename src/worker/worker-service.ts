@@ -444,8 +444,6 @@ export class WorkerService {
                       projectId: job.projectId,
                     },
                     existingCharactersWithAssets.map(mapCharacterWithAssetsToCharacterAttributes),
-
-                    // error: description was expected here, but undefined
                     existingLocationsWithAssets.map(mapLocationWithAssetsToLocationAttributes),
                   );
 
@@ -454,8 +452,34 @@ export class WorkerService {
                     const storyboardLocations: LocationBase[] = [];
                     const storyboardScenes: SceneBase[] = [];
 
-                    const allCharactersInsertData: InsertCharacter[] = data.storyboardAttributes.characters.map(
-                      (character) => {
+                    // -----------------------------------------------------------------------
+                    // Build lookup maps from real DB records so we always use true DB ids.
+                    // Existing entities (matched by referenceId) source their id from the DB.
+                    // Only genuinely new entities get a freshly minted insert record — their
+                    // generated UUID becomes real once inserted.
+                    // -----------------------------------------------------------------------
+                    const existingCharactersByRefId = new Map(
+                      existingCharactersWithAssets.map((c) => [ c.referenceId, c ]),
+                    );
+                    const existingLocationsByRefId = new Map(
+                      existingLocationsWithAssets.map((l) => [ l.referenceId, l ]),
+                    );
+
+                    const newCharactersToInsertData: InsertCharacter[] = [];
+
+                    for (const character of data.storyboardAttributes.characters) {
+                      const existing = existingCharactersByRefId.get(character.referenceId);
+
+                      if (existing) {
+                        // Existing character — use the real DB record so the id is valid.
+                        storyboardCharacters.push(
+                          mapCharacterWithAssetsToCharacterBase({
+                            ...existing,
+                            description: character.description,
+                          }),
+                        );
+                      } else {
+                    // New character — mint an insert record; its UUID will be persisted.
                         const insertCharacter = mapDomainCharacterToInsertCharacter({
                           ...character,
                           projectId: project.id,
@@ -466,12 +490,25 @@ export class WorkerService {
                             description: character.description,
                           }),
                         );
-                        return insertCharacter;
-                      },
-                    );
+                        newCharactersToInsertData.push(insertCharacter);
+                      }
+                    }
 
-                    const allLocationsInsertData: InsertLocation[] = data.storyboardAttributes.locations.map(
-                      (location) => {
+                    const newLocationsToInsertData: InsertLocation[] = [];
+
+                    for (const location of data.storyboardAttributes.locations) {
+                      const existing = existingLocationsByRefId.get(location.referenceId);
+
+                      if (existing) {
+                        // Existing location — use the real DB record so the id is valid.
+                        storyboardLocations.push(
+                          mapLocationWithAssetsToLocationBase({
+                            ...existing,
+                            description: location.description,
+                          }),
+                        );
+                      } else {
+                        // New location — mint an insert record; its UUID will be persisted.
                         const insertLocation = mapDomainLocationToInsertLocation({
                           ...location,
                           projectId: project.id,
@@ -482,22 +519,9 @@ export class WorkerService {
                             description: location.description,
                           }),
                         );
-                        return insertLocation;
-                      },
-                    );
-
-                    // Deduplicate: filter out characters/locations that already exist in the project
-                    const existingCharacterReferenceIds = new Set(
-                      existingCharactersWithAssets.map((c) => c.referenceId),
-                    );
-                    const existingLocationReferenceIds = new Set(existingLocationsWithAssets.map((l) => l.referenceId));
-
-                    const newCharactersToInsertData = allCharactersInsertData.filter(
-                      (c) => !existingCharacterReferenceIds.has(c.referenceId),
-                    );
-                    const newLocationsToInsertData = allLocationsInsertData.filter(
-                      (l) => !existingLocationReferenceIds.has(l.referenceId),
-                    );
+                        newLocationsToInsertData.push(insertLocation);
+                      }
+                    }
 
                     console.debug(
                       {
@@ -508,7 +532,7 @@ export class WorkerService {
                       "Deduplication complete. Executing database insertions.",
                     );
 
-                    const [insertedCharactersWithAssets, insertedLocationsWithAssets] = await Promise.all([
+                    const [ insertedCharactersWithAssets, insertedLocationsWithAssets ] = await Promise.all([
                       newCharactersToInsertData.length > 0
                         ? this.projectRepository.createCharacters(project.id, newCharactersToInsertData)
                         : Promise.resolve([]),
@@ -555,43 +579,49 @@ export class WorkerService {
                       }
                     }
 
-                    // Save description assets for newly created entities only
-                    if (storyboardCharacters.length > 0) {
-                      const characterDescriptions = storyboardCharacters.map((c) => c.description);
+                    // Save description assets for newly created entities only — existing
+                    // entities already have their description assets in the DB.
+                    const newStoryboardCharacters = storyboardCharacters.filter(
+                      (c) => !existingCharactersByRefId.has(c.referenceId),
+                    );
+                    const newStoryboardLocations = storyboardLocations.filter(
+                      (l) => !existingLocationsByRefId.has(l.referenceId),
+                    );
+
+                    if (newStoryboardCharacters.length > 0) {
                       await this.createSaveAssetsCallback(job, startTime)(
                         {
                           projectId: project.id,
-                          characterIds: storyboardCharacters.map((c) => c.id),
+                          characterIds: newStoryboardCharacters.map((c) => c.id),
                         },
-                        ["description"],
+                        [ "description" ],
                         "text",
-                        characterDescriptions,
-                        [{ model: metadata.model }],
+                        newStoryboardCharacters.map((c) => c.description),
+                        [ { model: metadata.model } ],
                       );
                     }
 
-                    if (storyboardLocations.length > 0) {
-                      const locationDescriptions = storyboardLocations.map((l) => l.description);
+                    if (newStoryboardLocations.length > 0) {
                       await this.createSaveAssetsCallback(job, startTime)(
                         {
                           projectId: project.id,
-                          locationIds: storyboardLocations.map((l) => l.id),
+                          locationIds: newStoryboardLocations.map((l) => l.id),
                         },
-                        ["description"],
+                        [ "description" ],
                         "text",
-                        locationDescriptions,
-                        [{ model: metadata.model }],
+                        newStoryboardLocations.map((l) => l.description),
+                        [ { model: metadata.model } ],
                       );
                     }
 
-                    const allCharactersWithAssets = [...existingCharactersWithAssets, ...insertedCharactersWithAssets];
-                    const allLocationsWithAssets = [...existingLocationsWithAssets, ...insertedLocationsWithAssets];
+                    const allCharactersWithAssets = [ ...existingCharactersWithAssets, ...insertedCharactersWithAssets ];
+                    const allLocationsWithAssets = [ ...existingLocationsWithAssets, ...insertedLocationsWithAssets ];
 
                     const scenesToInsertData: SceneBase[] = data.storyboardAttributes.scenes.map((scene) => {
                       const insertScene: SceneEntity = mapDomainSceneToInsertScene({
                         ...scene,
                         projectId: project.id,
-                        locationId: mapReferenceIdsToIds(allLocationsWithAssets, [scene.locationReferenceId])[0],
+                        locationId: mapReferenceIdsToIds(allLocationsWithAssets, [ scene.locationReferenceId ])[ 0 ],
                       });
 
                       const characterIds = mapReferenceIdsToIds(allCharactersWithAssets, scene.characterReferenceIds);
@@ -623,10 +653,10 @@ export class WorkerService {
                           projectId: project.id,
                           sceneIds: storyboardScenes.map((l) => l.id),
                         },
-                        ["description"],
+                        [ "description" ],
                         "text",
                         sceneDescriptions,
-                        [{ model: metadata.model }],
+                        [ { model: metadata.model } ],
                       );
                     }
 
@@ -635,14 +665,14 @@ export class WorkerService {
                       ...data.storyboardAttributes.metadata,
                     };
 
-                    const [refreshedCharacters, refreshedLocations, refreshedScenes] = await Promise.all([
+                    const [ refreshedCharacters, refreshedLocations, refreshedScenes ] = await Promise.all([
                       this.projectRepository.getProjectCharacters(project.id),
                       this.projectRepository.getProjectLocations(project.id),
                       this.projectRepository.getProjectScenes(project.id),
                     ]);
 
                     const nextStoryboard = storyboardManager.applyUpdates(
-                      makeEmptyLiveStoryboard(updateMetadata), // always fresh for full storyboard gen
+                      makeEmptyLiveStoryboard(updateMetadata),
                       {
                         metadata: updateMetadata,
                         characters: refreshedCharacters,
@@ -662,16 +692,17 @@ export class WorkerService {
                     // Await asset save to prevent race condition worker termination
                     await this.createSaveAssetsCallback(job, startTime)(
                       { projectId: project.id },
-                      ["storyboard"],
+                      [ "storyboard" ],
                       "text",
-                      [JSON.stringify(updated.storyboard)],
-                      [{ model: metadata.model }],
+                      [ JSON.stringify(updated.storyboard) ],
+                      [ { model: metadata.model } ],
                     ).catch((error) => {
                       console.error(
                         { error, jobType: job.type, jobId, projectId: job.projectId },
                         "Non-fatal: Failed to save storyboard text asset.",
                       );
                     });
+
                     console.debug(
                       { jobId, projectId: project.id },
                       "GENERATE_STORYBOARD pipeline completed successfully.",
@@ -813,8 +844,8 @@ export class WorkerService {
                   const existingCharactersWithAssets = await this.projectRepository.getProjectCharacters(job.projectId);
                   const existingLocationsWithAssets = await this.projectRepository.getProjectLocations(job.projectId);
 
-                  let data: GenerativeResultEnhanceStoryboard["data"];
-                  let metadata: GenerativeResultEnhanceStoryboard["metadata"];
+                  let data: GenerativeResultEnhanceStoryboard[ "data" ];
+                  let metadata: GenerativeResultEnhanceStoryboard[ "metadata" ];
 
                   console.debug(
                     { jobId, hasAudio: project.metadata.hasAudio },
@@ -856,8 +887,34 @@ export class WorkerService {
                     const storyboardLocations: LocationBase[] = [];
                     const storyboardScenes: SceneBase[] = [];
 
-                    const allCharactersInsertData: InsertCharacter[] = data.storyboardAttributes.characters.map(
-                      (character) => {
+                    // -----------------------------------------------------------------------
+                    // Build lookup maps from the real DB records so we can resolve existing
+                    // characters/locations by referenceId and always use their true DB ids.
+                    // Only entities whose referenceId is NOT in the DB get a freshly minted
+                    // insert record — their generated UUID will become real once inserted.
+                    // -----------------------------------------------------------------------
+                    const existingCharactersByRefId = new Map(
+                      existingCharactersWithAssets.map((c) => [ c.referenceId, c ]),
+                    );
+                    const existingLocationsByRefId = new Map(
+                      existingLocationsWithAssets.map((l) => [ l.referenceId, l ]),
+                    );
+
+                    const newCharactersToInsertData: InsertCharacter[] = [];
+
+                    for (const character of data.storyboardAttributes.characters) {
+                      const existing = existingCharactersByRefId.get(character.referenceId);
+
+                      if (existing) {
+                        // Existing character — use the real DB record so the id is valid.
+                        storyboardCharacters.push(
+                          mapCharacterWithAssetsToCharacterBase({
+                            ...existing,
+                            description: character.description,
+                          }),
+                        );
+                      } else {
+                    // New character — mint an insert record; its UUID will be persisted.
                         const insertCharacter = mapDomainCharacterToInsertCharacter({
                           ...character,
                           projectId: project.id,
@@ -868,12 +925,25 @@ export class WorkerService {
                             description: character.description,
                           }),
                         );
-                        return insertCharacter;
-                      },
-                    );
+                        newCharactersToInsertData.push(insertCharacter);
+                      }
+                    }
 
-                    const allLocationsInsertData: InsertLocation[] = data.storyboardAttributes.locations.map(
-                      (location) => {
+                    const newLocationsToInsertData: InsertLocation[] = [];
+
+                    for (const location of data.storyboardAttributes.locations) {
+                      const existing = existingLocationsByRefId.get(location.referenceId);
+
+                      if (existing) {
+                        // Existing location — use the real DB record so the id is valid.
+                        storyboardLocations.push(
+                          mapLocationWithAssetsToLocationBase({
+                            ...existing,
+                            description: location.description,
+                          }),
+                        );
+                      } else {
+                        // New location — mint an insert record; its UUID will be persisted.
                         const insertLocation = mapDomainLocationToInsertLocation({
                           ...location,
                           projectId: project.id,
@@ -884,21 +954,9 @@ export class WorkerService {
                             description: location.description,
                           }),
                         );
-                        return insertLocation;
-                      },
-                    );
-
-                    const existingCharacterReferenceIds = new Set(
-                      existingCharactersWithAssets.map((c) => c.referenceId),
-                    );
-                    const existingLocationReferenceIds = new Set(existingLocationsWithAssets.map((l) => l.referenceId));
-
-                    const newCharactersToInsertData = allCharactersInsertData.filter(
-                      (c) => !existingCharacterReferenceIds.has(c.referenceId),
-                    );
-                    const newLocationsToInsertData = allLocationsInsertData.filter(
-                      (l) => !existingLocationReferenceIds.has(l.referenceId),
-                    );
+                        newLocationsToInsertData.push(insertLocation);
+                      }
+                    }
 
                     console.debug(
                       {
@@ -909,7 +967,7 @@ export class WorkerService {
                       "Deduplication complete. Executing database insertions for enhanced assets.",
                     );
 
-                    const [insertedCharactersWithAssets, insertedLocationsWithAssets] = await Promise.all([
+                    const [ insertedCharactersWithAssets, insertedLocationsWithAssets ] = await Promise.all([
                       newCharactersToInsertData.length > 0
                         ? this.projectRepository.createCharacters(project.id, newCharactersToInsertData)
                         : Promise.resolve([]),
@@ -956,32 +1014,38 @@ export class WorkerService {
                       }
                     }
 
-                    // Save description assets for newly created entities only
-                    if (storyboardCharacters.length > 0) {
-                      const characterDescriptions = storyboardCharacters.map((c) => c.description);
+                    // Save description assets for newly created entities only — existing
+                    // entities already have their description assets in the DB.
+                    const newStoryboardCharacters = storyboardCharacters.filter(
+                      (c) => !existingCharactersByRefId.has(c.referenceId),
+                    );
+                    const newStoryboardLocations = storyboardLocations.filter(
+                      (l) => !existingLocationsByRefId.has(l.referenceId),
+                    );
+
+                    if (newStoryboardCharacters.length > 0) {
                       await this.createSaveAssetsCallback(job, startTime)(
                         {
                           projectId: project.id,
-                          characterIds: storyboardCharacters.map((c) => c.id),
+                          characterIds: newStoryboardCharacters.map((c) => c.id),
                         },
-                        ["description"],
+                        [ "description" ],
                         "text",
-                        characterDescriptions,
-                        [{ model: metadata.model }],
+                        newStoryboardCharacters.map((c) => c.description),
+                        [ { model: metadata.model } ],
                       );
                     }
 
-                    if (storyboardLocations.length > 0) {
-                      const locationDescriptions = storyboardLocations.map((l) => l.description);
+                    if (newStoryboardLocations.length > 0) {
                       await this.createSaveAssetsCallback(job, startTime)(
                         {
                           projectId: project.id,
-                          locationIds: storyboardLocations.map((l) => l.id),
+                          locationIds: newStoryboardLocations.map((l) => l.id),
                         },
-                        ["description"],
+                        [ "description" ],
                         "text",
-                        locationDescriptions,
-                        [{ model: metadata.model }],
+                        newStoryboardLocations.map((l) => l.description),
+                        [ { model: metadata.model } ],
                       );
                     }
 
@@ -998,7 +1062,7 @@ export class WorkerService {
                       const insertScene: SceneEntity = mapDomainSceneToInsertScene({
                         ...scene,
                         projectId: project.id,
-                        locationId: mapReferenceIdsToIds(allLocationsWithAssets, [scene.locationReferenceId])[0],
+                        locationId: mapReferenceIdsToIds(allLocationsWithAssets, [ scene.locationReferenceId ])[ 0 ],
                       });
 
                       const characterIds: string[] = mapReferenceIdsToIds(
@@ -1033,10 +1097,10 @@ export class WorkerService {
                           projectId: project.id,
                           sceneIds: storyboardScenes.map((l) => l.id),
                         },
-                        ["description"],
+                        [ "description" ],
                         "text",
                         sceneDescriptions,
-                        [{ model: metadata.model }],
+                        [ { model: metadata.model } ],
                       );
                     }
 
@@ -1045,7 +1109,7 @@ export class WorkerService {
                       ...data.storyboardAttributes.metadata,
                     };
 
-                    const [refreshedCharacters, refreshedLocations, refreshedScenes] = await Promise.all([
+                    const [ refreshedCharacters, refreshedLocations, refreshedScenes ] = await Promise.all([
                       this.projectRepository.getProjectCharacters(project.id),
                       this.projectRepository.getProjectLocations(project.id),
                       this.projectRepository.getProjectScenes(project.id),
@@ -1068,16 +1132,17 @@ export class WorkerService {
 
                     await this.createSaveAssetsCallback(job, startTime)(
                       { projectId: project.id },
-                      ["storyboard"],
+                      [ "storyboard" ],
                       "text",
-                      [JSON.stringify(updated.storyboard)],
-                      [{ model: metadata.model }],
+                      [ JSON.stringify(updated.storyboard) ],
+                      [ { model: metadata.model } ],
                     ).catch((error) => {
                       console.error(
                         { error, jobType: job.type, jobId, projectId: job.projectId },
                         "Non-fatal: Failed to save enhanced storyboard text asset.",
                       );
                     });
+
                     console.debug(
                       { jobId, projectId: project.id },
                       "ENHANCE_STORYBOARD pipeline completed successfully.",
@@ -1130,51 +1195,23 @@ export class WorkerService {
                   let { data, metadata } = await agents.semanticExpert.generateRules(project.storyboard);
 
                   try {
-                    const proactiveRules = (
-                      await import("../shared/prompts/must-review/domain-rules.js")
-                    ).getProactiveRules();
-                    const uniqueRules = Array.from(new Set([...proactiveRules, ...data.dynamicRules]));
+                    const proactiveRules = (await import("../shared/prompts/must-review/domain-rules.js")).getProactiveRules();
+                    const uniqueRules = Array.from(new Set([ ...proactiveRules, ...data.dynamicRules ]));
 
                     const generationRules = uniqueRules;
-                    const generationRulesHistory = [...project.generationRulesHistory, uniqueRules];
+                    const generationRulesHistory = [ ...project.generationRulesHistory, uniqueRules ];
 
-                    updated = await this.projectRepository.updateProject(job.projectId, {
-                      generationRules,
-                    });
+                    updated = await this.projectRepository.updateProject(job.projectId, { generationRules });
                   } catch (updateError: any) {
-                    console.error(
-                      {
-                        error: updateError,
-                        jobType: job.type,
-                        jobId,
-                        projectId: job.projectId,
-                      },
-                      "Failed to update project",
-                    );
+                    console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                     throw updateError;
                   }
                 } catch (analysisError: any) {
-                  console.error(
-                    {
-                      error: analysisError,
-                      jobType: job.type,
-                      jobId,
-                      projectId: job.projectId,
-                    },
-                    "Failed to generate rules",
-                  );
+                  console.error({ error: analysisError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate rules");
                   throw analysisError;
                 }
               } catch (caseError: any) {
-                console.error(
-                  {
-                    error: caseError,
-                    jobType: job.type,
-                    jobId,
-                    projectId: job.projectId,
-                  },
-                  "Job case failed",
-                );
+                console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
                 throw caseError;
               }
               break;
@@ -1186,8 +1223,8 @@ export class WorkerService {
                 // CHANGE 2/4 — original read full character objects off job.payload.characters.
                 // Payload now carries only characterIds; filter from the freshly loaded project.
                 // Empty / absent characterIds → fall back to all project characters (batch runs).
-                const charactersToProcess = job.payload.characterIds.length
-                  ? project.characters.filter((c) => job.payload.characterIds.includes(c.id))
+                const charactersToProcess = job.payload?.characterIds?.length
+                  ? project.characters.filter((c) => job.payload?.characterIds?.includes(c.id))
                   : project.characters;
 
                 if (!charactersToProcess.length) {
@@ -1266,8 +1303,8 @@ export class WorkerService {
                 // CHANGE 3/4 — original read full location objects off job.payload.locations.
                 // Payload now carries only locationIds; filter from the freshly loaded project.
                 // Empty / absent locationIds → fall back to all project locations (batch runs).
-                const locationsToProcess = job.payload.locationIds.length
-                  ? project.locations.filter((l) => job.payload.locationIds.includes(l.id))
+                const locationsToProcess = job.payload?.locationIds?.length
+                  ? project.locations.filter((l) => job.payload?.locationIds?.includes(l.id))
                   : project.locations;
 
                 if (!locationsToProcess.length) {
@@ -1399,8 +1436,9 @@ export class WorkerService {
                 const scenesToProcess = job.payload?.sceneIds?.length
                   ? project.scenes.filter((scene) => job.payload.sceneIds?.includes(scene.id))
                   : project.scenes;
+
                 if (!scenesToProcess.length) {
-                  console.log("No scenes to process");
+                  console.warn(`[Job ${job.id}] Execution aborted: No valid scenes resolved for processing.`);
                   throw new Error("No scenes to process.");
                 }
 
@@ -1412,127 +1450,61 @@ export class WorkerService {
                     this.createSaveAssetsCallback(job, startTime),
                     this.createUpdateEntitiesCallback(job),
                     this.jobControlPlane.createIncrementAttemptHook(job),
-                    {
-                      userId: job.userId,
-                      teamId: job.teamId
-                    }
+                    { userId: job.userId, teamId: job.teamId }
                   );
-                  if (!result || !result.data) {
-                    throw new Error("Frame generation returned invalid result");
+
+                  if (!result?.data) {
+                    throw new Error("Continuity agent returned malformed payload.");
                   }
 
-                  // Phase 3: Implement Continuity Retry Logic
                   const deferredSceneIds = result.data.deferredSceneIds;
-
                   if (deferredSceneIds && deferredSceneIds.length > 0) {
                     const currentAttempt = job.attempts.currentAttempt || 0;
                     const MAX_CONTINUITY_DEFERRALS = 3;
 
                     if (currentAttempt < MAX_CONTINUITY_DEFERRALS) {
-                      console.log(
-                        `[CONTINUITY DEFERRAL] Scenes [${deferredSceneIds.join(", ")}] are waiting for previous frames. Retrying (Attempt ${currentAttempt}/${MAX_CONTINUITY_DEFERRALS})...`,
-                      );
-
-                      // Re-enqueue the job with a 5-second backoff using requeueJob
+                      console.log(`[Job ${job.id}] CONTINUITY DEFERRAL: Dependencies pending for [${deferredSceneIds.join(", ")}]. Re-queueing job (Attempt ${currentAttempt}/${MAX_CONTINUITY_DEFERRALS}).`);
                       await this.jobControlPlane.requeueJob(job.id);
 
-                      // Send update message about the deferral
-                      this.createUpdateEntitiesCallback(job)(
-                        deferredSceneIds.map((id) => {
-                          const scene = scenesToProcess.find((s) => s.id === id)!;
-                          return {
-                            id,
-                            entityType: "scene",
-                            entity: {
-                              id,
-                              status: "pending" as const,
-                              progressMessage: `Waiting for previous scene frames. Attempt ${currentAttempt + 1}/${MAX_CONTINUITY_DEFERRALS}`,
-                            },
-                          };
-                        }),
-                      );
-
-                      // Exit current execution to allow retry
+                      this.createUpdateEntitiesCallback(job)(deferredSceneIds.map((id) => ({
+                        id, entityType: "scene",
+                        entity: {
+                          id, status: "pending" as const,
+                          progressMessage: `Waiting for upstream scene continuity lock. Attempt ${currentAttempt + 1}/${MAX_CONTINUITY_DEFERRALS}`,
+                        },
+                      })));
                       return;
                     } else {
-                      // VERBOSE LOGGING ON LIMIT REACHED
-                      console.error(`🚨 [CRITICAL CONTINUITY FAILURE] Scene continuity limit reached for Job ${jobId}.
-                                        The following scenes were marked 'Continuous' but their dependencies never materialized: ${deferredSceneIds.join(", ")}.
-                                        Architectural Root Cause: Parallel generation bottleneck or upstream failure in previous scene.`);
+                      console.error(`🚨 [Job ${job.id}] CRITICAL CONTINUITY FAILURE. Pipeline bottleneck. Max deferrals breached for scenes: ${deferredSceneIds.join(", ")}. Executing independent fallback generation.`);
 
-                      // Fallback: Proceed with standard generation to avoid stalling the pipeline indefinitely
-                      console.warn(
-                        "Falling back to autonomous generation for dependent frames to preserve pipeline flow.",
-                      );
-
-                      // Update scenes with warning message
-                      this.createUpdateEntitiesCallback(job)(
-                        deferredSceneIds.map((id) => {
-                          const scene = scenesToProcess.find((s) => s.id === id)!;
-                          return {
-                            id,
-                            entityType: "scene",
-                            entity: {
-                              id,
-                              projectId: scene.projectId,
-                              sceneIndex: scene.sceneIndex,
-                              status: "pending" as const,
-                              progressMessage: "Couldn't get previous scene frame. Generating a new start frame.",
-                            },
-                          };
-                        }),
-                      );
+                      this.createUpdateEntitiesCallback(job)(deferredSceneIds.map((id) => ({
+                        id, entityType: "scene",
+                        entity: {
+                          id, status: "pending" as const,
+                          progressMessage: "Upstream continuity timeout. Generating unlinked start frame.",
+                        },
+                      })));
                     }
                   }
 
                   const { data, metadata } = result;
+                  const nextStoryboard = storyboardManager.applyUpdates(project.storyboard, {
+                    metadata: project.storyboard.metadata,
+                    characters: project.characters, locations: project.locations,
+                    scenes: data.updatedScenes,
+                  });
 
-                  try {
-                    const nextStoryboard = storyboardManager.applyUpdates(project.storyboard, {
-                      metadata: project.storyboard.metadata,
-                      characters: project.characters, // pass-through
-                      locations: project.locations, // pass-through
-                      scenes: data.updatedScenes, // updated by this job
-                    });
+                  await this.projectRepository.updateProject(job.projectId, {
+                    scenes: data.updatedScenes,
+                    storyboard: nextStoryboard,
+                  });
 
-                    updated = await this.projectRepository.updateProject(job.projectId, {
-                      scenes: data.updatedScenes,
-                      storyboard: nextStoryboard, // [+]
-                    });
-                  } catch (updateError: any) {
-                    console.error(
-                      {
-                        error: updateError,
-                        jobType: job.type,
-                        jobId,
-                        projectId: job.projectId,
-                      },
-                      "Failed to update project",
-                    );
-                    throw updateError;
-                  }
                 } catch (generateError: any) {
-                  console.error(
-                    {
-                      error: generateError,
-                      jobType: job.type,
-                      jobId,
-                      projectId: job.projectId,
-                    },
-                    "Failed to generate scene frames",
-                  );
+                  console.error({ error: generateError, jobId, projectId: job.projectId }, "Continuity batch execution failed.");
                   throw generateError;
                 }
               } catch (caseError: any) {
-                console.error(
-                  {
-                    error: caseError,
-                    jobType: job.type,
-                    jobId,
-                    projectId: job.projectId,
-                  },
-                  "Job case failed",
-                );
+                console.error({ error: caseError, jobId, projectId: job.projectId }, "Fatal error processing GENERATE_SCENE_FRAMES job.");
                 throw caseError;
               }
               break;

@@ -46,10 +46,10 @@ export const buildCinematographerNarrative = (
   };
 
   const shotType = shotMap[scene.shotType || ""] || scene.shotType || "Cinematic shot";
-  const movement = scene.cameraMovement ? `, with ${scene.cameraMovement.toLowerCase()} movement` : "";
-  const angle = scene.cameraAngle ? ` from a ${scene.cameraAngle.toLowerCase()} angle` : "";
+  const movement = scene.cameraMovement ? `with ${scene.cameraMovement.toLowerCase()} movement` : "";
+  const angle = scene.cameraAngle ? `from ${scene.cameraAngle.toLowerCase()}` : "";
 
-  let narrative = `A ${shotType.toLowerCase()} captured${angle}${movement}.`;
+  let narrative = `A ${shotType.toLowerCase()} shot captured ${angle} ${movement}.`;
 
   if (scene.composition) {
     narrative += ` ${JSON.stringify(scene.composition).replace(/[\n\r]+/g, ", ")}.`;

@@ -174,7 +174,7 @@ A closure factory that returns the `SaveAssetsCallback` passed into every agent.
 1. Calls `assetManager.createVersionedAssets(...)` with `startedAt = new Date(startTime)`
 2. Publishes a `NEW_ASSETS_BATCH` pipeline event so the frontend store receives the new versions in real time
 
-Every call site across all job cases (`GENERATE_STORYBOARD`, `PROCESS_AUDIO_TO_SCENES`, `ENHANCE_STORYBOARD`, `GENERATE_CHARACTER_ASSETS`, `GENERATE_LOCATION_ASSETS`, `GENERATE_SCENE_FRAMES`, `GENERATE_SCENE_VIDEO`, `RENDER_VIDEO`) passes `startTime`.
+Every call site across all job cases (`GENERATE_STORYBOARD`, `PROCESS_AUDIO_TO_SCENES`, `ENHANCE_STORYBOARD`, `GENERATE_CHARACTER_IMAGES`, `GENERATE_LOCATION_IMAGES`, `GENERATE_SCENE_FRAMES`, `GENERATE_SCENE_VIDEO`, `RENDER_VIDEO`) passes `startTime`.
 
 #### Dead Code to Remove
 
