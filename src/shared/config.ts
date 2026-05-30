@@ -63,6 +63,14 @@ export const aspectRatios = {
 
 export type ExecutionMode = "BATCH" | "PARALLEL" | "SEQUENTIAL";
 
+const readPositiveIntegerEnv = (name: string, fallback: number): number => {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 export const getExecutionMode = (): ExecutionMode => {
   const envValue = process.env.EXECUTION_MODE as ExecutionMode | undefined;
 
@@ -84,4 +92,16 @@ export const getMaxParallelJobs = (): number => {
 
 export const getMaxRetries = (): number => {
   return parseInt(process.env.MAX_RETRIES || "2");
+};
+
+export const getGlobalModelCooldownMs = (): number => {
+  return readPositiveIntegerEnv("GLOBAL_MODEL_COOLDOWN_MS", 5000);
+};
+
+export const getParallelImageStaggerMs = (): number => {
+  return readPositiveIntegerEnv("PARALLEL_IMAGE_STAGGER_MS", 15000);
+};
+
+export const getImageRateLimitRetryDelayMs = (): number => {
+  return readPositiveIntegerEnv("IMAGE_RATE_LIMIT_RETRY_DELAY_MS", 60000);
 };

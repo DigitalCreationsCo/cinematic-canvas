@@ -3,7 +3,7 @@ import { z } from "zod";
 import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
-import { getExecutionMode, imageMimeType } from "#shared/config.js";
+import { getExecutionMode, getParallelImageStaggerMs, imageMimeType } from "#shared/config.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { GenerateBatchImagesParameters, Modality, UserMessage } from "#shared/lm/provider.js";
@@ -145,17 +145,17 @@ async function generateImagesParallel(
     context: ToolContext<TextModelController>
 ): Promise<GenerateImageResult[]> {
     const { traceId } = context;
-    const STAGGER_MS = 1500;
-    console.log(`[${traceId}] Parallel: generating for ${requests.length} request(s) (stagger=${STAGGER_MS}ms)`);
+    const staggerMs = getParallelImageStaggerMs();
+    console.log(`[${traceId}] Parallel: generating for ${requests.length} request(s) (stagger=${staggerMs}ms)`);
 
     return Promise.all(
         requests.map(async (req, index): Promise<GenerateImageResult> => {
-            // Stagger each request by index * STAGGER_MS to avoid rate limits.
+            // Stagger each request by index * staggerMs to avoid rate limits.
             // Index-based staggering works correctly with Promise.all because
             // `index` is captured at callback creation time (before any await),
             // unlike GlobalCooldown which all callbacks read simultaneously.
             if (index > 0) {
-                await new Promise((resolve) => setTimeout(resolve, index * STAGGER_MS));
+                await new Promise((resolve) => setTimeout(resolve, index * staggerMs));
             }
 
             const count = req.count ?? 1;

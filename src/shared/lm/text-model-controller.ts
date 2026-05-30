@@ -1,6 +1,6 @@
 export * from "#shared/lm/provider.js";
 import { GoogleProvider } from "#shared/lm/google/provider.js";
-import { getTestMode } from "#shared/config.js";
+import { getImageRateLimitRetryDelayMs, getTestMode } from "#shared/config.js";
 import {
   ITextModelProvider,
   TextModelProviderName,
@@ -266,7 +266,7 @@ export class TextModelController extends BaseChatModel<ProviderChatModelCallOpti
     params: { model?: string } & Omit<Parameters<ITextModelProvider["generateImages"]>[0], "model">,
   ): ReturnType<ITextModelProvider["generateImages"]> {
     const MAX_RETRIES = 3;
-    let retryDelayMs = 2000;
+    let retryDelayMs = getImageRateLimitRetryDelayMs();
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {

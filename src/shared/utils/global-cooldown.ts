@@ -1,3 +1,5 @@
+import { getGlobalModelCooldownMs } from "#shared/config.js";
+
 /**
  * Global cooldown manager to throttle function calls across all invocations.
  *
@@ -10,7 +12,7 @@
  */
 export class GlobalCooldown {
   private static lastCallTimestamp = 0;
-  private static cooldownMs = 2000; // Configurable base throttle
+  private static cooldownMs = getGlobalModelCooldownMs();
 
   static async wait(): Promise<void> {
     const now = Date.now();

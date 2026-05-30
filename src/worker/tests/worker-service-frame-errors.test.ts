@@ -71,9 +71,9 @@ describe('WorkerService - Frame Generation Error Handling', () => {
 
             // The application logic calls updateJobSafe in the final catch block for failures
             expect(mockJobControlPlane.updateJobSafe).toHaveBeenCalledWith(
-                'job-123', 1, expect.objectContaining({
+                'job-123', 1,                 expect.objectContaining({
                     state: 'FAILED',
-                    error: expect.stringContaining('Frame generation returned invalid result')
+                    error: expect.stringContaining('Continuity agent returned malformed payload')
                 })
             );
         });
@@ -109,9 +109,9 @@ describe('WorkerService - Frame Generation Error Handling', () => {
             await workerService.processJob('job-456');
 
             expect(mockJobControlPlane.updateJobSafe).toHaveBeenCalledWith(
-                'job-456', 1, expect.objectContaining({
+                'job-456', 1,                 expect.objectContaining({
                     state: 'FAILED',
-                    error: expect.stringContaining('Frame generation returned invalid result')
+                    error: expect.stringContaining('Continuity agent returned malformed payload')
                 })
             );
         });

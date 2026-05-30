@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ContinuityManagerAgent } from '../continuity-manager';
 import { generateSceneFrames } from '#shared/lm/tools/scenes/generate-scene-frames.tool.js';
+import { QualityRetryHandler } from '#shared/utils/quality-retry-handler.js';
 
 // Mock dependencies
 vi.mock('#shared/lm/tools/scenes/generate-scene-frames.tool', () => ({
@@ -10,6 +11,12 @@ vi.mock('#shared/lm/tools/scenes/generate-scene-frames.tool', () => ({
 
 vi.mock('#shared/lm/tools/scenes/generate-frame-generation-prompts', () => ({
     generateFrameGenerationPrompts: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('#shared/services/project-repository.js', () => ({
+    ProjectRepository: class {
+        getEntities = vi.fn().mockResolvedValue([]);
+    },
 }));
 
 describe('ContinuityManagerAgent: DAG Dependency Execution', () => {
@@ -33,6 +40,98 @@ describe('ContinuityManagerAgent: DAG Dependency Execution', () => {
         vi.spyOn(agent as any, 'buildSceneFrameQualityItems').mockImplementation((_, reqs) => {
             return reqs.map((r: any) => ({ request: r }));
         });
+    });
+
+    it('marks every quality-controlled scene frame asset complete by task id', async () => {
+        const qualityAgent = {
+            qualityConfig: { enabled: true, maxRetries: 1, minorIssueThreshold: 0.8 },
+            evaluateFrameQuality: vi.fn(),
+            applyQualityCorrections: vi.fn(),
+            sanitizePrompt: vi.fn(),
+        };
+        agent = new ContinuityManagerAgent(
+            {} as any,
+            {} as any,
+            qualityAgent as any,
+            {} as any,
+            {} as any,
+        );
+
+        const scene = {
+            id: "s1",
+            projectId: "proj_1",
+            sceneIndex: 0,
+            transitionType: "Cut",
+            characterIds: [],
+            locationId: "loc_1",
+            assets: {},
+            status: "pending",
+        } as any;
+        const project = {
+            id: "proj_1",
+            scenes: [scene],
+            characters: [],
+            locations: [{ id: "loc_1", assets: {} }],
+            generationRules: [],
+        } as any;
+
+        const startOutput = {
+            success: true,
+            id: "s1_scene_start_frame",
+            sceneId: "s1",
+            framePosition: "start",
+            outputs: [{ uri: "gs://bucket/s1-start.png", version: 1 }],
+            metadata: { model: "test", prompt: "start" },
+        } as any;
+        const endOutput = {
+            success: true,
+            id: "s1_scene_end_frame",
+            sceneId: "s1",
+            framePosition: "end",
+            outputs: [{ uri: "gs://bucket/s1-end.png", version: 1 }],
+            metadata: { model: "test", prompt: "end" },
+        } as any;
+
+        vi.spyOn(agent as any, 'buildSceneFrameQualityItems').mockResolvedValue([
+            {
+                id: "s1_scene_start_frame",
+                scene,
+                characters: [],
+                locations: [],
+                request: { id: "s1_scene_start_frame", sceneId: "s1", framePosition: "start" },
+            },
+            {
+                id: "s1_scene_end_frame",
+                scene,
+                characters: [],
+                locations: [],
+                request: { id: "s1_scene_end_frame", sceneId: "s1", framePosition: "end" },
+            },
+        ]);
+        const executeBatchSpy = vi.spyOn(QualityRetryHandler, 'executeBatch').mockResolvedValue(
+            new Map([
+                ["s1_scene_start_frame", { output: startOutput, metadata: {} } as any],
+                ["s1_scene_end_frame", { output: endOutput, metadata: {} } as any],
+            ]),
+        );
+
+        const result = await agent.generateSceneFramesBatch(
+            project,
+            [scene],
+            ["scene_start_frame", "scene_end_frame"],
+            mockSaveAssets,
+            mockSendUpdate,
+            vi.fn(),
+            { userId: 'u1', teamId: 't1' },
+        );
+
+        expect(result.data.deferredSceneIds).toHaveLength(0);
+        expect(result.data.updatedScenes[0].status).toBe("complete");
+        expect(mockSendUpdate).toHaveBeenLastCalledWith([
+            { id: "s1", entityType: "scene", entity: expect.objectContaining({ id: "s1", status: "complete" }) },
+        ]);
+
+        executeBatchSpy.mockRestore();
     });
 
     it('generates independent and dependent scenes sequentially using the local asset registry', async () => {

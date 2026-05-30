@@ -47,6 +47,7 @@ import {
 import { AgentOptions } from "#shared/agents/agent.options.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
+import { logContextStore } from "#shared/logger/index.js";
 
 interface SceneFrameQualityItem {
   id: string;
@@ -90,24 +91,20 @@ export class ContinuityManagerAgent {
     incrementAttempt: IncrementAttemptHook,
     context: { userId: string; teamId: string; }
   ): Promise<GenerativeResultGenerateSceneFrames> {
-    const opStartTime = Date.now();
-    const projectId = project.id;
-    const traceId = `generate_scene_frames_${projectId}_${opStartTime}`;
+
     const executionMode = getExecutionMode();
 
-    const logContext = { projectId, totalScenes: scenes.length, executionMode, traceId };
-    console.log(logContext, `[ContinuityManager] Starting scene frame generation for Cinematic Canvas pipeline.`);
+    const startTime = Date.now();
+    const projectId = project.id;
+    const traceId = `generate_scene_frames_${projectId}_${startTime}`;
 
-    const toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository; incrementAttempt: IncrementAttemptHook; } = {
-      projectId, traceId, safetyRetries: this.qualityAgent.qualityConfig.maxRetries,
-      projectRepository: new ProjectRepository(), console, storageManager: this.storageManager,
-      provider: this.imageModel, options: this.options, saveAssets, sendEntityUpdate, incrementAttempt, ...context,
-    };
-
-    // Tracking State
     const completedTasks = new Set<string>();
     const failedTasks = new Set<string>();
     const totalRequiredTasks = scenes.length * scopeAssetKeys.length;
+    // The DAG depth is bounded by the longest dependency chain, which is at most scenes.length
+    // (each pass unblocks one deferred layer). Using totalRequiredTasks is too tight and
+    // would abort valid multi-layer chains prematurely.
+    const maxIterations = scenes.length + 1;
 
     // Cache to hydrate newly generated assets so the loop can safely traverse the DAG
     const localAssetRegistry = new Map<string, Map<string, string>>();
@@ -119,152 +116,241 @@ export class ContinuityManagerAgent {
       localAssetRegistry.set(s.id, sceneAssets);
     }
 
-    let iterationCount = 0;
-    // The DAG depth is bounded by the longest dependency chain, which is at most scenes.length
-    // (each pass unblocks one deferred layer). Using totalRequiredTasks is too tight and
-    // would abort valid multi-layer chains prematurely.
-    const maxIterations = scenes.length + 1;
+    await logContextStore.run({ projectId, totalScenes: scenes.length, executionMode, traceId },
+      async () => {
+        console.log(`[ContinuityManager] Starting scene frame generation for Cinematic Canvas pipeline.`);
 
-    while (completedTasks.size + failedTasks.size < totalRequiredTasks) {
-      iterationCount++;
-      let progressMade = false;
+        const toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository; incrementAttempt: IncrementAttemptHook; } = {
+          projectId, traceId, safetyRetries: this.qualityAgent.qualityConfig.maxRetries,
+          projectRepository: new ProjectRepository(), console, storageManager: this.storageManager,
+          provider: this.imageModel, options: this.options, saveAssets, sendEntityUpdate, incrementAttempt, ...context,
+        };
 
-      if (iterationCount > maxIterations) {
-        console.error(logContext, `[ContinuityManager] DAG evaluation stalled. Emitting deferrals.`);
-        break;
-      }
+        let iterationCount = 0;
 
-      const currentIterationPromptRequests: FramePromptRequest[] = [];
-      const currentIterationContexts: { scene: Scene; assetKey: AssetKey; }[] = [];
+        while (completedTasks.size + failedTasks.size < totalRequiredTasks) {
+          iterationCount++;
+          let progressMade = false;
 
-      for (const scene of scenes) {
-        const previousScene = project.scenes.find(s => s.sceneIndex === scene.sceneIndex - 1);
-        const sceneCharacters = project.characters.filter(c => scene.characterIds.includes(c.id));
-        const sceneLocations = project.locations.filter(l => scene.locationId.includes(l.id));
+          if (iterationCount > maxIterations) {
+            console.error(`[ContinuityManager] DAG evaluation stalled. Emitting deferrals.`);
+            break;
+          }
 
-        for (const assetKey of scopeAssetKeys) {
-          const taskId = `${scene.id}_${assetKey}`;
-          if (completedTasks.has(taskId) || failedTasks.has(taskId)) continue;
+          const currentIterationContexts: { scene: Scene; assetKey: AssetKey; }[] = [];
+          const currentIterationPromptRequests: FramePromptRequest[] = [];
 
-          const isContinuousStart = assetKey === "scene_start_frame" &&
-            [ "Continuous", "Cut", "None" ].includes(scene.transitionType || "None");
+          for (const scene of scenes) {
+            const previousScene = project.scenes.find(s => s.sceneIndex === scene.sceneIndex - 1);
+            const sceneCharacters = project.characters.filter(c => scene.characterIds.includes(c.id));
+            const sceneLocations = project.locations.filter(l => scene.locationId.includes(l.id));
 
-          if (isContinuousStart && previousScene) {
-            const prevEndFrameUri = localAssetRegistry.get(previousScene.id)?.get("scene_end_frame");
+            for (const assetKey of scopeAssetKeys) {
+              const taskId = `${scene.id}_${assetKey}`;
+              if (completedTasks.has(taskId) || failedTasks.has(taskId)) continue;
 
-            if (prevEndFrameUri) {
-              console.log({ traceId, sceneId: scene.id }, `[Continuity] Linking existing prev end-frame.`);
-              saveAssets(
-                { projectId, sceneIds: [ scene.id ] },
-                [ "scene_start_frame" ], "image", [ prevEndFrameUri ],
-                [ { model: "linked", prompt: "Continuity link from previous scene" } ], true,
+            const isContinuousStart = assetKey === "scene_start_frame" &&
+              [ "Continuous", "Cut", "None" ].includes(scene.transitionType || "None");
+
+            if (isContinuousStart && previousScene) {
+              const prevEndFrameUri = localAssetRegistry.get(previousScene.id)?.get("scene_end_frame");
+
+              if (prevEndFrameUri) {
+                console.log({ traceId, sceneId: scene.id }, `[Continuity] Linking existing prev end-frame.`);
+                saveAssets(
+                  { projectId, sceneIds: [ scene.id ] },
+                  [ "scene_start_frame" ], "image", [ prevEndFrameUri ],
+                  [ { model: "linked", prompt: "Continuity link from previous scene" } ], true,
+                );
+                localAssetRegistry.get(scene.id)!.set("scene_start_frame", prevEndFrameUri);
+                completedTasks.add(taskId);
+                progressMade = true;
+                continue;
+              } else {
+                console.log({ traceId, sceneId: scene.id }, `[Continuity] Deferring start_frame: previous scene end_frame not ready.`);
+                continue; // Defer just this asset, let others (like end_frame) process
+              }
+            }
+
+              currentIterationPromptRequests.push({
+                framePosition: assetKey === "scene_start_frame" ? "start" : "end",
+                scene, characters: sceneCharacters, locations: sceneLocations, previousScene,
+                generationRules: project.generationRules || [],
+                metadata: { custom_id: scene.id, assetKey, version: 1 },
+              });
+              currentIterationContexts.push({ scene, assetKey });
+            }
+          }
+
+          if (currentIterationPromptRequests.length > 0) {
+            // Hoist outside try so the catch block can reference dispatched items without a TDZ
+            // error if buildSceneFrameQualityItems itself throws before qualityItems is assigned.
+            let qualityItems: SceneFrameQualityItem[] = [];
+
+            try {
+            qualityItems = await this.buildSceneFrameQualityItems(
+              project, currentIterationPromptRequests, currentIterationContexts, localAssetRegistry, saveAssets, context
+            );
+
+            let results: SceneFrameGenerationSuccess[] = [];
+
+            if (this.qualityAgent.qualityConfig.enabled) {
+
+              const resultMap = await QualityRetryHandler.executeBatch<
+                SceneFrameQualityItem,
+                SceneFrameGenerationSuccess
+              >(
+                qualityItems,
+                {
+                  qualityConfig: this.qualityAgent.qualityConfig,
+                  context: {
+                    projectId,
+                    assetKey: "scene_start_frame",
+                    sceneId: "batch",
+                    sceneIndex: -1,
+                    attempt: 1,
+                    maxAttempts: this.qualityAgent.qualityConfig.maxRetries,
+                  },
+                },
+                {
+                  generate: async (items, attempt) => {
+                    const results = await generateSceneFrames(
+                      { requests: items.map((i) => i.request), attempt },
+                      toolContext,
+                    );
+                    return results.map((res) => ({
+                      id: res.id,
+                      output: res.success ? res : undefined,
+                      error: res.success ? undefined : res.error,
+                    }));
+                  },
+                  evaluate: async (output, item, attempt) => {
+                    return this.qualityAgent.evaluateFrameQuality(
+                      output.outputs[ 0 ]?.uri,
+                      item.scene,
+                      item.request.framePosition,
+                      item.characters,
+                      item.locations,
+                    );
+                  },
+                  applyCorrections: async (item, evaluation, attempt) => {
+                    const newPrompt = await this.qualityAgent.applyQualityCorrections(
+                      item.request.prompt,
+                      evaluation,
+                      item.scene,
+                      item.characters,
+                      attempt,
+                    );
+                    return { ...item, request: { ...item.request, prompt: newPrompt } };
+                  },
+                  sanitizePrompt: async (item, errorMsg) => {
+                    const newPrompt = await this.qualityAgent.sanitizePrompt(item.request.prompt, errorMsg);
+                    return { ...item, request: { ...item.request, prompt: newPrompt } };
+                  },
+                  calculateScore: (evaluation) => evaluation.score,
+                  onRetry: async (error, item, attempt, delay) => {
+                    console.log(`🔄 Retry triggered for ${item.id}: ${error.type}`);
+                    incrementAttempt(error.message, "BACKOFF_RETRY");
+                  },
+                },
               );
-              localAssetRegistry.get(scene.id)!.set("scene_start_frame", prevEndFrameUri);
-              completedTasks.add(taskId);
-              progressMade = true;
-              continue;
+
+              for (const item of qualityItems) {
+                const result = resultMap.get(item.id);
+                const assetKey = item.request.framePosition === "start" ? "scene_start_frame" : "scene_end_frame";
+                const taskId = `${item.scene.id}_${assetKey}`;
+
+                if (!result || result instanceof Error) {
+                  failedTasks.add(taskId);
+                  continue;
+                }
+
+                results.push(result.output);
+              }
             } else {
-              console.log({ traceId, sceneId: scene.id }, `[Continuity] Deferring start_frame: previous scene end_frame not ready.`);
-              continue; // Defer just this asset, let others (like end_frame) process
+              const rawResults = await generateSceneFrames({ requests: qualityItems.map(i => i.request), attempt: 1 }, toolContext);
+              results = rawResults.filter(r => r.success) as SceneFrameGenerationSuccess[];
+
+              // Track failures via the result's own sceneId — not by request array position.
+              rawResults.filter(r => !r.success).forEach(r =>
+                failedTasks.add(`${r.sceneId}_${r.framePosition === "start" ? "scene_start_frame" : "scene_end_frame"}`)
+              );
+            }
+
+            for (const res of results) {
+              const assetKey = res.framePosition === "start" ? "scene_start_frame" : "scene_end_frame";
+              completedTasks.add(`${res.sceneId}_${assetKey}`);
+
+              if (res.outputs[ 0 ]?.uri) {
+                if (!localAssetRegistry.has(res.sceneId)) localAssetRegistry.set(res.sceneId, new Map());
+                localAssetRegistry.get(res.sceneId)!.set(assetKey, res.outputs[ 0 ].uri);
+              }
+              progressMade = true;
+            }
+
+          } catch (error) {
+            console.error(`[ContinuityManager] Frame generation iteration failed`, error);
+            // Only mark tasks that were actively dispatched in this iteration as failed.
+            // If qualityItems is still empty, buildSceneFrameQualityItems threw before any
+            // requests were dispatched — fall back to the raw prompt list. Either way, deferred
+            // tasks that were never attempted must NOT be added to failedTasks.
+            if (qualityItems.length > 0) {
+              qualityItems.forEach(item =>
+                failedTasks.add(`${item.scene.id}_${item.request.framePosition === "start" ? "scene_start_frame" : "scene_end_frame"}`)
+              );
+            } else {
+              currentIterationPromptRequests.forEach(req =>
+                failedTasks.add(`${req.scene.id}_${req.metadata?.assetKey}`)
+              );
+            }
             }
           }
 
-          currentIterationPromptRequests.push({
-            framePosition: assetKey === "scene_start_frame" ? "start" : "end",
-            scene, characters: sceneCharacters, locations: sceneLocations, previousScene,
-            generationRules: project.generationRules || [],
-            metadata: { custom_id: scene.id, assetKey, version: 1 },
-          });
-          currentIterationContexts.push({ scene, assetKey });
-        }
-      }
-
-      if (currentIterationPromptRequests.length > 0) {
-        try {
-          const qualityItems = await this.buildSceneFrameQualityItems(
-            project, currentIterationPromptRequests, currentIterationContexts, localAssetRegistry, saveAssets, context
-          );
-
-          let results: SceneFrameGenerationSuccess[] = [];
-
-          if (this.qualityAgent.qualityConfig.enabled) {
-            // ... Omitted standard quality agent execution identical to original ...
-            // Just ensure the output maps to results array.
-          } else {
-            const rawResults = await generateSceneFrames({ requests: qualityItems.map(i => i.request), attempt: 1 }, toolContext);
-            results = rawResults.filter(r => r.success) as SceneFrameGenerationSuccess[];
-
-            // Track failures
-            rawResults.filter(r => !r.success).forEach(r => failedTasks.add(`${r.sceneId}_${r.framePosition === "start" ? "scene_start_frame" : "scene_end_frame"}`));
+          if (!progressMade && completedTasks.size + failedTasks.size < totalRequiredTasks) {
+            console.warn(`[ContinuityManager] Stalled — unresolved dependencies remaining.`);
+            break;
           }
 
-          for (const res of results) {
-            const assetKey = res.framePosition === "start" ? "scene_start_frame" : "scene_end_frame";
-            completedTasks.add(`${res.sceneId}_${assetKey}`);
-
-            if (res.outputs[ 0 ]?.uri) {
-              if (!localAssetRegistry.has(res.sceneId)) localAssetRegistry.set(res.sceneId, new Map());
-              localAssetRegistry.get(res.sceneId)!.set(assetKey, res.outputs[ 0 ].uri);
-            }
-            progressMade = true;
+          // Add inter-iteration delay to prevent burst cycles between DAG iterations.
+          // Each iteration can fire a batch of generation requests; a brief pause
+          // between iterations ensures the provider's rate-limit budget has time to
+          // replenish before the next batch begins.
+          if (completedTasks.size + failedTasks.size < totalRequiredTasks && currentIterationPromptRequests.length > 0) {
+            const interIterationDelayMs = 3000;
+            console.log(
+              { traceId, iterationCount, completedCount: completedTasks.size, failedCount: failedTasks.size },
+              `[ContinuityManager] Inter-iteration pause: ${interIterationDelayMs}ms`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, interIterationDelayMs));
           }
-
-        } catch (error) {
-          console.error(logContext, `[ContinuityManager] Frame generation iteration failed`, error);
-          // Only mark the tasks that were actively dispatched in this iteration as failed.
-          // Do NOT mark deferred tasks (not present in currentIterationPromptRequests) as failed —
-          // they have not been attempted yet and must remain eligible for future iterations.
-          qualityItems.forEach(item =>
-            failedTasks.add(`${item.scene.id}_${item.request.framePosition === "start" ? "scene_start_frame" : "scene_end_frame"}`)
-          );
         }
-      }
 
-      if (!progressMade && completedTasks.size + failedTasks.size < totalRequiredTasks) {
-        console.warn(logContext, `[ContinuityManager] Stalled — unresolved dependencies remaining.`);
-        break;
-      }
+        // Merge completion status back onto each scene object so the caller persists authoritative
+        // state. Returning the raw `scenes` input (as the original code did) means the worker-service
+        // writes stale status to the repository, because `finalUpdates` was only sent via
+        // sendEntityUpdate but never applied to the return value.
+        const statusById = new Map<string, "complete" | "pending">();
+        for (const s of scenes) {
+          const isComplete = scopeAssetKeys.every(k => completedTasks.has(`${s.id}_${k}`));
+          statusById.set(s.id, isComplete ? "complete" : "pending");
+        }
 
-      // Add inter-iteration delay to prevent burst cycles between DAG iterations.
-      // Each iteration can fire a batch of generation requests; a brief pause
-      // between iterations ensures the provider's rate-limit budget has time to
-      // replenish before the next batch begins.
-      if (completedTasks.size + failedTasks.size < totalRequiredTasks && currentIterationPromptRequests.length > 0) {
-        const interIterationDelayMs = 3000;
-        console.log(
-          { traceId, iterationCount, completedCount: completedTasks.size, failedCount: failedTasks.size },
-          `[ContinuityManager] Inter-iteration pause: ${interIterationDelayMs}ms`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, interIterationDelayMs));
-      }
-    }
+        const updatedScenes = scenes.map(s => ({
+          ...s,
+          status: statusById.get(s.id) ?? "pending" as const,
+        }));
 
-    const finalUpdates = scenes.map(s => {
-      const isComplete = scopeAssetKeys.every(k => completedTasks.has(`${s.id}_${k}`));
-      return {
-        id: s.id, projectId: s.projectId, sceneIndex: s.sceneIndex,
-        status: isComplete ? ("complete" as const) : ("pending" as const),
-      };
-    });
+        sendEntityUpdate(updatedScenes.map(s => ({ id: s.id, entityType: "scene" as const, entity: s })));
 
-    sendEntityUpdate(finalUpdates.map(u => ({ id: u.id, entityType: "scene", entity: u })));
+        const deferredSceneIds = scenes
+          .filter(s => !scopeAssetKeys.every(k => completedTasks.has(`${s.id}_${k}`) || failedTasks.has(`${s.id}_${k}`)))
+          .map(s => s.id);
 
-    // Merge computed status into the scene objects so callers (worker-service)
-    // persist the correct complete/pending status rather than the raw input.
-    const statusBySceneId = new Map(finalUpdates.map(u => [u.id, u.status]));
-    const updatedScenes = scenes.map(s => ({
-      ...s,
-      status: statusBySceneId.get(s.id) ?? s.status,
-    }));
-
-    const deferredSceneIds = scenes
-      .filter(s => !scopeAssetKeys.every(k => completedTasks.has(`${s.id}_${k}`) || failedTasks.has(`${s.id}_${k}`)))
-      .map(s => s.id);
-
-    return {
-      data: { updatedScenes, deferredSceneIds },
-      metadata: { model: this.imageModel.imageModel, attempts: iterationCount, acceptedAttempt: 1 },
-    };
+        return {
+          data: { updatedScenes, deferredSceneIds },
+          metadata: { model: this.imageModel.imageModel, attempts: iterationCount, acceptedAttempt: 1 },
+        };
+      });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -303,26 +389,61 @@ export class ContinuityManagerAgent {
 
     const generatedPrompts = await generateFrameGenerationPrompts(promptRequests, promptToolContext);
 
-    // Build a lookup of prompt by scene-frame key from the LLM results.
-    // Each prompt carries the original custom_id + assetKey in its metadata, so
-    // we can match regardless of LLM reordering, deduplication, or re-emission.
-    const promptBySceneFrameKey = new Map<string, string>();
-    for (const p of generatedPrompts) {
-      const key = `${p.metadata.custom_id}:${p.metadata.assetKey}`;
-      if (p.prompt) {
-        promptBySceneFrameKey.set(key, p.prompt);
-      }
+    // ─── ROOT CAUSE FIX ──────────────────────────────────────────────────────
+    // generatedPrompts MUST be matched back to their originating context by the
+    // composite key (sceneId + assetKey) carried in metadata.custom_id, NOT by
+    // array position [i].
+    //
+    // generateFrameGenerationPrompts is an LLM tool call.  The model may reorder,
+    // merge, or drop items when it serialises its response.  Pairing on index [i]
+    // silently stamps the wrong sceneId / framePosition / referenceImages onto a
+    // request, causing generated frames to be persisted under an unrelated scene —
+    // exactly the "indiscriminate cross-scene frame application" bug.
+    //
+    // Each FramePromptRequest carries metadata: { custom_id: scene.id, assetKey }.
+    // We build a Map keyed on that composite so every generated prompt is routed
+    // to exactly the context that produced it, regardless of output ordering.
+    // ─────────────────────────────────────────────────────────────────────────
+    const contextByKey = new Map<string, { scene: Scene; assetKey: AssetKey; }>();
+    for (let i = 0; i < promptRequests.length; i++) {
+      const req = promptRequests[ i ];
+      const key = `${req.metadata?.custom_id}_${req.metadata?.assetKey}`;
+      contextByKey.set(key, contexts[ i ]);
+    }
+
+    if (generatedPrompts.length !== promptRequests.length) {
+      // A count mismatch means the LLM dropped or duplicated items.  We cannot
+      // safely fall back to index-based pairing here — that is the very bug we are
+      // fixing.  Throw so the caller marks only this iteration's tasks as failed
+      // and retries, rather than silently routing frames to wrong scenes.
+      throw new Error(
+        `[ContinuityManager] generateFrameGenerationPrompts returned ${generatedPrompts.length} results ` +
+        `for ${promptRequests.length} requests. Cannot safely correlate prompts to scenes. Aborting iteration.`
+      );
     }
 
     const items: SceneFrameQualityItem[] = [];
 
-    for (const { scene, assetKey } of contexts) {
-      const key = `${scene.id}:${assetKey}`;
-      const prompt = promptBySceneFrameKey.get(key);
-      if (!prompt) {
-        console.warn({ sceneId: scene.id, assetKey }, `[ContinuityManager] No LLM prompt returned — skipping frame`);
+    for (const generatedPrompt of generatedPrompts) {
+      const custom_id = generatedPrompt.metadata?.custom_id as string | undefined;
+      const promptAssetKey = generatedPrompt.metadata?.assetKey as AssetKey | undefined;
+      const lookupKey = `${custom_id}_${promptAssetKey}`;
+      const ctx = contextByKey.get(lookupKey);
+
+      if (!ctx) {
+        // The generated prompt carries no recognisable metadata — pairing by position
+        // is not safe.  Skip this item and record it as a failure so it is retried
+        // rather than silently saved to the wrong scene.
+        console.error(
+          { traceId: promptToolContext.traceId, lookupKey, availableKeys: [ ...contextByKey.keys() ] },
+          `[ContinuityManager] buildSceneFrameQualityItems: could not resolve scene context for ` +
+          `generated prompt (key="${lookupKey}"). Skipping to prevent cross-scene frame contamination.`
+        );
         continue;
       }
+
+      const { scene, assetKey } = ctx;
+      const { prompt } = generatedPrompt;
 
       // Bypass LLM generation (overridePrompt provided), extract base context
       const inputs = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
@@ -410,6 +531,10 @@ export class ContinuityManagerAgent {
     const { characters, locations, scenes } = project;
     const generationRules = project.generationRules || [];
 
+    // Resolve the logical predecessor by canonical sceneIndex, NOT by array position.
+    // The project.scenes array is not guaranteed to be sorted, so
+    // `scenes.findIndex(s => s.id === scene.id) - 1` can return the wrong scene.
+    // This must match the lookup used in buildSceneFrameQualityItems and the DAG loop.
     const previousScene = scenes.find((s) => s.sceneIndex === scene.sceneIndex - 1);
 
     const previousAssets = getAllBestAssets(previousScene?.assets);

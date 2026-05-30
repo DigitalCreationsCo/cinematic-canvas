@@ -1429,7 +1429,6 @@ export class WorkerService {
 
             // TODO MOVE DEFERRAL LOGIC INTO CONTINUTIY MANAGER
             // TODO ENSURE SCENES WITH A START FRAME OR END FRAME CAN STILL BE GENERATED
-
             case "GENERATE_SCENE_FRAMES": {
               try {
                 const project = await this.projectRepository.getProjectFullState(job.projectId);
@@ -1459,7 +1458,7 @@ export class WorkerService {
 
                   const deferredSceneIds = result.data.deferredSceneIds;
                   if (deferredSceneIds && deferredSceneIds.length > 0) {
-                    const currentAttempt = job.attempts.currentAttempt || 0;
+                    const currentAttempt = job.attempts?.currentAttempt ?? 0;
                     const MAX_CONTINUITY_DEFERRALS = 3;
 
                     if (currentAttempt < MAX_CONTINUITY_DEFERRALS) {
@@ -1484,6 +1483,50 @@ export class WorkerService {
                           progressMessage: "Upstream continuity timeout. Generating unlinked start frame.",
                         },
                       })));
+
+                      // Actually generate frames for deferred scenes independently.
+                      // The first pass deferred these because their continuity dependencies
+                      // (e.g. previous scene's end_frame) were not yet available.  Now either
+                      // those dependencies have been resolved by the first pass, or they
+                      // truly cannot be satisfied — either way we must attempt generation
+                      // rather than silently falling through to stale result.data which
+                      // does NOT contain these deferred scenes' frames.
+                      const deferredScenes = scenesToProcess.filter(
+                        (s) => deferredSceneIds.includes(s.id),
+                      );
+                      if (deferredScenes.length > 0) {
+                        try {
+                          const fallbackResult = await agents.continuityAgent.generateSceneFramesBatch(
+                            hydrateProject(project),
+                            deferredScenes.map((scene) => hydrateEntity(scene, scene.assets)),
+                            job.payload.assetKeys,
+                            this.createSaveAssetsCallback(job, startTime),
+                            this.createUpdateEntitiesCallback(job),
+                            this.jobControlPlane.createIncrementAttemptHook(job),
+                            { userId: job.userId, teamId: job.teamId },
+                          );
+
+                          if (fallbackResult?.data) {
+                            // Merge independently-generated frames into the main result
+                            // so the persistence block below saves them.
+                            for (let i = 0; i < result.data.updatedScenes.length; i++) {
+                              const merged = fallbackResult.data.updatedScenes.find(
+                                (fs) => fs.id === result.data.updatedScenes[ i ].id,
+                              );
+                              if (merged) result.data.updatedScenes[ i ] = merged;
+                            }
+                            // Clear the deferred list since we've attempted the fallback.
+                            result.data.deferredSceneIds = result.data.deferredSceneIds.filter(
+                              (id) => !deferredSceneIds.includes(id),
+                            );
+                          }
+                        } catch (fallbackError) {
+                          console.error(
+                            { error: fallbackError, jobId, projectId: job.projectId },
+                            "Independent fallback for deferred scenes failed. Continuing with partial results.",
+                          );
+                        }
+                      }
                     }
                   }
 
