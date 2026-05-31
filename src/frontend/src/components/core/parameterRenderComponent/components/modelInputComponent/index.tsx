@@ -99,10 +99,23 @@ export default function ModelInputComponent({
     },
   });
 
-  const modelType =
-    nodeClass?.template?.model?.model_type === "language"
-      ? "llm"
-      : "embeddings";
+  const modelType = (() => {
+    const rawType = nodeClass?.template?.model?.model_type;
+    // Map from the Python ModelInputMixin model_type values to
+    // the model-catalog (API) model_type values used for filtering.
+    switch (rawType) {
+      case "language":
+        return "llm";
+      case "embedding":
+        return "embeddings";
+      case "image_generation":
+        return "image_generation";
+      case "video_generation":
+        return "video_generation";
+      default:
+        return "llm";
+    }
+  })();
 
   const {
     data: providersData = [],

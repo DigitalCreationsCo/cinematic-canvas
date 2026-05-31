@@ -157,6 +157,8 @@ def update_model_options_in_build_config(
             # User explicitly selected "Connect other models", show the handle
             if cache_key_prefix == "embedding_model_options":
                 build_config[model_field_name]["input_types"] = ["Embeddings"]
+            elif cache_key_prefix in ("image_model_options", "video_model_options"):
+                build_config[model_field_name]["input_types"] = []
             else:
                 build_config[model_field_name]["input_types"] = ["LanguageModel"]
         else:
@@ -239,7 +241,12 @@ def update_model_options_in_build_config(
         options = cached.get("options", [])
         if options:
             # Determine model type based on cache_key_prefix
-            model_type = "embeddings" if cache_key_prefix == "embedding_model_options" else "language"
+            if cache_key_prefix == "embedding_model_options":
+                model_type = "embeddings"
+            elif cache_key_prefix in ("image_model_options", "video_model_options"):
+                model_type = cache_key_prefix.replace("_model_options", "")
+            else:
+                model_type = "language"
 
             # Try to get user's default model from the variable service
             default_model_name = None
@@ -259,11 +266,11 @@ def update_model_options_in_build_config(
                             return None, None
 
                         # Variable names match those in the API
-                        var_name = (
-                            "__default_embedding_model__"
-                            if model_type == "embeddings"
-                            else "__default_language_model__"
-                        )
+                        var_name = {
+                            "embeddings": "__default_embedding_model__",
+                            "image": "__default_image_model__",
+                            "video": "__default_video_model__",
+                        }.get(model_type, "__default_language_model__")
 
                         try:
                             var = await variable_service.get_variable_object(
@@ -313,6 +320,9 @@ def update_model_options_in_build_config(
     # Handle visibility of the model input handle based on selection
     if cache_key_prefix == "embedding_model_options":
         build_config[model_field_name]["input_types"] = ["Embeddings"]
+    elif cache_key_prefix in ("image_model_options", "video_model_options"):
+        # Image and video model inputs don't accept model-type connections via edges
+        build_config[model_field_name]["input_types"] = []
     else:
         build_config[model_field_name]["input_types"] = ["LanguageModel"]
 

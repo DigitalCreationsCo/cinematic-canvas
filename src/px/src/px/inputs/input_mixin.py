@@ -41,9 +41,7 @@ class FieldTypes(str, Enum):
     MODEL = "model"
 
 
-SerializableFieldTypes = Annotated[
-    FieldTypes, PlainSerializer(lambda v: v.value, return_type=str)
-]
+SerializableFieldTypes = Annotated[FieldTypes, PlainSerializer(lambda v: v.value, return_type=str)]
 
 # Field types that should never be tracked in telemetry due to sensitive data
 SENSITIVE_FIELD_TYPES = {
@@ -146,7 +144,7 @@ class ModelInputMixin(BaseModel):
     model_name: str | None = None
     """Name of the model to be used in the input."""
     model_type: str | None = "language"
-    """Type of model: 'language' or 'embedding'. Defaults to 'language'."""
+    """Type of model: 'language', 'embedding', 'image_generation', or 'video_generation'. Defaults to 'language'."""
     model_options: list[dict[str, Any]] | None = Field(
         default=None,
         validation_alias="options",
@@ -349,9 +347,7 @@ class TabMixin(BaseModel):
         max_tab_option_length = 20
 
         if len(v) > max_tab_options:
-            msg = (
-                f"Maximum of {max_tab_options} tab values allowed. Got {len(v)} values."
-            )
+            msg = f"Maximum of {max_tab_options} tab values allowed. Got {len(v)} values."
             raise ValueError(msg)
 
         for i, value in enumerate(v):

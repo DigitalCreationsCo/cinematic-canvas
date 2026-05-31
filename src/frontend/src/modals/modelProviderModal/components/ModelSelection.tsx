@@ -8,7 +8,12 @@ import { cn } from "@/utils/utils";
 export interface ModelProviderSelectionProps {
   availableModels: Model[];
   onModelToggle: (modelName: string, enabled: boolean) => void;
-  modelType: "llm" | "embeddings" | "all";
+  modelType:
+    | "llm"
+    | "embeddings"
+    | "image_generation"
+    | "video_generation"
+    | "all";
   providerName?: string;
   isEnabledModel?: boolean;
 }
@@ -77,6 +82,12 @@ const ModelSelection = ({
   const embeddingModels = availableModels.filter(
     (model) => model.metadata?.model_type === "embeddings",
   );
+  const imageModels = availableModels.filter(
+    (model) => model.metadata?.model_type === "image_generation",
+  );
+  const videoModels = availableModels.filter(
+    (model) => model.metadata?.model_type === "video_generation",
+  );
 
   const renderModelSection = (
     title: string,
@@ -109,6 +120,8 @@ const ModelSelection = ({
   const noModelsAvailable =
     (modelType === "llm" && llmModels.length === 0) ||
     (modelType === "embeddings" && embeddingModels.length === 0) ||
+    (modelType === "image_generation" && imageModels.length === 0) ||
+    (modelType === "video_generation" && videoModels.length === 0) ||
     (modelType === "all" && availableModels.length === 0);
 
   return (
@@ -128,7 +141,11 @@ const ModelSelection = ({
               ? " language"
               : modelType === "embeddings"
                 ? " embedding"
-                : ""}{" "}
+                : modelType === "image_generation"
+                  ? " image"
+                  : modelType === "video_generation"
+                    ? " video"
+                    : ""}{" "}
             models installed for Ollama. Please pull the models you want to use.
           </p>
           <a
@@ -150,9 +167,23 @@ const ModelSelection = ({
                 embeddingModels,
                 "embeddings",
               )}
+              {renderModelSection(
+                "Image Models",
+                imageModels,
+                "image_generation",
+              )}
+              {renderModelSection(
+                "Video Models",
+                videoModels,
+                "video_generation",
+              )}
             </>
           ) : modelType === "llm" ? (
             renderModelSection("Language Models", llmModels, "llm")
+          ) : modelType === "image_generation" ? (
+            renderModelSection("Image Models", imageModels, "image_generation")
+          ) : modelType === "video_generation" ? (
+            renderModelSection("Video Models", videoModels, "video_generation")
           ) : (
             renderModelSection(
               "Embedding Models",

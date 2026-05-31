@@ -26,8 +26,10 @@ from .credentials import (
 from .instantiation import get_embeddings, get_llm
 from .model_catalog import (
     get_embedding_model_options,
+    get_image_generation_model_options,
     get_language_model_options,
     get_unified_models_detailed,
+    get_video_generation_model_options,
     normalize_model_names_to_dicts,
 )
 from .provider_queries import (
@@ -56,6 +58,7 @@ __all__ = [
     "get_embedding_class",
     "get_embedding_model_options",
     "get_embeddings",
+    "get_image_generation_model_options",
     "get_language_model_options",
     "get_llm",
     "get_model_class",
@@ -68,6 +71,7 @@ __all__ = [
     "get_provider_from_variable_key",
     "get_provider_required_variable_keys",
     "get_unified_models_detailed",
+    "get_video_generation_model_options",
     "handle_model_input_update",
     "model_provider_metadata",
     "normalize_model_names_to_dicts",

@@ -47,7 +47,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
-        exclude: '(^docs/|^SECURITY\.md$|src/lfx/src/lfx/_assets/component_index\.json$|src/lfx/README\.md$|^src/frontend/src/locales/.*\.json$)'
+        exclude: '(^docs/|^SECURITY\.md$|src/px/src/px/_assets/component_index\.json$|src/px/README\.md$|^src/frontend/src/locales/.*\.json$)'
   - repo: local
     hooks:
       - id: local-biome-check
@@ -56,7 +56,7 @@ repos:
         language: system
         types: [text]
         files: "^src/frontend/.*\\.(jsx?|tsx?|c(js|ts)|m(js|ts)|d\\.(ts|cts|mts)|jsonc?)$"
-        exclude: (^docs/|src/lfx/src/lfx/_assets/component_index\.json$)
+        exclude: (^docs/|src/px/src/px/_assets/component_index\.json$)
         pass_filenames: true
       - id: biome-lint-no-any-staged
         name: biome no-any check (staged only)
@@ -76,5 +76,5 @@ repos:
         name: Check for deprecated langchain imports
         entry: uv run python scripts/check_deprecated_imports.py
         language: system
-        files: ^src/lfx/src/lfx/components/.*\.py$
+        files: ^src/px/src/px/components/.*\.py$
         pass_filenames: false
