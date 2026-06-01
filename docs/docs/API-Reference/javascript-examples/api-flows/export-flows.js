@@ -19,6 +19,6 @@ fetch(url, options)
       throw new Error(`HTTP ${response.status}`);
     }
     const data = await response.arrayBuffer();
-    console.log("Received binary response for langflow-flows.zip", data.byteLength);
+    console.log("Received binary response for portals-flows.zip", data.byteLength);
   })
   .catch((error) => console.error(error));

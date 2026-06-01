@@ -1,5 +1,5 @@
-import ExecutionEnvironment from '@docusaurus/ExecutionEnvironment';
-import { identifyUser, trackEvent } from './analytics-helpers';
+import ExecutionEnvironment from "@docusaurus/ExecutionEnvironment";
+import { identifyUser, trackEvent } from "./analytics-helpers";
 
 let isDataAttributeTrackingInitialized = false;
 
@@ -11,13 +11,13 @@ let isDataAttributeTrackingInitialized = false;
  *
  * Example - UI Interaction:
  * {
- *   href: "https://github.com/langflow-ai/langflow",
+ *   href: "https://github.com/portals-ai/portals",
  *   'data-event': 'UI Interaction',
  *   'data-action': 'clicked',
  *   'data-channel': 'docs',
  *   'data-element-id': 'social-github',
  *   'data-namespace': 'header',
- *   'data-platform-title': 'Langflow'
+ *   'data-platform-title': 'Portals'
  * }
  *
  * Example - CTA Clicked:
@@ -36,11 +36,12 @@ let isDataAttributeTrackingInitialized = false;
  */
 function initializeDataAttributeTracking() {
   // Only run on client side and prevent duplicate initialization
-  if (!ExecutionEnvironment.canUseDOM || isDataAttributeTrackingInitialized) return;
+  if (!ExecutionEnvironment.canUseDOM || isDataAttributeTrackingInitialized)
+    return;
 
   const handleClick = (event) => {
     const target = event.target;
-    const trackingElement = target.closest('[data-event]');
+    const trackingElement = target.closest("[data-event]");
 
     if (!trackingElement) return;
 
@@ -50,17 +51,17 @@ function initializeDataAttributeTracking() {
     // Extract all data-* attributes (except data-event itself)
     const properties = {};
 
-    Object.keys(trackingElement.dataset).forEach(key => {
-      if (key !== 'event') {
+    Object.keys(trackingElement.dataset).forEach((key) => {
+      if (key !== "event") {
         // Map to IBM Segment property names (preserve exact casing per schema)
         let propertyKey = key;
 
         // Handle special IBM property mappings
-        if (key === 'cta') propertyKey = 'CTA';
-        else if (key === 'elementId') propertyKey = 'elementId';
-        else if (key === 'topLevel') propertyKey = 'topLevel';
-        else if (key === 'subLevel') propertyKey = 'subLevel';
-        else if (key === 'platformTitle') propertyKey = 'platformTitle';
+        if (key === "cta") propertyKey = "CTA";
+        else if (key === "elementId") propertyKey = "elementId";
+        else if (key === "topLevel") propertyKey = "topLevel";
+        else if (key === "subLevel") propertyKey = "subLevel";
+        else if (key === "platformTitle") propertyKey = "platformTitle";
 
         properties[propertyKey] = trackingElement.dataset[key];
       }
@@ -74,10 +75,10 @@ function initializeDataAttributeTracking() {
   };
 
   // Remove existing listener if it exists
-  document.removeEventListener('click', handleClick);
+  document.removeEventListener("click", handleClick);
 
   // Add the new listener
-  document.addEventListener('click', handleClick);
+  document.addEventListener("click", handleClick);
 
   // Mark as initialized
   isDataAttributeTrackingInitialized = true;
@@ -85,14 +86,17 @@ function initializeDataAttributeTracking() {
 
 // Initialize on DOM ready
 if (ExecutionEnvironment.canUseDOM) {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeDataAttributeTracking);
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      initializeDataAttributeTracking,
+    );
   } else {
     initializeDataAttributeTracking();
   }
 
   // Re-initialize on route changes for SPA navigation
-  window.addEventListener('popstate', () => {
+  window.addEventListener("popstate", () => {
     setTimeout(initializeDataAttributeTracking, 100);
   });
 }

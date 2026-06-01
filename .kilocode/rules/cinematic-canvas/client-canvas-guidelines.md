@@ -333,7 +333,7 @@ For large graphs, consider filtering edges outside of React's render cycle:
 ```typescript
 const visibleEdges = useMemo(() => {
     if (!selectedNodeId) return edges;
-    return edges.filter(e =>
+    return edges.filter(e => 
         e.source === selectedNodeId || e.target === selectedNodeId
     );
 }, [edges, selectedNodeId]);

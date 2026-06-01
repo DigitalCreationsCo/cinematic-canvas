@@ -179,7 +179,7 @@ class MessageTable(MessageBase, table=True):  # type: ignore[call-arg]
 
     @staticmethod
     def _sanitize_json(value):
-        """Replace float NaN/Infinity with None to avoid PostgreSQL jsonb rejection."""
+        """Replace float NaN/Infinity with None to avoid PostgreSQL json rejection."""
         if isinstance(value, float):
             if not math.isfinite(value):
                 return None

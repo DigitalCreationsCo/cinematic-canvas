@@ -21,7 +21,7 @@
         "--reload-include",
         "./src/backend/*",
         "--reload-include",
-        "./src/lfx/*",
+        "./src/px/*",
         "--reload-exclude",
         "*.db*",
         "--reload-exclude",

@@ -335,6 +335,7 @@
   "sidebar.category.modelsAndAgents": "Models & Agents",
   "sidebar.category.llmOperations": "LLM Operations",
   "sidebar.category.filesAndKnowledge": "Files & Knowledge",
+  "sidebar.category.narrative": "Narrative",
   "sidebar.category.files": "Files",
   "sidebar.category.processing": "Processing",
   "sidebar.category.flowControl": "Flow Control",

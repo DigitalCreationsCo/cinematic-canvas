@@ -96,7 +96,7 @@ def get_all_reexport_modules():
     )
 
 
-class TestLfxReexportModules:
+class TestPxReexportModules:
     """Test that all portals modules that re-export from px work correctly."""
 
     @classmethod
@@ -106,9 +106,7 @@ class TestLfxReexportModules:
         try:
             import portals
 
-            for _importer, modname, _ispkg in pkgutil.walk_packages(
-                portals.__path__, portals.__name__ + "."
-            ):
+            for _importer, modname, _ispkg in pkgutil.walk_packages(portals.__path__, portals.__name__ + "."):
                 portals_modules.append(modname)
         except ImportError:
             pass
@@ -230,9 +228,7 @@ class TestLfxReexportModules:
                 successful_imports += 1
 
             except Exception as e:
-                pytest.fail(
-                    f"Failed to import direct re-export module {portals_module}: {e!s}"
-                )
+                pytest.fail(f"Failed to import direct re-export module {portals_module}: {e!s}")
 
     def test_wildcard_reexport_modules_importable(self):
         """Test that modules using wildcard imports work correctly."""
@@ -252,16 +248,12 @@ class TestLfxReexportModules:
                     all_attrs = list(px_mod.__all__)  # Test all attributes
                     for attr in all_attrs:
                         if hasattr(px_mod, attr):
-                            assert hasattr(lf_module, attr), (
-                                f"Attribute {attr} missing from {portals_module}"
-                            )
+                            assert hasattr(lf_module, attr), f"Attribute {attr} missing from {portals_module}"
 
                 successful_imports += 1
 
             except Exception as e:
-                pytest.fail(
-                    f"Failed to import wildcard re-export module {portals_module}: {e!s}"
-                )
+                pytest.fail(f"Failed to import wildcard re-export module {portals_module}: {e!s}")
 
     def test_complex_reexport_modules_importable(self):
         """Test that modules with complex/mixed import patterns work correctly."""
@@ -274,32 +266,22 @@ class TestLfxReexportModules:
                 assert lf_module is not None, f"Portals module {portals_module} is None"
 
                 # Verify it has __all__ attribute for complex modules
-                assert hasattr(lf_module, "__all__"), (
-                    f"Complex module {portals_module} missing __all__"
-                )
-                assert len(lf_module.__all__) > 0, (
-                    f"Complex module {portals_module} has empty __all__"
-                )
+                assert hasattr(lf_module, "__all__"), f"Complex module {portals_module} missing __all__"
+                assert len(lf_module.__all__) > 0, f"Complex module {portals_module} has empty __all__"
 
                 # Try to access all items from __all__
                 all_items = lf_module.__all__  # Test all items
                 for item in all_items:
                     try:
                         attr = getattr(lf_module, item)
-                        assert attr is not None, (
-                            f"Attribute {item} is None in {portals_module}"
-                        )
+                        assert attr is not None, f"Attribute {item} is None in {portals_module}"
                     except AttributeError:
-                        pytest.fail(
-                            f"Complex module {portals_module} missing expected attribute {item} from __all__"
-                        )
+                        pytest.fail(f"Complex module {portals_module} missing expected attribute {item} from __all__")
 
                 successful_imports += 1
 
             except Exception as e:
-                pytest.fail(
-                    f"Failed to import complex re-export module {portals_module}: {e!s}"
-                )
+                pytest.fail(f"Failed to import complex re-export module {portals_module}: {e!s}")
 
     def test_dynamic_reexport_modules_importable(self):
         """Test that modules with __getattr__ dynamic loading work correctly."""
@@ -312,9 +294,7 @@ class TestLfxReexportModules:
                 assert lf_module is not None, f"Portals module {portals_module} is None"
 
                 # Dynamic modules should have __getattr__ method
-                assert hasattr(lf_module, "__getattr__"), (
-                    f"Dynamic module {portals_module} missing __getattr__"
-                )
+                assert hasattr(lf_module, "__getattr__"), f"Dynamic module {portals_module} missing __getattr__"
 
                 # Test accessing some known attributes dynamically
                 if portals_module == "portals.field_typing":
@@ -323,20 +303,14 @@ class TestLfxReexportModules:
                     for attr in test_attrs:
                         try:
                             value = getattr(lf_module, attr)
-                            assert value is not None, (
-                                f"Dynamic attribute {attr} is None"
-                            )
+                            assert value is not None, f"Dynamic attribute {attr} is None"
                         except AttributeError:
-                            pytest.fail(
-                                f"Dynamic module {portals_module} missing expected attribute {attr}"
-                            )
+                            pytest.fail(f"Dynamic module {portals_module} missing expected attribute {attr}")
 
                 successful_imports += 1
 
             except Exception as e:
-                pytest.fail(
-                    f"Failed to import dynamic re-export module {portals_module}: {e!s}"
-                )
+                pytest.fail(f"Failed to import dynamic re-export module {portals_module}: {e!s}")
 
     def test_all_reexport_modules_have_required_structure(self):
         """Test that re-export modules have the expected structure."""
@@ -391,9 +365,7 @@ class TestLfxReexportModules:
                     assert callable(symbol)
 
             except Exception as e:
-                pytest.fail(
-                    f"Backward compatibility issue with {module_name}.{symbol_name}: {e!s}"
-                )
+                pytest.fail(f"Backward compatibility issue with {module_name}.{symbol_name}: {e!s}")
 
     def test_no_circular_imports_in_reexports(self):
         """Test that there are no circular import issues in re-export modules."""
@@ -419,9 +391,7 @@ class TestLfxReexportModules:
                         try:
                             getattr(module, first_item)
                         except AttributeError:
-                            pytest.fail(
-                                f"Module {module_name} missing expected attribute {first_item} from __all__"
-                            )
+                            pytest.fail(f"Module {module_name} missing expected attribute {first_item} from __all__")
 
             except Exception as e:
                 pytest.fail(f"Circular import issue with order {order}: {e!s}")
@@ -480,9 +450,7 @@ class TestLfxReexportModules:
         # Check that known modules are found
         expected_modules = ["portals.schema", "portals.inputs", "portals.custom"]
         found_modules = [mod for mod in expected_modules if mod in modules]
-        assert len(found_modules) > 0, (
-            f"Expected to find some of {expected_modules}, but found: {found_modules}"
-        )
+        assert len(found_modules) > 0, f"Expected to find some of {expected_modules}, but found: {found_modules}"
 
     @pytest.mark.parametrize("module_name", get_all_reexport_modules())
     def test_parametrized_module_import_and_pattern_detection(self, module_name: str):
@@ -509,9 +477,7 @@ class TestLfxReexportModules:
 
         for lf_module, expected_px_source in test_cases:
             px_symbols = self._get_expected_symbols(expected_px_source)
-            assert len(px_symbols) > 0, (
-                f"Should find some symbols in {expected_px_source}"
-            )
+            assert len(px_symbols) > 0, f"Should find some symbols in {expected_px_source}"
 
             # Test that symbols explicitly re-exported by portals module are accessible
             lf_module_obj = importlib.import_module(lf_module)
@@ -520,12 +486,8 @@ class TestLfxReexportModules:
             if hasattr(lf_module_obj, "__all__"):
                 lf_reexported = lf_module_obj.__all__
                 # Check that these re-exported symbols are actually available
-                available_symbols = [
-                    sym for sym in lf_reexported if hasattr(lf_module_obj, sym)
-                ]
-                assert len(available_symbols) > 0, (
-                    f"Module {lf_module} should have symbols from its __all__"
-                )
+                available_symbols = [sym for sym in lf_reexported if hasattr(lf_module_obj, sym)]
+                assert len(available_symbols) > 0, f"Module {lf_module} should have symbols from its __all__"
 
                 # Verify that at least some of the re-exported symbols come from px
                 px_sourced = [sym for sym in available_symbols if sym in px_symbols]
@@ -534,9 +496,7 @@ class TestLfxReexportModules:
                 )
             else:
                 # If no __all__, just check that some px symbols are accessible
-                available_symbols = [
-                    sym for sym in px_symbols[:10] if hasattr(lf_module_obj, sym)
-                ]
+                available_symbols = [sym for sym in px_symbols[:10] if hasattr(lf_module_obj, sym)]
                 assert len(available_symbols) > 0, (
                     f"Module {lf_module} should have some symbols from {expected_px_source}"
                 )

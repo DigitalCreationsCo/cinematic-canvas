@@ -27,16 +27,16 @@ import exampleJavascriptApiBuildOverrideFlowParameters from '!!raw-loader!@site/
 
 
 :::info
-The `/build` endpoints are used by Langflow's frontend visual editor code.
-These endpoints are part of the internal Langflow codebase.
+The `/build` endpoints are used by Portals's frontend visual editor code.
+These endpoints are part of the internal Portals codebase.
 
-Don't use these endpoints to run flows in applications that use your Langflow flows.
+Don't use these endpoints to run flows in applications that use your Portals flows.
 To run flows in your apps, see [Flow trigger endpoints](/api-flows-run).
 :::
 
-The `/build` endpoints support Langflow's frontend code for building flows in the Langflow visual editor.
+The `/build` endpoints support Portals's frontend code for building flows in the Portals visual editor.
 You can use these endpoints to build vertices and flows, as well as execute flows with streaming event responses.
-You might need to use or understand these endpoints when contributing to the Langflow codebase.
+You might need to use or understand these endpoints when contributing to the Portals codebase.
 
 ## Build flow and stream events
 
@@ -132,8 +132,8 @@ To disable streaming and get all events at once, set `?stream=false`.
 | inputs | object | Optional. Input values for flow components. |
 | data | object | Optional. Flow data to override stored configuration. |
 | files | array[string] | Optional. List of file paths to use. |
-| start_component_id | string | Optional. ID of the component where the execution should start. Component `id` values can be found in [Langflow JSON files](/concepts-flows-import#langflow-json-file-contents) |
-| stop_component_id | string | Optional. ID of the component where the execution should stop. Component `id` values can be found in [Langflow JSON files](/concepts-flows-import#langflow-json-file-contents).|
+| start_component_id | string | Optional. ID of the component where the execution should start. Component `id` values can be found in [Portals JSON files](/concepts-flows-import#portals-json-file-contents) |
+| stop_component_id | string | Optional. ID of the component where the execution should stop. Component `id` values can be found in [Portals JSON files](/concepts-flows-import#portals-json-file-contents).|
 | log_builds | Boolean | Whether to record build logs. Default: Enabled (`true`). |
 
 ### Set start and stop points
@@ -163,7 +163,7 @@ The following example stops flow execution at an **OpenAI** component:
 
 ### Override flow parameters
 
-The `/build` endpoint also accepts inputs for `data` directly, instead of using the values stored in the Langflow database.
+The `/build` endpoint also accepts inputs for `data` directly, instead of using the values stored in the Portals database.
 This is useful for running flows without having to pass custom values through the visual editor.
 
 <Tabs>

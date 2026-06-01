@@ -40,7 +40,7 @@ import exampleJavascriptApiOpenaiResponsesTokenUsageTracking from '!!raw-loader!
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Langflow includes an endpoint that is compatible with the [OpenAI Responses API](https://platform.openai.com/docs/api-reference/responses).
+Portals includes an endpoint that is compatible with the [OpenAI Responses API](https://platform.openai.com/docs/api-reference/responses).
 It is available at `POST /api/v1/responses`.
 
 This endpoint allows you to use existing OpenAI client libraries with minimal code changes.
@@ -49,7 +49,7 @@ You can find Flow IDs in the code snippets on the [**API access** pane](/concept
 
 ## Prerequisites
 
-To be compatible with Langflow's OpenAI Responses API endpoint, your flow and request must adhere to the following requirements:
+To be compatible with Portals's OpenAI Responses API endpoint, your flow and request must adhere to the following requirements:
 
 - **Chat Input**: Your flow must contain a **Chat Input** component.
 Flows without this component return an error when passed to this endpoint.
@@ -62,8 +62,8 @@ For more information, see [API keys and authentication](/api-keys-and-authentica
 ### Additional configuration for OpenAI client libraries
 
 This endpoint is compatible with OpenAI's API, but requires special configuration when using OpenAI client libraries.
-Langflow uses `x-api-key` headers for authentication, while OpenAI uses `Authorization: Bearer` headers.
-When sending requests to Langflow with OpenAI client libraries, you must configure custom headers and include an `api_key` configuration.
+Portals uses `x-api-key` headers for authentication, while OpenAI uses `Authorization: Bearer` headers.
+When sending requests to Portals with OpenAI client libraries, you must configure custom headers and include an `api_key` configuration.
 The `api_key` parameter can have any value, such as `"dummy-api-key"` in the client examples, as the actual authentication is handled through the `default_headers` configuration.
 
 In the following examples, replace the values for `LANGFLOW_SERVER_URL`, `LANGFLOW_API_KEY`, and `FLOW_ID` with values from your deployment.
@@ -124,7 +124,7 @@ If you need these in a different format or want a downloadable calendar, let me 
 
 | Header | Required | Description | Example |
 |--------|----------|-------------|---------|
-| `x-api-key` | Yes | Your Langflow API key for authentication | `"sk-..."` |
+| `x-api-key` | Yes | Your Portals API key for authentication | `"sk-..."` |
 | `Content-Type` | Yes | Specifies the JSON format | `"application/json"` |
 | `X-LANGFLOW-GLOBAL-VAR-*` | No | Global variables for the flow | `"X-LANGFLOW-GLOBAL-VAR-API_KEY: sk-..."` For more, see [Pass global variables to your flows in headers](#global-var). |
 
@@ -182,7 +182,7 @@ If you need these in a different format or want a downloadable calendar, let me 
 
 ### Response body
 
-The response contains fields that Langflow sets dynamically and fields that use OpenAI-compatible defaults.
+The response contains fields that Portals sets dynamically and fields that use OpenAI-compatible defaults.
 
 The OpenAI-compatible default values shown above are currently fixed and cannot be modified via the request.
 They are included to maintain API compatibility and provide a consistent response format.
@@ -190,7 +190,7 @@ They are included to maintain API compatibility and provide a consistent respons
 For your requests, you will only be setting the dynamic fields.
 The default values are documented here for completeness and to show the full response structure.
 
-Fields set dynamically by Langflow:
+Fields set dynamically by Portals:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -456,7 +456,7 @@ For example:
 
 Variables passed with `X-LANGFLOW-GLOBAL-VAR-{VARIABLE_NAME}` are always available to your flow, regardless of whether they exist in the database.
 
-If your flow components reference variables that aren't provided in headers or your Langflow database, the flow fails by default.
+If your flow components reference variables that aren't provided in headers or your Portals database, the flow fails by default.
 
 To avoid this, you can set the `FALLBACK_TO_ENV_VARS` environment variable is `true`, which allows the flow to use values from the `.env` file if they aren't otherwise specified.
 

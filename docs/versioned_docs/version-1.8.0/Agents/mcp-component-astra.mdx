@@ -1,12 +1,12 @@
 ---
-title: Connect an Astra DB MCP server to Langflow
+title: Connect an Astra DB MCP server to Portals
 slug: /mcp-component-astra
 ---
 
 import Icon from "@site/src/components/icon";
 import PartialMcpNodeTip from '@site/docs/_partial-mcp-node-tip.mdx';
 
-This guide demonstrates how to [use Langflow as an MCP client](/mcp-client) by using the **MCP Tools** component to run a [DataStax Astra DB MCP server](https://github.com/datastax/astra-db-mcp) in an agent flow.
+This guide demonstrates how to [use Portals as an MCP client](/mcp-client) by using the **MCP Tools** component to run a [DataStax Astra DB MCP server](https://github.com/datastax/astra-db-mcp) in an agent flow.
 
 1. Install an LTS release of [Node.js](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
 
@@ -38,9 +38,9 @@ This guide demonstrates how to [use Langflow as an MCP client](/mcp-client) by u
     5. In the **Environment Variables** fields, add variables for `ASTRA_DB_APPLICATION_TOKEN` and `ASTRA_DB_API_ENDPOINT` with the values from your Astra database.
 
         :::info
-        Environment variables declared in your Langflow `.env` file can be referenced in your MCP server commands, but you cannot reference global variables declared in Langflow.
+        Environment variables declared in your Portals `.env` file can be referenced in your MCP server commands, but you cannot reference global variables declared in Portals.
 
-        If you want to use variables for `ASTRA_DB_APPLICATION_TOKEN` and `ASTRA_DB_API_ENDPOINT`, add them to Langflow's `.env` file, and then restart Langflow.
+        If you want to use variables for `ASTRA_DB_APPLICATION_TOKEN` and `ASTRA_DB_API_ENDPOINT`, add them to Portals's `.env` file, and then restart Portals.
         For more information, see [global variables](/configuration-global-variables).
         :::
 
@@ -64,7 +64,7 @@ This guide demonstrates how to [use Langflow as an MCP client](/mcp-client) by u
 
 9. Open the **Playground**, and then ask the agent, `What collections are available?`
 
-    Since Langflow is connected to your Astra DB database through the MCP server, the agent chooses the correct tool and connects to your database to retrieve the answer.
+    Since Portals is connected to your Astra DB database through the MCP server, the agent chooses the correct tool and connects to your database to retrieve the answer.
     For example:
 
     ```text

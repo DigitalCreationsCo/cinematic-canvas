@@ -28,21 +28,6 @@ from px.base.models.watsonx_constants import WATSONX_MODELS_DETAILED
 # files exist the try/except blocks can be removed.
 # ---------------------------------------------------------------------------
 
-try:
-    from px.base.models.google_generative_ai_constants import (
-        IMAGE_GENERATION_MODELS_DETAILED,
-    )
-except ImportError:
-    IMAGE_GENERATION_MODELS_DETAILED: list[dict] = []
-
-try:
-    from px.base.models.google_generative_ai_constants import (
-        VIDEO_GENERATION_MODELS_DETAILED,
-    )
-except ImportError:
-    VIDEO_GENERATION_MODELS_DETAILED: list[dict] = []
-
-
 @lru_cache(maxsize=1)
 def get_model_provider_metadata() -> dict:
     """Return the model provider metadata configuration."""
@@ -64,8 +49,6 @@ def get_models_detailed() -> list[list[dict]]:
         OLLAMA_MODELS_DETAILED,
         OLLAMA_EMBEDDING_MODELS_DETAILED,
         WATSONX_MODELS_DETAILED,
-        IMAGE_GENERATION_MODELS_DETAILED,
-        VIDEO_GENERATION_MODELS_DETAILED,
     ]
 
 

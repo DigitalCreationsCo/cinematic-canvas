@@ -33,8 +33,8 @@ payload = [flow_id, extra_id]
 response = requests.post(f"{base}/api/v1/flows/download/", headers=headers, json=payload, timeout=60)
 response.raise_for_status()
 
-with open("langflow-flows.zip", "wb") as f:
+with open("portals-flows.zip", "wb") as f:
     f.write(response.content)
-print("Saved response to langflow-flows.zip")
+print("Saved response to portals-flows.zip")
 
 requests.delete(f"{base}/api/v1/flows/{extra_id}", headers=headers, timeout=30)

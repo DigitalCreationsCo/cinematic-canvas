@@ -9,17 +9,17 @@ import TabItem from '@theme/TabItem';
 import PartialParams from '@site/docs/_partial-hidden-params.mdx';
 
 The **Message History** component provides combined chat history and message storage functionality.
-It can store and retrieve chat messages from either [Langflow storage](/memory) _or_ a dedicated chat memory database like Mem0 or Redis.
+It can store and retrieve chat messages from either [Portals storage](/memory) _or_ a dedicated chat memory database like Mem0 or Redis.
 
 :::tip
-The **Agent** component has built-in chat memory that is enabled by default and uses Langflow storage.
+The **Agent** component has built-in chat memory that is enabled by default and uses Portals storage.
 This built-in chat memory functionality is sufficient for most use cases.
 
 Use the **Message History** component for the following use cases:
 
 * You need to store and retrieve chat memory for a language model component (not an agent).
 * You need to retrieve chat memories outside the chat context, such as a sentiment analysis flow that retrieves and analyzes recently stored memories.
-* You want to store memories in a specific database that is separate from Langflow storage.
+* You want to store memories in a specific database that is separate from Portals storage.
 
 For more information, see [Store chat memory](/memory#store-chat-memory).
 :::
@@ -28,15 +28,15 @@ For more information, see [Store chat memory](/memory#store-chat-memory).
 
 The **Message History** component has two modes, depending on where you want to use it in your flow:
 
-* **Retrieve mode**: The component retrieves chat messages from your Langflow database or external memory.
-* **Store mode**: The component stores chat messages in your Langflow database or external memory.
+* **Retrieve mode**: The component retrieves chat messages from your Portals database or external memory.
+* **Store mode**: The component stores chat messages in your Portals database or external memory.
 
 This means that you need multiple **Message History** components in your flow if you want to both store and retrieve chat messages.
 
 <Tabs>
-<TabItem value="langflow" label="Use Langflow storage" default>
+<TabItem value="portals" label="Use Portals storage" default>
 
-The following steps explain how to create a chat-based flow that uses **Message History** components to store and retrieve chat memory from your Langflow installation's database:
+The following steps explain how to create a chat-based flow that uses **Message History** components to store and retrieve chat memory from your Portals installation's database:
 
 1. Create or edit a flow where you want to use chat memory.
 
@@ -59,7 +59,7 @@ The following steps explain how to create a chat-based flow that uses **Message 
     {memory}
     ```
 
-    Variables (`{variable}`) in the template dynamically add fields to the **Prompt Template** component so that your flow can receive definitions for those values from elsewhere, such as other components, Langflow global variables, or runtime input.
+    Variables (`{variable}`) in the template dynamically add fields to the **Prompt Template** component so that your flow can receive definitions for those values from elsewhere, such as other components, Portals global variables, or runtime input.
     For more information, see [Define variables in prompts](/components-prompts#define-variables-in-prompts).
 
     In this example, the `{memory}` variable is populated by the retrieved chat memories, which are then passed to a **Language Model** or **Agent** component to provide additional context to the LLM.
@@ -115,7 +115,7 @@ Other options include the [**Mem0 Chat Memory** component](/bundles-mem0) and [*
     {memory}
     ```
 
-    Variables (`{variable}`) in the template dynamically add fields to the **Prompt Template** component so that your flow can receive definitions for those values from elsewhere, such as other components, Langflow global variables, or runtime input.
+    Variables (`{variable}`) in the template dynamically add fields to the **Prompt Template** component so that your flow can receive definitions for those values from elsewhere, such as other components, Portals global variables, or runtime input.
     For more information, see [Define variables in prompts](/components-prompts#define-variables-in-prompts).
 
     In this example, the `{memory}` variable is populated by the retrieved chat memories, which are then passed to a **Language Model** or **Agent** component to provide additional context to the LLM.
@@ -159,7 +159,7 @@ The available parameters depend on whether the component is in **Retrieve** or *
 | Name | Type | Description |
 |------|------|-------------|
 | **Template** (`template`) | String | Input parameter. The template to use for formatting the data. It can contain the keys `{text}`, `{sender}` or any other key in the message data. |
-| **External Memory** (`memory`) | External Memory | Input parameter. Retrieve messages from an external memory. If empty, Langflow storage is used. |
+| **External Memory** (`memory`) | External Memory | Input parameter. Retrieve messages from an external memory. If empty, Portals storage is used. |
 | **Number of Messages** (`n_messages`) | Integer | Input parameter. The number of messages to retrieve. Default: 100. |
 | **Order** (`order`) | String | Input parameter. The order of the messages. Default: `Ascending`. |
 | **Sender Type** (`sender_type`) | String | Input parameter. Filter by sender type, one of `User`, `Machine`, or `Machine and User` (default). |
@@ -172,7 +172,7 @@ The available parameters depend on whether the component is in **Retrieve** or *
 |------|------|-------------|
 | **Template** (`template`) | String | Input parameter. The template to use for formatting the data. It can contain the keys `{text}`, `{sender}` or any other key in the message data. |
 | **Message** (`message`) | String | Input parameter. The message to store, typically provided by connecting a **Chat Output** component. |
-| **External Memory** (`memory`) | External Memory | Input parameter. Store messages in external memory. If empty, Langflow storage is used. |
+| **External Memory** (`memory`) | External Memory | Input parameter. Store messages in external memory. If empty, Portals storage is used. |
 | **Sender** (`sender`) | String | Input parameter. Choose which messages to store based on sender, one of `User`, `Machine`, or `Machine and User` (default). |
 | **Sender Name** (`sender_name`) | String | Input parameter. A backup `sender` label to use if a message doesn't have sender metadata. |
 | **Session ID** (`session_id`) | String | Input parameter. The [session ID](/session-id) of the chat memories to store. If omitted or empty, the current session ID for the flow run is used. Use custom session IDs if you need to segregate chat memory for different users or applications that run the same flow. |

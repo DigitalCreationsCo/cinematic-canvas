@@ -139,11 +139,11 @@ export const useGetFolder: useQueryFunctionType<
 
 ### Important: Some "get" Hooks Use Mutation
 
-In the Langflow codebase, some hooks named `use-get-*` (e.g., `useGetFlow`) are actually **mutation hooks** typed with `useMutationFunctionType`. This happens when the "get" operation is triggered imperatively (on demand) rather than declaratively (on mount/re-render). Check the actual type signature before following the query pattern — if a hook uses `mutate` from `UseRequestProcessor`, follow the Mutation Hook Structure below instead.
+In the Portals codebase, some hooks named `use-get-*` (e.g., `useGetFlow`) are actually **mutation hooks** typed with `useMutationFunctionType`. This happens when the "get" operation is triggered imperatively (on demand) rather than declaratively (on mount/re-render). Check the actual type signature before following the query pattern — if a hook uses `mutate` from `UseRequestProcessor`, follow the Mutation Hook Structure below instead.
 
 ### Query Hook with Store Updates
 
-Many Langflow queries update Zustand stores as a side effect within the query function:
+Many Portals queries update Zustand stores as a side effect within the query function:
 
 ```typescript
 export const useGetGlobalVariables: useQueryFunctionType<
@@ -305,7 +305,7 @@ export const URLs = {
   VARIABLES: "variables",
   MESSAGES: "monitor/messages",
   BUILDS: "monitor/builds",
-  API_KEY: "api_key", // pragma: allowlist secret
+  API_KEY: "api_key",
   FILES: "files",
   // ...
 } as const
@@ -330,7 +330,7 @@ When adding new endpoints, add the constant to `URLs` first, then use `getURL()`
 
 ## Query Keys
 
-Query keys are arrays that uniquely identify cached data. Langflow conventions:
+Query keys are arrays that uniquely identify cached data. Portals conventions:
 
 ```typescript
 // Hook name as key (no params)

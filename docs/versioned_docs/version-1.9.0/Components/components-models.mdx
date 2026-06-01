@@ -8,10 +8,10 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PartialGlobalModelProviders from '@site/docs/_partial-global-model-providers.mdx';
 
-Language model components in Langflow generate text using a specified Large Language Model (LLM).
+Language model components in Portals generate text using a specified Large Language Model (LLM).
 These components accept inputs like chat messages, files, and instructions in order to generate a text response.
 
-Langflow includes a **Language Model** core component that has built-in support for many LLMs.
+Portals includes a **Language Model** core component that has built-in support for many LLMs.
 Alternatively, you can use any [additional language model](#additional-language-models) in place of the **Language Model** core component.
 
 ## Use language model components in flows
@@ -29,11 +29,11 @@ The following example uses a language model component in a chatbot flow similar 
 
 
     :::tip My preferred provider or model isn't listed
-    If you want to use a provider or model that isn't built-in to Langflow's global <Icon name="BrainCog" aria-hidden="true" /> **Models**, you can replace the **Language Model** component with any [additional language model component](#additional-language-models).
+    If you want to use a provider or model that isn't built-in to Portals's global <Icon name="BrainCog" aria-hidden="true" /> **Models**, you can replace the **Language Model** component with any [additional language model component](#additional-language-models).
 
     Browse <Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) or <Icon name="Search" aria-hidden="true" /> **Search** for your preferred provider to find additional language models.
 
-    Alternatively, you can use Ollama to host your preferred model, and then configure your Ollama service in Langflow's global <Icon name="BrainCog" aria-hidden="true" /> **Models**.
+    Alternatively, you can use Ollama to host your preferred model, and then configure your Ollama service in Portals's global <Icon name="BrainCog" aria-hidden="true" /> **Models**.
     Or, create your own custom component to support any provider and model of your choice, and then use your custom component in place of the **Language Model** core component. As a shortcut, use an existing language model component as the basis for your custom component.
     :::
 
@@ -72,7 +72,7 @@ These components are required for direct chat interaction with an LLM.
 
 10. Optional: Try a different model or provider to see how the response changes.
 
-    If you enabled multiple models in Langflow's global **Model Providers** pane, select a different model in the **Language Model** field. To open the **Model Providers** pane, click your profile icon, select **Settings**, and then click <Icon name="Brain" aria-hidden="true"/> **Model Providers**.
+    If you enabled multiple models in Portals's global **Model Providers** pane, select a different model in the **Language Model** field. To open the **Model Providers** pane, click your profile icon, select **Settings**, and then click <Icon name="Brain" aria-hidden="true"/> **Model Providers**.
     Then, open the **Playground**, ask the same question as you did before, and then compare the content and format of the responses.
 
     This helps you understand how different models handle the same request so you can choose the best model for your use case.

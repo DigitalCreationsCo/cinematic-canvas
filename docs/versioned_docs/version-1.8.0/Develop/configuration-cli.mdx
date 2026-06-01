@@ -1,5 +1,5 @@
 ---
-title: Langflow CLI
+title: Portals CLI
 slug: /configuration-cli
 ---
 
@@ -7,41 +7,41 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import Icon from "@site/src/components/icon";
 
-The Langflow command line interface is the main interface for managing and running the Langflow server.
+The Portals command line interface is the main interface for managing and running the Portals server.
 
-The Langflow CLI is automatically installed when you [install the Langflow package](/get-started-installation).
-It isn't available for Langflow Desktop.
+The Portals CLI is automatically installed when you [install the Portals package](/get-started-installation).
+It isn't available for Portals Desktop.
 
 ## How to use the CLI
 
-The Langflow CLI can be invoked in several ways, depending on your installation method and environment.
+The Portals CLI can be invoked in several ways, depending on your installation method and environment.
 
-The recommended approach is to run the CLI with `uv run` from within a virtual environment where Langflow is installed.
+The recommended approach is to run the CLI with `uv run` from within a virtual environment where Portals is installed.
 
-For example, to start Langflow on the default port, run the following command:
+For example, to start Portals on the default port, run the following command:
 
     ```bash
-    uv run langflow run
+    uv run portals run
     ```
 
-If Langflow is installed globally or added to your PATH, you can execute the CLI directly with `langflow`.
+If Portals is installed globally or added to your PATH, you can execute the CLI directly with `portals`.
 
     ```bash
-    langflow run
+    portals run
     ```
 
 ## Precedence
 
-Langflow CLI options override the values of [environment variables](/environment-variables) set in your terminal or primary `.env` file.
+Portals CLI options override the values of [environment variables](/environment-variables) set in your terminal or primary `.env` file.
 
-For example, if you have `LANGFLOW_PORT=7860` defined as an environment variable, and you run the CLI with `--port 7880`, then Langflow sets the port to `7880` because the CLI option overrides the environment variable.
+For example, if you have `LANGFLOW_PORT=7860` defined as an environment variable, and you run the CLI with `--port 7880`, then Portals sets the port to `7880` because the CLI option overrides the environment variable.
 
 This also applies to Boolean environment variables.
 For example, if you set `LANGFLOW_REMOVE_API_KEYS=True` in your `.env` file, you can change it to `False` at runtime by running the CLI with `--no-remove-api-keys`.
 
-## Langflow CLI options
+## Portals CLI options
 
-All Langflow CLI commands support options that modify the command's behavior or set environment variables.
+All Portals CLI commands support options that modify the command's behavior or set environment variables.
 
 To set values for options, you can use either of the following syntax styles:
 
@@ -69,7 +69,7 @@ The following examples compare Boolean option forms for `REMOVE_API_KEYS`.
 `--remove-api-keys` is equivalent to setting `LANGFLOW_REMOVE_API_KEYS=True` in `.env`:
 
 ```bash
-uv run langflow run --remove-api-keys
+uv run portals run --remove-api-keys
 ```
 
 </TabItem>
@@ -78,7 +78,7 @@ uv run langflow run --remove-api-keys
 `--no-remove-api-keys` is equivalent to `LANGFLOW_REMOVE_API_KEYS=False` in `.env`:
 
 ```bash
-uv run langflow run --no-remove-api-keys
+uv run portals run --no-remove-api-keys
 ```
 
 </TabItem>
@@ -88,7 +88,7 @@ In the following command references, default values for Booleans include both th
 
 ### Universal options
 
-The following options are available for all Langflow CLI commands:
+The following options are available for all Portals CLI commands:
 
 * `--version`, `-v`: Show the version and exit.
 * `--install-completion`: Install auto-completion for the current shell.
@@ -99,7 +99,7 @@ The following options are available for all Langflow CLI commands:
 
 The following sections describe the available CLI commands and any additional options (beyond the [universal options](#universal-options)) available for each command.
 
-### langflow
+### portals
 
 Running the CLI without any arguments prints a list of available options and commands.
 
@@ -107,38 +107,38 @@ Running the CLI without any arguments prints a list of available options and com
   <TabItem value="uv (recommended)" label="uv (recommended)" default>
 
 ```bash
-uv run langflow
+uv run portals
 ```
 
   </TabItem>
   <TabItem value="Direct" label="Direct">
 
 ```bash
-langflow
+portals
 ```
 
   </TabItem>
 </Tabs>
 
-### langflow api-key {#langflow-api-key}
+### portals api-key {#portals-api-key}
 
-Creates a Langflow API key.
+Creates a Portals API key.
 
 You must be a superuser to create API keys with the CLI.
-For more information, see [Langflow API keys](/api-keys-and-authentication#langflow-api-keys).
+For more information, see [Portals API keys](/api-keys-and-authentication#portals-api-keys).
 
 <Tabs groupId="Invocation">
   <TabItem value="uv (recommended)" label="uv (recommended)" default>
 
 ```bash
-uv run langflow api-key
+uv run portals api-key
 ```
 
   </TabItem>
   <TabItem value="Direct" label="Direct">
 
 ```bash
-langflow api-key
+portals api-key
 ```
 
   </TabItem>
@@ -150,36 +150,36 @@ langflow api-key
 |--------|---------|--------|-------------|
 | `--log-level` | `error` | String | The logging level. One of `debug`, `info`, `warning`, `error`, or `critical`. |
 
-### langflow copy-db
+### portals copy-db
 
-Copies the Langflow database files from the cache directory to the current Langflow installation directory, which is the directory containing `__main__.py`.
-You can find the copy target directory by running `which langflow`.
+Copies the Portals database files from the cache directory to the current Portals installation directory, which is the directory containing `__main__.py`.
+You can find the copy target directory by running `which portals`.
 
 The following files are copied if they exist in the cache directory:
 
-* `langflow.db`: The main Langflow database, stored in the user cache directory
-* `langflow-pre.db`: The pre-release database, if it exists
+* `portals.db`: The main Portals database, stored in the user cache directory
+* `portals-pre.db`: The pre-release database, if it exists
 
 <Tabs groupId="Invocation">
   <TabItem value="uv (recommended)" label="uv (recommended)" default>
 
 ```bash
-uv run langflow copy-db
+uv run portals copy-db
 ```
 
   </TabItem>
   <TabItem value="Direct" label="Direct">
 
 ```bash
-langflow copy-db
+portals copy-db
 ```
 
   </TabItem>
 </Tabs>
 
-### langflow migration
+### portals migration
 
-Manages Langflow database schema changes using [Alembic](https://alembic.sqlalchemy.org/en/latest/), a database migration tool for SQLAlchemy.
+Manages Portals database schema changes using [Alembic](https://alembic.sqlalchemy.org/en/latest/), a database migration tool for SQLAlchemy.
 
 The `migration` command has two modes:
 
@@ -189,8 +189,8 @@ Use this mode to previews the changes that would be made to the database schema 
 * **Fix mode**: Applies the migrations to update the database schema.
 
     :::warning
-    `langflow migration --fix` is a destructive operation that can delete data.
-    Always run `langflow migration` first to preview the changes.
+    `portals migration --fix` is a destructive operation that can delete data.
+    Always run `portals migration` first to preview the changes.
     :::
 
 <Tabs groupId="Invocation">
@@ -199,7 +199,7 @@ Use this mode to previews the changes that would be made to the database schema 
 1. Run test mode:
 
   ```bash
-  uv run langflow migration
+  uv run portals migration
   ```
 
 2. Preview the changes returned by the test to determine if it's safe to proceed with the migration.
@@ -207,7 +207,7 @@ Use this mode to previews the changes that would be made to the database schema 
 3. Run fix mode to apply the changes:
 
   ```bash
-  uv run langflow migration --fix
+  uv run portals migration --fix
   ```
 
   </TabItem>
@@ -216,7 +216,7 @@ Use this mode to previews the changes that would be made to the database schema 
 1. Run test mode:
 
   ```bash
-  langflow migration
+  portals migration
   ```
 
 2. Preview the changes returned by the test to determine if it's safe to proceed with the migration.
@@ -224,28 +224,28 @@ Use this mode to previews the changes that would be made to the database schema 
 3. Run fix mode to apply the changes:
 
   ```bash
-  langflow migration --fix
+  portals migration --fix
   ```
 
   </TabItem>
 </Tabs>
 
-### langflow run {#langflow-run}
+### portals run {#portals-run}
 
-Starts the Langflow server.
+Starts the Portals server.
 
 <Tabs groupId="Invocation">
   <TabItem value="uv (recommended)" label="uv (recommended)" default>
 
 ```bash
-uv run langflow run [OPTIONS]
+uv run portals run [OPTIONS]
 ```
 
   </TabItem>
   <TabItem value="Direct" label="Direct">
 
 ```bash
-langflow run [OPTIONS]
+portals run [OPTIONS]
 ```
 
   </TabItem>
@@ -253,81 +253,81 @@ langflow run [OPTIONS]
 
 #### Options
 
-This command supports some common and non-sensitive configuration options for your Langflow server.
+This command supports some common and non-sensitive configuration options for your Portals server.
 Other options must be set in the `.env` or your terminal.
-For more information Langflow configuration options, see [Langflow environment variables](/environment-variables).
+For more information Portals configuration options, see [Portals environment variables](/environment-variables).
 
 | Option | Default | Type | Description |
 |--------|---------|--------|-------------|
 | `--auto-saving` | `--auto-saving` (true) | Boolean | Whether to enable flow auto-saving in the visual editor. Use `--no-auto-saving` to disable flow auto-saving. |
 | `--auto-saving-interval` | `1000` | Integer | The interval for flow auto-saving in milliseconds. |
-| `--backend-only` | `--no-backend-only` (false) | Boolean | Whether to run Langflow's backend service only (no frontend). Omit or use `--no-backend-only` to start both the frontend and backend. See [Start Langflow in headless mode](#start-langflow-in-headless-mode). |
+| `--backend-only` | `--no-backend-only` (false) | Boolean | Whether to run Portals's backend service only (no frontend). Omit or use `--no-backend-only` to start both the frontend and backend. See [Start Portals in headless mode](#start-portals-in-headless-mode). |
 | `--cache` | `async` | String | The type of [cache storage](/memory) to use. One of `async`, `redis`, `memory`, or `disk`. |
 | `--components-path` | Not set | String | The path to the directory containing your custom components. |
 | `--dev` | `--no-dev` (false) | Boolean | Whether to run in development mode (may contain bugs). |
-| `--env-file` | Not set | String | The path to the `.env` file containing Langflow environment variables. See [Start Langflow with a specific .env file](#start-langflow-with-a-specific-env-file). |
-| `--frontend-path` | Not set | String | The path to the frontend directory containing build files. This is only used when [contributing to the Langflow codebase](/contributing-how-to-contribute) or developing a custom Langflow image that includes customized frontend code. |
-| `--health-check-max-retries` | `5` | Integer | The maximum number of retries for your Langflow server's health check. |
-| `--host` | `localhost` | String | The host on which the Langflow server will run. |
-| `--log-file` | `logs/langflow.log` | String | The path to the log file for Langflow. |
+| `--env-file` | Not set | String | The path to the `.env` file containing Portals environment variables. See [Start Portals with a specific .env file](#start-portals-with-a-specific-env-file). |
+| `--frontend-path` | Not set | String | The path to the frontend directory containing build files. This is only used when [contributing to the Portals codebase](/contributing-how-to-contribute) or developing a custom Portals image that includes customized frontend code. |
+| `--health-check-max-retries` | `5` | Integer | The maximum number of retries for your Portals server's health check. |
+| `--host` | `localhost` | String | The host on which the Portals server will run. |
+| `--log-file` | `logs/portals.log` | String | The path to the log file for Portals. |
 | `--log-level` | `critical` | String | The logging level as one of `debug`, `info`, `warning`, `error`, or `critical`. |
 | `--log-rotation` | Not set | String | The log rotation interval, either a time duration or file size. |
 | `--max-file-size-upload` | `1024` | Integer | The maximum size in megabytes for file uploads. |
-| `--open-browser` | `--no-open-browser` (false) | Boolean | Whether to open the system web browser on startup. Use `--open-browser` to open the system's default web browser when Langflow starts. |
-| `--port` | `7860` | Integer | The port on which the Langflow server will run. The server automatically selects a free port if the specified port is in use. |
-| `--remove-api-keys` | `--no-remove-api-keys` (false) | Boolean | Whether to remove API keys and tokens from flows saved in the Langflow database. |
+| `--open-browser` | `--no-open-browser` (false) | Boolean | Whether to open the system web browser on startup. Use `--open-browser` to open the system's default web browser when Portals starts. |
+| `--port` | `7860` | Integer | The port on which the Portals server will run. The server automatically selects a free port if the specified port is in use. |
+| `--remove-api-keys` | `--no-remove-api-keys` (false) | Boolean | Whether to remove API keys and tokens from flows saved in the Portals database. |
 | `--ssl-cert-file-path` | Not set | String | The path to the SSL certificate file on the local system for SSL-encrypted connections. |
 | `--ssl-key-file-path` | Not set | String | The path to the SSL key file on the local system for SSL-encrypted connections. |
-| `--worker-timeout` | `300` | Integer | The Langflow server worker timeout in seconds. |
-| `--workers` | `1` | Integer | The number of Langflow server worker processes. |
+| `--worker-timeout` | `300` | Integer | The Portals server worker timeout in seconds. |
+| `--workers` | `1` | Integer | The number of Portals server worker processes. |
 
-#### Start Langflow with a specific .env file {#start-langflow-with-a-specific-env-file}
+#### Start Portals with a specific .env file {#start-portals-with-a-specific-env-file}
 
-The `--env-file` option starts Langflow using the configuration defined in the given `.env` file.
+The `--env-file` option starts Portals using the configuration defined in the given `.env` file.
 Additional options appended to this command override the values in the `.env` file if there are duplicates.
 
-If `--env-file` is omitted or doesn't include all required variables, Langflow uses the default values for those variables.
+If `--env-file` is omitted or doesn't include all required variables, Portals uses the default values for those variables.
 
 <Tabs groupId="Invocation">
   <TabItem value="uv (recommended)" label="uv (recommended)" default>
 
 ```bash
-uv run langflow run --env-file PATH/TO/LANGFLOW/.env
+uv run portals run --env-file PATH/TO/LANGFLOW/.env
 ```
 
   </TabItem>
   <TabItem value="Direct" label="Direct">
 
 ```bash
-langflow run --env-file PATH/TO/LANGFLOW/.env
+portals run --env-file PATH/TO/LANGFLOW/.env
 ```
 
   </TabItem>
 </Tabs>
 
-#### Start Langflow in headless mode {#start-langflow-in-headless-mode}
+#### Start Portals in headless mode {#start-portals-in-headless-mode}
 
-The `--backend-only` option starts Langflow's backend service only.
-This headless mode has no frontend (visual editor), and you can only access the server programmatically with the Langflow API and CLI.
+The `--backend-only` option starts Portals's backend service only.
+This headless mode has no frontend (visual editor), and you can only access the server programmatically with the Portals API and CLI.
 
 <Tabs groupId="Invocation">
   <TabItem value="uv (recommended)" label="uv (recommended)" default>
 
 ```bash
-uv run langflow run --backend-only
+uv run portals run --backend-only
 ```
 
   </TabItem>
   <TabItem value="Direct" label="Direct">
 
 ```bash
-langflow run --backend-only
+portals run --backend-only
 ```
 
   </TabItem>
 </Tabs>
 
-### langflow superuser {#langflow-superuser}
+### portals superuser {#portals-superuser}
 
 Creates a superuser account with the given username and password.
 
@@ -335,14 +335,14 @@ Creates a superuser account with the given username and password.
   <TabItem value="uv (recommended)" label="uv (recommended)" default>
 
 ```bash
-uv run langflow superuser --username [NAME] --password [PASSWORD] [OPTIONS]
+uv run portals superuser --username [NAME] --password [PASSWORD] [OPTIONS]
 ```
 
   </TabItem>
   <TabItem value="Direct" label="Direct">
 
 ```bash
-langflow superuser --username [NAME] --password [PASSWORD] [OPTIONS]
+portals superuser --username [NAME] --password [PASSWORD] [OPTIONS]
 ```
 
   </TabItem>
@@ -356,14 +356,14 @@ langflow superuser --username [NAME] --password [PASSWORD] [OPTIONS]
 
 For this command, `--username` and `--password` aren't optional, and they have no default value.
 The command fails if you don't provide these arguments.
-For more information, see [`LANGFLOW_SUPERUSER` and `LANGFLOW_SUPERUSER_PASSWORD`](/api-keys-and-authentication#langflow-superuser).
+For more information, see [`LANGFLOW_SUPERUSER` and `LANGFLOW_SUPERUSER_PASSWORD`](/api-keys-and-authentication#portals-superuser).
 
 #### Disable CLI superuser creation
 
-The `langflow superuser` command is controlled by the [`LANGFLOW_ENABLE_SUPERUSER_CLI`](/api-keys-and-authentication#langflow-enable-superuser-cli) environment variable:
+The `portals superuser` command is controlled by the [`LANGFLOW_ENABLE_SUPERUSER_CLI`](/api-keys-and-authentication#portals-enable-superuser-cli) environment variable:
 
-* **`LANGFLOW_ENABLE_SUPERUSER_CLI=True` (default)**: The `langflow superuser` command is available, and superuser creation is unrestricted.
-* **`LANGFLOW_ENABLE_SUPERUSER_CLI=False` (recommended)**: Disables the `langflow superuser` command.
+* **`LANGFLOW_ENABLE_SUPERUSER_CLI=True` (default)**: The `portals superuser` command is available, and superuser creation is unrestricted.
+* **`LANGFLOW_ENABLE_SUPERUSER_CLI=False` (recommended)**: Disables the `portals superuser` command.
 For security reasons, this is recommended to prevent unauthorized superuser creation, especially in production environments.
 
-To disable the `langflow superuser` command, you must set `LANGFLOW_ENABLE_SUPERUSER_CLI=False` in your Langflow `.env` file, and then [start Langflow with your `.env` file](#start-langflow-with-a-specific-env-file).
+To disable the `portals superuser` command, you must set `LANGFLOW_ENABLE_SUPERUSER_CLI=False` in your Portals `.env` file, and then [start Portals with your `.env` file](#start-portals-with-a-specific-env-file).

@@ -22,16 +22,16 @@ All Agentics components return a **DataFrame**.
 
 ## Prerequisites
 
-1. Install the Agentics package in Langflow's virtual environment:
+1. Install the Agentics package in Portals's virtual environment:
 
    ```bash
    uv pip install agentics-py==0.3.1
    ```
 
-2. Restart Langflow so the Agentics components are available:
+2. Restart Portals so the Agentics components are available:
 
    ```bash
-   uv run langflow run
+   uv run portals run
    ```
 
 3. Agentics components require an LLM. Configure your LLM provider API keys as [global variables](/configuration-global-variables) or environment variables.
@@ -147,7 +147,7 @@ It sums revenue into `total_revenue`, identifies the best-selling product in `be
 
 - **Token usage:** aMap scales with rows; aReduce sends all rows in one call; aGenerate scales with instances. Use smaller batches or sample large datasets to reduce cost.
 - **Batch size:** Default 10; max 25. Larger batches improve throughput but increase latency per batch.
-- **Errors:** If Agentics is not found, run `uv pip install agentics-py==0.3.1` and restart Langflow. For API/key errors, set the provider’s API key as a global variable or env var. For DataFrame errors, ensure input is a list of dicts or use a DataFrame component output.
+- **Errors:** If Agentics is not found, run `uv pip install agentics-py==0.3.1` and restart Portals. For API/key errors, set the provider’s API key as a global variable or env var. For DataFrame errors, ensure input is a list of dicts or use a DataFrame component output.
 
 ## See also
 

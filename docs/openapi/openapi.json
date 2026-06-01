@@ -2,10 +2,7 @@
   "components": {
     "schemas": {
       "AccessTypeEnum": {
-        "enum": [
-          "PRIVATE",
-          "PUBLIC"
-        ],
+        "enum": ["PRIVATE", "PUBLIC"],
         "title": "AccessTypeEnum",
         "type": "string"
       },
@@ -14,11 +11,7 @@
         "properties": {
           "auth_type": {
             "default": "none",
-            "enum": [
-              "none",
-              "apikey",
-              "oauth"
-            ],
+            "enum": ["none", "apikey", "oauth"],
             "title": "Auth Type",
             "type": "string"
           },
@@ -315,9 +308,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_file_api_v1_files_upload__flow_id__post",
         "type": "object"
       },
@@ -365,9 +356,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_user_file_api_v2_files__post",
         "type": "object"
       },
@@ -379,9 +368,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_user_file_api_v2_files_post",
         "type": "object"
       },
@@ -397,10 +384,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "success",
-          "message"
-        ],
+        "required": ["success", "message"],
         "title": "CancelFlowResponse",
         "type": "object"
       },
@@ -421,7 +405,7 @@
           "files": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/lfx__utils__schemas__File"
+              "$ref": "#/components/schemas/px__utils__schemas__File"
             },
             "title": "Files",
             "type": "array"
@@ -499,10 +483,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "message",
-          "type"
-        ],
+        "required": ["message", "type"],
         "title": "ChatOutputResponse",
         "type": "object"
       },
@@ -543,10 +524,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "status"
-        ],
+        "required": ["type", "status"],
         "title": "ComponentOutput",
         "type": "object"
       },
@@ -595,10 +573,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "project_id",
-          "uses_composer"
-        ],
+        "required": ["project_id", "uses_composer"],
         "title": "ComposerUrlResponse",
         "type": "object"
       },
@@ -622,11 +597,7 @@
             "type": "string"
           },
           "event_delivery": {
-            "enum": [
-              "polling",
-              "streaming",
-              "direct"
-            ],
+            "enum": ["polling", "streaming", "direct"],
             "title": "Event Delivery",
             "type": "string"
           },
@@ -746,10 +717,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "title",
-          "contents"
-        ],
+        "required": ["title", "contents"],
         "title": "ContentBlock",
         "type": "object"
       },
@@ -788,18 +756,12 @@
             "type": "string"
           }
         },
-        "required": [
-          "error"
-        ],
+        "required": ["error"],
         "title": "ErrorDetail",
         "type": "object"
       },
       "EventDeliveryType": {
-        "enum": [
-          "streaming",
-          "direct",
-          "polling"
-        ],
+        "enum": ["streaming", "direct", "polling"],
         "title": "EventDeliveryType",
         "type": "string"
       },
@@ -1045,9 +1007,7 @@
             "title": "Webhook"
           }
         },
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "FlowCreate",
         "type": "object"
       },
@@ -1082,10 +1042,7 @@
             "title": "Viewport"
           }
         },
-        "required": [
-          "nodes",
-          "edges"
-        ],
+        "required": ["nodes", "edges"],
         "title": "FlowDataRequest",
         "type": "object"
       },
@@ -1111,9 +1068,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "type"
-        ],
+        "required": ["type"],
         "title": "FlowEventCreate",
         "type": "object"
       },
@@ -1132,11 +1087,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "timestamp",
-          "summary"
-        ],
+        "required": ["type", "timestamp", "summary"],
         "title": "FlowEventResponse",
         "type": "object"
       },
@@ -1154,10 +1105,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "events",
-          "settled"
-        ],
+        "required": ["events", "settled"],
         "title": "FlowEventsResponse",
         "type": "object"
       },
@@ -1300,10 +1248,7 @@
             "title": "Tags"
           }
         },
-        "required": [
-          "id",
-          "name"
-        ],
+        "required": ["id", "name"],
         "title": "FlowHeader",
         "type": "object"
       },
@@ -1317,9 +1262,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "flows"
-        ],
+        "required": ["flows"],
         "title": "FlowListCreate",
         "type": "object"
       },
@@ -1531,12 +1474,7 @@
             "title": "Webhook"
           }
         },
-        "required": [
-          "name",
-          "id",
-          "user_id",
-          "folder_id"
-        ],
+        "required": ["name", "id", "user_id", "folder_id"],
         "title": "FlowRead",
         "type": "object"
       },
@@ -1729,9 +1667,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "FolderCreate",
         "type": "object"
       },
@@ -1783,11 +1719,7 @@
             "title": "Parent Id"
           }
         },
-        "required": [
-          "name",
-          "id",
-          "parent_id"
-        ],
+        "required": ["name", "id", "parent_id"],
         "title": "FolderRead",
         "type": "object"
       },
@@ -1847,11 +1779,7 @@
             "title": "Parent Id"
           }
         },
-        "required": [
-          "name",
-          "id",
-          "parent_id"
-        ],
+        "required": ["name", "id", "parent_id"],
         "title": "FolderReadWithFlows",
         "type": "object"
       },
@@ -1932,10 +1860,7 @@
             "$ref": "#/components/schemas/FolderRead"
           }
         },
-        "required": [
-          "folder",
-          "flows"
-        ],
+        "required": ["folder", "flows"],
         "title": "FolderWithPaginatedFlows",
         "type": "object"
       },
@@ -1968,10 +1893,7 @@
             ]
           }
         },
-        "required": [
-          "nodes",
-          "edges"
-        ],
+        "required": ["nodes", "edges"],
         "title": "GraphData",
         "type": "object"
       },
@@ -2025,9 +1947,7 @@
             "title": "Name"
           }
         },
-        "required": [
-          "data"
-        ],
+        "required": ["data"],
         "title": "GraphDumpResponse",
         "type": "object"
       },
@@ -2069,26 +1989,19 @@
         "additionalProperties": false,
         "examples": [
           {
-            "components": [
-              "components_id",
-              "Component Name"
-            ],
+            "components": ["components_id", "Component Name"],
             "input_value": "input_value",
             "session": "session_id"
           },
           {
-            "components": [
-              "Component Name"
-            ],
+            "components": ["Component Name"],
             "input_value": "input_value"
           },
           {
             "input_value": "input_value"
           },
           {
-            "components": [
-              "Component Name"
-            ],
+            "components": ["Component Name"],
             "input_value": "input_value",
             "session": "session_id"
           },
@@ -2158,11 +2071,7 @@
           "type": {
             "anyOf": [
               {
-                "enum": [
-                  "chat",
-                  "text",
-                  "any"
-                ],
+                "enum": ["chat", "text", "any"],
                 "type": "string"
               },
               {
@@ -2203,10 +2112,7 @@
           "transport": {
             "anyOf": [
               {
-                "enum": [
-                  "sse",
-                  "streamablehttp"
-                ],
+                "enum": ["sse", "streamablehttp"],
                 "type": "string"
               },
               {
@@ -2216,9 +2122,7 @@
             "title": "Transport"
           }
         },
-        "required": [
-          "client"
-        ],
+        "required": ["client"],
         "title": "MCPInstallRequest",
         "type": "object"
       },
@@ -2243,9 +2147,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "settings"
-        ],
+        "required": ["settings"],
         "title": "MCPProjectUpdateRequest",
         "type": "object"
       },
@@ -2385,9 +2287,7 @@
             "title": "Name"
           }
         },
-        "required": [
-          "id"
-        ],
+        "required": ["id"],
         "title": "MCPSettings",
         "type": "object"
       },
@@ -2634,13 +2534,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "sender",
-          "sender_name",
-          "session_id",
-          "text",
-          "edit"
-        ],
+        "required": ["sender", "sender_name", "session_id", "text", "edit"],
         "title": "MessageResponse",
         "type": "object"
       },
@@ -2829,10 +2723,7 @@
             "title": "Tools"
           }
         },
-        "required": [
-          "model",
-          "input"
-        ],
+        "required": ["model", "input"],
         "title": "OpenAIResponsesRequest",
         "type": "object"
       },
@@ -2866,13 +2757,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "size",
-          "pages"
-        ],
+        "required": ["items", "total", "page", "size", "pages"],
         "title": "Page[FlowRead]",
         "type": "object"
       },
@@ -2906,13 +2791,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "size",
-          "pages"
-        ],
+        "required": ["items", "total", "page", "size", "pages"],
         "title": "Page[TransactionLogsResponse]",
         "type": "object"
       },
@@ -2977,10 +2856,7 @@
           },
           "state": {
             "default": "complete",
-            "enum": [
-              "partial",
-              "complete"
-            ],
+            "enum": ["partial", "complete"],
             "title": "State",
             "type": "string"
           },
@@ -3023,11 +2899,7 @@
             "type": "boolean"
           },
           "event_delivery": {
-            "enum": [
-              "polling",
-              "streaming",
-              "direct"
-            ],
+            "enum": ["polling", "streaming", "direct"],
             "title": "Event Delivery",
             "type": "string"
           },
@@ -3260,11 +3132,7 @@
           "input_type": {
             "anyOf": [
               {
-                "enum": [
-                  "chat",
-                  "text",
-                  "any"
-                ],
+                "enum": ["chat", "text", "any"],
                 "type": "string"
               },
               {
@@ -3303,12 +3171,7 @@
           "output_type": {
             "anyOf": [
               {
-                "enum": [
-                  "chat",
-                  "text",
-                  "any",
-                  "debug"
-                ],
+                "enum": ["chat", "text", "any", "debug"],
                 "type": "string"
               },
               {
@@ -3519,11 +3382,7 @@
       },
       "SpanStatus": {
         "description": "OpenTelemetry status codes.\n\n- UNSET: Default status, span has not ended yet\n- OK: Span completed successfully\n- ERROR: Span completed with an error",
-        "enum": [
-          "unset",
-          "ok",
-          "error"
-        ],
+        "enum": ["unset", "ok", "error"],
         "title": "SpanStatus",
         "type": "string"
       },
@@ -3568,11 +3427,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "traces",
-          "total",
-          "pages"
-        ],
+        "required": ["traces", "total", "pages"],
         "title": "TraceListResponse",
         "type": "object"
       },
@@ -3803,11 +3658,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "vertex_id",
-          "status"
-        ],
+        "required": ["id", "vertex_id", "status"],
         "title": "TransactionLogsResponse",
         "type": "object"
       },
@@ -3906,10 +3757,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "username",
-          "password"
-        ],
+        "required": ["username", "password"],
         "title": "UserCreate",
         "type": "object"
       },
@@ -4101,10 +3949,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "total_count",
-          "users"
-        ],
+        "required": ["total_count", "users"],
         "title": "UsersResponse",
         "type": "object"
       },
@@ -4140,11 +3985,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError",
         "type": "object"
       },
@@ -4161,9 +4002,7 @@
             "type": "object"
           }
         },
-        "required": [
-          "vertex_builds"
-        ],
+        "required": ["vertex_builds"],
         "title": "VertexBuildMapModel",
         "type": "object"
       },
@@ -4226,11 +4065,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "id",
-          "valid",
-          "flow_id"
-        ],
+        "required": ["id", "valid", "flow_id"],
         "title": "VertexBuildTable",
         "type": "object"
       },
@@ -4249,11 +4084,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "x",
-          "y",
-          "zoom"
-        ],
+        "required": ["x", "y", "zoom"],
         "title": "ViewPort",
         "type": "object"
       },
@@ -4319,9 +4150,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "flow_id"
-        ],
+        "required": ["flow_id"],
         "title": "WorkflowExecutionRequest",
         "type": "object"
       },
@@ -4341,9 +4170,7 @@
             "title": "Job Id"
           }
         },
-        "required": [
-          "job_id"
-        ],
+        "required": ["job_id"],
         "title": "WorkflowStopRequest",
         "type": "object"
       },
@@ -4374,13 +4201,11 @@
             "title": "Message"
           }
         },
-        "required": [
-          "job_id"
-        ],
+        "required": ["job_id"],
         "title": "WorkflowStopResponse",
         "type": "object"
       },
-      "langflow__api__schemas__UploadFileResponse": {
+      "portals__api__schemas__UploadFileResponse": {
         "description": "File upload response schema.",
         "properties": {
           "id": {
@@ -4412,16 +4237,11 @@
             "type": "integer"
           }
         },
-        "required": [
-          "id",
-          "name",
-          "path",
-          "size"
-        ],
+        "required": ["id", "name", "path", "size"],
         "title": "UploadFileResponse",
         "type": "object"
       },
-      "langflow__api__v1__schemas__UploadFileResponse": {
+      "portals__api__v1__schemas__UploadFileResponse": {
         "description": "Upload file response schema.",
         "properties": {
           "file_path": {
@@ -4433,14 +4253,11 @@
             "type": "string"
           }
         },
-        "required": [
-          "flowId",
-          "file_path"
-        ],
+        "required": ["flowId", "file_path"],
         "title": "UploadFileResponse",
         "type": "object"
       },
-      "langflow__services__database__models__file__model__File": {
+      "portals__services__database__models__file__model__File": {
         "properties": {
           "created_at": {
             "format": "date-time",
@@ -4486,16 +4303,11 @@
             "type": "string"
           }
         },
-        "required": [
-          "user_id",
-          "name",
-          "path",
-          "size"
-        ],
+        "required": ["user_id", "name", "path", "size"],
         "title": "File",
         "type": "object"
       },
-      "lfx__utils__schemas__File": {
+      "px__utils__schemas__File": {
         "description": "File schema.",
         "properties": {
           "name": {
@@ -4511,11 +4323,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "path",
-          "name",
-          "type"
-        ],
+        "required": ["path", "name", "type"],
         "title": "File",
         "type": "object"
       }
@@ -4543,7 +4351,7 @@
     }
   },
   "info": {
-    "title": "Langflow",
+    "title": "Portals",
     "version": "1.9.0"
   },
   "openapi": "3.1.0",
@@ -4574,9 +4382,7 @@
           }
         ],
         "summary": "Get All",
-        "tags": [
-          "Base"
-        ]
+        "tags": ["Base"]
       }
     },
     "/api/v1/build/{flow_id}/flow": {
@@ -4703,9 +4509,7 @@
           }
         ],
         "summary": "Build Flow",
-        "tags": [
-          "Chat"
-        ]
+        "tags": ["Chat"]
       }
     },
     "/api/v1/build/{job_id}/cancel": {
@@ -4757,9 +4561,7 @@
           }
         ],
         "summary": "Cancel Build",
-        "tags": [
-          "Chat"
-        ]
+        "tags": ["Chat"]
       }
     },
     "/api/v1/build/{job_id}/events": {
@@ -4818,9 +4620,7 @@
           }
         ],
         "summary": "Get Build Events",
-        "tags": [
-          "Chat"
-        ]
+        "tags": ["Chat"]
       }
     },
     "/api/v1/build_public_tmp/{flow_id}/flow": {
@@ -4943,9 +4743,7 @@
           }
         },
         "summary": "Build Public Tmp",
-        "tags": [
-          "Chat"
-        ]
+        "tags": ["Chat"]
       }
     },
     "/api/v1/build_public_tmp/{job_id}/cancel": {
@@ -4986,9 +4784,7 @@
           }
         },
         "summary": "Cancel Build Public",
-        "tags": [
-          "Chat"
-        ]
+        "tags": ["Chat"]
       }
     },
     "/api/v1/build_public_tmp/{job_id}/events": {
@@ -5036,9 +4832,7 @@
           }
         },
         "summary": "Get Build Events Public",
-        "tags": [
-          "Chat"
-        ]
+        "tags": ["Chat"]
       }
     },
     "/api/v1/config": {
@@ -5077,9 +4871,7 @@
           }
         ],
         "summary": "Get Config",
-        "tags": [
-          "Base"
-        ]
+        "tags": ["Base"]
       }
     },
     "/api/v1/files/delete/{flow_id}/{file_name}": {
@@ -5138,9 +4930,7 @@
           }
         ],
         "summary": "Delete File",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v1/files/download/{flow_id}/{file_name}": {
@@ -5199,9 +4989,7 @@
           }
         ],
         "summary": "Download File",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v1/files/images/{flow_id}/{file_name}": {
@@ -5261,9 +5049,7 @@
           }
         ],
         "summary": "Download Image",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v1/files/list/{flow_id}": {
@@ -5313,9 +5099,7 @@
           }
         ],
         "summary": "List Files",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v1/files/profile_pictures/list": {
@@ -5333,9 +5117,7 @@
           }
         },
         "summary": "List Profile Pictures",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v1/files/profile_pictures/{folder_name}/{file_name}": {
@@ -5383,9 +5165,7 @@
           }
         },
         "summary": "Download Profile Picture",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v1/files/upload/{flow_id}": {
@@ -5418,7 +5198,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/langflow__api__v1__schemas__UploadFileResponse"
+                  "$ref": "#/components/schemas/portals__api__v1__schemas__UploadFileResponse"
                 }
               }
             },
@@ -5447,9 +5227,7 @@
           }
         ],
         "summary": "Upload File",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v1/flows/": {
@@ -5503,9 +5281,7 @@
           }
         ],
         "summary": "Delete Multiple Flows",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       },
       "get": {
         "description": "Retrieve a list of flows with optional pagination, filtering, and header-only mode.",
@@ -5643,9 +5419,7 @@
           }
         ],
         "summary": "Read Flows",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       },
       "post": {
         "operationId": "create_flow_api_v1_flows__post",
@@ -5693,9 +5467,7 @@
           }
         ],
         "summary": "Create Flow",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       }
     },
     "/api/v1/flows/basic_examples/": {
@@ -5719,9 +5491,7 @@
           }
         },
         "summary": "Read Basic Examples",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       }
     },
     "/api/v1/flows/batch/": {
@@ -5776,9 +5546,7 @@
           }
         ],
         "summary": "Create Flows",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       }
     },
     "/api/v1/flows/download/": {
@@ -5832,9 +5600,7 @@
           }
         ],
         "summary": "Download Multiple File",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       }
     },
     "/api/v1/flows/public_flow/{flow_id}": {
@@ -5876,9 +5642,7 @@
           }
         },
         "summary": "Read Public Flow",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       }
     },
     "/api/v1/flows/upload/": {
@@ -5951,9 +5715,7 @@
           }
         ],
         "summary": "Upload File",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       }
     },
     "/api/v1/flows/{flow_id}": {
@@ -6004,9 +5766,7 @@
           }
         ],
         "summary": "Delete Flow",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       },
       "get": {
         "description": "Read a flow.",
@@ -6057,9 +5817,7 @@
           }
         ],
         "summary": "Read Flow",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       },
       "patch": {
         "description": "Update a flow.",
@@ -6120,9 +5878,7 @@
           }
         ],
         "summary": "Update Flow",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       },
       "put": {
         "description": "Create or update a flow with a specific ID (upsert).<br><br>Returns 201 for creation, 200 for update.  Returns 404 if owned by another user.",
@@ -6183,9 +5939,7 @@
           }
         ],
         "summary": "Upsert Flow",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       }
     },
     "/api/v1/flows/{flow_id}/events": {
@@ -6249,9 +6003,7 @@
           }
         ],
         "summary": "Get Flow Events",
-        "tags": [
-          "Flow Events"
-        ]
+        "tags": ["Flow Events"]
       },
       "post": {
         "description": "Append an event to a flow's event queue.",
@@ -6312,9 +6064,7 @@
           }
         ],
         "summary": "Create Flow Event",
-        "tags": [
-          "Flow Events"
-        ]
+        "tags": ["Flow Events"]
       }
     },
     "/api/v1/mcp/project/{project_id}": {
@@ -6375,9 +6125,7 @@
           }
         ],
         "summary": "List Project Tools",
-        "tags": [
-          "mcp_projects"
-        ]
+        "tags": ["mcp_projects"]
       },
       "patch": {
         "description": "Update the MCP settings of all flows in a project and project-level auth settings.<br><br>On MCP Composer failure, this endpoint should return with a 200 status code and an error message in<br>the body of the response to display to the user.",
@@ -6436,9 +6184,7 @@
           }
         ],
         "summary": "Update Project Mcp Settings",
-        "tags": [
-          "mcp_projects"
-        ]
+        "tags": ["mcp_projects"]
       }
     },
     "/api/v1/mcp/project/{project_id}/composer-url": {
@@ -6491,9 +6237,7 @@
           }
         ],
         "summary": "Get Project Composer Url",
-        "tags": [
-          "mcp_projects"
-        ]
+        "tags": ["mcp_projects"]
       }
     },
     "/api/v1/mcp/project/{project_id}/install": {
@@ -6554,9 +6298,7 @@
           }
         ],
         "summary": "Install Mcp Config",
-        "tags": [
-          "mcp_projects"
-        ]
+        "tags": ["mcp_projects"]
       }
     },
     "/api/v1/mcp/project/{project_id}/installed": {
@@ -6607,9 +6349,7 @@
           }
         ],
         "summary": "Check Installed Mcp Servers",
-        "tags": [
-          "mcp_projects"
-        ]
+        "tags": ["mcp_projects"]
       }
     },
     "/api/v1/monitor/builds": {
@@ -6654,9 +6394,7 @@
           }
         ],
         "summary": "Delete Vertex Builds",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       },
       "get": {
         "operationId": "get_vertex_builds_api_v1_monitor_builds_get",
@@ -6706,9 +6444,7 @@
           }
         ],
         "summary": "Get Vertex Builds",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages": {
@@ -6756,9 +6492,7 @@
           }
         ],
         "summary": "Delete Messages",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       },
       "get": {
         "operationId": "get_messages_api_v1_monitor_messages_get",
@@ -6884,9 +6618,7 @@
           }
         ],
         "summary": "Get Messages",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages/session/{old_session_id}": {
@@ -6952,9 +6684,7 @@
           }
         ],
         "summary": "Update Session Id",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages/session/{session_id}": {
@@ -6999,9 +6729,7 @@
           }
         ],
         "summary": "Delete Messages Session",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages/sessions": {
@@ -7054,9 +6782,7 @@
           }
         ],
         "summary": "Delete Messages Sessions",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       },
       "get": {
         "operationId": "get_message_sessions_api_v1_monitor_messages_sessions_get",
@@ -7117,9 +6843,7 @@
           }
         ],
         "summary": "Get Message Sessions",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages/shared": {
@@ -7211,9 +6935,7 @@
           }
         ],
         "summary": "Get Shared Messages",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages/shared/session/{old_session_id}": {
@@ -7292,9 +7014,7 @@
           }
         ],
         "summary": "Rename Shared Session",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages/shared/session/{session_id}": {
@@ -7351,9 +7071,7 @@
           }
         ],
         "summary": "Delete Shared Messages Session",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages/shared/sessions": {
@@ -7412,9 +7130,7 @@
           }
         ],
         "summary": "Get Shared Message Sessions",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages/shared/{message_id}": {
@@ -7489,9 +7205,7 @@
           }
         ],
         "summary": "Update Shared Message",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/messages/{message_id}": {
@@ -7553,9 +7267,7 @@
           }
         ],
         "summary": "Update Message",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/monitor/traces": {
@@ -7601,9 +7313,7 @@
           }
         ],
         "summary": "Delete Traces By Flow",
-        "tags": [
-          "Traces"
-        ]
+        "tags": ["Traces"]
       },
       "get": {
         "description": "Get list of traces for a flow.<br><br>Args:<br>    current_user: Authenticated user (required for authorization)<br>    flow_id: Filter by flow ID<br>    session_id: Filter by session ID<br>    status: Filter by trace status<br>    query: Search query for trace name/id/session id<br>    start_time: Filter traces starting on/after this time (ISO)<br>    end_time: Filter traces starting on/before this time (ISO)<br>    page: Page number (1-based)<br>    size: Page size<br><br>Returns:<br>    List of traces",
@@ -7766,9 +7476,7 @@
           }
         ],
         "summary": "Get Traces",
-        "tags": [
-          "Traces"
-        ]
+        "tags": ["Traces"]
       }
     },
     "/api/v1/monitor/traces/{trace_id}": {
@@ -7814,9 +7522,7 @@
           }
         ],
         "summary": "Delete Trace",
-        "tags": [
-          "Traces"
-        ]
+        "tags": ["Traces"]
       },
       "get": {
         "description": "Get a single trace with its hierarchical span tree.<br><br>Args:<br>    trace_id: The ID of the trace to retrieve.<br>    current_user: The authenticated user (required for authorization).<br><br>Returns:<br>    TraceRead containing the trace and its hierarchical span tree.",
@@ -7867,9 +7573,7 @@
           }
         ],
         "summary": "Get Trace",
-        "tags": [
-          "Traces"
-        ]
+        "tags": ["Traces"]
       }
     },
     "/api/v1/monitor/transactions": {
@@ -7948,9 +7652,7 @@
           }
         ],
         "summary": "Get Transactions",
-        "tags": [
-          "Monitor"
-        ]
+        "tags": ["Monitor"]
       }
     },
     "/api/v1/projects/": {
@@ -7984,9 +7686,7 @@
           }
         ],
         "summary": "Read Projects",
-        "tags": [
-          "Projects"
-        ]
+        "tags": ["Projects"]
       },
       "post": {
         "operationId": "create_project_api_v1_projects__post",
@@ -8034,9 +7734,7 @@
           }
         ],
         "summary": "Create Project",
-        "tags": [
-          "Projects"
-        ]
+        "tags": ["Projects"]
       }
     },
     "/api/v1/projects/download/{project_id}": {
@@ -8087,9 +7785,7 @@
           }
         ],
         "summary": "Download File",
-        "tags": [
-          "Projects"
-        ]
+        "tags": ["Projects"]
       }
     },
     "/api/v1/projects/upload/": {
@@ -8143,9 +7839,7 @@
           }
         ],
         "summary": "Upload File",
-        "tags": [
-          "Projects"
-        ]
+        "tags": ["Projects"]
       }
     },
     "/api/v1/projects/{project_id}": {
@@ -8190,9 +7884,7 @@
           }
         ],
         "summary": "Delete Project",
-        "tags": [
-          "Projects"
-        ]
+        "tags": ["Projects"]
       },
       "get": {
         "operationId": "read_project_api_v1_projects__project_id__get",
@@ -8312,9 +8004,7 @@
           }
         ],
         "summary": "Read Project",
-        "tags": [
-          "Projects"
-        ]
+        "tags": ["Projects"]
       },
       "patch": {
         "operationId": "update_project_api_v1_projects__project_id__patch",
@@ -8374,14 +8064,12 @@
           }
         ],
         "summary": "Update Project",
-        "tags": [
-          "Projects"
-        ]
+        "tags": ["Projects"]
       }
     },
     "/api/v1/responses": {
       "post": {
-        "description": "Create a response using OpenAI Responses API format.<br><br>This endpoint accepts a flow_id in the model parameter and processes<br>the input through the specified Langflow flow.<br><br>Args:<br>    request: OpenAI Responses API request with model (flow_id) and input<br>    background_tasks: FastAPI background task manager<br>    api_key_user: Authenticated user from API key<br>    http_request: The incoming HTTP request<br>    telemetry_service: Telemetry service for logging<br><br>Returns:<br>    OpenAI-compatible response or streaming response<br><br>Raises:<br>    HTTPException: For validation errors or flow execution issues",
+        "description": "Create a response using OpenAI Responses API format.<br><br>This endpoint accepts a flow_id in the model parameter and processes<br>the input through the specified Portals flow.<br><br>Args:<br>    request: OpenAI Responses API request with model (flow_id) and input<br>    background_tasks: FastAPI background task manager<br>    api_key_user: Authenticated user from API key<br>    http_request: The incoming HTTP request<br>    telemetry_service: Telemetry service for logging<br><br>Returns:<br>    OpenAI-compatible response or streaming response<br><br>Raises:<br>    HTTPException: For validation errors or flow execution issues",
         "operationId": "create_response_api_v1_responses_post",
         "requestBody": {
           "content": {
@@ -8422,9 +8110,7 @@
           }
         ],
         "summary": "Create Response",
-        "tags": [
-          "OpenAI Responses API"
-        ]
+        "tags": ["OpenAI Responses API"]
       }
     },
     "/api/v1/run/advanced/{flow_id_or_name}": {
@@ -8502,9 +8188,7 @@
           }
         ],
         "summary": "Experimental Run Flow",
-        "tags": [
-          "Base"
-        ]
+        "tags": ["Base"]
       }
     },
     "/api/v1/run/{flow_id_or_name}": {
@@ -8590,9 +8274,7 @@
           }
         ],
         "summary": "Simplified Run Flow",
-        "tags": [
-          "Base"
-        ]
+        "tags": ["Base"]
       }
     },
     "/api/v1/starter-projects/": {
@@ -8627,9 +8309,7 @@
           }
         ],
         "summary": "Get Starter Projects",
-        "tags": [
-          "Flows"
-        ]
+        "tags": ["Flows"]
       }
     },
     "/api/v1/users/": {
@@ -8708,9 +8388,7 @@
           }
         ],
         "summary": "Read All Users",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       },
       "post": {
         "description": "Add a new user to the database.<br><br>This endpoint allows public user registration (sign up).<br>User activation is controlled by the NEW_USER_IS_ACTIVE setting.",
@@ -8748,9 +8426,7 @@
           }
         },
         "summary": "Add User",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/whoami": {
@@ -8781,9 +8457,7 @@
           }
         ],
         "summary": "Read Current User",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/{user_id}": {
@@ -8838,9 +8512,7 @@
           }
         ],
         "summary": "Delete User",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       },
       "patch": {
         "description": "Update an existing user's data.",
@@ -8901,9 +8573,7 @@
           }
         ],
         "summary": "Patch User",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/users/{user_id}/reset-password": {
@@ -8966,9 +8636,7 @@
           }
         ],
         "summary": "Reset Password",
-        "tags": [
-          "Users"
-        ]
+        "tags": ["Users"]
       }
     },
     "/api/v1/version": {
@@ -8985,9 +8653,7 @@
           }
         },
         "summary": "Get Version",
-        "tags": [
-          "Base"
-        ]
+        "tags": ["Base"]
       }
     },
     "/api/v1/webhook/{flow_id_or_name}": {
@@ -9050,9 +8716,7 @@
           }
         },
         "summary": "Webhook Run Flow",
-        "tags": [
-          "Base"
-        ]
+        "tags": ["Base"]
       }
     },
     "/api/v2/files": {
@@ -9081,9 +8745,7 @@
           }
         ],
         "summary": "Delete All Files",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       },
       "get": {
         "description": "List the files available to the current user.",
@@ -9094,7 +8756,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/langflow__services__database__models__file__model__File"
+                    "$ref": "#/components/schemas/portals__services__database__models__file__model__File"
                   },
                   "title": "Response List Files Api V2 Files Get",
                   "type": "array"
@@ -9116,9 +8778,7 @@
           }
         ],
         "summary": "List Files",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       },
       "post": {
         "description": "Upload a file for the current user and track it in the database.",
@@ -9160,7 +8820,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/langflow__api__schemas__UploadFileResponse"
+                  "$ref": "#/components/schemas/portals__api__schemas__UploadFileResponse"
                 }
               }
             },
@@ -9189,9 +8849,7 @@
           }
         ],
         "summary": "Upload User File",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v2/files/": {
@@ -9220,9 +8878,7 @@
           }
         ],
         "summary": "Delete All Files",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       },
       "get": {
         "description": "List the files available to the current user.",
@@ -9233,7 +8889,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/langflow__services__database__models__file__model__File"
+                    "$ref": "#/components/schemas/portals__services__database__models__file__model__File"
                   },
                   "title": "Response List Files Api V2 Files  Get",
                   "type": "array"
@@ -9255,9 +8911,7 @@
           }
         ],
         "summary": "List Files",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       },
       "post": {
         "description": "Upload a file for the current user and track it in the database.",
@@ -9299,7 +8953,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/langflow__api__schemas__UploadFileResponse"
+                  "$ref": "#/components/schemas/portals__api__schemas__UploadFileResponse"
                 }
               }
             },
@@ -9328,9 +8982,7 @@
           }
         ],
         "summary": "Upload User File",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v2/files/batch/": {
@@ -9384,9 +9036,7 @@
           }
         ],
         "summary": "Delete Files Batch",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       },
       "post": {
         "description": "Download multiple files as a zip file by their IDs.",
@@ -9438,9 +9088,7 @@
           }
         ],
         "summary": "Download Files Batch",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v2/files/{file_id}": {
@@ -9491,9 +9139,7 @@
           }
         ],
         "summary": "Delete File",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       },
       "get": {
         "description": "Download a file by its ID or return its content as a string/bytes.<br><br>Args:<br>    file_id: UUID of the file.<br>    current_user: Authenticated user.<br>    session: Database session.<br>    storage_service: File storage service.<br>    return_content: If True, return raw content (str) instead of StreamingResponse.<br><br>Returns:<br>    StreamingResponse for client downloads or str for internal use.",
@@ -9552,9 +9198,7 @@
           }
         ],
         "summary": "Download File",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       },
       "put": {
         "description": "Edit the name of a file by its ID.",
@@ -9585,7 +9229,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/langflow__api__schemas__UploadFileResponse"
+                  "$ref": "#/components/schemas/portals__api__schemas__UploadFileResponse"
                 }
               }
             },
@@ -9614,9 +9258,7 @@
           }
         ],
         "summary": "Edit File Name",
-        "tags": [
-          "Files"
-        ]
+        "tags": ["Files"]
       }
     },
     "/api/v2/mcp/servers": {
@@ -9673,9 +9315,7 @@
           }
         ],
         "summary": "Get Servers",
-        "tags": [
-          "MCP"
-        ]
+        "tags": ["MCP"]
       }
     },
     "/api/v2/mcp/servers/{server_name}": {
@@ -9724,9 +9364,7 @@
           }
         ],
         "summary": "Delete Server",
-        "tags": [
-          "MCP"
-        ]
+        "tags": ["MCP"]
       },
       "get": {
         "description": "Get a specific server.",
@@ -9774,9 +9412,7 @@
           }
         ],
         "summary": "Get Server Endpoint",
-        "tags": [
-          "MCP"
-        ]
+        "tags": ["MCP"]
       },
       "patch": {
         "operationId": "update_server_endpoint_api_v2_mcp_servers__server_name__patch",
@@ -9833,9 +9469,7 @@
           }
         ],
         "summary": "Update Server Endpoint",
-        "tags": [
-          "MCP"
-        ]
+        "tags": ["MCP"]
       },
       "post": {
         "operationId": "add_server_api_v2_mcp_servers__server_name__post",
@@ -9892,9 +9526,7 @@
           }
         ],
         "summary": "Add Server",
-        "tags": [
-          "MCP"
-        ]
+        "tags": ["MCP"]
       }
     },
     "/api/v2/workflows": {
@@ -9987,10 +9619,7 @@
                       "$ref": "#/components/schemas/JobStatus"
                     }
                   },
-                  "required": [
-                    "flow_id",
-                    "status"
-                  ],
+                  "required": ["flow_id", "status"],
                   "title": "WorkflowExecutionResponse",
                   "type": "object"
                 }
@@ -10018,12 +9647,7 @@
                       "type": "string"
                     }
                   },
-                  "required": [
-                    "type",
-                    "run_id",
-                    "timestamp",
-                    "raw_event"
-                  ],
+                  "required": ["type", "run_id", "timestamp", "raw_event"],
                   "title": "WorkflowStreamEvent",
                   "type": "object"
                 }
@@ -10051,9 +9675,7 @@
           }
         ],
         "summary": "Get Workflow Status",
-        "tags": [
-          "Workflow"
-        ]
+        "tags": ["Workflow"]
       },
       "post": {
         "description": "Execute a workflow with support for sync, stream, and background modes",
@@ -10139,10 +9761,7 @@
                           "$ref": "#/components/schemas/JobStatus"
                         }
                       },
-                      "required": [
-                        "flow_id",
-                        "status"
-                      ],
+                      "required": ["flow_id", "status"],
                       "title": "WorkflowExecutionResponse",
                       "type": "object"
                     },
@@ -10194,11 +9813,7 @@
                           "$ref": "#/components/schemas/JobStatus"
                         }
                       },
-                      "required": [
-                        "job_id",
-                        "flow_id",
-                        "status"
-                      ],
+                      "required": ["job_id", "flow_id", "status"],
                       "title": "WorkflowJobResponse",
                       "type": "object"
                     }
@@ -10228,12 +9843,7 @@
                       "type": "string"
                     }
                   },
-                  "required": [
-                    "type",
-                    "run_id",
-                    "timestamp",
-                    "raw_event"
-                  ],
+                  "required": ["type", "run_id", "timestamp", "raw_event"],
                   "title": "WorkflowStreamEvent",
                   "type": "object"
                 }
@@ -10261,9 +9871,7 @@
           }
         ],
         "summary": "Execute Workflow",
-        "tags": [
-          "Workflow"
-        ]
+        "tags": ["Workflow"]
       }
     },
     "/api/v2/workflows/stop": {
@@ -10311,9 +9919,7 @@
           }
         ],
         "summary": "Stop Workflow",
-        "tags": [
-          "Workflow"
-        ]
+        "tags": ["Workflow"]
       }
     },
     "/health": {
@@ -10330,9 +9936,7 @@
           }
         },
         "summary": "Health",
-        "tags": [
-          "Health Check"
-        ]
+        "tags": ["Health Check"]
       }
     },
     "/health_check": {
@@ -10351,9 +9955,7 @@
           }
         },
         "summary": "Health Check",
-        "tags": [
-          "Health Check"
-        ]
+        "tags": ["Health Check"]
       }
     },
     "/logs": {
@@ -10430,9 +10032,7 @@
           }
         ],
         "summary": "Logs",
-        "tags": [
-          "Log"
-        ]
+        "tags": ["Log"]
       }
     },
     "/logs-stream": {
@@ -10461,9 +10061,7 @@
           }
         ],
         "summary": "Stream Logs",
-        "tags": [
-          "Log"
-        ]
+        "tags": ["Log"]
       }
     }
   }

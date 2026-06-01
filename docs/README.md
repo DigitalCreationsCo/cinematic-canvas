@@ -31,7 +31,7 @@ For a working example, see the [Components overview](/concepts-components#compon
 
 ```mdx
 import CodeSnippet from "@site/src/components/CodeSnippet";
-import customComponent from "!!raw-loader!@langflow/src/lfx/src/lfx/custom/custom_component/custom_component.py";
+import customComponent from "!!raw-loader!@portals/src/px/src/px/custom/custom_component/custom_component.py";
 
 <CodeSnippet
   source={customComponent}

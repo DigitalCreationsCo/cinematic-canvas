@@ -8,26 +8,26 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PartialGlobalModelProviders from '@site/docs/_partial-global-model-providers.mdx';
 
-Get started with Langflow by loading a template flow, running it, and then serving it at the `/run` API endpoint.
+Get started with Portals by loading a template flow, running it, and then serving it at the `/run` API endpoint.
 
 ## Prerequisites
 
-- [Install and start Langflow](/get-started-installation)
+- [Install and start Portals](/get-started-installation)
 - Create an [OpenAI API key](https://platform.openai.com/api-keys)
-- Create a [Langflow API key](/api-keys-and-authentication)
+- Create a [Portals API key](/api-keys-and-authentication)
 
     <details>
-    <summary>Create a Langflow API key</summary>
+    <summary>Create a Portals API key</summary>
 
-    A Langflow API key is a user-specific token you can use with Langflow.
+    A Portals API key is a user-specific token you can use with Portals.
 
-    To create a Langflow API key, do the following:
+    To create a Portals API key, do the following:
 
-    1. In Langflow, click your user icon, and then select **Settings**.
-    2. Click **Langflow API Keys**, and then click <Icon name="Plus" aria-hidden="true"/> **Add New**.
+    1. In Portals, click your user icon, and then select **Settings**.
+    2. Click **Portals API Keys**, and then click <Icon name="Plus" aria-hidden="true"/> **Add New**.
     3. Name your key, and then click **Create API Key**.
     4. Copy the API key and store it securely.
-    5. To use your Langflow API key in a request, set a `LANGFLOW_API_KEY` environment variable in your terminal, and then include an `x-api-key` header or query parameter with your request.
+    5. To use your Portals API key in a request, set a `LANGFLOW_API_KEY` environment variable in your terminal, and then include an `x-api-key` header or query parameter with your request.
     For example:
 
         ```bash
@@ -54,7 +54,7 @@ If you encounter the error "An API key must be passed as query or header" when a
 
 ## Run the Simple Agent template flow
 
-1. In Langflow, click **New Flow**, and then select the **Simple Agent** template.
+1. In Portals, click **New Flow**, and then select the **Simple Agent** template.
 
 ![Simple Agent template](/img/quickstart-simple-agent-flow.png)
 
@@ -71,7 +71,7 @@ Many components can be tools for agents, including [Model Context Protocol (MCP)
 
     There are two ways to access more models and providers:
 
-    * Edit Langflow's global <Icon name="BrainCog" aria-hidden="true" /> **Models** configuration. These providers and models are part of Langflow's core functionality. Use the **Ollama** provider to connect to any model hosted on a local or remote Ollama instance.
+    * Edit Portals's global <Icon name="BrainCog" aria-hidden="true" /> **Models** configuration. These providers and models are part of Portals's core functionality. Use the **Ollama** provider to connect to any model hosted on a local or remote Ollama instance.
     * Connect any [additional language model component](/components-models#additional-language-models) to the **Agent** component's **Language Model** port.
 
     </details>
@@ -99,21 +99,21 @@ Now that you've run your first flow, try these next steps:
 
 ## Run your flows from external applications
 
-Langflow is an IDE, but it's also a runtime you can call through the [Langflow API](/api-reference-api-examples) with Python, JavaScript, or HTTP.
+Portals is an IDE, but it's also a runtime you can call through the [Portals API](/api-reference-api-examples) with Python, JavaScript, or HTTP.
 
-When you start Langflow locally, you can send requests to the local Langflow server.
-For production applications, you need to [deploy a stable Langflow instance](/deployment-overview) to handle API calls.
+When you start Portals locally, you can send requests to the local Portals server.
+For production applications, you need to [deploy a stable Portals instance](/deployment-overview) to handle API calls.
 
 For example, you can use the `/run` endpoint to run a flow and get the result.
 
-Langflow provides code snippets to help you get started with the Langflow API.
+Portals provides code snippets to help you get started with the Portals API.
 
 1. When editing a flow, click **Share**, and then click **API access**.
 
-    The default code in the API access pane constructs a request with the Langflow server `url`, `headers`, and a `payload` of request data.
+    The default code in the API access pane constructs a request with the Portals server `url`, `headers`, and a `payload` of request data.
     The code snippets automatically include the `LANGFLOW_SERVER_ADDRESS` and `FLOW_ID` values for the flow, and a script to include your `LANGFLOW_API_KEY` if you've set it as an environment variable in your terminal session.
     Replace these values if you're using the code for a different server or flow.
-    The default Langflow server address is `http://localhost:7860`.
+    The default Portals server address is `http://localhost:7860`.
 
     <Tabs>
     <TabItem value="Python" label="Python" default>
@@ -372,7 +372,7 @@ The following is an example of a response from running the **Simple Agent** temp
 
 </details>
 
-In a production application, you probably want to select parts of this response to return to the user, store in logs, and so on. The next steps demonstrate how you can extract data from a Langflow API response to use in your application.
+In a production application, you probably want to select parts of this response to return to the user, store in logs, and so on. The next steps demonstrate how you can extract data from a Portals API response to use in your application.
 
 ### Extract data from the response
 
@@ -539,14 +539,14 @@ Tweaks override the flow's components' settings for a single run only.
 They don't modify the underlying flow configuration or persist between runs.
 
 Tweaks are added to the `/run` endpoint's `payload`.
-To assist with formatting, you can define tweaks in Langflow's **Input Schema** pane before copying the code snippet.
+To assist with formatting, you can define tweaks in Portals's **Input Schema** pane before copying the code snippet.
 
 1. To open the **Input Schema** pane, from the **API access** pane, click **Input Schema**.
 2. In the **Input Schema** pane, select the parameter you want to modify in your next request.
 Enabling parameters in the **Input Schema** pane doesn't permanently change the listed parameters. It only adds them to the sample code snippets.
 3. For example, to change the agent's LLM model from OpenAI to Anthropic and include your Anthropic API key with the request, select the **Agent** component in the **Input Schema** pane and enable the **Language Model** field.
 
-Langflow updates the `tweaks` object in the code snippets based on your input parameters, and includes default values to guide you.
+Portals updates the `tweaks` object in the code snippets based on your input parameters, and includes default values to guide you.
 Use the updated code snippets in your script to run your flow with your overrides.
 
 ```json
@@ -566,7 +566,7 @@ payload = {
 
 ## Next steps
 
-* [Trigger flows with the Langflow API](/concepts-publish)
-* [Use Langflow as a Model Context Protocol (MCP) server](/mcp-server)
-* [Containerize a Langflow application](/develop-application)
+* [Trigger flows with the Portals API](/concepts-publish)
+* [Use Portals as a Model Context Protocol (MCP) server](/mcp-server)
+* [Containerize a Portals application](/develop-application)
 * [File management](/concepts-file-management)

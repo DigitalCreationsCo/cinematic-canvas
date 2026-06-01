@@ -3,108 +3,108 @@ title: Install custom dependencies
 slug: /install-custom-dependencies
 ---
 
-Langflow provides optional dependency groups and support for custom dependencies to extend Langflow functionality. This guide covers how to add dependencies for different Langflow installations, including Langflow Desktop and Langflow OSS.
+Portals provides optional dependency groups and support for custom dependencies to extend Portals functionality. This guide covers how to add dependencies for different Portals installations, including Portals Desktop and Portals OSS.
 
-The Langflow codebase uses three packages, each with its own `pyproject.toml` file:
+The Portals codebase uses three packages, each with its own `pyproject.toml` file:
 
-* The `main` package (`langflow`) is managed by the root level `pyproject.toml`, and it includes end-user features and main application code, such as Langchain and OpenAI. The `main` package depends on the `base` package.
-* The `base` package (`langflow-base`) is managed at `src/backend/base/pyproject.toml`, and it includes core infrastructure, such as the FastAPI web framework. The `base` package depends on the `lfx` package.
-* The `lfx` package is managed at `src/lfx/pyproject.toml`. LFX is a lightweight CLI tool for executing and serving Langflow flows. The `lfx` package does not provide optional dependency groups for end users.
+* The `main` package (`portals`) is managed by the root level `pyproject.toml`, and it includes end-user features and main application code, such as Langchain and OpenAI. The `main` package depends on the `base` package.
+* The `base` package (`portals-base`) is managed at `src/backend/base/pyproject.toml`, and it includes core infrastructure, such as the FastAPI web framework. The `base` package depends on the `px` package.
+* The `px` package is managed at `src/px/pyproject.toml`. PX is a lightweight CLI tool for executing and serving Portals flows. The `px` package does not provide optional dependency groups for end users.
 
-## Install custom dependencies in Langflow Desktop {#langflow-desktop}
+## Install custom dependencies in Portals Desktop {#portals-desktop}
 
-To add dependencies to Langflow Desktop, add an entry for the package to the application's `requirements.txt` file:
+To add dependencies to Portals Desktop, add an entry for the package to the application's `requirements.txt` file:
 
-    * On macOS, the file is located at `/Users/USER/.langflow/data/requirements.txt`.
-    * On Windows, the file is located at `C:\Users\USER\AppData\Roaming\com.Langflow\data\requirements.txt`.
+    * On macOS, the file is located at `/Users/USER/.portals/data/requirements.txt`.
+    * On Windows, the file is located at `C:\Users\USER\AppData\Roaming\com.Portals\data\requirements.txt`.
 
 Add each dependency to `requirements.txt` on its own line in the format `DEPENDENCY==VERSION`, such as `matplotlib==3.10.0`.
 
-Restart Langflow Desktop to install the dependencies.
+Restart Portals Desktop to install the dependencies.
 
-If you need to change or uninstall custom dependencies, edit the `requirements.txt` file, and then restart Langflow Desktop.
+If you need to change or uninstall custom dependencies, edit the `requirements.txt` file, and then restart Portals Desktop.
 
-## Install custom dependencies in Langflow OSS
+## Install custom dependencies in Portals OSS
 
-To install your own custom dependencies in your Langflow environment, add them with your package manager.
+To install your own custom dependencies in your Portals environment, add them with your package manager.
 
-If you're working within a cloned Langflow repository, add dependencies with `uv add` because there is already a `pyproject.toml` file for uv to reference:
+If you're working within a cloned Portals repository, add dependencies with `uv add` because there is already a `pyproject.toml` file for uv to reference:
 
 ```bash
 uv add DEPENDENCY
 ```
 
-### Install optional dependency groups for `langflow`
+### Install optional dependency groups for `portals`
 
-The `langflow` package (main) provides optional dependency groups that extend its functionality.
+The `portals` package (main) provides optional dependency groups that extend its functionality.
 
-By default, installing `langflow` without any extras includes all dependencies listed in the `[project.dependencies]` section. Optional dependency groups are not installed by default and must be explicitly requested.
+By default, installing `portals` without any extras includes all dependencies listed in the `[project.dependencies]` section. Optional dependency groups are not installed by default and must be explicitly requested.
 
-These optional dependencies are listed in the [langflow `pyproject.toml`](https://github.com/langflow-ai/langflow/blob/main/pyproject.toml) file under `[project.optional-dependencies]`.
+These optional dependencies are listed in the [portals `pyproject.toml`](https://github.com/portals-ai/portals/blob/main/pyproject.toml) file under `[project.optional-dependencies]`.
 
-Install dependency groups using pip's `[extras]` syntax. For example, to install `langflow` with the `postgresql` dependency group, enter the following command:
+Install dependency groups using pip's `[extras]` syntax. For example, to install `portals` with the `postgresql` dependency group, enter the following command:
 
 ```bash
-uv pip install "langflow[postgresql]"
+uv pip install "portals[postgresql]"
 ```
 
 To install multiple extras, use commas to separate each dependency group:
 
 ```bash
-uv pip install "langflow[postgresql,openai]"
+uv pip install "portals[postgresql,openai]"
 ```
 
-### Install optional dependency groups for `langflow-base`
+### Install optional dependency groups for `portals-base`
 
-`langflow-base` is recommended when you want to deploy Langflow with specific dependencies only.
-It contains the same codebase as `langflow`, but `langflow` includes `langflow-base` as a dependency and adds many additional dependencies on top of it.
+`portals-base` is recommended when you want to deploy Portals with specific dependencies only.
+It contains the same codebase as `portals`, but `portals` includes `portals-base` as a dependency and adds many additional dependencies on top of it.
 
-The `langflow-base` package provides its own optional dependency groups that are separate from those in the `langflow` package. The `langflow-base` package can be installed as a standalone package with these optional dependency groups.
+The `portals-base` package provides its own optional dependency groups that are separate from those in the `portals` package. The `portals-base` package can be installed as a standalone package with these optional dependency groups.
 
-By default, installing `langflow-base` without any extras includes all dependencies listed in the `[project.dependencies]` section. Optional dependency groups are not installed by default and must be explicitly requested.
-These optional dependency groups are listed in the [langflow-base `pyproject.toml`](https://github.com/langflow-ai/langflow/blob/main/src/backend/base/pyproject.toml) file under `[project.optional-dependencies]`.
+By default, installing `portals-base` without any extras includes all dependencies listed in the `[project.dependencies]` section. Optional dependency groups are not installed by default and must be explicitly requested.
+These optional dependency groups are listed in the [portals-base `pyproject.toml`](https://github.com/portals-ai/portals/blob/main/src/backend/base/pyproject.toml) file under `[project.optional-dependencies]`.
 
-Install `langflow-base` with optional dependency groups using pip's `[extras]` syntax. For example, to install `langflow-base` with the `postgresql` dependency group:
+Install `portals-base` with optional dependency groups using pip's `[extras]` syntax. For example, to install `portals-base` with the `postgresql` dependency group:
 
 ```bash
-uv pip install "langflow-base[postgresql]"
+uv pip install "portals-base[postgresql]"
 ```
 
 To install multiple extras, use commas to separate each dependency group:
 
 ```bash
-uv pip install "langflow-base[postgresql,openai]"
+uv pip install "portals-base[postgresql,openai]"
 ```
 
-To install all optional dependencies for `langflow-base`, use the `complete` extra:
+To install all optional dependencies for `portals-base`, use the `complete` extra:
 
 ```bash
-uv pip install "langflow-base[complete]"
+uv pip install "portals-base[complete]"
 ```
 
 ### Use a virtual environment to test custom dependencies
 
 When testing locally, use a virtual environment to isolate your dependencies and prevent conflicts with other Python projects.
 
-For example, if you want to experiment with a custom dependency like `matplotlib` with Langflow:
+For example, if you want to experiment with a custom dependency like `matplotlib` with Portals:
 
 ```bash
 # Create and activate a virtual environment
 uv venv YOUR_LANGFLOW_VENV
 source YOUR_LANGFLOW_VENV/bin/activate
 
-# Install langflow and your additional dependency
-uv pip install langflow matplotlib
+# Install portals and your additional dependency
+uv pip install portals matplotlib
 ```
 
-You can also install `langflow-base` with specific optional dependency groups in your virtual environment:
+You can also install `portals-base` with specific optional dependency groups in your virtual environment:
 
 ```bash
-# Install langflow-base with only the dependencies you need
-uv pip install "langflow-base[postgresql,openai]" matplotlib
+# Install portals-base with only the dependencies you need
+uv pip install "portals-base[postgresql,openai]" matplotlib
 ```
 
-If you're working within a cloned Langflow repository, add dependencies with `uv add` to reference the existing `pyproject.toml` files:
+If you're working within a cloned Portals repository, add dependencies with `uv add` to reference the existing `pyproject.toml` files:
 
 ```bash
 uv add matplotlib
@@ -112,9 +112,9 @@ uv add matplotlib
 
 The `uv add` command automatically updates the `uv.lock` file in the appropriate location.
 
-## Add dependencies to the Langflow codebase
+## Add dependencies to the Portals codebase
 
-When contributing to the Langflow codebase, you might need to add dependencies to Langflow.
+When contributing to the Portals codebase, you might need to add dependencies to Portals.
 
 To add a dependency to the `main` package, run `uv add DEPENDENCY` from the project root.
 For example:
@@ -179,5 +179,5 @@ dev = [
 
 ## See also
 
-* [Containerize a Langflow application](/develop-application)
+* [Containerize a Portals application](/develop-application)
 * [Create custom Python components](/components-custom-components)

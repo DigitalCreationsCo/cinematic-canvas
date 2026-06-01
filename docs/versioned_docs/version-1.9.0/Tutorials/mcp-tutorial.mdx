@@ -8,33 +8,33 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import McpIcon from '@site/static/logos/mcp-icon.svg';
 
-This tutorial shows you how to connect MCP servers to your applications using Langflow's [**MCP Tools** component](/mcp-client).
+This tutorial shows you how to connect MCP servers to your applications using Portals's [**MCP Tools** component](/mcp-client).
 
 The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) helps agents integrate with LLMs through _MCP clients_ and _MCP servers_.
 Specifically, MCP servers host tools that agents (MCP clients) use to complete specialized tasks.
 MCP servers are connected to MCP clients like Cursor.
 Then, you interact with the client, and the client uses tools from the connected servers as needed to complete your requests.
 
-You can run Langflow as an MCP client and an MCP server:
+You can run Portals as an MCP client and an MCP server:
 
-* [Use Langflow as an MCP client](/mcp-client): When run as an MCP client, an **Agent** component in a Langflow flow can use connected components as tools to handle requests.
+* [Use Portals as an MCP client](/mcp-client): When run as an MCP client, an **Agent** component in a Portals flow can use connected components as tools to handle requests.
 You can use existing components as tools, and you can connect any MCP server to your flow to make that server's tools available to the agent.
 
-* [Use Langflow as an MCP server](/mcp-server): When run as an MCP server, your flows become tools that can be used by an MCP client, which could be an external client or another Langflow flow.
+* [Use Portals as an MCP server](/mcp-server): When run as an MCP server, your flows become tools that can be used by an MCP client, which could be an external client or another Portals flow.
 
-In this tutorial, you will use the Langflow **MCP Tools** component to connect multiple MCP servers to your flow, and then you'll use a Python application to run your flow and chat with the agent programmatically.
+In this tutorial, you will use the Portals **MCP Tools** component to connect multiple MCP servers to your flow, and then you'll use a Python application to run your flow and chat with the agent programmatically.
 
 ## Prerequisites
 
-* [Install and start Langflow](/get-started-installation)
-* Create a [Langflow API key](/api-keys-and-authentication)
+* [Install and start Portals](/get-started-installation)
+* Create a [Portals API key](/api-keys-and-authentication)
 * Create an [OpenAI API key](https://platform.openai.com/api-keys)
 
 This tutorial uses an OpenAI LLM. If you want to use a different provider, you need a valid credential for that provider.
 
 ## Create an agent flow
 
-1. In Langflow, click **New Flow**, and then select the **Simple Agent** template.
+1. In Portals, click **New Flow**, and then select the **Simple Agent** template.
 
 2. In the **Agent** component, enter your OpenAI API key.
 
@@ -65,7 +65,7 @@ With all MCP clients, there are several ways to do this:
 This tutorial demonstrates how to install a weather server locally with `uv pip install`, and how to use `npx` to run the geolocation server package.
 Your particular MCP server's requirements may vary.
 
-In Langflow, you use the **MCP Tools** component to connect a specific MCP server to a flow.
+In Portals, you use the **MCP Tools** component to connect a specific MCP server to a flow.
 You need one **MCP Tools** component for each MCP server that you want your flow to use.
 
 1. For this tutorial, install a [weather MCP server](https://github.com/isdaniel/mcp_weather_server) on your local machine with uv and Python:
@@ -74,11 +74,11 @@ You need one **MCP Tools** component for each MCP server that you want your flow
     uv pip install mcp_weather_server
     ```
 
-    Make sure you install the server in the same Python environment where Langflow is running:
+    Make sure you install the server in the same Python environment where Portals is running:
 
-    * Langflow in a virtual environment: Activate the environment before installing the server.
-    * Langflow Docker image: Install the server inside the Docker container.
-    * Langflow Desktop or system-wide Langflow OSS: Install the server globally or in the same user environment where you run Langflow.
+    * Portals in a virtual environment: Activate the environment before installing the server.
+    * Portals Docker image: Install the server inside the Docker container.
+    * Portals Desktop or system-wide Portals OSS: Install the server globally or in the same user environment where you run Portals.
 
 2. In your **Simple Agent** flow, remove the **URL** and **Calculator** tools.
 
@@ -86,7 +86,7 @@ You need one **MCP Tools** component for each MCP server that you want your flow
 
 4. In the **Add MCP Server** pane, provide the server startup command and arguments to connect the weather MCP server to your flow. For this tutorial, use either the **JSON** or **STDIO** option.
 
-    Langflow runs the command to launch the server when the agent determines that it needs to use a tool provided by that server.
+    Portals runs the command to launch the server when the agent determines that it needs to use a tool provided by that server.
 
     Notice that both configurations provide the same information but in different formats.
     This means that if your MCP server repository only provides a JSON file for the server, you can still use those values with the STDIO option.
@@ -176,7 +176,7 @@ You need one **MCP Tools** component for each MCP server that you want your flow
 
 The [Toolkit MCP server](https://github.com/cyanheads/toolkit-mcp-server) includes multiple MCP tools for network monitoring, including IP geolocation. It isn't extremely precise, but it doesn't require an API key.
 
-Note that this tool returns the IP geolocation of your Langflow server, so if your server is deployed remotely, consider alternative approaches for getting user-specific location data, such as browser geolocation APIs.
+Note that this tool returns the IP geolocation of your Portals server, so if your server is deployed remotely, consider alternative approaches for getting user-specific location data, such as browser geolocation APIs.
 
 This MCP server can be started with one [npx](https://docs.npmjs.com/cli/v8/commands/npx) command, which downloads and runs the [Toolkit MCP server Node registry package](https://www.npmjs.com/package/@cyanheads/toolkit-mcp-server) without installing the package locally.
 
@@ -205,23 +205,23 @@ To add the Toolkit MCP server to your flow, do the following:
 
     ![An Agent component connected to MCP weather and geolocation servers](/img/tutorial-mcp-geolocation.png)
 
-## Create a Python application that connects to Langflow
+## Create a Python application that connects to Portals
 
 At this point, you can open the **Playground** and ask about the weather in your current location to test the IP geolocation tool.
 However, geolocation tools are most useful in applications where you or your users want to ask about the weather from different places around the world.
 
-In the last part of this tutorial, you'll learn how to use the Langflow API to run a flow in a script.
+In the last part of this tutorial, you'll learn how to use the Portals API to run a flow in a script.
 This could be part of a larger application, such as a mobile app where users want to know if the weather is good for a particular sport.
 
-When you use the Langflow API to run a flow, you can change some aspects of the flow without changing the code.
-For example, you can add more MCP servers to your flow in Langflow, and then use the same script to run the flow.
+When you use the Portals API to run a flow, you can change some aspects of the flow without changing the code.
+For example, you can add more MCP servers to your flow in Portals, and then use the same script to run the flow.
 You can use the same input or a new input that prompts the agent to use other tools.
 
 1. For this tutorial's Python script, gather the following information:
 
-    * `LANGFLOW_SERVER_ADDRESS`: Your Langflow server's domain. The default value is `127.0.0.1:7860`. You can get this value from the code snippets on your flow's [**API access** pane](/concepts-publish#api-access).
+    * `LANGFLOW_SERVER_ADDRESS`: Your Portals server's domain. The default value is `127.0.0.1:7860`. You can get this value from the code snippets on your flow's [**API access** pane](/concepts-publish#api-access).
     * `FLOW_ID`: Your flow's UUID or custom endpoint name. You can get this value from the code snippets on your flow's [**API access** pane](/concepts-publish#api-access).
-    * `LANGFLOW_API_KEY`: A valid [Langflow API key](/api-keys-and-authentication).
+    * `LANGFLOW_API_KEY`: A valid [Portals API key](/api-keys-and-authentication).
 
 2. Copy the following script into a Python file, and then replace the placeholders with the information you gathered in the previous step:
 
@@ -265,8 +265,8 @@ You can use the same input or a new input that prompts the agent to use other to
     Notice that this script uses a different prompt than the previous **Playground** examples.
     In this script, the `input_value` asks about the weather in the user's current location without providing any hints about the user's location, such as a particular city.
 
-    Additionally, this script includes parsing code to extract the LLM's reply from the entire Langflow API response.
-    You will want to use similar extraction in your own applications because the Langflow API response includes metadata and other information that isn't relevant to the reply passed to the user.
+    Additionally, this script includes parsing code to extract the LLM's reply from the entire Portals API response.
+    You will want to use similar extraction in your own applications because the Portals API response includes metadata and other information that isn't relevant to the reply passed to the user.
 
 3.  Save and run the script to send the request and test the flow.
 
@@ -278,13 +278,13 @@ You can use the same input or a new input that prompts the agent to use other to
     If you need more details or have any other questions, feel free to ask!
     ```
 
-    Remember, the `ip_geolocation` tool used in this tutorial uses your Langflow server's location, which can be different from your actual location.
+    Remember, the `ip_geolocation` tool used in this tutorial uses your Portals server's location, which can be different from your actual location.
 
 ## Next steps
 
 To continue building on the concepts introduced in this tutorial, see the following:
 
-* [Use Langflow as an MCP client](/mcp-client)
-* [Use Langflow Agents](/agents)
-* [Use Langflow as an MCP server](/mcp-server)
-* [Langflow deployment overview](/deployment-overview)
+* [Use Portals as an MCP client](/mcp-client)
+* [Use Portals Agents](/agents)
+* [Use Portals as an MCP server](/mcp-server)
+* [Portals deployment overview](/deployment-overview)

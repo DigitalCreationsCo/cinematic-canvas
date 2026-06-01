@@ -25,8 +25,8 @@ These are battle scars. Every rule here cites a real recurring failure: a commit
 7. **Don't invent model IDs, MCP tool names, or API surface.** Read the registry, the batch dispatcher, and `models.py` first.
    *Why:* `9f1402ed9` (`remove fictional gpt-5.3 ids`), `cecc4a6c2` (`expose layout tool as layout_flow to match batch dispatch`).
 
-8. **Don't use raw `langflow run` / `python` when a `uv` command exists.** Always `uv run`. For lfx tests specifically: `uv sync` inside `src/lfx` (not `src/lfx/src/lfx`) to avoid pulling in langflow.
-   *Why:* lfx must be testable without langflow installed; mixing them masks dependency leaks.
+8. **Don't use raw `portals run` / `python` when a `uv` command exists.** Always `uv run`. For px tests specifically: `uv sync` inside `src/px` (not `src/px/src/px`) to avoid pulling in portals.
+   *Why:* px must be testable without portals installed; mixing them masks dependency leaks.
 
 9. **Don't add a database migration without running `make alembic-upgrade` end to end** and `uv run pytest src/backend/tests/unit/test_database.py` sequentially.
    *Why:* `d8b9cc38f`, `c30150a2d`, `6585fe661`. `test_database.py` may pass in batch and fail individually — agents have stopped running it.
@@ -69,11 +69,11 @@ These are battle scars. Every rule here cites a real recurring failure: a commit
 
 ## Where to look for context — don't invent it
 
-- **Starter projects:** `src/backend/base/langflow/initial_setup/starter_projects/`. Any field/output change must regenerate these.
-- **Component index:** `src/lfx/src/lfx/_assets/component_index.json` (rebuilt via the index sync workflow added in `9dad1965c`).
-- **Output type migrations:** `src/backend/base/langflow/initial_setup/setup.py` `type_migrations` map — handles renames of *output type strings* (e.g., `Data` → `JSON`). It does NOT remap component class names; for class renames use `legacy=True` + `replacement=[...]`.
+- **Starter projects:** `src/backend/base/portals/initial_setup/starter_projects/`. Any field/output change must regenerate these.
+- **Component index:** `src/px/src/px/_assets/component_index.json` (rebuilt via the index sync workflow added in `9dad1965c`).
+- **Output type migrations:** `src/backend/base/portals/initial_setup/setup.py` `type_migrations` map — handles renames of *output type strings* (e.g., `Data` → `JSON`). It does NOT remap component class names; for class renames use `legacy=True` + `replacement=[...]`.
 - **Version mapping for component tests:** `src/backend/tests/constants.py::SUPPORTED_VERSIONS` and each test's `file_names_mapping`.
 - **Release notes / changelog:** `docs/docs/Support/release-notes/` — check before claiming behavior is "new"; many features predate the current task.
 - **MCP tool catalog:** dispatched via the batch tool — names must match (`cecc4a6c2` is the canonical "I guessed the tool name" failure).
 - **Models / providers:** real model IDs come from the provider's listing endpoint or our adapter, never from training-data memory (`9f1402ed9`).
-- **Migrations:** `src/backend/base/langflow/alembic/versions/` — always read the latest two before adding a new one.
+- **Migrations:** `src/backend/base/portals/alembic/versions/` — always read the latest two before adding a new one.

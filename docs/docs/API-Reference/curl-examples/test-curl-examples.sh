@@ -153,9 +153,9 @@ for file in "${SH_FILES[@]}"; do
       continue
     fi
 
-    if ! bash "$file" >/tmp/langflow-curl-example.out 2>/tmp/langflow-curl-example.err; then
+    if ! bash "$file" >/tmp/portals-curl-example.out 2>/tmp/portals-curl-example.err; then
       echo "FAIL  $rel (execution)"
-      print_failure_logs "/tmp/langflow-curl-example.out" "/tmp/langflow-curl-example.err"
+      print_failure_logs "/tmp/portals-curl-example.out" "/tmp/portals-curl-example.err"
       ((FAIL+=1))
       continue
     fi

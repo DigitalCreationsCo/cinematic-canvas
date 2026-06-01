@@ -5,15 +5,15 @@ slug: /concepts-components
 
 import Icon from "@site/src/components/icon";
 import CodeSnippet from "@site/src/components/CodeSnippet";
-import RecursiveCharacterSource from "!!raw-loader!@langflow/src/lfx/src/lfx/components/langchain_utilities/recursive_character.py";
+import RecursiveCharacterSource from "!!raw-loader!@portals/src/px/src/px/components/langchain_utilities/recursive_character.py";
 
 Components are the building blocks of your flows.
 Like classes in an application, each component is designed for a specific use case or integration.
 
 :::tip
-Langflow provides keyboard shortcuts for the workspace.
+Portals provides keyboard shortcuts for the workspace.
 
-In the Langflow header, click your profile icon, select **Settings**, and then click **Shortcuts** to view the available shortcuts.
+In the Portals header, click your profile icon, select **Settings**, and then click **Shortcuts** to view the available shortcuts.
 :::
 
 ## Add a component to a flow {#component-menus}
@@ -22,7 +22,7 @@ To add a component to a flow, drag the component from the <Icon name="Component"
 
 Components are grouped by type or provider, and some components are hidden by default:
 
-* <Icon name="Component" aria-hidden="true" /> **Core components**: Langflow's base components are grouped by purpose, such as **Inputs and Outputs** or **Data**.
+* <Icon name="Component" aria-hidden="true" /> **Core components**: Portals's base components are grouped by purpose, such as **Inputs and Outputs** or **Data**.
 These components either provide generic functionality, like loops and parsing, or they provide single components that support multiple third-party integrations.
 
 * <Icon name="Blocks" aria-hidden="true" /> **Bundles**: Bundles contain one or more components that support specific third-party integrations, and they are grouped by service provider.
@@ -99,7 +99,7 @@ For example, the **System Message** field accepts [message data](/data-types#mes
 ![Prompt Template component with multiple inputs](/img/prompt-component.png)
 
 When building flows, connect output ports to input ports of the same type (color) to transfer that type of data between two components.
-For information about the programmatic representation of each data type, see [Langflow data types](/data-types).
+For information about the programmatic representation of each data type, see [Portals data types](/data-types).
 
 :::tip
 * In the workspace, hover over a port to see connection details for that port.
@@ -162,7 +162,7 @@ In the context of creating and running flows, component code does the following:
 * Passes results to the next component in the flow.
 
 All components inherit from a base `Component` class that defines the component's interface and behavior.
-For example, the [**Recursive Character Text Splitter** component](https://github.com/langflow-ai/langflow/blob/main/src/lfx/src/lfx/components/langchain_utilities/recursive_character.py) is a child of the [`LCTextSplitterComponent`](https://github.com/langflow-ai/langflow/blob/main/src/lfx/src/lfx/base/textsplitters/model.py) class.
+For example, the [**Recursive Character Text Splitter** component](https://github.com/portals-ai/portals/blob/main/src/px/src/px/components/langchain_utilities/recursive_character.py) is a child of the [`LCTextSplitterComponent`](https://github.com/portals-ai/portals/blob/main/src/px/src/px/base/textsplitters/model.py) class.
 
 Each component's code includes definitions for inputs and outputs, which are represented in the workspace as [component ports](#component-ports).
 For example, the `RecursiveCharacterTextSplitter` has four inputs. Each input definition specifies the input type, such as `IntInput`, as well as the encoded name, display name, description, and other parameters for that specific input.
@@ -194,14 +194,14 @@ The `build_text_splitter` method creates a `RecursiveCharacterTextSplitter` obje
 
 ## Component versions
 
-Component versions and states are stored in an internal Langflow database. When you add a component to a flow, you create a detached copy of the component based on the information in the Langflow database.
-These copies are detached from the primary Langflow database, and they don't synchronize with any updates that can occur when you upgrade your Langflow version.
+Component versions and states are stored in an internal Portals database. When you add a component to a flow, you create a detached copy of the component based on the information in the Portals database.
+These copies are detached from the primary Portals database, and they don't synchronize with any updates that can occur when you upgrade your Portals version.
 
 In other words, an individual instance of a component retains the version number and state from the moment you add it to a specific flow. For example, if a component is at version 1.0 when you add it to a flow, it remains at version 1.0 _in that flow_ unless you update it.
 
 ### Update component versions
 
-When editing a flow in the workspace, Langflow notifies you if a component's workspace version is behind the database version so you can update the component's workspace version:
+When editing a flow in the workspace, Portals notifies you if a component's workspace version is behind the database version so you can update the component's workspace version:
 
 * **Update ready**: This notification means the component update contains no breaking changes.
 * **Update available**: This notification means the component update might contain breaking changes.
@@ -217,7 +217,7 @@ There are two ways to update components:
 
     To update specific components, select the components you want to update, and then click **Update Components**.
 
-Components are updated to the latest available version, based on the version of Langflow you are running.
+Components are updated to the latest available version, based on the version of Portals you are running.
 
 ## Group components
 

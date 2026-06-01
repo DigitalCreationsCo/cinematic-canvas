@@ -1,13 +1,13 @@
 ---
-title: Deploy Langflow with Nginx and SSL
+title: Deploy Portals with Nginx and SSL
 slug: /deployment-nginx-ssl
 ---
 
 import Icon from "@site/src/components/icon";
 
-Deploy Langflow on a Linux-based server using Nginx as a reverse proxy, Let's Encrypt for SSL certificates, and Certbot for automated certificate management.
+Deploy Portals on a Linux-based server using Nginx as a reverse proxy, Let's Encrypt for SSL certificates, and Certbot for automated certificate management.
 
-This setup encrypts all communications between users and your Langflow server. SSL certificates ensure that sensitive data is protected from eavesdropping and tampering, and the automatic certificate management through Certbot eliminates the complexity of manual SSL configuration.
+This setup encrypts all communications between users and your Portals server. SSL certificates ensure that sensitive data is protected from eavesdropping and tampering, and the automatic certificate management through Certbot eliminates the complexity of manual SSL configuration.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ This example uses [Digital Ocean cloud](https://www.digitalocean.com) for hostin
 For example, if your server's IP is `203.0.113.1`, configure your DNS like this:
     ```bash
     Type: A
-    Name: langflow.example.com
+    Name: portals.example.com
     Value: 203.0.113.1
     ```
 
@@ -67,9 +67,9 @@ The following response was returned after connecting to a Digital Ocean cloud se
       Swap usage:   0%                IPv4 address for eth0: 10.17.0.5
     ```
 
-## Install Langflow on your server
+## Install Portals on your server
 
-To install Langflow on your server, do the following:
+To install Portals on your server, do the following:
 
 1. Update system packages.
     ```bash
@@ -82,34 +82,34 @@ To install Langflow on your server, do the following:
     ```
 
 3. Install uv to manage Python packages.
-    Langflow recommends uv for faster installation.
+    Portals recommends uv for faster installation.
     ```bash
     pip install uv
     ```
 
-4. Create a virtual environment for Langflow.
+4. Create a virtual environment for Portals.
     ```bash
-    uv venv langflow-venv
-    source langflow-venv/bin/activate
+    uv venv portals-venv
+    source portals-venv/bin/activate
     ```
 
-5. Install Langflow using uv.
+5. Install Portals using uv.
     ```bash
-    uv pip install langflow
+    uv pip install portals
     ```
 
-6. Optionally, start Langflow.
+6. Optionally, start Portals.
     ```bash
-    uv run langflow run --host 127.0.0.1 --port 7860 &
+    uv run portals run --host 127.0.0.1 --port 7860 &
     ```
 
     Test access at your `http://YOUR_PUBLIC_IP:7860`.
-    Since Langflow is running on `localhost`, you should not be successful.
+    Since Portals is running on `localhost`, you should not be successful.
     In next steps, you will install Nginx as a reverse proxy to handle external access, and Certbot to configure SSL for secure HTTPS access.
 
 ## Install Nginx
 
-Nginx is a reverse proxy that receives external requests and forwards them to your Langflow server. In addition to SSL termination, Nginx includes features for load balancing and security. For more information, see the [Nginx documentation](https://nginx.org/en/docs/).
+Nginx is a reverse proxy that receives external requests and forwards them to your Portals server. In addition to SSL termination, Nginx includes features for load balancing and security. For more information, see the [Nginx documentation](https://nginx.org/en/docs/).
 
 1. Install Nginx on your server.
 
@@ -124,14 +124,14 @@ Nginx is a reverse proxy that receives external requests and forwards them to yo
     ```
 
 3. Create an Nginx configuration file.
-Replace **DOMAIN_NAME** with your actual domain name, such as `langflow.example.com`.
+Replace **DOMAIN_NAME** with your actual domain name, such as `portals.example.com`.
     ```bash
     sudo nano /etc/nginx/sites-available/DOMAIN_NAME
     ```
 
 4. Paste the following content to the configuration file you created at `/etc/nginx/sites-available/DOMAIN_NAME`.
 
-    Replace **DOMAIN_NAME** with your actual domain name, such as `langflow.example.com`.
+    Replace **DOMAIN_NAME** with your actual domain name, such as `portals.example.com`.
     ```nginx
     server {
         listen 80;
@@ -147,7 +147,7 @@ Replace **DOMAIN_NAME** with your actual domain name, such as `langflow.example.
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
 
-            # WebSocket support for Langflow
+            # WebSocket support for Portals
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
@@ -208,16 +208,16 @@ Install the Certbot client on your server to manage certificates, and install th
 
     When using `--nginx`, Certbot automatically injects the paths into your Nginx configuration as `ssl_certificate` and `ssl_certificate_key`.
 
-3. Start Langflow from the virtual environment.
+3. Start Portals from the virtual environment.
 
     a. Activate the virtual environment.
     ```bash
-    source langflow-venv/bin/activate
+    source portals-venv/bin/activate
     ```
 
-    b. Start Langflow in the background.
+    b. Start Portals in the background.
     ```bash
-    uv run langflow run --host 127.0.0.1 --port 7860 &
+    uv run portals run --host 127.0.0.1 --port 7860 &
     ```
 
 4. To test the deployment, navigate to `https://DOMAIN_NAME` in your browser.
@@ -227,5 +227,5 @@ Click <Icon name="Lock" aria-hidden="true"/> **Lock** to view your SSL certifica
 
 ## See also
 
-- [Deploy Langflow on a remote server with Caddy](/deployment-caddyfile)
-- [Deploy Langflow on Docker](/deployment-docker)
+- [Deploy Portals on a remote server with Caddy](/deployment-caddyfile)
+- [Deploy Portals on Docker](/deployment-docker)

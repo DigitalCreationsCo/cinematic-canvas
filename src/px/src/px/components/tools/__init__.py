@@ -9,6 +9,7 @@ from px.components._importing import import_mod
 
 if TYPE_CHECKING:
     from .calculator import CalculatorToolComponent
+    from .generate_characters import GenerateCharactersToolComponent
     from .python_code_structured_tool import PythonCodeStructuredTool
     from .python_repl import PythonREPLToolComponent
     from .search_api import SearchAPIComponent
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
 
 _dynamic_imports = {
     "CalculatorToolComponent": "calculator",
+    "GenerateCharactersToolComponent": "generate_characters",
     "PythonCodeStructuredTool": "python_code_structured_tool",
     "PythonREPLToolComponent": "python_repl",
     "SearchAPIComponent": "search_api",
@@ -34,6 +36,7 @@ _dynamic_imports = {
 
 __all__ = [
     "CalculatorToolComponent",
+    "GenerateCharactersToolComponent",
     "PythonCodeStructuredTool",
     "PythonREPLToolComponent",
     "SearXNGToolComponent",

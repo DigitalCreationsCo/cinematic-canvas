@@ -9,7 +9,7 @@ import PartialConditionalParams from '@site/docs/_partial-conditional-params.mdx
 import PartialVectorSearchResults from '@site/docs/_partial-vector-search-results.mdx';
 import PartialVectorStoreInstance from '@site/docs/_partial-vector-store-instance.mdx';
 
-<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Langflow.
+<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Portals.
 
 This page describes the components that are available in the **Chroma** bundle.
 
@@ -59,7 +59,7 @@ For information about accepted values and functionality, see the provider's docu
 
 | Name | Type | Description |
 |------|------|-------------|
-| **Collection Name** (`collection_name`) | String | Input parameter.  The name of your Chroma vector store collection. Default: `langflow`. |
+| **Collection Name** (`collection_name`) | String | Input parameter.  The name of your Chroma vector store collection. Default: `portals`. |
 | **Persist Directory** (`persist_directory`) | String | Input parameter. To persist the Chroma database, enter a relative or absolute path to a directory to store the `chroma.sqlite3` file. Leave empty for an ephemeral database. When reading or writing to an existing persistent database, specify the path to the persistent directory. |
 | **Ingest Data** (`ingest_data`) | Data or DataFrame | Input parameter. `Data` or `DataFrame` input containing the records to write to the vector store. Only relevant for writes. |
 | **Search Query** (`search_query`) | String | Input parameter. The query to use for vector search. Only relevant for reads. |

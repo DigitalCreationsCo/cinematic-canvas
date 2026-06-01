@@ -3,13 +3,13 @@ title: Logs endpoints
 slug: /api-logs
 ---
 
-Retrieve logs for your Langflow flows and server.
+Retrieve logs for your Portals flows and server.
 
 ## Enable log retrieval
 
-The `/logs` endpoint requires log retrieval to be enabled in your Langflow instance.
+The `/logs` endpoint requires log retrieval to be enabled in your Portals instance.
 
-To enable log retrieval, set the following [environment variables](/environment-variables) in your Langflow `.env` file, and then start Langflow with `uv run langflow run --env-file .env`:
+To enable log retrieval, set the following [environment variables](/environment-variables) in your Portals `.env` file, and then start Portals with `uv run portals run --env-file .env`:
 
 ```text
 LANGFLOW_ENABLE_LOG_RETRIEVAL=True
@@ -85,7 +85,7 @@ curl -X GET \
   "1736354770588": "2025-01-08T11:46:10.588105-0500 DEBUG Create service ServiceType.CHAT_SERVICE\n",
   "1736354771021": "2025-01-08T11:46:11.021817-0500 DEBUG Telemetry data sent successfully.\n",
   "1736354775619": "2025-01-08T11:46:15.619545-0500 DEBUG Create service ServiceType.STORE_SERVICE\n",
-  "1736354775699": "2025-01-08T11:46:15.699661-0500 DEBUG File 046-rocket.svg retrieved successfully from flow /Users/USER/Library/Caches/langflow/profile_pictures/Space.\n"
+  "1736354775699": "2025-01-08T11:46:15.699661-0500 DEBUG File 046-rocket.svg retrieved successfully from flow /Users/USER/Library/Caches/portals/profile_pictures/Space.\n"
 }
 ```
 

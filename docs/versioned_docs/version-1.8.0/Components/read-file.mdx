@@ -10,7 +10,7 @@ import PartialParams from '@site/docs/_partial-hidden-params.mdx';
 import PartialDevModeWindows from '@site/docs/_partial-dev-mode-windows.mdx';
 import PartialDockerDoclingDeps from '@site/docs/_partial-docker-docling-deps.mdx';
 
-In Langflow version 1.7.0, this component was renamed from **File** to **Read File**.
+In Portals version 1.7.0, this component was renamed from **File** to **Read File**.
 
 The **Read File** component loads and parses files, converts the content into a `Data`, `DataFrame`, or `Message` object.
 It supports multiple file types, provides parameters for parallel processing and error handling, and supports advanced parsing with the Docling library.
@@ -18,7 +18,7 @@ It supports multiple file types, provides parameters for parallel processing and
 You can add files to the **Read File** component in the visual editor or at runtime, and you can upload multiple files at once.
 For more information about uploading files and working with files in flows, see [File management](/concepts-file-management) and [Create a chatbot that can ingest files](/chat-with-files).
 
-The **Read File** component can read files from the local Langflow database, **AWS S3**, or **Google Drive**.
+The **Read File** component can read files from the local Portals database, **AWS S3**, or **Google Drive**.
 For more information, see [Configure file storage](/concepts-file-management#configure-file-storage).
 
 ## File type and size limits
@@ -58,7 +58,7 @@ Use archive and compressed formats to bundle multiple files together, or use the
 
 </details>
 
-If you need to load an unsupported file type, you must use a different component that supports that file type and, potentially, parses it outside Langflow, or you must convert it to a supported type before uploading it.
+If you need to load an unsupported file type, you must use a different component that supports that file type and, potentially, parses it outside Portals, or you must convert it to a supported type before uploading it.
 
 For images, see [Upload images](/concepts-file-management#upload-images).
 
@@ -70,8 +70,8 @@ For videos, see the **Twelve Labs** and **YouTube** <Icon name="Blocks" aria-hid
 
 | Name | Display Name | Info |
 |------|--------------|------|
-| path | Files | Input parameter. The path to files to load. Can be local or in [Langflow file management](/concepts-file-management). Supports individual files and bundled archives. |
-| file_path | Server File Path | Input parameter. A `Data` object with a `file_path` property pointing to a file in [Langflow file management](/concepts-file-management) or a `Message` object with a path to the file. Supersedes **Files** (`path`) but supports the same file types. |
+| path | Files | Input parameter. The path to files to load. Can be local or in [Portals file management](/concepts-file-management). Supports individual files and bundled archives. |
+| file_path | Server File Path | Input parameter. A `Data` object with a `file_path` property pointing to a file in [Portals file management](/concepts-file-management) or a `Message` object with a path to the file. Supersedes **Files** (`path`) but supports the same file types. |
 | separator | Separator | Input parameter. The separator to use between multiple outputs in `Message` format. |
 | silent_errors | Silent Errors | Input parameter. If `true`, errors in the component don't raise an exception. Default: Disabled (`false`). |
 | delete_server_file_after_processing | Delete Server File After Processing | Input parameter. If `true` (default), the **Server File Path** (`file_path`) is deleted after processing. |
@@ -82,13 +82,13 @@ For videos, see the **Twelve Labs** and **YouTube** <Icon name="Blocks" aria-hid
 
 ## Advanced parsing
 
-Starting in Langflow version 1.6, the **Read File** component supports advanced document parsing using the [Docling](https://docling-project.github.io/docling/) library for supported file types.
+Starting in Portals version 1.6, the **Read File** component supports advanced document parsing using the [Docling](https://docling-project.github.io/docling/) library for supported file types.
 
 To use advanced parsing, do the following:
 
 1. Complete the following prerequisites, if applicable:
 
-    * **Install Langflow version 1.6 or later**: Earlier versions don't support advanced parsing with the **Read File** component. For upgrade guidance, see the [Release notes](/release-notes).
+    * **Install Portals version 1.6 or later**: Earlier versions don't support advanced parsing with the **Read File** component. For upgrade guidance, see the [Release notes](/release-notes).
 
     * **Install Docling dependency on macOS Intel (x86_64)**: The Docling dependency isn't installed by default for macOS Intel (x86_64). Use the [Docling installation guide](https://docling-project.github.io/docling/installation/) to install the Docling dependency.
 
@@ -99,7 +99,7 @@ To use advanced parsing, do the following:
     * **Enable Developer Mode for Windows**:
     <PartialDevModeWindows />
 
-        Developer Mode isn't required for Langflow OSS on Windows.
+        Developer Mode isn't required for Portals OSS on Windows.
 
 2. Add one valid file to the **Read File** component.
 
@@ -150,7 +150,7 @@ If advanced parsing is disabled and you upload one file, the following output ty
 
 - **Raw Content**: A [`Message`](/data-types#message) containing the file's raw text content.
 
-- **File Path**: A [`Message`](/data-types#message) containing the path to the file in [Langflow file management](/concepts-file-management).
+- **File Path**: A [`Message`](/data-types#message) containing the path to the file in [Portals file management](/concepts-file-management).
 
 </TabItem>
 <TabItem value="one-true" label="One file with advanced parsing">
@@ -161,7 +161,7 @@ If advanced parsing is enabled and you upload one file, the following output typ
 
 - **Markdown**: A [`Message`](/data-types#message) containing the uploaded document contents in Markdown format with image placeholders.
 
-- **File Path**: A [`Message`](/data-types#message) containing the path to the file in [Langflow file management](/concepts-file-management).
+- **File Path**: A [`Message`](/data-types#message) containing the path to the file in [Portals file management](/concepts-file-management).
 
 </TabItem>
 <TabItem value="multi" label="Multiple files">

@@ -18,7 +18,7 @@ function buildMcpJson(serverUrl: string): string {
       mcpServers: {
         portals: {
           command: "uvx",
-          args: ["--from", "lfx", "lfx-mcp"],
+          args: ["--from", "px", "px-mcp"],
           env: {
             PORTALS_SERVER_URL: serverUrl,
             PORTALS_API_KEY: "YOUR_API_KEY", // pragma: allowlist secret
@@ -57,7 +57,7 @@ function getAgentInstructions(agent: AgentTab): {
 }
 
 function getClaudeCodeCommand(serverUrl: string): string {
-  return `claude mcp add portals -- uvx --from lfx lfx-mcp \\
+  return `claude mcp add portals -- uvx --from px px-mcp \\
   -e PORTALS_SERVER_URL=${serverUrl} \\
   -e PORTALS_API_KEY=YOUR_API_KEY`;
 }

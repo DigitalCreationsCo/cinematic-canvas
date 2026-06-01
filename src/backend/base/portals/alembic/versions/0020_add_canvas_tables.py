@@ -3,7 +3,7 @@ tag_registry, scenes_to_characters, media_objects, asset_entries,
 asset_versions; extend folder with project columns.
 
 Revision ID: 0020_add_canvas_tables
-Revises: 4a21b9d4334b
+Revises: de1cdc5d66e6
 Create Date: 2025-01-01 00:00:00.000000
 
 Phase: EXPAND
@@ -11,19 +11,19 @@ Phase: EXPAND
 
 from collections.abc import Sequence
 
+from uuid import UUID, uuid4
+from sqlmodel import JSON
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "0020_add_canvas_tables"
-down_revision: str | None = "4a21b9d4334b"
+down_revision: str | None = "de1cdc5d66e6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
 
     conn = op.get_bind()
     inspector = sa.inspect(conn)
@@ -34,9 +34,8 @@ def upgrade() -> None:
             "folder",
             sa.Column(
                 "storyboard",
-                postgresql.JSONB(),
+                JSON,
                 nullable=True,
-                server_default=sa.text("'{}'::jsonb"),
             ),
         )
     if "metadata" not in folder_columns:
@@ -44,13 +43,12 @@ def upgrade() -> None:
             "folder",
             sa.Column(
                 "metadata",
-                postgresql.JSONB(),
+                JSON,
                 nullable=True,
-                server_default=sa.text("'{}'::jsonb"),
             ),
         )
     if "audio_analysis" not in folder_columns:
-        op.add_column("folder", sa.Column("audio_analysis", postgresql.JSONB(), nullable=True))
+        op.add_column("folder", sa.Column("audio_analysis", JSON, nullable=True))
     if "status" not in folder_columns:
         op.add_column(
             "folder",
@@ -71,9 +69,8 @@ def upgrade() -> None:
             "folder",
             sa.Column(
                 "force_regenerate_scene_ids",
-                postgresql.ARRAY(sa.String()),
+                sa.String(),
                 nullable=True,
-                server_default=sa.text("'{}'::text[]"),
             ),
         )
     if "generation_rules" not in folder_columns:
@@ -81,9 +78,8 @@ def upgrade() -> None:
             "folder",
             sa.Column(
                 "generation_rules",
-                postgresql.ARRAY(sa.String()),
+                sa.String(),
                 nullable=True,
-                server_default=sa.text("'{}'::text[]"),
             ),
         )
     if "generation_rules_history" not in folder_columns:
@@ -91,9 +87,8 @@ def upgrade() -> None:
             "folder",
             sa.Column(
                 "generation_rules_history",
-                postgresql.JSONB(),
+                JSON,
                 nullable=True,
-                server_default=sa.text("'[]'::jsonb"),
             ),
         )
     if "guidance_level" not in folder_columns:
@@ -106,9 +101,8 @@ def upgrade() -> None:
             "folder",
             sa.Column(
                 "style_references",
-                postgresql.ARRAY(sa.String()),
+                sa.String(),
                 nullable=True,
-                server_default=sa.text("'{}'::text[]"),
             ),
         )
 
@@ -124,7 +118,7 @@ def upgrade() -> None:
 
     op.create_table(
         "characters",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -137,17 +131,17 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("reference_id", sa.Text(), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column(
             "aliases",
-            postgresql.ARRAY(sa.String()),
+            sa.String(),
             nullable=False,
-            server_default=sa.text("'{}'::text[]"),
+            server_default=sa.text(""),
         ),
-        sa.Column("physical_traits", postgresql.JSONB(), nullable=False),
-        sa.Column("state", postgresql.JSONB(), nullable=False),
+        sa.Column("physical_traits", JSON, nullable=False),
+        sa.Column("state", JSON, nullable=False),
         sa.Column("guidance_level", sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(["project_id"], ["folder.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
@@ -157,7 +151,7 @@ def upgrade() -> None:
 
     op.create_table(
         "locations",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -170,21 +164,21 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("reference_id", sa.Text(), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("type", sa.Text(), nullable=False),
         sa.Column("mood", sa.Text(), nullable=False),
-        sa.Column("lighting_conditions", postgresql.JSONB(), nullable=False),
+        sa.Column("lighting_conditions", JSON, nullable=False),
         sa.Column("time_of_day", sa.Text(), nullable=False),
         sa.Column("weather", sa.Text(), nullable=False),
-        sa.Column("color_palette", postgresql.JSONB(), nullable=False),
-        sa.Column("architecture", postgresql.JSONB(), nullable=False),
-        sa.Column("natural_elements", postgresql.JSONB(), nullable=False),
-        sa.Column("man_made_objects", postgresql.JSONB(), nullable=False),
+        sa.Column("color_palette", JSON(), nullable=False),
+        sa.Column("architecture", JSON(), nullable=False),
+        sa.Column("natural_elements", JSON(), nullable=False),
+        sa.Column("man_made_objects", JSON(), nullable=False),
         sa.Column("ground_surface", sa.Text(), nullable=False),
         sa.Column("sky_or_ceiling", sa.Text(), nullable=False),
-        sa.Column("state", postgresql.JSONB(), nullable=False),
+        sa.Column("state", JSON(), nullable=False),
         sa.Column("guidance_level", sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(["project_id"], ["folder.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
@@ -193,8 +187,8 @@ def upgrade() -> None:
 
     op.create_table(
         "props",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("reference_id", sa.Text(), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("type", sa.Text(), nullable=False),
@@ -217,7 +211,7 @@ def upgrade() -> None:
 
     op.create_table(
         "scenes",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -230,7 +224,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("scene_index", sa.Integer(), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("start_time", sa.Float(), nullable=False),
@@ -250,22 +244,22 @@ def upgrade() -> None:
         sa.Column("shot_type", sa.Text(), nullable=False),
         sa.Column("camera_angle", sa.Text(), nullable=False),
         sa.Column("camera_movement", sa.Text(), nullable=False),
-        sa.Column("composition", postgresql.JSONB(), nullable=False),
-        sa.Column("lighting", postgresql.JSONB(), nullable=False),
+        sa.Column("composition", JSON(), nullable=False),
+        sa.Column("lighting", JSON(), nullable=False),
         sa.Column(
             "continuity_notes",
-            postgresql.ARRAY(sa.String()),
+            sa.String(),
             nullable=False,
-            server_default=sa.text("'{}'::text[]"),
+            server_default=sa.text(""),
         ),
         sa.Column(
             "character_reference_ids",
-            postgresql.ARRAY(sa.String()),
+            sa.String(),
             nullable=False,
-            server_default=sa.text("'{}'::text[]"),
+            server_default=sa.text(""),
         ),
         sa.Column("location_reference_id", sa.Text(), nullable=False),
-        sa.Column("location_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("location_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("status", sa.Text(), nullable=False, server_default=sa.text("'pending'")),
         sa.Column("progress_message", sa.Text(), nullable=True),
         sa.Column("guidance_level", sa.Integer(), nullable=True),
@@ -277,8 +271,8 @@ def upgrade() -> None:
 
     op.create_table(
         "scenes_to_characters",
-        sa.Column("scene_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("character_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("scene_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("character_id", sa.Uuid(as_uuid=True), nullable=True),
         sa.ForeignKeyConstraint(["scene_id"], ["scenes.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["character_id"], ["characters.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("scene_id", "character_id"),
@@ -288,10 +282,10 @@ def upgrade() -> None:
         "tag_registry",
         sa.Column("handle", sa.Text(), nullable=False),
         sa.Column("entity_type", sa.Text(), nullable=False),
-        sa.Column("character_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("location_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("prop_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("character_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("location_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("prop_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=True),
         sa.ForeignKeyConstraint(["character_id"], ["characters.id"], ondelete="NO ACTION"),
         sa.ForeignKeyConstraint(["location_id"], ["locations.id"], ondelete="NO ACTION"),
         sa.ForeignKeyConstraint(["prop_id"], ["props.id"], ondelete="NO ACTION"),
@@ -330,13 +324,13 @@ def upgrade() -> None:
 
     op.create_table(
         "asset_entries",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("scene_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("character_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("location_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("prop_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("file_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("scene_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("character_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("location_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("prop_id", sa.Uuid(as_uuid=True), nullable=True),
+        sa.Column("file_id", sa.Uuid(as_uuid=True), nullable=True),
         sa.Column("asset_key", sa.Text(), nullable=False),
         sa.Column("head", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("best", sa.Integer(), nullable=False, server_default=sa.text("0")),
@@ -391,19 +385,19 @@ def upgrade() -> None:
 
     op.create_table(
         "asset_versions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("asset_entry_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("asset_entry_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("version", sa.Integer(), nullable=False),
         sa.Column("data", sa.Text(), nullable=False),
         sa.Column("media_id", sa.Text(), nullable=True),
         sa.Column("type", sa.Text(), nullable=False),
         sa.Column(
             "metadata",
-            postgresql.JSONB(),
+            JSON,
             nullable=True,
             server_default=sa.text("'{}'::jsonb"),
         ),
-        sa.Column("user_feedback", postgresql.JSONB(), nullable=True),
+        sa.Column("user_feedback", JSON, nullable=True),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "created_at",
@@ -436,17 +430,16 @@ def upgrade() -> None:
 
     op.create_table(
         "blocks",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("index", sa.Integer(), nullable=False),
-        sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("title", sa.Text(), nullable=True),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("dialogue", sa.Text(), nullable=True),
         sa.Column("image_url", sa.Text(), nullable=True),
         sa.Column(
             "search_vector",
-            postgresql.TSVECTOR(),
-            sa.Computed("to_tsvector('english', content)", persisted=True),
+            sa.String,
             nullable=True,
         ),
         sa.Column("is_notable", sa.Boolean(), nullable=False, server_default=sa.text("false")),
@@ -471,8 +464,8 @@ def upgrade() -> None:
 
     op.create_table(
         "lore",
-        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
+        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column(

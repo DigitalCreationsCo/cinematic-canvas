@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import Index, String, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlmodel import Column, Field, SQLModel
+from sqlalchemy import Index, String
+from sqlmodel import JSON, Column, Field, SQLModel
 
 
 class CharacterBase(SQLModel):
@@ -16,13 +15,12 @@ class CharacterBase(SQLModel):
         default_factory=list,
         sa_column=Column(
             "aliases",
-            ARRAY(String),
+            String,
             nullable=False,
-            server_default=text("'{}'::text[]"),
         ),
     )
-    physical_traits: dict = Field(sa_column=Column(JSONB, nullable=False))
-    state: dict = Field(sa_column=Column(JSONB, nullable=False))
+    physical_traits: dict = Field(sa_column=Column(JSON, nullable=False))
+    state: dict = Field(sa_column=Column(JSON, nullable=False))
     guidance_level: int | None = None
 
 

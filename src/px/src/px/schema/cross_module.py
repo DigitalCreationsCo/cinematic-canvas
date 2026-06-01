@@ -73,8 +73,8 @@ class CrossModuleModel(BaseModel, metaclass=CrossModuleMeta):
         ...     text: str
         ...
         >>> # Even if Message is imported from different paths:
-        >>> from px.schema.message import Message as LfxMessage
+        >>> from px.schema.message import Message as PxMessage
         >>> from portals.schema import Message as PortalsMessage
-        >>> msg = LfxMessage(text="hello")
+        >>> msg = PxMessage(text="hello")
         >>> isinstance(msg, PortalsMessage)  # True (with cross-module support)
     """

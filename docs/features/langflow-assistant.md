@@ -1,4 +1,4 @@
-# Feature: Langflow Assistant
+# Feature: Portals Assistant
 
 > Generated on: 2026-01-21
 > Updated on: 2026-03-30
@@ -24,15 +24,15 @@
 
 ### Summary
 
-The Langflow Assistant is an AI-powered chat interface that helps users generate custom Langflow components through natural language prompts. It provides real-time streaming feedback during component generation, automatic code validation with retry logic, and seamless integration with the Langflow canvas.
+The Portals Assistant is an AI-powered chat interface that helps users generate custom Portals components through natural language prompts. It provides real-time streaming feedback during component generation, automatic code validation with retry logic, and seamless integration with the Portals canvas.
 
 ### Business Context
 
-Building custom components in Langflow requires knowledge of the component architecture, Python programming, and understanding of inputs/outputs. The Langflow Assistant removes this barrier by allowing users to describe what they want in natural language, and the AI generates validated, ready-to-use component code that can be added directly to their flow.
+Building custom components in Portals requires knowledge of the component architecture, Python programming, and understanding of inputs/outputs. The Portals Assistant removes this barrier by allowing users to describe what they want in natural language, and the AI generates validated, ready-to-use component code that can be added directly to their flow.
 
 ### Bounded Context
 
-**Context**: `Agentic` - AI-assisted development capabilities within Langflow
+**Context**: `Agentic` - AI-assisted development capabilities within Portals
 
 This context owns:
 - AI assistant interactions and chat management
@@ -55,9 +55,9 @@ This context owns:
 
 | Term | Definition | Code Reference |
 |------|------------|----------------|
-| **Assistant** | AI-powered chat interface that generates Langflow components from natural language | `AssistantPanel`, `AssistantService` |
+| **Assistant** | AI-powered chat interface that generates Portals components from natural language | `AssistantPanel`, `AssistantService` |
 | **AssistantMessage** | A single message in the chat, either from user or assistant | `AssistantMessage` interface |
-| **ComponentCode** | Python code that defines a Langflow component with inputs, outputs, and processing logic | `component_code` field, `extract_component_code()` |
+| **ComponentCode** | Python code that defines a Portals component with inputs, outputs, and processing logic | `component_code` field, `extract_component_code()` |
 | **IntentClassification** | LLM-based detection of whether user wants to generate a component, ask a question, or is off-topic | `classify_intent()`, `IntentResult` |
 | **ProgressStep** | A discrete stage in the component generation pipeline (generating, validating, etc.) | `StepType`, `AgenticStepType` |
 | **SSE** | Server-Sent Events - Protocol for streaming real-time progress updates from server to client | `StreamingResponse`, `postAssistStream()` |
@@ -67,12 +67,12 @@ This context owns:
 | **FloatingPanel** | The assistant panel displayed as a floating overlay centered on the canvas | `AssistantPanel` |
 | **ModelProvider** | External LLM service (OpenAI, Anthropic, etc.) used for generation | `provider`, `PREFERRED_PROVIDERS` |
 | **EnabledProvider** | A model provider that has been configured with valid API credentials | `get_enabled_providers_for_user()` |
-| **FlowExecutor** | Service that runs Langflow flows programmatically for assistant operations | `FlowExecutor`, `execute_flow_file()` |
+| **FlowExecutor** | Service that runs Portals flows programmatically for assistant operations | `FlowExecutor`, `execute_flow_file()` |
 | **TranslationFlow** | Pre-built flow that translates user input and classifies intent | `TranslationFlow.json`, `TRANSLATION_FLOW` |
-| **LangflowAssistantFlow** | Pre-built flow containing the main assistant prompt and component generation logic | `LangflowAssistant.json`, `LANGFLOW_ASSISTANT_FLOW` |
+| **PortalsAssistantFlow** | Pre-built flow containing the main assistant prompt and component generation logic | `PortalsAssistant.json`, `LANGFLOW_ASSISTANT_FLOW` |
 | **ReasoningUI** | Animated typing display showing "thinking" messages during component generation | `AssistantLoadingState` |
 | **ApproveAction** | User action to add a validated component to the canvas | `handleApprove()`, `addComponent()` |
-| **OffTopic** | Intent classification for questions unrelated to Langflow (other tools, general knowledge) | `"off_topic"`, `OFF_TOPIC_REFUSAL_MESSAGE` |
+| **OffTopic** | Intent classification for questions unrelated to Portals (other tools, general knowledge) | `"off_topic"`, `OFF_TOPIC_REFUSAL_MESSAGE` |
 | **RuntimeValidation** | Second-phase validation that instantiates the component class to catch import/runtime errors | `validate_component_runtime()`, `build_custom_component_template()` |
 | **AgenticSessionPrefix** | `agentic_` prefix on session IDs to isolate Assistant sessions from Playground | `AGENTIC_SESSION_PREFIX` |
 
@@ -135,7 +135,7 @@ Configuration for available LLM providers.
 The frontend implements automatic model selection to ensure a valid model is always sent to the backend:
 
 - **Auto-selection**: When no model is explicitly selected, or when the persisted model's provider is no longer available, the first available model from enabled providers is automatically selected
-- **Persistence**: Selected model is stored in localStorage (`langflow-assistant-selected-model`)
+- **Persistence**: Selected model is stored in localStorage (`portals-assistant-selected-model`)
 - **Validation**: On load, persisted model is validated against current enabled providers. If the provider or model no longer exists, the selection is cleared and auto-selection triggers
 - **Provider icon**: The model selector trigger displays the provider's icon (e.g., Anthropic, OpenAI) instead of a generic label
 - **Invariant**: A request must never be sent without a valid model selection to prevent backend fallback to unexpected providers
@@ -157,14 +157,14 @@ The frontend implements automatic model selection to ensure a valid model is alw
 
 ## 4. Behavior Specifications
 
-### Feature: Langflow Assistant
+### Feature: Portals Assistant
 
-**As a** Langflow user
+**As a** Portals user
 **I want** to generate custom components using natural language
 **So that** I can build flows without writing Python code manually
 
 ### Background
-- Given a user with an active Langflow session
+- Given a user with an active Portals session
 - And at least one model provider is configured with a valid API key
 - And the user has a flow open in the canvas
 
@@ -180,7 +180,7 @@ The frontend implements automatic model selection to ensure a valid model is alw
 - **And** I should see the generated component code
 - **And** I should see an "Add to Canvas" button
 
-### Scenario: Ask a question about Langflow
+### Scenario: Ask a question about Portals
 - **Given** the assistant panel is open
 - **When** I enter "How do I connect two components?"
 - **And** I click send
@@ -267,9 +267,9 @@ The frontend implements automatic model selection to ensure a valid model is alw
 
 ### Scenario: Ask about unrelated tools (off-topic guardrail)
 - **Given** the assistant panel is open
-- **When** I ask "how does n8n work?" or any question unrelated to Langflow
+- **When** I ask "how does n8n work?" or any question unrelated to Portals
 - **Then** the intent should be classified as "off_topic"
-- **And** I should see a refusal message redirecting me to Langflow-related topics
+- **And** I should see a refusal message redirecting me to Portals-related topics
 - **And** the LLM should NOT be called for the main response (saves API cost)
 
 ### Scenario: No model provider configured
@@ -431,7 +431,7 @@ Automatically validate generated code by instantiating the component class. On f
 **Status**: Accepted (supersedes previous floating+sidebar decision)
 
 #### Context
-The initial design supported both floating and sidebar view modes. However, the floating panel with dynamic open/close and size expansion worked well as a standalone solution — it stays out of the way, doesn't conflict with other areas of Langflow (sidebar, playground, canvas), and the open/close/resize behavior feels natural. The sidebar mode added complexity (spacer divs, negative margins, conditional styling) for a view that wasn't needed.
+The initial design supported both floating and sidebar view modes. However, the floating panel with dynamic open/close and size expansion worked well as a standalone solution — it stays out of the way, doesn't conflict with other areas of Portals (sidebar, playground, canvas), and the open/close/resize behavior feels natural. The sidebar mode added complexity (spacer divs, negative margins, conditional styling) for a view that wasn't needed.
 
 #### Decision
 Remove the sidebar view mode entirely. The assistant always uses the floating panel. Removed: view mode toggle, `AssistantViewMode` type, `useAssistantViewMode` hook, sidebar spacer div, and all sidebar-conditional CSS from FlowPage.
@@ -485,7 +485,7 @@ The frontend generates a `session_id` once (via `useRef`) when the `useAssistant
 **Status**: Accepted
 
 #### Context
-The TranslationFlow (intent classification) and LangflowAssistant flow shared the same `session_id`. This caused cross-flow contamination: the TranslationFlow's JSON intent responses were stored alongside the assistant's messages. On subsequent requests, the TranslationFlow's LLM saw messages from both flows in its history, causing intent classification to fail and default to `"question"`.
+The TranslationFlow (intent classification) and PortalsAssistant flow shared the same `session_id`. This caused cross-flow contamination: the TranslationFlow's JSON intent responses were stored alongside the assistant's messages. On subsequent requests, the TranslationFlow's LLM saw messages from both flows in its history, causing intent classification to fail and default to `"question"`.
 
 #### Decision
 1. Pass `session_id=None` when calling `classify_intent` — the TranslationFlow is stateless and does not need conversation memory.
@@ -589,7 +589,7 @@ Opening the assistant panel felt sluggish when there were previous chat messages
 **Status**: Accepted
 
 #### Context
-The original validation (`validate_component_code`) only performed static AST analysis — syntax, class name extraction, overlapping I/O names, return statements. Code with valid syntax but wrong imports (e.g., `from lfx.base import Component` instead of `from lfx.custom import Component`) passed validation, was marked as `validated: true`, and showed "Add to Canvas". Clicking it failed silently because the `/api/v1/custom_component` endpoint performed real instantiation.
+The original validation (`validate_component_code`) only performed static AST analysis — syntax, class name extraction, overlapping I/O names, return statements. Code with valid syntax but wrong imports (e.g., `from px.base import Component` instead of `from px.custom import Component`) passed validation, was marked as `validated: true`, and showed "Add to Canvas". Clicking it failed silently because the `/api/v1/custom_component` endpoint performed real instantiation.
 
 #### Decision
 Add a second validation phase (`validate_component_runtime`) that attempts to instantiate the component using `Component(_code=code)` + `build_custom_component_template()`. If runtime validation fails, the error is fed back into the retry loop.
@@ -694,7 +694,7 @@ Thread `provider_vars` (resolved from database) through `flow_executor` → `flo
 Users expect assistant session history to persist. A decision was needed on whether to store sessions in the database (like the Playground) or in browser localStorage.
 
 #### Decision
-Session history is stored in browser `localStorage` (key: `langflow-assistant-sessions`), limited to 10 sessions. Sessions are serialized/deserialized with `progress` state stripped and in-flight messages marked as `"cancelled"`.
+Session history is stored in browser `localStorage` (key: `portals-assistant-sessions`), limited to 10 sessions. Sessions are serialized/deserialized with `progress` state stripped and in-flight messages marked as `"cancelled"`.
 
 #### Consequences
 
@@ -729,8 +729,8 @@ Session history is stored in browser `localStorage` (key: `langflow-assistant-se
 | Service | `VariableService` | Retrieves user's stored API keys from encrypted storage |
 | Service | `ValidationService` | Compiles and instantiates component code for validation |
 | External API | LLM Provider APIs | OpenAI, Anthropic, Azure, Google, IBM WatsonX, Ollama, Groq - for text generation |
-| Library | `lfx.run` | Flow execution engine |
-| Library | `lfx.custom.validate` | Component class creation and validation |
+| Library | `px.run` | Flow execution engine |
+| Library | `px.custom.validate` | Component class creation and validation |
 | Frontend | `use-stick-to-bottom` | Auto-scroll behavior in chat |
 | Frontend | `@xyflow/react` | Canvas integration for component placement |
 
@@ -860,7 +860,7 @@ Event: `cancelled`
 |------------|-----------|--------------|-----------------|
 | `400` | No provider configured | "No model provider is configured. Please configure at least one model provider in Settings." | Navigate to Settings > Model Providers |
 | `400` | Provider not available | "Provider 'X' is not configured. Available providers: [list]" | Select a different provider or configure the requested one |
-| `400` | Missing API key | "OPENAI_API_KEY is required for the Langflow Assistant with openai. Please configure it in Settings > Model Providers." | Add API key in Settings |
+| `400` | Missing API key | "OPENAI_API_KEY is required for the Portals Assistant with openai. Please configure it in Settings > Model Providers." | Add API key in Settings |
 | `400` | Unknown provider | "Unknown provider: X" | Use a supported provider |
 | `404` | Flow file not found | "Flow file 'X.json' not found" | Ensure agentic flows are deployed |
 | `500` | Flow execution error | Friendly error extracted from the actual error (e.g., "Rate limit exceeded. Please wait a moment and try again.") | Retry request; check server logs |
@@ -977,27 +977,27 @@ No dedicated feature flags are currently implemented. The assistant is always en
 
 ```mermaid
 C4Context
-  title System Context diagram for Langflow Assistant
+  title System Context diagram for Portals Assistant
 
-  Person(user, "Langflow User", "Builds AI workflows using visual canvas")
+  Person(user, "Portals User", "Builds AI workflows using visual canvas")
 
-  System(assistant, "Langflow Assistant", "AI-powered component generation through natural language")
+  System(assistant, "Portals Assistant", "AI-powered component generation through natural language")
 
   System_Ext(llm_providers, "LLM Providers", "OpenAI, Anthropic, Azure, Google - text generation")
-  System_Ext(langflow_core, "Langflow Core", "Flow execution, component validation, canvas")
+  System_Ext(portals_core, "Portals Core", "Flow execution, component validation, canvas")
 
   Rel(user, assistant, "Sends prompts, receives components")
   Rel(assistant, llm_providers, "Generates text via API")
-  Rel(assistant, langflow_core, "Validates code, adds to canvas")
+  Rel(assistant, portals_core, "Validates code, adds to canvas")
 ```
 
 ### 9.2 Container Diagram (Level 2)
 
 ```mermaid
 C4Container
-  title Container diagram for Langflow Assistant
+  title Container diagram for Portals Assistant
 
-  Person(user, "User", "Langflow user")
+  Person(user, "User", "Portals user")
 
   Container_Boundary(frontend, "Frontend") {
     Container(assistant_panel, "AssistantPanel", "React", "Chat UI with progress indicators")
@@ -1012,7 +1012,7 @@ C4Container
     Container(validation_service, "ValidationService", "Python", "Validates component code")
   }
 
-  Container_Ext(flows, "Assistant Flows", "JSON/Python", "LangflowAssistant.json, translation_flow.py")
+  Container_Ext(flows, "Assistant Flows", "JSON/Python", "PortalsAssistant.json, translation_flow.py")
   System_Ext(llm, "LLM Provider", "External API")
 
   Rel(user, assistant_panel, "Enters prompts")
@@ -1032,8 +1032,8 @@ C4Container
 flowchart TD
     A[User Input] --> B{Intent Classification<br/>TranslationFlow - stateless}
     B -->|off_topic| Z[Return Refusal Message<br/>no LLM call]
-    B -->|generate_component| C[Execute LangflowAssistant Flow]
-    B -->|question| D[Execute LangflowAssistant Flow<br/>with token streaming]
+    B -->|generate_component| C[Execute PortalsAssistant Flow]
+    B -->|question| D[Execute PortalsAssistant Flow<br/>with token streaming]
 
     D --> F[Complete Response<br/>plain text / Q&A]
 

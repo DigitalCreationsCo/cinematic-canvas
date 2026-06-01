@@ -22,7 +22,7 @@
 ## 1. Overview
 
 ### Summary
-This feature provides automatic event loop configuration for Windows systems running Langflow with PostgreSQL databases, resolving incompatibility between psycopg (PostgreSQL async driver) and Windows' default ProactorEventLoop.
+This feature provides automatic event loop configuration for Windows systems running Portals with PostgreSQL databases, resolving incompatibility between psycopg (PostgreSQL async driver) and Windows' default ProactorEventLoop.
 
 ### Business Context
 Windows users experience application startup failures when using PostgreSQL as the database backend due to an incompatibility between the psycopg driver and Windows' default event loop implementation. This prevents Windows users from leveraging PostgreSQL's advanced features and scalability, limiting them to SQLite which may not meet enterprise requirements.
@@ -80,7 +80,7 @@ Platform Infrastructure - Database Connectivity Layer
 ### Feature: Automatic Event Loop Configuration for Windows PostgreSQL
 
 **As a** Windows user
-**I want** Langflow to automatically configure the correct event loop
+**I want** Portals to automatically configure the correct event loop
 **So that** I can use PostgreSQL without encountering startup errors
 
 ### Background
@@ -171,12 +171,12 @@ Create a centralized helper function `configure_windows_postgres_event_loop()` t
 **Status**: Accepted
 
 #### Context
-The event loop must be configured before any async operations or database imports. Langflow has multiple entry points: package import, launcher, main module, and service initialization.
+The event loop must be configured before any async operations or database imports. Portals has multiple entry points: package import, launcher, main module, and service initialization.
 
 #### Decision
-Apply configuration at all critical entry points to ensure coverage regardless of how Langflow is started:
+Apply configuration at all critical entry points to ensure coverage regardless of how Portals is started:
 - `__init__.py` - Package initialization
-- `langflow_launcher.py` - CLI launcher
+- `portals_launcher.py` - CLI launcher
 - `__main__.py` - Direct module execution
 - `DatabaseService.__init__` - Service initialization
 - `initialize_services()` - Service orchestration
@@ -236,7 +236,7 @@ Conditionally set Uvicorn's loop parameter to `None` (use existing loop) when Wi
 | Library | `psycopg` | PostgreSQL async driver (external) |
 | Library | `sqlalchemy` | Database abstraction layer |
 | Service | `DatabaseService` | Database connection management |
-| Logger | `lfx.log.logger` | Structured logging |
+| Logger | `px.log.logger` | Structured logging |
 
 ### 6.2 API Contracts
 
@@ -306,7 +306,7 @@ False  # Configuration not needed or already configured
 - None required - this is a client-side connection configuration
 
 ### 8.3 Rollback Plan
-1. Revert to previous version of Langflow
+1. Revert to previous version of Portals
 2. Windows + PostgreSQL users must manually set event loop via environment configuration
 3. Or use SQLite as temporary workaround
 
@@ -328,14 +328,14 @@ False  # Configuration not needed or already configured
 C4Context
   title System Context diagram for Windows PostgreSQL Event Loop Fix
 
-  Person(dev, "Developer", "Windows user running Langflow")
-  System(langflow, "Langflow", "AI application development platform")
+  Person(dev, "Developer", "Windows user running Portals")
+  System(portals, "Portals", "AI application development platform")
   System_Ext(postgres, "PostgreSQL", "Database server")
   System_Ext(sqlite, "SQLite", "File-based database")
 
-  Rel(dev, langflow, "Develops AI apps")
-  Rel(langflow, postgres, "Stores data (with event loop fix)")
-  Rel(langflow, sqlite, "Alternative storage (no fix needed)")
+  Rel(dev, portals, "Develops AI apps")
+  Rel(portals, postgres, "Stores data (with event loop fix)")
+  Rel(portals, sqlite, "Alternative storage (no fix needed)")
 ```
 
 ### 9.2 Container Diagram (Level 2)
@@ -415,7 +415,7 @@ No changes or impact. The fix only activates for Windows + PostgreSQL combinatio
 ### Environment Variables
 Ensure `LANGFLOW_DATABASE_URL` is properly set in your `.env` file:
 ```env
-LANGFLOW_DATABASE_URL=postgresql://user:password@localhost:5432/langflow
+LANGFLOW_DATABASE_URL=postgresql://user:password@localhost:5432/portals
 ```
 
 ---

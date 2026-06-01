@@ -6,6 +6,7 @@ class AimlModels:
     def __init__(self):
         self.chat_models = []
         self.image_models = []
+        self.video_models = []
         self.embedding_models = []
         self.stt_models = []
         self.tts_models = []
@@ -38,6 +39,7 @@ class AimlModels:
         model_type_mapping = {
             "chat-completion": self.chat_models,
             "image": self.image_models,
+            "video": self.video_models,
             "embedding": self.embedding_models,
             "stt": self.stt_models,
             "tts": self.tts_models,

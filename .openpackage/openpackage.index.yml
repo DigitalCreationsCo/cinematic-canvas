@@ -6,182 +6,461 @@ packages:
       commands/technical-update-skeumorphic-dark-diagrams.md:
         - .agent/workflows/cinematic-canvas/technical-update-skeumorphic-dark-diagrams.md
         - .claude/commands/technical-update-skeumorphic-dark-diagrams.md
+        - .codex/prompts/cinematic-canvas/technical-update-skeumorphic-dark-diagrams.md
         - .cursor/commands/cinematic-canvas/technical-update-skeumorphic-dark-diagrams.md
+        - .kilocode/workflows/cinematic-canvas/technical-update-skeumorphic-dark-diagrams.md
+        - .opencode/commands/cinematic-canvas/technical-update-skeumorphic-dark-diagrams.md
       commands/technical-update-skeumorphic-white-diagrams.md:
         - .agent/workflows/cinematic-canvas/technical-update-skeumorphic-white-diagrams.md
         - .claude/commands/technical-update-skeumorphic-white-diagrams.md
+        - .codex/prompts/cinematic-canvas/technical-update-skeumorphic-white-diagrams.md
         - .cursor/commands/cinematic-canvas/technical-update-skeumorphic-white-diagrams.md
+        - .kilocode/workflows/cinematic-canvas/technical-update-skeumorphic-white-diagrams.md
+        - .opencode/commands/cinematic-canvas/technical-update-skeumorphic-white-diagrams.md
       commands/technical-update.md:
         - .agent/workflows/cinematic-canvas/technical-update.md
         - .claude/commands/technical-update.md
+        - .codex/prompts/cinematic-canvas/technical-update.md
         - .cursor/commands/cinematic-canvas/technical-update.md
+        - .kilocode/workflows/cinematic-canvas/technical-update.md
+        - .opencode/commands/cinematic-canvas/technical-update.md
       rules/assets.md:
         - .agent/rules/cinematic-canvas/assets.md
         - .claude/rules/assets.md
         - .cursor/rules/cinematic-canvas/assets.mdc
+        - .kilocode/rules/cinematic-canvas/assets.md
+        - .windsurf/rules/cinematic-canvas/assets.md
       rules/backend-guidelines.md:
         - .agent/rules/cinematic-canvas/backend-guidelines.md
         - .claude/rules/backend-guidelines.md
         - .cursor/rules/cinematic-canvas/backend-guidelines.mdc
+        - .kilocode/rules/cinematic-canvas/backend-guidelines.md
+        - .windsurf/rules/cinematic-canvas/backend-guidelines.md
       rules/canvas-hybrid-node-storage.md:
         - .agent/rules/cinematic-canvas/canvas-hybrid-node-storage.md
         - .claude/rules/canvas-hybrid-node-storage.md
         - .cursor/rules/cinematic-canvas/canvas-hybrid-node-storage.mdc
+        - .kilocode/rules/cinematic-canvas/canvas-hybrid-node-storage.md
+        - .windsurf/rules/cinematic-canvas/canvas-hybrid-node-storage.md
       rules/client-canvas-guidelines.md:
         - .agent/rules/cinematic-canvas/client-canvas-guidelines.md
         - .claude/rules/client-canvas-guidelines.md
         - .cursor/rules/cinematic-canvas/client-canvas-guidelines.mdc
+        - .kilocode/rules/cinematic-canvas/client-canvas-guidelines.md
+        - .windsurf/rules/cinematic-canvas/client-canvas-guidelines.md
       rules/client-testing-practices.md:
         - .agent/rules/cinematic-canvas/client-testing-practices.md
         - .claude/rules/client-testing-practices.md
         - .cursor/rules/cinematic-canvas/client-testing-practices.mdc
+        - .kilocode/rules/cinematic-canvas/client-testing-practices.md
+        - .windsurf/rules/cinematic-canvas/client-testing-practices.md
       rules/coding-best-practices.md:
         - .agent/rules/cinematic-canvas/coding-best-practices.md
         - .claude/rules/coding-best-practices.md
         - .cursor/rules/cinematic-canvas/coding-best-practices.mdc
+        - .kilocode/rules/cinematic-canvas/coding-best-practices.md
+        - .windsurf/rules/cinematic-canvas/coding-best-practices.md
       rules/design_guidelines.md:
         - .agent/rules/cinematic-canvas/design_guidelines.md
         - .claude/rules/design_guidelines.md
         - .cursor/rules/cinematic-canvas/design_guidelines.mdc
+        - .kilocode/rules/cinematic-canvas/design_guidelines.md
+        - .windsurf/rules/cinematic-canvas/design_guidelines.md
       rules/documentation.md:
         - .agent/rules/cinematic-canvas/documentation.md
         - .claude/rules/documentation.md
         - .cursor/rules/cinematic-canvas/documentation.mdc
+        - .kilocode/rules/cinematic-canvas/documentation.md
+        - .windsurf/rules/cinematic-canvas/documentation.md
       rules/image-files.md:
         - .agent/rules/cinematic-canvas/image-files.md
         - .claude/rules/image-files.md
         - .cursor/rules/cinematic-canvas/image-files.mdc
+        - .kilocode/rules/cinematic-canvas/image-files.md
+        - .windsurf/rules/cinematic-canvas/image-files.md
       rules/questions.md:
         - .agent/rules/cinematic-canvas/questions.md
         - .claude/rules/questions.md
         - .cursor/rules/cinematic-canvas/questions.mdc
+        - .kilocode/rules/cinematic-canvas/questions.md
+        - .windsurf/rules/cinematic-canvas/questions.md
+      rules/system-refactor.md:
+        - .agent/rules/cinematic-canvas/system-refactor.md
+        - .claude/rules/system-refactor.md
+        - .cursor/rules/cinematic-canvas/system-refactor.mdc
+        - .kilocode/rules/cinematic-canvas/system-refactor.md
+        - .windsurf/rules/cinematic-canvas/system-refactor.md
       rules/testing-practices.md:
         - .agent/rules/cinematic-canvas/testing-practices.md
         - .claude/rules/testing-practices.md
         - .cursor/rules/cinematic-canvas/testing-practices.mdc
+        - .kilocode/rules/cinematic-canvas/testing-practices.md
+        - .windsurf/rules/cinematic-canvas/testing-practices.md
       rules/zustand.md:
         - .agent/rules/cinematic-canvas/zustand.md
         - .claude/rules/zustand.md
         - .cursor/rules/cinematic-canvas/zustand.mdc
+        - .kilocode/rules/cinematic-canvas/zustand.md
+        - .windsurf/rules/cinematic-canvas/zustand.md
+      skills/algorithmic-art/SKILL.md:
+        - .agent/skills/cinematic-canvas/algorithmic-art/SKILL.md
+        - .claude/skills/algorithmic-art/SKILL.md
+        - .cline/skills/cinematic-canvas/algorithmic-art/SKILL.md
+        - .codex/skills/cinematic-canvas/algorithmic-art/SKILL.md
+        - .cursor/skills/cinematic-canvas/algorithmic-art/SKILL.md
+        - .kilocode/skills/cinematic-canvas/algorithmic-art/SKILL.md
+        - .opencode/skills/cinematic-canvas/algorithmic-art/SKILL.md
+        - .windsurf/skills/cinematic-canvas/algorithmic-art/SKILL.md
       skills/backend-code-review/SKILL.md:
         - .agent/skills/cinematic-canvas/backend-code-review/SKILL.md
         - .claude/skills/backend-code-review/SKILL.md
+        - .cline/skills/cinematic-canvas/backend-code-review/SKILL.md
+        - .codex/skills/cinematic-canvas/backend-code-review/SKILL.md
         - .cursor/skills/cinematic-canvas/backend-code-review/SKILL.md
+        - .kilocode/skills/cinematic-canvas/backend-code-review/SKILL.md
+        - .opencode/skills/cinematic-canvas/backend-code-review/SKILL.md
+        - .windsurf/skills/cinematic-canvas/backend-code-review/SKILL.md
       skills/backend-code-review/references/architecture-rule.md:
         - .agent/skills/cinematic-canvas/backend-code-review/references/architecture-rule.md
         - .claude/skills/backend-code-review/references/architecture-rule.md
+        - .cline/skills/cinematic-canvas/backend-code-review/references/architecture-rule.md
+        - .codex/skills/cinematic-canvas/backend-code-review/references/architecture-rule.md
         - .cursor/skills/cinematic-canvas/backend-code-review/references/architecture-rule.md
+        - .kilocode/skills/cinematic-canvas/backend-code-review/references/architecture-rule.md
+        - .opencode/skills/cinematic-canvas/backend-code-review/references/architecture-rule.md
+        - .windsurf/skills/cinematic-canvas/backend-code-review/references/architecture-rule.md
       skills/backend-code-review/references/db-schema-rule.md:
         - .agent/skills/cinematic-canvas/backend-code-review/references/db-schema-rule.md
         - .claude/skills/backend-code-review/references/db-schema-rule.md
+        - .cline/skills/cinematic-canvas/backend-code-review/references/db-schema-rule.md
+        - .codex/skills/cinematic-canvas/backend-code-review/references/db-schema-rule.md
         - .cursor/skills/cinematic-canvas/backend-code-review/references/db-schema-rule.md
+        - .kilocode/skills/cinematic-canvas/backend-code-review/references/db-schema-rule.md
+        - .opencode/skills/cinematic-canvas/backend-code-review/references/db-schema-rule.md
+        - .windsurf/skills/cinematic-canvas/backend-code-review/references/db-schema-rule.md
       skills/backend-code-review/references/repositories-rule.md:
         - .agent/skills/cinematic-canvas/backend-code-review/references/repositories-rule.md
         - .claude/skills/backend-code-review/references/repositories-rule.md
+        - .cline/skills/cinematic-canvas/backend-code-review/references/repositories-rule.md
+        - .codex/skills/cinematic-canvas/backend-code-review/references/repositories-rule.md
         - .cursor/skills/cinematic-canvas/backend-code-review/references/repositories-rule.md
+        - .kilocode/skills/cinematic-canvas/backend-code-review/references/repositories-rule.md
+        - .opencode/skills/cinematic-canvas/backend-code-review/references/repositories-rule.md
+        - .windsurf/skills/cinematic-canvas/backend-code-review/references/repositories-rule.md
       skills/backend-code-review/references/sqlalchemy-rule.md:
         - .agent/skills/cinematic-canvas/backend-code-review/references/sqlalchemy-rule.md
         - .claude/skills/backend-code-review/references/sqlalchemy-rule.md
+        - .cline/skills/cinematic-canvas/backend-code-review/references/sqlalchemy-rule.md
+        - .codex/skills/cinematic-canvas/backend-code-review/references/sqlalchemy-rule.md
         - .cursor/skills/cinematic-canvas/backend-code-review/references/sqlalchemy-rule.md
+        - .kilocode/skills/cinematic-canvas/backend-code-review/references/sqlalchemy-rule.md
+        - .opencode/skills/cinematic-canvas/backend-code-review/references/sqlalchemy-rule.md
+        - .windsurf/skills/cinematic-canvas/backend-code-review/references/sqlalchemy-rule.md
+      skills/code-review-excellence/SKILL.md:
+        - .agent/skills/cinematic-canvas/code-review-excellence/SKILL.md
+        - .claude/skills/code-review-excellence/SKILL.md
+        - .cline/skills/cinematic-canvas/code-review-excellence/SKILL.md
+        - .codex/skills/cinematic-canvas/code-review-excellence/SKILL.md
+        - .cursor/skills/cinematic-canvas/code-review-excellence/SKILL.md
+        - .kilocode/skills/cinematic-canvas/code-review-excellence/SKILL.md
+        - .opencode/skills/cinematic-canvas/code-review-excellence/SKILL.md
+        - .windsurf/skills/cinematic-canvas/code-review-excellence/SKILL.md
       skills/component-refactoring/SKILL.md:
         - .agent/skills/cinematic-canvas/component-refactoring/SKILL.md
         - .claude/skills/component-refactoring/SKILL.md
+        - .cline/skills/cinematic-canvas/component-refactoring/SKILL.md
+        - .codex/skills/cinematic-canvas/component-refactoring/SKILL.md
         - .cursor/skills/cinematic-canvas/component-refactoring/SKILL.md
+        - .kilocode/skills/cinematic-canvas/component-refactoring/SKILL.md
+        - .opencode/skills/cinematic-canvas/component-refactoring/SKILL.md
+        - .windsurf/skills/cinematic-canvas/component-refactoring/SKILL.md
       skills/component-refactoring/references/complexity-patterns.md:
         - .agent/skills/cinematic-canvas/component-refactoring/references/complexity-patterns.md
         - .claude/skills/component-refactoring/references/complexity-patterns.md
+        - .cline/skills/cinematic-canvas/component-refactoring/references/complexity-patterns.md
+        - .codex/skills/cinematic-canvas/component-refactoring/references/complexity-patterns.md
         - .cursor/skills/cinematic-canvas/component-refactoring/references/complexity-patterns.md
+        - .kilocode/skills/cinematic-canvas/component-refactoring/references/complexity-patterns.md
+        - .opencode/skills/cinematic-canvas/component-refactoring/references/complexity-patterns.md
+        - .windsurf/skills/cinematic-canvas/component-refactoring/references/complexity-patterns.md
       skills/component-refactoring/references/component-splitting.md:
         - .agent/skills/cinematic-canvas/component-refactoring/references/component-splitting.md
         - .claude/skills/component-refactoring/references/component-splitting.md
+        - .cline/skills/cinematic-canvas/component-refactoring/references/component-splitting.md
+        - .codex/skills/cinematic-canvas/component-refactoring/references/component-splitting.md
         - .cursor/skills/cinematic-canvas/component-refactoring/references/component-splitting.md
+        - .kilocode/skills/cinematic-canvas/component-refactoring/references/component-splitting.md
+        - .opencode/skills/cinematic-canvas/component-refactoring/references/component-splitting.md
+        - .windsurf/skills/cinematic-canvas/component-refactoring/references/component-splitting.md
       skills/component-refactoring/references/hook-extraction.md:
         - .agent/skills/cinematic-canvas/component-refactoring/references/hook-extraction.md
         - .claude/skills/component-refactoring/references/hook-extraction.md
+        - .cline/skills/cinematic-canvas/component-refactoring/references/hook-extraction.md
+        - .codex/skills/cinematic-canvas/component-refactoring/references/hook-extraction.md
         - .cursor/skills/cinematic-canvas/component-refactoring/references/hook-extraction.md
+        - .kilocode/skills/cinematic-canvas/component-refactoring/references/hook-extraction.md
+        - .opencode/skills/cinematic-canvas/component-refactoring/references/hook-extraction.md
+        - .windsurf/skills/cinematic-canvas/component-refactoring/references/hook-extraction.md
+      skills/debugging-strategies/SKILL.md:
+        - .agent/skills/cinematic-canvas/debugging-strategies/SKILL.md
+        - .claude/skills/debugging-strategies/SKILL.md
+        - .cline/skills/cinematic-canvas/debugging-strategies/SKILL.md
+        - .codex/skills/cinematic-canvas/debugging-strategies/SKILL.md
+        - .cursor/skills/cinematic-canvas/debugging-strategies/SKILL.md
+        - .kilocode/skills/cinematic-canvas/debugging-strategies/SKILL.md
+        - .opencode/skills/cinematic-canvas/debugging-strategies/SKILL.md
+        - .windsurf/skills/cinematic-canvas/debugging-strategies/SKILL.md
+      skills/design-system-patterns/SKILL.md:
+        - .agent/skills/cinematic-canvas/design-system-patterns/SKILL.md
+        - .claude/skills/design-system-patterns/SKILL.md
+        - .cline/skills/cinematic-canvas/design-system-patterns/SKILL.md
+        - .codex/skills/cinematic-canvas/design-system-patterns/SKILL.md
+        - .cursor/skills/cinematic-canvas/design-system-patterns/SKILL.md
+        - .kilocode/skills/cinematic-canvas/design-system-patterns/SKILL.md
+        - .opencode/skills/cinematic-canvas/design-system-patterns/SKILL.md
+        - .windsurf/skills/cinematic-canvas/design-system-patterns/SKILL.md
+      skills/design-system-patterns/references/component-architecture.md:
+        - .agent/skills/cinematic-canvas/design-system-patterns/references/component-architecture.md
+        - .claude/skills/design-system-patterns/references/component-architecture.md
+        - .cline/skills/cinematic-canvas/design-system-patterns/references/component-architecture.md
+        - .codex/skills/cinematic-canvas/design-system-patterns/references/component-architecture.md
+        - .cursor/skills/cinematic-canvas/design-system-patterns/references/component-architecture.md
+        - .kilocode/skills/cinematic-canvas/design-system-patterns/references/component-architecture.md
+        - .opencode/skills/cinematic-canvas/design-system-patterns/references/component-architecture.md
+        - .windsurf/skills/cinematic-canvas/design-system-patterns/references/component-architecture.md
+      skills/design-system-patterns/references/design-tokens.md:
+        - .agent/skills/cinematic-canvas/design-system-patterns/references/design-tokens.md
+        - .claude/skills/design-system-patterns/references/design-tokens.md
+        - .cline/skills/cinematic-canvas/design-system-patterns/references/design-tokens.md
+        - .codex/skills/cinematic-canvas/design-system-patterns/references/design-tokens.md
+        - .cursor/skills/cinematic-canvas/design-system-patterns/references/design-tokens.md
+        - .kilocode/skills/cinematic-canvas/design-system-patterns/references/design-tokens.md
+        - .opencode/skills/cinematic-canvas/design-system-patterns/references/design-tokens.md
+        - .windsurf/skills/cinematic-canvas/design-system-patterns/references/design-tokens.md
+      skills/design-system-patterns/references/theming-architecture.md:
+        - .agent/skills/cinematic-canvas/design-system-patterns/references/theming-architecture.md
+        - .claude/skills/design-system-patterns/references/theming-architecture.md
+        - .cline/skills/cinematic-canvas/design-system-patterns/references/theming-architecture.md
+        - .codex/skills/cinematic-canvas/design-system-patterns/references/theming-architecture.md
+        - .cursor/skills/cinematic-canvas/design-system-patterns/references/theming-architecture.md
+        - .kilocode/skills/cinematic-canvas/design-system-patterns/references/theming-architecture.md
+        - .opencode/skills/cinematic-canvas/design-system-patterns/references/theming-architecture.md
+        - .windsurf/skills/cinematic-canvas/design-system-patterns/references/theming-architecture.md
+      skills/distributed-tracing/SKILL.md:
+        - .agent/skills/cinematic-canvas/distributed-tracing/SKILL.md
+        - .claude/skills/distributed-tracing/SKILL.md
+        - .cline/skills/cinematic-canvas/distributed-tracing/SKILL.md
+        - .codex/skills/cinematic-canvas/distributed-tracing/SKILL.md
+        - .cursor/skills/cinematic-canvas/distributed-tracing/SKILL.md
+        - .kilocode/skills/cinematic-canvas/distributed-tracing/SKILL.md
+        - .opencode/skills/cinematic-canvas/distributed-tracing/SKILL.md
+        - .windsurf/skills/cinematic-canvas/distributed-tracing/SKILL.md
       skills/e2e-testing/SKILL.md:
         - .agent/skills/cinematic-canvas/e2e-testing/SKILL.md
         - .claude/skills/e2e-testing/SKILL.md
+        - .cline/skills/cinematic-canvas/e2e-testing/SKILL.md
+        - .codex/skills/cinematic-canvas/e2e-testing/SKILL.md
         - .cursor/skills/cinematic-canvas/e2e-testing/SKILL.md
+        - .kilocode/skills/cinematic-canvas/e2e-testing/SKILL.md
+        - .opencode/skills/cinematic-canvas/e2e-testing/SKILL.md
+        - .windsurf/skills/cinematic-canvas/e2e-testing/SKILL.md
       skills/e2e-testing/references/fixtures.md:
         - .agent/skills/cinematic-canvas/e2e-testing/references/fixtures.md
         - .claude/skills/e2e-testing/references/fixtures.md
+        - .cline/skills/cinematic-canvas/e2e-testing/references/fixtures.md
+        - .codex/skills/cinematic-canvas/e2e-testing/references/fixtures.md
         - .cursor/skills/cinematic-canvas/e2e-testing/references/fixtures.md
+        - .kilocode/skills/cinematic-canvas/e2e-testing/references/fixtures.md
+        - .opencode/skills/cinematic-canvas/e2e-testing/references/fixtures.md
+        - .windsurf/skills/cinematic-canvas/e2e-testing/references/fixtures.md
       skills/e2e-testing/references/helpers.md:
         - .agent/skills/cinematic-canvas/e2e-testing/references/helpers.md
         - .claude/skills/e2e-testing/references/helpers.md
+        - .cline/skills/cinematic-canvas/e2e-testing/references/helpers.md
+        - .codex/skills/cinematic-canvas/e2e-testing/references/helpers.md
         - .cursor/skills/cinematic-canvas/e2e-testing/references/helpers.md
+        - .kilocode/skills/cinematic-canvas/e2e-testing/references/helpers.md
+        - .opencode/skills/cinematic-canvas/e2e-testing/references/helpers.md
+        - .windsurf/skills/cinematic-canvas/e2e-testing/references/helpers.md
       skills/e2e-testing/references/selectors.md:
         - .agent/skills/cinematic-canvas/e2e-testing/references/selectors.md
         - .claude/skills/e2e-testing/references/selectors.md
+        - .cline/skills/cinematic-canvas/e2e-testing/references/selectors.md
+        - .codex/skills/cinematic-canvas/e2e-testing/references/selectors.md
         - .cursor/skills/cinematic-canvas/e2e-testing/references/selectors.md
+        - .kilocode/skills/cinematic-canvas/e2e-testing/references/selectors.md
+        - .opencode/skills/cinematic-canvas/e2e-testing/references/selectors.md
+        - .windsurf/skills/cinematic-canvas/e2e-testing/references/selectors.md
       skills/frontend-code-review/SKILL.md:
         - .agent/skills/cinematic-canvas/frontend-code-review/SKILL.md
         - .claude/skills/frontend-code-review/SKILL.md
+        - .cline/skills/cinematic-canvas/frontend-code-review/SKILL.md
+        - .codex/skills/cinematic-canvas/frontend-code-review/SKILL.md
         - .cursor/skills/cinematic-canvas/frontend-code-review/SKILL.md
+        - .kilocode/skills/cinematic-canvas/frontend-code-review/SKILL.md
+        - .opencode/skills/cinematic-canvas/frontend-code-review/SKILL.md
+        - .windsurf/skills/cinematic-canvas/frontend-code-review/SKILL.md
       skills/frontend-code-review/references/business-logic.md:
         - .agent/skills/cinematic-canvas/frontend-code-review/references/business-logic.md
         - .claude/skills/frontend-code-review/references/business-logic.md
+        - .cline/skills/cinematic-canvas/frontend-code-review/references/business-logic.md
+        - .codex/skills/cinematic-canvas/frontend-code-review/references/business-logic.md
         - .cursor/skills/cinematic-canvas/frontend-code-review/references/business-logic.md
+        - .kilocode/skills/cinematic-canvas/frontend-code-review/references/business-logic.md
+        - .opencode/skills/cinematic-canvas/frontend-code-review/references/business-logic.md
+        - .windsurf/skills/cinematic-canvas/frontend-code-review/references/business-logic.md
       skills/frontend-code-review/references/code-quality.md:
         - .agent/skills/cinematic-canvas/frontend-code-review/references/code-quality.md
         - .claude/skills/frontend-code-review/references/code-quality.md
+        - .cline/skills/cinematic-canvas/frontend-code-review/references/code-quality.md
+        - .codex/skills/cinematic-canvas/frontend-code-review/references/code-quality.md
         - .cursor/skills/cinematic-canvas/frontend-code-review/references/code-quality.md
+        - .kilocode/skills/cinematic-canvas/frontend-code-review/references/code-quality.md
+        - .opencode/skills/cinematic-canvas/frontend-code-review/references/code-quality.md
+        - .windsurf/skills/cinematic-canvas/frontend-code-review/references/code-quality.md
       skills/frontend-code-review/references/performance.md:
         - .agent/skills/cinematic-canvas/frontend-code-review/references/performance.md
         - .claude/skills/frontend-code-review/references/performance.md
+        - .cline/skills/cinematic-canvas/frontend-code-review/references/performance.md
+        - .codex/skills/cinematic-canvas/frontend-code-review/references/performance.md
         - .cursor/skills/cinematic-canvas/frontend-code-review/references/performance.md
+        - .kilocode/skills/cinematic-canvas/frontend-code-review/references/performance.md
+        - .opencode/skills/cinematic-canvas/frontend-code-review/references/performance.md
+        - .windsurf/skills/cinematic-canvas/frontend-code-review/references/performance.md
+      skills/frontend-design/SKILL.md:
+        - .agent/skills/cinematic-canvas/frontend-design/SKILL.md
+        - .claude/skills/frontend-design/SKILL.md
+        - .cline/skills/cinematic-canvas/frontend-design/SKILL.md
+        - .codex/skills/cinematic-canvas/frontend-design/SKILL.md
+        - .cursor/skills/cinematic-canvas/frontend-design/SKILL.md
+        - .kilocode/skills/cinematic-canvas/frontend-design/SKILL.md
+        - .opencode/skills/cinematic-canvas/frontend-design/SKILL.md
+        - .windsurf/skills/cinematic-canvas/frontend-design/SKILL.md
       skills/frontend-query-mutation/SKILL.md:
         - .agent/skills/cinematic-canvas/frontend-query-mutation/SKILL.md
         - .claude/skills/frontend-query-mutation/SKILL.md
+        - .cline/skills/cinematic-canvas/frontend-query-mutation/SKILL.md
+        - .codex/skills/cinematic-canvas/frontend-query-mutation/SKILL.md
         - .cursor/skills/cinematic-canvas/frontend-query-mutation/SKILL.md
+        - .kilocode/skills/cinematic-canvas/frontend-query-mutation/SKILL.md
+        - .opencode/skills/cinematic-canvas/frontend-query-mutation/SKILL.md
+        - .windsurf/skills/cinematic-canvas/frontend-query-mutation/SKILL.md
       skills/frontend-query-mutation/references/query-patterns.md:
         - .agent/skills/cinematic-canvas/frontend-query-mutation/references/query-patterns.md
         - .claude/skills/frontend-query-mutation/references/query-patterns.md
+        - .cline/skills/cinematic-canvas/frontend-query-mutation/references/query-patterns.md
+        - .codex/skills/cinematic-canvas/frontend-query-mutation/references/query-patterns.md
         - .cursor/skills/cinematic-canvas/frontend-query-mutation/references/query-patterns.md
+        - .kilocode/skills/cinematic-canvas/frontend-query-mutation/references/query-patterns.md
+        - .opencode/skills/cinematic-canvas/frontend-query-mutation/references/query-patterns.md
+        - .windsurf/skills/cinematic-canvas/frontend-query-mutation/references/query-patterns.md
       skills/frontend-query-mutation/references/runtime-rules.md:
         - .agent/skills/cinematic-canvas/frontend-query-mutation/references/runtime-rules.md
         - .claude/skills/frontend-query-mutation/references/runtime-rules.md
+        - .cline/skills/cinematic-canvas/frontend-query-mutation/references/runtime-rules.md
+        - .codex/skills/cinematic-canvas/frontend-query-mutation/references/runtime-rules.md
         - .cursor/skills/cinematic-canvas/frontend-query-mutation/references/runtime-rules.md
+        - .kilocode/skills/cinematic-canvas/frontend-query-mutation/references/runtime-rules.md
+        - .opencode/skills/cinematic-canvas/frontend-query-mutation/references/runtime-rules.md
+        - .windsurf/skills/cinematic-canvas/frontend-query-mutation/references/runtime-rules.md
       skills/frontend-testing/SKILL.md:
         - .agent/skills/cinematic-canvas/frontend-testing/SKILL.md
         - .claude/skills/frontend-testing/SKILL.md
+        - .cline/skills/cinematic-canvas/frontend-testing/SKILL.md
+        - .codex/skills/cinematic-canvas/frontend-testing/SKILL.md
         - .cursor/skills/cinematic-canvas/frontend-testing/SKILL.md
+        - .kilocode/skills/cinematic-canvas/frontend-testing/SKILL.md
+        - .opencode/skills/cinematic-canvas/frontend-testing/SKILL.md
+        - .windsurf/skills/cinematic-canvas/frontend-testing/SKILL.md
       skills/frontend-testing/assets/component-test.template.tsx:
         - .agent/skills/cinematic-canvas/frontend-testing/assets/component-test.template.tsx
         - .claude/skills/frontend-testing/assets/component-test.template.tsx
+        - .cline/skills/cinematic-canvas/frontend-testing/assets/component-test.template.tsx
+        - .codex/skills/cinematic-canvas/frontend-testing/assets/component-test.template.tsx
         - .cursor/skills/cinematic-canvas/frontend-testing/assets/component-test.template.tsx
+        - .kilocode/skills/cinematic-canvas/frontend-testing/assets/component-test.template.tsx
+        - .opencode/skills/cinematic-canvas/frontend-testing/assets/component-test.template.tsx
+        - .windsurf/skills/cinematic-canvas/frontend-testing/assets/component-test.template.tsx
       skills/frontend-testing/assets/hook-test.template.ts:
         - .agent/skills/cinematic-canvas/frontend-testing/assets/hook-test.template.ts
         - .claude/skills/frontend-testing/assets/hook-test.template.ts
+        - .cline/skills/cinematic-canvas/frontend-testing/assets/hook-test.template.ts
+        - .codex/skills/cinematic-canvas/frontend-testing/assets/hook-test.template.ts
         - .cursor/skills/cinematic-canvas/frontend-testing/assets/hook-test.template.ts
+        - .kilocode/skills/cinematic-canvas/frontend-testing/assets/hook-test.template.ts
+        - .opencode/skills/cinematic-canvas/frontend-testing/assets/hook-test.template.ts
+        - .windsurf/skills/cinematic-canvas/frontend-testing/assets/hook-test.template.ts
       skills/frontend-testing/assets/utility-test.template.ts:
         - .agent/skills/cinematic-canvas/frontend-testing/assets/utility-test.template.ts
         - .claude/skills/frontend-testing/assets/utility-test.template.ts
+        - .cline/skills/cinematic-canvas/frontend-testing/assets/utility-test.template.ts
+        - .codex/skills/cinematic-canvas/frontend-testing/assets/utility-test.template.ts
         - .cursor/skills/cinematic-canvas/frontend-testing/assets/utility-test.template.ts
+        - .kilocode/skills/cinematic-canvas/frontend-testing/assets/utility-test.template.ts
+        - .opencode/skills/cinematic-canvas/frontend-testing/assets/utility-test.template.ts
+        - .windsurf/skills/cinematic-canvas/frontend-testing/assets/utility-test.template.ts
       skills/frontend-testing/references/async-testing.md:
         - .agent/skills/cinematic-canvas/frontend-testing/references/async-testing.md
         - .claude/skills/frontend-testing/references/async-testing.md
+        - .cline/skills/cinematic-canvas/frontend-testing/references/async-testing.md
+        - .codex/skills/cinematic-canvas/frontend-testing/references/async-testing.md
         - .cursor/skills/cinematic-canvas/frontend-testing/references/async-testing.md
+        - .kilocode/skills/cinematic-canvas/frontend-testing/references/async-testing.md
+        - .opencode/skills/cinematic-canvas/frontend-testing/references/async-testing.md
+        - .windsurf/skills/cinematic-canvas/frontend-testing/references/async-testing.md
       skills/frontend-testing/references/checklist.md:
         - .agent/skills/cinematic-canvas/frontend-testing/references/checklist.md
         - .claude/skills/frontend-testing/references/checklist.md
+        - .cline/skills/cinematic-canvas/frontend-testing/references/checklist.md
+        - .codex/skills/cinematic-canvas/frontend-testing/references/checklist.md
         - .cursor/skills/cinematic-canvas/frontend-testing/references/checklist.md
+        - .kilocode/skills/cinematic-canvas/frontend-testing/references/checklist.md
+        - .opencode/skills/cinematic-canvas/frontend-testing/references/checklist.md
+        - .windsurf/skills/cinematic-canvas/frontend-testing/references/checklist.md
       skills/frontend-testing/references/common-patterns.md:
         - .agent/skills/cinematic-canvas/frontend-testing/references/common-patterns.md
         - .claude/skills/frontend-testing/references/common-patterns.md
+        - .cline/skills/cinematic-canvas/frontend-testing/references/common-patterns.md
+        - .codex/skills/cinematic-canvas/frontend-testing/references/common-patterns.md
         - .cursor/skills/cinematic-canvas/frontend-testing/references/common-patterns.md
+        - .kilocode/skills/cinematic-canvas/frontend-testing/references/common-patterns.md
+        - .opencode/skills/cinematic-canvas/frontend-testing/references/common-patterns.md
+        - .windsurf/skills/cinematic-canvas/frontend-testing/references/common-patterns.md
       skills/frontend-testing/references/domain-components.md:
         - .agent/skills/cinematic-canvas/frontend-testing/references/domain-components.md
         - .claude/skills/frontend-testing/references/domain-components.md
+        - .cline/skills/cinematic-canvas/frontend-testing/references/domain-components.md
+        - .codex/skills/cinematic-canvas/frontend-testing/references/domain-components.md
         - .cursor/skills/cinematic-canvas/frontend-testing/references/domain-components.md
+        - .kilocode/skills/cinematic-canvas/frontend-testing/references/domain-components.md
+        - .opencode/skills/cinematic-canvas/frontend-testing/references/domain-components.md
+        - .windsurf/skills/cinematic-canvas/frontend-testing/references/domain-components.md
       skills/frontend-testing/references/mocking.md:
         - .agent/skills/cinematic-canvas/frontend-testing/references/mocking.md
         - .claude/skills/frontend-testing/references/mocking.md
+        - .cline/skills/cinematic-canvas/frontend-testing/references/mocking.md
+        - .codex/skills/cinematic-canvas/frontend-testing/references/mocking.md
         - .cursor/skills/cinematic-canvas/frontend-testing/references/mocking.md
+        - .kilocode/skills/cinematic-canvas/frontend-testing/references/mocking.md
+        - .opencode/skills/cinematic-canvas/frontend-testing/references/mocking.md
+        - .windsurf/skills/cinematic-canvas/frontend-testing/references/mocking.md
       skills/frontend-testing/references/workflow.md:
         - .agent/skills/cinematic-canvas/frontend-testing/references/workflow.md
         - .claude/skills/frontend-testing/references/workflow.md
+        - .cline/skills/cinematic-canvas/frontend-testing/references/workflow.md
+        - .codex/skills/cinematic-canvas/frontend-testing/references/workflow.md
         - .cursor/skills/cinematic-canvas/frontend-testing/references/workflow.md
+        - .kilocode/skills/cinematic-canvas/frontend-testing/references/workflow.md
+        - .opencode/skills/cinematic-canvas/frontend-testing/references/workflow.md
+        - .windsurf/skills/cinematic-canvas/frontend-testing/references/workflow.md
+      skills/nano-banana-pro/SKILL.md:
+        - .agent/skills/cinematic-canvas/nano-banana-pro/SKILL.md
+        - .claude/skills/nano-banana-pro/SKILL.md
+        - .cline/skills/cinematic-canvas/nano-banana-pro/SKILL.md
+        - .codex/skills/cinematic-canvas/nano-banana-pro/SKILL.md
+        - .cursor/skills/cinematic-canvas/nano-banana-pro/SKILL.md
+        - .kilocode/skills/cinematic-canvas/nano-banana-pro/SKILL.md
+        - .opencode/skills/cinematic-canvas/nano-banana-pro/SKILL.md
+        - .windsurf/skills/cinematic-canvas/nano-banana-pro/SKILL.md
     path: ./.openpackage
     version: 0.0.0

@@ -1,21 +1,21 @@
 ---
-title: Contribute to Langflow
+title: Contribute to Portals
 slug: /contributing-how-to-contribute
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-This guide is intended to help you start contributing to Langflow.
-As an open-source codebase in a rapidly developing field, Langflow welcomes contributions, whether it be in the form of a new feature, improved infrastructure, or better documentation.
+This guide is intended to help you start contributing to Portals.
+As an open-source codebase in a rapidly developing field, Portals welcomes contributions, whether it be in the form of a new feature, improved infrastructure, or better documentation.
 
-To contribute code or documentation to Langflow, follow the [pull request guide](#open-a-pull-request).
+To contribute code or documentation to Portals, follow the [pull request guide](#open-a-pull-request).
 
-## Langflow services overview
+## Portals services overview
 
 This overview will help you understand how to set up your development environment.
 
-Langflow consists of two main services:
+Portals consists of two main services:
 - Frontend: A React/TypeScript application that provides the user interface.
 - Backend: A Python/FastAPI service that handles API requests.
 
@@ -23,11 +23,11 @@ During development, the frontend and backend services run separately on differen
 - Frontend development server: `http://localhost:3000` (with hot reload).
 - Backend API server: `http://localhost:7860`.
 
-When you install Langflow as an end user, the backend serves the frontend internally, making both services available on a single port (`7860` by default).
+When you install Portals as an end user, the backend serves the frontend internally, making both services available on a single port (`7860` by default).
 
-## Install Langflow from source
+## Install Portals from source
 
-Install Langflow from source by forking the repository and setting up your development environment.
+Install Portals from source by forking the repository and setting up your development environment.
 
 ### Prerequisites
 
@@ -35,29 +35,29 @@ Install Langflow from source by forking the repository and setting up your devel
 * [Node.js](https://nodejs.org/en/download/package-manager)
 * [Make](https://www.gnu.org/software/make/#documentation) (Linux and macOS only)
 
-### Clone the Langflow repository
+### Clone the Portals repository
 
-1. Fork the [Langflow GitHub repository](https://github.com/langflow-ai/langflow).
+1. Fork the [Portals GitHub repository](https://github.com/portals-ai/portals).
 
 2. Add the new remote to your local repository on your local machine:
 ```bash
-git remote add FORK_NAME https://github.com/GIT_USERNAME/langflow.git
+git remote add FORK_NAME https://github.com/GIT_USERNAME/portals.git
 ```
 Replace the following:
 * `FORK_NAME`: A name for your fork of the repository
 * `GIT_USERNAME`: Your Git username
 
-### Run Langflow from source
+### Run Portals from source
 
-You can run Langflow from source after cloning the repository, even if you aren't contributing to the codebase.
+You can run Portals from source after cloning the repository, even if you aren't contributing to the codebase.
 This builds the frontend and serves it through the backend on port `7860`.
 
-The instructions below are for running Langflow from source. For development with hot reload, see [Set up development environment](#set-up-your-langflow-development-environment).
+The instructions below are for running Portals from source. For development with hot reload, see [Set up development environment](#set-up-your-portals-development-environment).
 
 <details>
 <summary>Run from source on macOS/Linux</summary>
 
-In your terminal, navigate to the root of the Langflow directory, and then run `make run_cli`.
+In your terminal, navigate to the root of the Portals directory, and then run `make run_cli`.
 
 This command does the following:
 
@@ -65,19 +65,19 @@ This command does the following:
 - Builds the frontend static files
 - Starts the application with default settings
 
-The Langflow frontend is served at `http://localhost:7860`.
+The Portals frontend is served at `http://localhost:7860`.
 </details>
 
 <details>
 <summary>Run from source with Windows CMD</summary>
 
-To run Langflow from source on Windows, you can use the Langflow repository's included scripts, or run the commands in the terminal.
+To run Portals from source on Windows, you can use the Portals repository's included scripts, or run the commands in the terminal.
 
 Do one of the following:
 
-* To install and run Langflow with the included Windows Batch file, navigate to the `scripts/windows` directory, and then run the `build_and_run.bat` file.
+* To install and run Portals with the included Windows Batch file, navigate to the `scripts/windows` directory, and then run the `build_and_run.bat` file.
 
-* To run Langflow from the Windows Command Line:
+* To run Portals from the Windows Command Line:
 
     1. Build the frontend static files:
 
@@ -87,28 +87,28 @@ Do one of the following:
         npm run build
         ```
 
-    2. Copy the contents of the built `src/frontend/build` directory to `src/backend/base/langflow/frontend`.
+    2. Copy the contents of the built `src/frontend/build` directory to `src/backend/base/portals/frontend`.
 
-    3. Start Langflow:
+    3. Start Portals:
 
         ```
-        uv run langflow run
+        uv run portals run
         ```
 
-The Langflow frontend is served at `http://localhost:7860`.
+The Portals frontend is served at `http://localhost:7860`.
 
 </details>
 
 <details>
 <summary>Run from source with PowerShell</summary>
 
-To run Langflow from source on Windows, you can use the Langflow repository's included scripts, or run the commands in the terminal.
+To run Portals from source on Windows, you can use the Portals repository's included scripts, or run the commands in the terminal.
 
 Do one of the following:
 
-* To install and run Langflow with the included scripts, navigate to the `scripts/windows` directory, and then run the `build_and_run.ps1` file.
+* To install and run Portals with the included scripts, navigate to the `scripts/windows` directory, and then run the `build_and_run.ps1` file.
 
-* To run Langflow from a PowerShell terminal:
+* To run Portals from a PowerShell terminal:
 
     1. Build the frontend static files:
 
@@ -118,19 +118,19 @@ Do one of the following:
         npm run build
         ```
 
-    2. Copy the contents of the built `src/frontend/build` directory to `src/backend/base/langflow/frontend`.
+    2. Copy the contents of the built `src/frontend/build` directory to `src/backend/base/portals/frontend`.
 
-    3. Start Langflow:
+    3. Start Portals:
 
         ```
-        uv run langflow run
+        uv run portals run
         ```
 
-The Langflow frontend is served at `http://localhost:7860`.
+The Portals frontend is served at `http://localhost:7860`.
 
 </details>
 
-### Set up your Langflow development environment
+### Set up your Portals development environment
 
 :::tip
 Run `make help` to display all available make commands.
@@ -138,12 +138,12 @@ Run `make help` to display all available make commands.
 
 This section is for contributors who want to develop and test code changes with hot reload enabled.
 
-If you just want to run Langflow locally without making code changes, see [Run Langflow from source](#run-langflow-from-source).
+If you just want to run Portals locally without making code changes, see [Run Portals from source](#run-portals-from-source).
 
 <Tabs>
 <TabItem value="linux-macos" label="Linux or macOS" default>
 
-1. Set up the Langflow development environment:
+1. Set up the Portals development environment:
 
     ```bash
     make init
@@ -188,9 +188,9 @@ To run all tests, including coverage, unit, and integration, tests, run `make te
 </TabItem>
 <TabItem value="Windows" label="Windows">
 
-Since Windows doesn't include `make`, building and running Langflow from source uses `npm` and `uv`.
+Since Windows doesn't include `make`, building and running Portals from source uses `npm` and `uv`.
 
-To set up the Langflow development environment, run the frontend and backend in separate terminals:
+To set up the Portals development environment, run the frontend and backend in separate terminals:
 
 1. To run the frontend development server with hot reload, run the following commands:
 
@@ -203,7 +203,7 @@ To set up the Langflow development environment, run the frontend and backend in 
 2. In a separate terminal, run the following command to run the backend:
 
     ```bash
-    uv run langflow run --backend-only
+    uv run portals run --backend-only
     ```
 
 The frontend is served at `http://localhost:3000` and the backend at `http://localhost:7860`. This setup preserves hot reload for frontend development, with no need to copy build files after every edit.
@@ -213,7 +213,7 @@ The frontend is served at `http://localhost:3000` and the backend at `http://loc
 
 ### Troubleshoot frontend build issues
 
-If you encounter frontend build problems or are upgrading from an older version of Langflow, run `make run_clic` once.
+If you encounter frontend build problems or are upgrading from an older version of Portals, run `make run_clic` once.
 
 ```bash
 make run_clic
@@ -241,12 +241,12 @@ For style guidance, see the [Google Developer Documentation Style Guide](https:/
 
 1. Install [Node.js](https://nodejs.org/en/download/package-manager).
 
-2. Fork the [Langflow GitHub repository](https://github.com/langflow-ai/langflow).
+2. Fork the [Portals GitHub repository](https://github.com/portals-ai/portals).
 
 3. Add the new remote to your local repository on your local machine:
 
     ```bash
-    git remote add FORK_NAME https://github.com/GIT_USERNAME/langflow.git
+    git remote add FORK_NAME https://github.com/GIT_USERNAME/portals.git
     ```
 
     Replace the following:
@@ -254,7 +254,7 @@ For style guidance, see the [Google Developer Documentation Style Guide](https:/
     * `FORK_NAME`: A name for your fork of the repository
     * `GIT_USERNAME`: Your Git username
 
-4. From the root of your local Langflow fork, change to the `/docs` directory:
+4. From the root of your local Portals fork, change to the `/docs` directory:
 
     ```bash
     cd docs
@@ -272,11 +272,11 @@ For style guidance, see the [Google Developer Documentation Style Guide](https:/
 
     The documentation is served at `http://localhost:3000`.
 
-6. To edit and create content, work with the `.mdx` files in the `langflow/docs/docs` directory.
+6. To edit and create content, work with the `.mdx` files in the `portals/docs/docs` directory.
 
     Create new files in `.mdx` format.
 
-    Navigation is defined in `langflow/docs/sidebars.js`.
+    Navigation is defined in `portals/docs/sidebars.js`.
 
     Most pages use a `slug` for shorthand cross-referencing, rather than supplying the full or relative directory path.
     For example, if a page has a `slug` of `/cool-page`, you can link to it with `[Cool page](/cool-page)` from any other `/docs` page.
@@ -297,9 +297,9 @@ Include a clear title and description.
 
 Some additional guidance on pull request titles:
 * Ensure the pull request description clearly describes the problem and solution. If the PR fixes an issue, include a link to the fixed issue in the PR description with `Fixes #1234`.
-* Pull request titles appear in Langflow's release notes, so they should explain what the PR does as explicitly as possible.
+* Pull request titles appear in Portals's release notes, so they should explain what the PR does as explicitly as possible.
 * Pull requests should strive to fix one thing **only**, and should contain a good description of what is being fixed.
 
-3. A Langflow maintainer will review your pull request and may request changes, so ensure you pay attention to your PRs. Thanks for your contribution!
+3. A Portals maintainer will review your pull request and may request changes, so ensure you pay attention to your PRs. Thanks for your contribution!
 
 For more information, see the [Python Developer's Guide](https://devguide.python.org/getting-started/pull-request-lifecycle/index.html#making-good-commits).

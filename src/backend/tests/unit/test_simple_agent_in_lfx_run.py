@@ -16,7 +16,7 @@ from px.utils.async_helpers import run_until_complete
 from tests.api_keys import has_api_key
 
 
-class TestAgentInLfxRun:
+class TestAgentInPxRun:
     """Test the agent workflow that demonstrates px run functionality."""
 
     @pytest.fixture
@@ -125,9 +125,7 @@ async def get_graph() -> Graph:
         """Test that the agent script file exists and has valid content."""
         # Since we don't have direct CLI access in portals tests,
         # verify the script file exists and has correct content
-        assert simple_agent_script_file.exists(), (
-            "Script file should exist in tests/data"
-        )
+        assert simple_agent_script_file.exists(), "Script file should exist in tests/data"
 
         # Verify script content has expected structure
         content = simple_agent_script_file.read_text()
@@ -194,9 +192,7 @@ async def get_graph() -> Graph:
         agent.set(
             model_name="gpt-4o-mini",
             agent_llm="OpenAI",
-            api_key=os.getenv(
-                "OPENAI_API_KEY", "test-key"
-            ),  # Use test key if not available
+            api_key=os.getenv("OPENAI_API_KEY", "test-key"),  # Use test key if not available
             input_value="Hello, how are you?",  # Direct input instead of chat_input.message_response
             tools=tools,
         )
@@ -232,9 +228,7 @@ async def get_graph() -> Graph:
         ]
 
         for component_name in components_to_test:
-            assert hasattr(cp, component_name), (
-                f"Component {component_name} not available via flattened access"
-            )
+            assert hasattr(cp, component_name), f"Component {component_name} not available via flattened access"
 
             # Test that we can instantiate each component
             component_class = getattr(cp, component_name)

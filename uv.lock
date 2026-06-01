@@ -8050,7 +8050,7 @@ dependencies = [
 
 [package.optional-dependencies]
 postgresql = [
-    { name = "sqlalchemy", extra = ["aiosqlite", "postgresql-psycopg", "postgresql-psycopg2binary"] },
+    { name = "sqlalchemy", extra = ["postgresql-psycopg", "postgresql-psycopg2binary"] },
 ]
 
 [package.dev-dependencies]
@@ -8078,7 +8078,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "portals-base", extras = ["complete"], editable = "src/backend/base" },
-    { name = "sqlalchemy", extras = ["aiosqlite", "postgresql-psycopg", "postgresql-psycopg2binary"], marker = "extra == 'postgresql'", specifier = ">=2.0.49" },
+    { name = "sqlalchemy", extras = ["postgresql-psycopg"], marker = "extra == 'postgresql'", specifier = ">=2.0.38,<3.0.0" },
+    { name = "sqlalchemy", extras = ["postgresql-psycopg2binary"], marker = "extra == 'postgresql'", specifier = ">=2.0.38,<3.0.0" },
 ]
 provides-extras = ["postgresql"]
 

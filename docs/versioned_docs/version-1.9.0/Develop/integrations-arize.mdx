@@ -8,14 +8,14 @@ import TabItem from '@theme/TabItem';
 
 Arize is a tool built on [OpenTelemetry](https://opentelemetry.io/) and [OpenInference](https://docs.arize.com/phoenix/reference/open-inference) for monitoring and optimizing LLM applications.
 
-To enable Arize tracing, set the required Arize environment variables in your Langflow deployment.
+To enable Arize tracing, set the required Arize environment variables in your Portals deployment.
 Arize begins monitoring and collecting telemetry data from your LLM applications automatically.
 
 :::tip
-Instructions for integrating Langflow and Arize are also available in the Arize documentation:
+Instructions for integrating Portals and Arize are also available in the Arize documentation:
 
-* [Langflow tracing with Arize Platform](https://arize.com/docs/ax/integrations/frameworks-and-platforms/langflow/langflow-tracing)
-* [Langflow tracing with Arize Phoenix](https://arize.com/docs/phoenix/integrations/langflow/langflow-tracing)
+* [Portals tracing with Arize Platform](https://arize.com/docs/ax/integrations/frameworks-and-platforms/portals/portals-tracing)
+* [Portals tracing with Arize Phoenix](https://arize.com/docs/phoenix/integrations/portals/portals-tracing)
 :::
 
 ## Prerequisites
@@ -23,14 +23,14 @@ Instructions for integrating Langflow and Arize are also available in the Arize 
 * If you are using the [standard Arize platform](https://docs.arize.com/arize), you need an **Arize Space ID** and **Arize API Key**.
 * If you are using the open-source [Arize Phoenix platform](https://docs.arize.com/phoenix), you need an **Arize Phoenix API key**.
 
-## Connect Arize to Langflow
+## Connect Arize to Portals
 
 <Tabs>
 <TabItem value="platform" label="Arize Platform" default>
 
 1. In your [Arize dashboard](https://app.arize.com/), copy your **Space ID** and [**API Key (Ingestion Service Account Key)**](https://arize.com/docs/ax/security-and-settings/api-keys).
 
-2. In the root of your Langflow application, edit your existing Langflow `.env` file or create a new one.
+2. In the root of your Portals application, edit your existing Portals `.env` file or create a new one.
 
 3. Add `ARIZE_SPACE_ID` and `ARIZE_API_KEY` environment variables:
 
@@ -43,10 +43,10 @@ Instructions for integrating Langflow and Arize are also available in the Arize 
 
     You don't need to specify the Arize project name if you're using the standard Arize platform.
 
-4. Start your Langflow application with your `.env` file:
+4. Start your Portals application with your `.env` file:
 
     ```bash
-    uv run langflow run --env-file .env
+    uv run portals run --env-file .env
     ```
 
 </TabItem>
@@ -54,7 +54,7 @@ Instructions for integrating Langflow and Arize are also available in the Arize 
 
 1. In your [Arize Phoenix dashboard](https://app.phoenix.arize.com/), copy your **API Key**.
 
-2. In the root of your Langflow application, edit your existing Langflow `.env` file or create a new one.
+2. In the root of your Portals application, edit your existing Portals `.env` file or create a new one.
 
 3. Add a `PHOENIX_API_KEY` environment variable:
 
@@ -64,10 +64,10 @@ Instructions for integrating Langflow and Arize are also available in the Arize 
 
     Replace `API_KEY` with the Arize Phoenix API key that you copied from the Arize Phoenix platform.
 
-4. Start your Langflow application with your `.env` file:
+4. Start your Portals application with your `.env` file:
 
     ```bash
-    uv run langflow run --env-file .env
+    uv run portals run --env-file .env
     ```
 
 </TabItem>
@@ -75,7 +75,7 @@ Instructions for integrating Langflow and Arize are also available in the Arize 
 
 ## Run a flow and view metrics in Arize
 
-1. In Langflow, run a flow that has an LLM-driven component, such as an **Agent** component or any language model component.
+1. In Portals, run a flow that has an LLM-driven component, such as an **Agent** component or any language model component.
 You must chat with the flow or trigger the LLM to produce traffic for Arize to trace.
 
     For example, you can create a flow with the **Simple Agent** template, add your OpenAI API key to the **Agent** component, and then click **Playground** to chat with the flow and generate traffic.
@@ -85,10 +85,10 @@ This can take a few minutes.
 
 3. To view metrics for your flows, go to the **LLM Tracing** tab.
 
-    Each Langflow execution generates two traces in Arize:
+    Each Portals execution generates two traces in Arize:
 
     * The `AgentExecutor` trace is the Arize trace of LangChain's `AgentExecutor`.
-    * The `UUID` trace is the trace of the Langflow components.
+    * The `UUID` trace is the trace of the Portals components.
 
 4. To view traces, go to the **Traces** tab.
 

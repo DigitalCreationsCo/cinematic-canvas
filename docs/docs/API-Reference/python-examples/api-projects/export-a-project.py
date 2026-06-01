@@ -12,6 +12,6 @@ headers = {
 response = requests.request("GET", url, headers=headers)
 response.raise_for_status()
 
-with open("langflow-project.zip", "wb") as f:
+with open("portals-project.zip", "wb") as f:
     f.write(response.content)
-print("Saved response to langflow-project.zip")
+print("Saved response to portals-project.zip")

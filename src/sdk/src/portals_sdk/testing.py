@@ -82,7 +82,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         },
     }
 
-    # portals-sdk and lfx can both be installed in the same environment and
+    # portals-sdk and px can both be installed in the same environment and
     # expose the same remote-testing flags. Keep registration idempotent so
     # pytest plugin auto-discovery can load both entry points safely.
     for flag, kwargs in options.items():

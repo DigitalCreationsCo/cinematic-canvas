@@ -6,3 +6,4 @@ AssetVersions is the data record with version number.
 Review schema in src/shared/db/schema.ts for table structure.
 
 Critical: Assets are dependent to entities and can't be created before the linked entity is created.
+                

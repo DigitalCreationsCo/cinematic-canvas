@@ -6,7 +6,7 @@ slug: /bundles-vertexai
 import Icon from "@site/src/components/icon";
 import PartialParams from '@site/docs/_partial-hidden-params.mdx';
 
-<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Langflow.
+<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Portals.
 
 This page describes the components that are available in the **Vertex AI** bundle.
 
@@ -75,36 +75,36 @@ The **Vertex AI Embeddings** and **Vertex AI** components authenticate with the 
 These components require that you provide a service account JSON file in the **Credentials** parameter (`credentials`).
 You can either provide the file directly in your component's settings or you can use a [`GOOGLE_APPLICATION_CREDENTIALS` environment variable](https://cloud.google.com/docs/authentication/application-default-credentials) to reference the path to your JSON file.
 
-The following steps explain how to create a service account for Langflow, create a service account JSON key file, and then use the JSON key file in Langflow:
+The following steps explain how to create a service account for Portals, create a service account JSON key file, and then use the JSON key file in Portals:
 
 1. If you haven't done so already, [enable the Vertex AI APIs in your Google Cloud project](https://cloud.google.com/vertex-ai/docs/start/cloud-environment).
 
 2. Create a [service account](https://cloud.google.com/iam/docs/service-account-overview) in your Google Cloud project.
 
-    It is recommended that you [create a custom service account for Vertex AI](https://cloud.google.com/vertex-ai/docs/general/custom-service-account) because Langflow uses this account to access the Vertex AI APIs.
+    It is recommended that you [create a custom service account for Vertex AI](https://cloud.google.com/vertex-ai/docs/general/custom-service-account) because Portals uses this account to access the Vertex AI APIs.
 
 3. Assign the **Vertex AI Service Agent** role to the service account.
 
-    This role allows Langflow to access Vertex AI resources.
+    This role allows Portals to access Vertex AI resources.
     For more information, see [Vertex AI access control with IAM](https://cloud.google.com/vertex-ai/docs/general/access-control).
 
-4. [Create a service account key](https://cloud.google.com/iam/docs/keys-create-delete#console) in JSON format for your Langflow Vertex AI service account.
+4. [Create a service account key](https://cloud.google.com/iam/docs/keys-create-delete#console) in JSON format for your Portals Vertex AI service account.
 
     When you click **Create**, the JSON key file is downloaded.
 
-5. In Langflow, create or open a flow with the **Vertex AI** or **Vertex AI Embeddings** component.
+5. In Portals, create or open a flow with the **Vertex AI** or **Vertex AI Embeddings** component.
 
 6. In the component's **Credentials** field, do one of the following:
 
     * Select your service account JSON file directly.
 
     * Leave the **Credentials** field empty if you want to pull the key file from an environment variable.
-    Then, you must provide the path to your JSON file in a `GOOGLE_APPLICATION_CREDENTIALS` environment variable that is set somewhere relative to your Langflow instance.
-    For example, you can set the environment variable in your terminal, your Langflow `.env` file, or otherwise in the environment where your Langflow server or application runs.
+    Then, you must provide the path to your JSON file in a `GOOGLE_APPLICATION_CREDENTIALS` environment variable that is set somewhere relative to your Portals instance.
+    For example, you can set the environment variable in your terminal, your Portals `.env` file, or otherwise in the environment where your Portals server or application runs.
 
-    ![Select a local JSON key file for the Vertex AI component](/img/configure-vertex-ai-credentials-in-langflow.gif)
+    ![Select a local JSON key file for the Vertex AI component](/img/configure-vertex-ai-credentials-in-portals.gif)
 
-7. Run your flow to verify that Langflow can use the service account credentials successfully.
+7. Run your flow to verify that Portals can use the service account credentials successfully.
 
     For example, in a flow with **Chat Input**, **Chat Output**, and **Vertex AI** components, you can open the **Playground** and try chatting with the LLM.
     If the LLM responds, then the credentials are configured correctly.

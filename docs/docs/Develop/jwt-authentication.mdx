@@ -6,7 +6,7 @@ slug: /jwt-authentication
 import Tabs from "@theme/Tabs";
 import TabItem from "@theme/TabItem";
 
-Langflow supports symmetric or asymmetric JSON Web Tokens (JWT) for user authentication and authorization.
+Portals supports symmetric or asymmetric JSON Web Tokens (JWT) for user authentication and authorization.
 
 JWT is an [open standard](https://tools.ietf.org/html/rfc7519) for securely transmitting information between parties as a JSON object.
 Use JWT to create credentials that automatically expire, enable stateless authentication without database storage, and work across distributed systems.
@@ -16,7 +16,7 @@ JWT authentication with the HS256 algorithm is enabled by default, but can be co
 <details closed>
 <summary>About the JWT structure and contents</summary>
 
-When a user logs in with their username and password at the `/api/v1/login` endpoint, Langflow validates the credentials and creates a JWT token containing the user's identity and expiration time. This token is then used for subsequent API requests instead of sending credentials with each request.
+When a user logs in with their username and password at the `/api/v1/login` endpoint, Portals validates the credentials and creates a JWT token containing the user's identity and expiration time. This token is then used for subsequent API requests instead of sending credentials with each request.
 
 A JWT consists of three parts separated by dots (`.`):
 
@@ -35,7 +35,7 @@ You can paste this example JWT to decode the actual JSON data at [jwt.io](https:
 
 ## Configure JWT environment variables
 
-Configure JWT authentication in Langflow using the following environment variables:
+Configure JWT authentication in Portals using the following environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -48,17 +48,17 @@ Configure JWT authentication in Langflow using the following environment variabl
 
 ## Configure signing algorithms
 
-Langflow supports multiple signing algorithms and both symmetric (HS256) and asymmetric (RS256, RS512) JWTs.
+Portals supports multiple signing algorithms and both symmetric (HS256) and asymmetric (RS256, RS512) JWTs.
 
 Which method you choose depends upon your deployment's requirements.
 
 ### HS256 (Default)
 
 HS256 is the default JWT algorithm, with a good security level for single-server deployments.
-Langflow automatically generates and persists a secret key.
-No configuration is necessary, but if you want to explicitly set it in the Langflow `.env`, the default value is `LANGFLOW_ALGORITHM=HS256`.
+Portals automatically generates and persists a secret key.
+No configuration is necessary, but if you want to explicitly set it in the Portals `.env`, the default value is `LANGFLOW_ALGORITHM=HS256`.
 
-To generate a custom secure key instead of using the Langflow-generated secret key, do the following:
+To generate a custom secure key instead of using the Portals-generated secret key, do the following:
 
 1. Generate a secure secret key with the Python secrets module or OpenSSL.
     The key must be at least 32 characters long.
@@ -87,8 +87,8 @@ The RS256 signing algorithm provides better security for production deployments 
 The private key signs tokens, and the public verifies them.
 The private key must be kept secret, while the public key can be safely shared.
 
-To automatically generate a private and public key pair and store it in the Langflow [`LANGFLOW_CONFIG_DIR`](/logging), set `LANGFLOW_ALGORITHM="RS256"` in your Langflow `.env`.
-When Langflow starts, it will:
+To automatically generate a private and public key pair and store it in the Portals [`LANGFLOW_CONFIG_DIR`](/logging), set `LANGFLOW_ALGORITHM="RS256"` in your Portals `.env`.
+When Portals starts, it will:
 1. Check if RSA keys exist in the configuration directory.
 2. If not, generate a new 2048-bit RSA key pair.
 3. Save the keys to `private_key.pem` and `public_key.pem`.
@@ -104,7 +104,7 @@ MIIEvgIBADANBgkqhkiG9w0BAQEF...
 -----END PRIVATE KEY-----"
 ```
 
-To use a custom key pair, set both keys in your Langflow `.env` file.
+To use a custom key pair, set both keys in your Portals `.env` file.
 
 ```bash
 LANGFLOW_ALGORITHM=RS256
@@ -140,8 +140,8 @@ RS512 uses the same RSA format of private and public keys as RS256, but uses the
 The private key signs tokens, and the public verifies them.
 The private key must be kept secret, while the public key can be safely shared.
 
-To automatically generate a private and public key pair and store it in the Langflow [`LANGFLOW_CONFIG_DIR`](/logging), set `LANGFLOW_ALGORITHM="RS512"` in your Langflow `.env`.
-When Langflow starts, it does the following:
+To automatically generate a private and public key pair and store it in the Portals [`LANGFLOW_CONFIG_DIR`](/logging), set `LANGFLOW_ALGORITHM="RS512"` in your Portals `.env`.
+When Portals starts, it does the following:
 1. Check if RSA keys exist in the configuration directory.
 2. If not, generate a new 2048-bit RSA key pair.
 3. Save the keys to `private_key.pem` and `public_key.pem`.
@@ -157,7 +157,7 @@ MIIEvgIBADANBgkqhkiG9w0BAQEF...
 -----END PRIVATE KEY-----"
 ```
 
-To use a custom key pair, set both keys in your Langflow `.env` file.
+To use a custom key pair, set both keys in your Portals `.env` file.
 
 ```bash
 LANGFLOW_ALGORITHM=RS512
@@ -195,7 +195,7 @@ Use Docker or Kubernetes with RS256 (asymmetric) for production deployments requ
 
 ### Docker with HS256
 
-1. Add the value for your JWT secret key to the Langflow `.env` file.
+1. Add the value for your JWT secret key to the Portals `.env` file.
     ```bash
     JWT_SECRET_KEY=your-secret-key
     ```
@@ -204,35 +204,35 @@ Use Docker or Kubernetes with RS256 (asymmetric) for production deployments requ
     ```yaml
     version: "3.8"
     services:
-      langflow:
-        image: langflowai/langflow:latest
+      portals:
+        image: portalsai/portals:latest
         environment:
           - LANGFLOW_ALGORITHM=HS256
           - LANGFLOW_SECRET_KEY=${JWT_SECRET_KEY}  # Set in .env file
         volumes:
-          - langflow_data:/app/langflow
+          - portals_data:/app/portals
 
     volumes:
-      langflow_data:
+      portals_data:
     ```
 
 ### Docker with RS256
 
-To use Langflow's automatically generated key pair, set the `RS256` signing algorithm in the Docker Compose file.
+To use Portals's automatically generated key pair, set the `RS256` signing algorithm in the Docker Compose file.
 
 ```yaml
 # docker-compose.yml
 version: "3.8"
 services:
-  langflow:
-    image: langflowai/langflow:latest
+  portals:
+    image: portalsai/portals:latest
     environment:
       - LANGFLOW_ALGORITHM=RS256
     volumes:
-      - langflow_data:/app/langflow  # Keys stored here
+      - portals_data:/app/portals  # Keys stored here
 
 volumes:
-  langflow_data:
+  portals_data:
 ```
 
 To mount an existing key pair, set the `RS256` signing algorithm and mount the private and public keys as volumes.
@@ -241,29 +241,29 @@ To mount an existing key pair, set the `RS256` signing algorithm and mount the p
 # docker-compose.yml
 version: "3.8"
 services:
-  langflow:
-    image: langflowai/langflow:latest
+  portals:
+    image: portalsai/portals:latest
     environment:
       - LANGFLOW_ALGORITHM=RS256
     volumes:
-      - ./keys/private_key.pem:/app/langflow/private_key.pem:ro
-      - ./keys/public_key.pem:/app/langflow/public_key.pem:ro
-      - langflow_data:/app/langflow
+      - ./keys/private_key.pem:/app/portals/private_key.pem:ro
+      - ./keys/public_key.pem:/app/portals/public_key.pem:ro
+      - portals_data:/app/portals
 
 volumes:
-  langflow_data:
+  portals_data:
 ```
 
 ### Kubernetes with RS256
 
-Store JWT keys as Kubernetes Secrets and reference them in your Langflow deployment configuration.
+Store JWT keys as Kubernetes Secrets and reference them in your Portals deployment configuration.
 
 ```yaml
 # jwt-secret.yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: langflow-jwt-keys
+  name: portals-jwt-keys
 type: Opaque
 stringData:
   algorithm: "RS256"
@@ -276,38 +276,38 @@ stringData:
     MIIBIjANBgkqhkiG9w0BAQEFAAOC...
     -----END PUBLIC KEY-----
 ---
-# langflow-deployment.yaml
+# portals-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: langflow
+  name: portals
 spec:
   template:
     spec:
       containers:
-        - name: langflow
-          image: langflowai/langflow:latest
+        - name: portals
+          image: portalsai/portals:latest
           env:
             - name: LANGFLOW_ALGORITHM
               valueFrom:
                 secretKeyRef:
-                  name: langflow-jwt-keys
+                  name: portals-jwt-keys
                   key: algorithm
             - name: LANGFLOW_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: langflow-jwt-keys
+                  name: portals-jwt-keys
                   key: private-key
             - name: LANGFLOW_PUBLIC_KEY
               valueFrom:
                 secretKeyRef:
-                  name: langflow-jwt-keys
+                  name: portals-jwt-keys
                   key: public-key
 ```
 
 ## Configure token expiration
 
-To configure access and refresh token expiration times, set the values in the Langflow `.env`.
+To configure access and refresh token expiration times, set the values in the Portals `.env`.
 
 ```bash
 LANGFLOW_ACCESS_TOKEN_EXPIRE_SECONDS=3600  # 1 hour
@@ -324,8 +324,8 @@ This maintains the user's session without prompting for credentials again.
 
 ## See also
 
-- [Langflow API keys and authentication](/api-keys-and-authentication)
+- [Portals API keys and authentication](/api-keys-and-authentication)
 - [JWT.io](https://jwt.io/)
 - [RFC 7519 specification](https://tools.ietf.org/html/rfc7519)
 - [OWASP JWT Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
-- [Langflow Security Best Practices](/security)
+- [Portals Security Best Practices](/security)

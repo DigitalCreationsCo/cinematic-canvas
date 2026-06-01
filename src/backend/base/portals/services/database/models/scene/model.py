@@ -2,8 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from sqlalchemy import Float, Index, String, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlmodel import Column, Field, SQLModel
+from sqlmodel import JSON, Column, Field, SQLModel
 
 
 class SceneBase(SQLModel):
@@ -29,24 +28,24 @@ class SceneBase(SQLModel):
     shot_type: str
     camera_angle: str
     camera_movement: str
-    composition: dict = Field(sa_column=Column(JSONB, nullable=False))
-    lighting: dict = Field(sa_column=Column(JSONB, nullable=False))
+    composition: dict = Field(sa_column=Column(JSON, nullable=False))
+    lighting: dict = Field(sa_column=Column(JSON, nullable=False))
     continuity_notes: list[str] = Field(
         default_factory=list,
         sa_column=Column(
             "continuity_notes",
-            ARRAY(String),
+            String,
             nullable=False,
-            server_default=text("'{}'::text[]"),
+            server_default=text(""),
         ),
     )
     character_reference_ids: list[str] = Field(
         default_factory=list,
         sa_column=Column(
             "character_reference_ids",
-            ARRAY(String),
+            String,
             nullable=False,
-            server_default=text("'{}'::text[]"),
+            server_default=text(""),
         ),
     )
     location_reference_id: str

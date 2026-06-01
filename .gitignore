@@ -27,7 +27,7 @@ news-aggregated.json
 .claude
 member_servers.json
 # Component index cache (user-specific)
-**/.cache/lfx/
+**/.cache/px/
 
 # data files used for desktop registration
 data/user
@@ -35,7 +35,7 @@ data/user
 sso-config.yaml
 AGENTS.md
 CLAUDE.local.md
-langflow.log.*
+portals.log.*
 tmp_toolguard/
 
 #whitesource

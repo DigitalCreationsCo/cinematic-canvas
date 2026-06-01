@@ -1,12 +1,26 @@
 {
-    "editor.fontSize": 12,
+    "editor.fontSize": 11,
     "editor.lineHeight": 1.25,
-    "terminal.integrated.fontSize": 12,
+    "terminal.integrated.fontSize": 9.5,
     "files.autoSave": "off",
-    "js/ts.tsdk.path": "node_modules/typescript/lib",
-    "typescript.enablePromptUseWorkspaceTsdk": true,
-    "typescript.disableAutomaticTypeAcquisition": true,
-    "typescript.preferences.importModuleSpecifier": "non-relative",
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true
+    },
+    "js/ts": {
+        "tsdk": {
+            "path": "node_modules/typescript/lib",
+            "promptToUseWorkspaceVersion": true,
+        },
+        "tsserver": {
+            "automaticTypeAcquisition": {
+                "enabled": false,
+            },
+        },
+        "preferences": {
+            "importModuleSpecifier": "non-relative",
+        }
+    },
     "typescript.tsconfig": "./tsconfig.editor.json",
     "tailwindCSS.lint.suggestCanonicalClasses": "none",
     "tailwindCSS.lint.suggestAppliedClasses": "ignore",
@@ -26,5 +40,4 @@
         "**/.git/subtree-cache/**": true,
         "**/coverage/**": true
     },
-    "typescript.tsdk": "node_modules/typescript/lib"
 }

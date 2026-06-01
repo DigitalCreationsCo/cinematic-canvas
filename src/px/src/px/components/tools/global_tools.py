@@ -1,32 +1,24 @@
 # global_tools.py
-import uuid
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import uuid
 
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel, Field
 
+from px.components.helpers.create_flow_nodes import CreateFlowNodesInput, create_flow_nodes
 from px.components.tools.generate_characters import make_generate_characters_tool
 
 
-class CreateFlowNodesInput(BaseModel):
-    nodes: list[dict] = Field(..., description="React Flow node objects to render.")
-    edges: list[dict] = Field(default_factory=list, description="Optional edges.")
-
-
-def create_flow_nodes(nodes: list[dict], edges: list[dict], event_manager) -> str:
-    """Takes event_manager explicitly. Callable by anyone with the reference."""
-    if event_manager:
-        event_manager.on_custom_event(data={"event_type": "canvas_update", "payload": {"nodes": nodes, "edges": edges}})
-        return f"Successfully rendered {len(nodes)} nodes on the canvas."
-    return "No active event manager; no UI updates emitted."
-
-
-def make_create_flow_nodes_tool(event_manager) -> StructuredTool:
+def make_create_flow_nodes_tool(event_manager: Any) -> StructuredTool:
     """Factory: closes over event_manager so the LLM never sees it.
 
     Called once per vertex build, not at module import time.
     """
 
-    def _func(nodes: list[dict], edges: list[dict] = None) -> str:
+    def _func(nodes: list[dict], edges: list[dict] | None = None) -> str:
         return create_flow_nodes(nodes, edges or [], event_manager)
 
     return StructuredTool.from_function(

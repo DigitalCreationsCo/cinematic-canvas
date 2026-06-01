@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import Index, text
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlmodel import Column, Field, SQLModel
+from sqlalchemy import Index
+from sqlmodel import JSON, Column, Field, SQLModel
 
 
 class AssetVersionBase(SQLModel):
@@ -14,9 +13,9 @@ class AssetVersionBase(SQLModel):
     type: str
     metadata_: dict = Field(
         default_factory=dict,
-        sa_column=Column("metadata", JSONB, nullable=True, server_default=text("'{}'::jsonb")),
+        sa_column=Column("metadata", JSON, nullable=True),
     )
-    user_feedback: dict | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    user_feedback: dict | None = Field(default=None, sa_column=Column(JSON, nullable=True))
     started_at: datetime | None = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
     created_at: datetime | None = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
 

@@ -5,7 +5,7 @@ slug: /api-flows
 
 Use the `/flows` endpoint to create, read, update, and delete flows.
 
-If you want to use the Langflow API to run a flow, see [Flow trigger endpoints](/api-flows-run).
+If you want to use the Portals API to run a flow, see [Flow trigger endpoints](/api-flows-run).
 
 ## Create flow
 
@@ -248,7 +248,7 @@ curl -X DELETE \
 
 Exports specified flows to a ZIP file.
 
-This endpoint downloads a ZIP file containing [Langflow JSON files](/concepts-flows-import#langflow-json-file-contents) for each flow ID listed in the request body.
+This endpoint downloads a ZIP file containing [Portals JSON files](/concepts-flows-import#portals-json-file-contents) for each flow ID listed in the request body.
 
 ```bash
 curl -X POST \
@@ -260,7 +260,7 @@ curl -X POST \
   "e1e40c77-0541-41a9-88ab-ddb3419398b5",
   "92f9a4c5-cfc8-4656-ae63-1f0881163c28"
 ]' \
-  --output langflow-flows.zip
+  --output portals-flows.zip
 ```
 
 <details>
@@ -276,7 +276,7 @@ curl -X POST \
 
 ## Import flows
 
-Imports flows by uploading a [Langflow-compatible JSON file](/concepts-flows-import#langflow-json-file-contents).
+Imports flows by uploading a [Portals-compatible JSON file](/concepts-flows-import#portals-json-file-contents).
 
 To specify a target project for the flow, include the query parameter `folder_id`.
 The target `folder_id` must already exist before uploading a flow. Call the [/api/v1/projects/](/api-projects#read-projects) endpoint for a list of available folders and projects.

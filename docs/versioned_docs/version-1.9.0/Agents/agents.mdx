@@ -1,5 +1,5 @@
 ---
-title: Use Langflow agents
+title: Use Portals agents
 slug: /agents
 ---
 
@@ -8,7 +8,7 @@ import PartialParams from '@site/docs/_partial-hidden-params.mdx';
 import PartialAgentsWork from '@site/docs/_partial-agents-work.mdx';
 import PartialGlobalModelProviders from '@site/docs/_partial-global-model-providers.mdx';
 
-Langflow's [**Agent** component](/components-agents) is critical for building agent flows.
+Portals's [**Agent** component](/components-agents) is critical for building agent flows.
 This component provides everything you need to create an agent, including multiple Large Language Model (LLM) providers, tool calling, and custom instructions.
 It simplifies agent configuration so you can focus on application development.
 
@@ -16,8 +16,8 @@ It simplifies agent configuration so you can focus on application development.
 
 ## Use the Agent component in a flow
 
-The following steps explain how to create an agent flow in Langflow from a blank flow.
-For a prebuilt example, use the **Simple Agent** template or the [Langflow quickstart](/get-started-quickstart).
+The following steps explain how to create an agent flow in Portals from a blank flow.
+For a prebuilt example, use the **Simple Agent** template or the [Portals quickstart](/get-started-quickstart).
 
 1. Click **New Flow**, and then click **Blank Flow**.
 2. Add an **Agent** component to your flow.
@@ -70,7 +70,7 @@ For more information, see [Agent component parameters](#agent-component-paramete
 
 You've successfully created a basic agent flow that uses some generic tools.
 
-To continue building on this tutorial, try connecting other tool components or [use Langflow as an MCP client](/mcp-client) to support more complex and specialized tasks.
+To continue building on this tutorial, try connecting other tool components or [use Portals as an MCP client](/mcp-client) to support more complex and specialized tasks.
 
 For a multi-agent example, see [Use an agent as a tool](/agents-tools#use-an-agent-as-a-tool).
 
@@ -108,7 +108,7 @@ These instructions are applied in addition to the **Input** (`input_value`), whi
 
 Agents are most useful when they have the appropriate tools available to complete requests.
 
-An **Agent** component can use any Langflow component as a tool, including other agents and MCP servers.
+An **Agent** component can use any Portals component as a tool, including other agents and MCP servers.
 
 To attach a component as a tool, you must enable **Tool Mode** on the component that you want to attach, and then attach it to the **Agent** component's **Tools** port.
 For more information, see [Configure tools for agents](/agents-tools).
@@ -119,13 +119,13 @@ To allow agents to use tools from MCP servers, use the [**MCP Tools** component]
 
 ### Agent memory
 
-Langflow agents have built-in chat memory that is enabled by default.
+Portals agents have built-in chat memory that is enabled by default.
 This memory allows them to retrieve and reference messages from previous conversations, maintaining a rolling context window for each chat session ID.
 
 Chat memories are grouped by [session ID (`session_id`)](/session-id).
 It is recommended to use custom session IDs if you need to segregate chat memory for different users or applications that run the same flow.
 
-By default, the **Agent** component uses your Langflow installation's storage, and it retrieves a limited number of chat messages, which you can configure with the **Number of Chat History Messages** parameter.
+By default, the **Agent** component uses your Portals installation's storage, and it retrieves a limited number of chat messages, which you can configure with the **Number of Chat History Messages** parameter.
 
 The **Message History** component isn't required for default chat memory, but it is required if you want to use external chat memory like Mem0.
 Additionally, the **Message History** component provides more options for sorting, filtering, and limiting memories. Although, most of these options are built-in to the **Agent** component with default values.

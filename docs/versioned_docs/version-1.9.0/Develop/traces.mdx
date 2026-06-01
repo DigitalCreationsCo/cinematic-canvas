@@ -7,17 +7,17 @@ import Icon from "@site/src/components/icon";
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Langflow’s **Traces** feature records detailed execution traces for your flows and components so that you can debug issues, measure latency, and track token usage without relying on external observability services.
+Portals’s **Traces** feature records detailed execution traces for your flows and components so that you can debug issues, measure latency, and track token usage without relying on external observability services.
 
-Trace data is stored in the Langflow database in the `trace` and `span` tables.
+Trace data is stored in the Portals database in the `trace` and `span` tables.
 Trace data is presented in the **Flow Activity** and **Trace Details** pages in the UI, and can be retrieved from the `/monitor/traces` API endpoint.
 
 Traces are enabled by default.
 
-Langflow traces can run alongside supported third-party tracing providers.
-If both are enabled, Langflow stores native traces in the `trace` and `span` database tables for the **Trace View**, and also sends tracing data to the configured external provider.
+Portals traces can run alongside supported third-party tracing providers.
+If both are enabled, Portals stores native traces in the `trace` and `span` database tables for the **Trace View**, and also sends tracing data to the configured external provider.
 
-To disable Langflow native tracing and use only an external tracing provider, set `LANGFLOW_NATIVE_TRACING=false`.
+To disable Portals native tracing and use only an external tracing provider, set `LANGFLOW_NATIVE_TRACING=false`.
 
 ## What traces capture
 
@@ -37,7 +37,7 @@ Each span includes:
 
 ## View traces in the UI
 
-To view traces in the Langflow UI, do the following:
+To view traces in the Portals UI, do the following:
 1. Run a flow, such as the Simple Agent starter flow in the [Quickstart](/get-started-quickstart).
 2. Click <Icon name="Activity" aria-hidden="true"/> **Traces**.
    The **Flow Activity** page opens.

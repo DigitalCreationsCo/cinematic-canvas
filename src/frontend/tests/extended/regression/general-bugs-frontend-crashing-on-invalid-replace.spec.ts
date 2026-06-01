@@ -22,10 +22,10 @@ test(
     await page.getByTestId("code-button-modal").last().click();
 
     const problematicCode = `
-# from lfx.field_typing import Data
-from lfx.custom.custom_component.component import Component
-from lfx.io import MessageTextInput, Output
-from lfx.schema.data import Data
+# from px.field_typing import Data
+from px.custom.custom_component.component import Component
+from px.io import MessageTextInput, Output
+from px.schema.data import Data
 
 
 class CustomComponent(Component):

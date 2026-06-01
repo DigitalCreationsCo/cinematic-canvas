@@ -1,6 +1,6 @@
-# Mocking Guide for Langflow Tests
+# Mocking Guide for Portals Tests
 
-All mocking in Langflow uses Jest APIs. Never use Vitest (`vi.*`) APIs.
+All mocking in Portals uses Jest APIs. Never use Vitest (`vi.*`) APIs.
 
 ## Quick Reference
 
@@ -36,7 +36,7 @@ jest.unmock("@/stores/darkStore");
 
 ### Mocking Axios Calls
 
-Langflow uses Axios via a configured API instance. Mock the API module:
+Portals uses Axios via a configured API instance. Mock the API module:
 
 ```typescript
 import api from "@/controllers/API/api";
@@ -110,7 +110,7 @@ jest.mock("@/controllers/API", () => ({
 
 ## Zustand Store Mocking
 
-Langflow does NOT have a global Zustand auto-mock. You have two options:
+Portals does NOT have a global Zustand auto-mock. You have two options:
 
 ### Option 1: Use Real Stores with `setState()` (Preferred)
 
@@ -210,7 +210,7 @@ describe("useMyStore", () => {
 
 ## React Router Mocking
 
-Langflow uses `react-router-dom` v6 (NOT Next.js routing).
+Portals uses `react-router-dom` v6 (NOT Next.js routing).
 
 ### Wrapping with MemoryRouter
 

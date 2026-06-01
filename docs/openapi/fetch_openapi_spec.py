@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Pull OpenAPI spec files from the langflow-ai/sdk repository.
+"""Pull OpenAPI spec files from the portals-ai/sdk repository.
 
 This script is only for syncing external SDK specs when needed.
-It is not used by the main Langflow OpenAPI generation workflow,
+It is not used by the main Portals OpenAPI generation workflow,
 which now relies on `docs/openapi/generate_openapi.py`.
 
 Usage:
@@ -18,10 +18,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-REPO = "langflow-ai/sdk"
+REPO = "portals-ai/sdk"
 BRANCH = "main"
 SPECS_DIR = "specs"
-FILES = ["langflow-workflows-openapi.json", "langflow-openapi.json"]
+FILES = ["portals-workflows-openapi.json", "portals-openapi.json"]
 
 
 def fetch_file(repo: str, filepath: str, branch: str) -> str:

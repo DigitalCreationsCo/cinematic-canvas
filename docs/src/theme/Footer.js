@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Footer from "@theme-original/Footer";
-import { useDocSearchKeyboardEvents } from '@docsearch/react';
+import { useDocSearchKeyboardEvents } from "@docsearch/react";
 
 export default function FooterWrapper(props) {
   const [isHovered, setIsHovered] = useState(false);
@@ -18,29 +18,29 @@ export default function FooterWrapper(props) {
       ref={searchButtonRef}
       onClick={() => {
         // This will trigger Docusaurus's default search modal
-        document.querySelector('.DocSearch-Button')?.click();
+        document.querySelector(".DocSearch-Button")?.click();
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
-        position: 'fixed',
-        right: '21px',
-        bottom: '21px',
+        position: "fixed",
+        right: "21px",
+        bottom: "21px",
         zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        cursor: 'pointer',
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        cursor: "pointer",
       }}
     >
       {isHovered && (
         <div
           style={{
             backgroundColor: "#f6f6f6",
-            padding: '8px 16px',
-            borderRadius: '20px',
-            color: '#000',
-            fontSize: '14px',
+            padding: "8px 16px",
+            borderRadius: "20px",
+            color: "#000",
+            fontSize: "14px",
             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
           }}
         >
@@ -60,7 +60,7 @@ export default function FooterWrapper(props) {
         }}
       >
         <img
-          src="/img/langflow-icon-black-transparent.svg"
+          src="/img/portals-icon-black-transparent.svg"
           style={{ width: "40px" }}
           alt="Search"
         />

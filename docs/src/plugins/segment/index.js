@@ -56,7 +56,7 @@ function pluginSegment(context, options = {}) {
                   }
                 },
                 "commonProperties": {
-                  "productTitle": "IBM Elite Support for Langflow",
+                  "productTitle": "IBM Elite Support for Portals",
                   "productCode": "5900BUB",
                   "productCodeType": "WWPC",
                   "UT30": "30AS5",

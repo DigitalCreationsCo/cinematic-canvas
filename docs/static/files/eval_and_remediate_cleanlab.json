@@ -9,16 +9,12 @@
             "dataType": "ChatInput",
             "id": "ChatInput-wk8QV",
             "name": "message",
-            "output_types": [
-              "Message"
-            ]
+            "output_types": ["Message"]
           },
           "targetHandle": {
             "fieldName": "input_value",
             "id": "OpenAIModel-1P8nP",
-            "inputTypes": [
-              "Message"
-            ],
+            "inputTypes": ["Message"],
             "type": "str"
           }
         },
@@ -37,16 +33,12 @@
             "dataType": "Prompt",
             "id": "Prompt-MabiH",
             "name": "prompt",
-            "output_types": [
-              "Message"
-            ]
+            "output_types": ["Message"]
           },
           "targetHandle": {
             "fieldName": "system_message",
             "id": "OpenAIModel-1P8nP",
-            "inputTypes": [
-              "Message"
-            ],
+            "inputTypes": ["Message"],
             "type": "str"
           }
         },
@@ -65,16 +57,12 @@
             "dataType": "OpenAIModel",
             "id": "OpenAIModel-1P8nP",
             "name": "text_output",
-            "output_types": [
-              "Message"
-            ]
+            "output_types": ["Message"]
           },
           "targetHandle": {
             "fieldName": "response",
             "id": "CleanlabEvaluator-Pfyl2",
-            "inputTypes": [
-              "Message"
-            ],
+            "inputTypes": ["Message"],
             "type": "str"
           }
         },
@@ -93,16 +81,12 @@
             "dataType": "Prompt",
             "id": "Prompt-MabiH",
             "name": "prompt",
-            "output_types": [
-              "Message"
-            ]
+            "output_types": ["Message"]
           },
           "targetHandle": {
             "fieldName": "system_prompt",
             "id": "CleanlabEvaluator-Pfyl2",
-            "inputTypes": [
-              "Message"
-            ],
+            "inputTypes": ["Message"],
             "type": "str"
           }
         },
@@ -121,16 +105,12 @@
             "dataType": "ChatInput",
             "id": "ChatInput-wk8QV",
             "name": "message",
-            "output_types": [
-              "Message"
-            ]
+            "output_types": ["Message"]
           },
           "targetHandle": {
             "fieldName": "prompt",
             "id": "CleanlabEvaluator-Pfyl2",
-            "inputTypes": [
-              "Message"
-            ],
+            "inputTypes": ["Message"],
             "type": "str"
           }
         },
@@ -149,16 +129,12 @@
             "dataType": "CleanlabEvaluator",
             "id": "CleanlabEvaluator-Pfyl2",
             "name": "score",
-            "output_types": [
-              "number"
-            ]
+            "output_types": ["number"]
           },
           "targetHandle": {
             "fieldName": "score",
             "id": "CleanlabRemediator-YB1Ss",
-            "inputTypes": [
-              "number"
-            ],
+            "inputTypes": ["number"],
             "type": "other"
           }
         },
@@ -177,16 +153,12 @@
             "dataType": "CleanlabEvaluator",
             "id": "CleanlabEvaluator-Pfyl2",
             "name": "explanation",
-            "output_types": [
-              "Message"
-            ]
+            "output_types": ["Message"]
           },
           "targetHandle": {
             "fieldName": "explanation",
             "id": "CleanlabRemediator-YB1Ss",
-            "inputTypes": [
-              "Message"
-            ],
+            "inputTypes": ["Message"],
             "type": "str"
           }
         },
@@ -205,16 +177,12 @@
             "dataType": "CleanlabEvaluator",
             "id": "CleanlabEvaluator-Pfyl2",
             "name": "response_passthrough",
-            "output_types": [
-              "Message"
-            ]
+            "output_types": ["Message"]
           },
           "targetHandle": {
             "fieldName": "response",
             "id": "CleanlabRemediator-YB1Ss",
-            "inputTypes": [
-              "Message"
-            ],
+            "inputTypes": ["Message"],
             "type": "str"
           }
         },
@@ -233,9 +201,7 @@
           "display_name": "Chat Input",
           "id": "ChatInput-wk8QV",
           "node": {
-            "base_classes": [
-              "Message"
-            ],
+            "base_classes": ["Message"],
             "beta": false,
             "conditional_paths": [],
             "custom_fields": {},
@@ -267,9 +233,7 @@
                 "name": "message",
                 "selected": "Message",
                 "tool_mode": true,
-                "types": [
-                  "Message"
-                ],
+                "types": ["Message"],
                 "value": "__UNDEFINED__"
               }
             ],
@@ -282,9 +246,7 @@
                 "display_name": "Background Color",
                 "dynamic": false,
                 "info": "The background color of the icon.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "load_from_db": false,
                 "name": "background_color",
@@ -303,9 +265,7 @@
                 "display_name": "Icon",
                 "dynamic": false,
                 "info": "The icon of the message.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "load_from_db": false,
                 "name": "chat_icon",
@@ -334,7 +294,7 @@
                 "show": true,
                 "title_case": false,
                 "type": "code",
-                "value": "from langflow.base.data.utils import IMG_FILE_TYPES, TEXT_FILE_TYPES\nfrom langflow.base.io.chat import ChatComponent\nfrom langflow.inputs import BoolInput\nfrom langflow.io import (\n    DropdownInput,\n    FileInput,\n    MessageTextInput,\n    MultilineInput,\n    Output,\n)\nfrom langflow.schema.message import Message\nfrom langflow.utils.constants import (\n    MESSAGE_SENDER_AI,\n    MESSAGE_SENDER_NAME_USER,\n    MESSAGE_SENDER_USER,\n)\n\n\nclass ChatInput(ChatComponent):\n    display_name = \"Chat Input\"\n    description = \"Get chat inputs from the Playground.\"\n    icon = \"MessagesSquare\"\n    name = \"ChatInput\"\n    minimized = True\n\n    inputs = [\n        MultilineInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            value=\"\",\n            info=\"Message to be passed as input.\",\n            input_types=[],\n        ),\n        BoolInput(\n            name=\"should_store_message\",\n            display_name=\"Store Messages\",\n            info=\"Store the message in the history.\",\n            value=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"sender\",\n            display_name=\"Sender Type\",\n            options=[MESSAGE_SENDER_AI, MESSAGE_SENDER_USER],\n            value=MESSAGE_SENDER_USER,\n            info=\"Type of sender.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"sender_name\",\n            display_name=\"Sender Name\",\n            info=\"Name of the sender.\",\n            value=MESSAGE_SENDER_NAME_USER,\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"session_id\",\n            display_name=\"Session ID\",\n            info=\"The session ID of the chat. If empty, the current session ID parameter will be used.\",\n            advanced=True,\n        ),\n        FileInput(\n            name=\"files\",\n            display_name=\"Files\",\n            file_types=TEXT_FILE_TYPES + IMG_FILE_TYPES,\n            info=\"Files to be sent with the message.\",\n            advanced=True,\n            is_list=True,\n            temp_file=True,\n        ),\n        MessageTextInput(\n            name=\"background_color\",\n            display_name=\"Background Color\",\n            info=\"The background color of the icon.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"chat_icon\",\n            display_name=\"Icon\",\n            info=\"The icon of the message.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"text_color\",\n            display_name=\"Text Color\",\n            info=\"The text color of the name\",\n            advanced=True,\n        ),\n    ]\n    outputs = [\n        Output(display_name=\"Message\", name=\"message\", method=\"message_response\"),\n    ]\n\n    async def message_response(self) -> Message:\n        background_color = self.background_color\n        text_color = self.text_color\n        icon = self.chat_icon\n\n        message = await Message.create(\n            text=self.input_value,\n            sender=self.sender,\n            sender_name=self.sender_name,\n            session_id=self.session_id,\n            files=self.files,\n            properties={\n                \"background_color\": background_color,\n                \"text_color\": text_color,\n                \"icon\": icon,\n            },\n        )\n        if self.session_id and isinstance(message, Message) and self.should_store_message:\n            stored_message = await self.send_message(\n                message,\n            )\n            self.message.value = stored_message\n            message = stored_message\n\n        self.status = message\n        return message\n"
+                "value": "from portals.base.data.utils import IMG_FILE_TYPES, TEXT_FILE_TYPES\nfrom portals.base.io.chat import ChatComponent\nfrom portals.inputs import BoolInput\nfrom portals.io import (\n    DropdownInput,\n    FileInput,\n    MessageTextInput,\n    MultilineInput,\n    Output,\n)\nfrom portals.schema.message import Message\nfrom portals.utils.constants import (\n    MESSAGE_SENDER_AI,\n    MESSAGE_SENDER_NAME_USER,\n    MESSAGE_SENDER_USER,\n)\n\n\nclass ChatInput(ChatComponent):\n    display_name = \"Chat Input\"\n    description = \"Get chat inputs from the Playground.\"\n    icon = \"MessagesSquare\"\n    name = \"ChatInput\"\n    minimized = True\n\n    inputs = [\n        MultilineInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            value=\"\",\n            info=\"Message to be passed as input.\",\n            input_types=[],\n        ),\n        BoolInput(\n            name=\"should_store_message\",\n            display_name=\"Store Messages\",\n            info=\"Store the message in the history.\",\n            value=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"sender\",\n            display_name=\"Sender Type\",\n            options=[MESSAGE_SENDER_AI, MESSAGE_SENDER_USER],\n            value=MESSAGE_SENDER_USER,\n            info=\"Type of sender.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"sender_name\",\n            display_name=\"Sender Name\",\n            info=\"Name of the sender.\",\n            value=MESSAGE_SENDER_NAME_USER,\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"session_id\",\n            display_name=\"Session ID\",\n            info=\"The session ID of the chat. If empty, the current session ID parameter will be used.\",\n            advanced=True,\n        ),\n        FileInput(\n            name=\"files\",\n            display_name=\"Files\",\n            file_types=TEXT_FILE_TYPES + IMG_FILE_TYPES,\n            info=\"Files to be sent with the message.\",\n            advanced=True,\n            is_list=True,\n            temp_file=True,\n        ),\n        MessageTextInput(\n            name=\"background_color\",\n            display_name=\"Background Color\",\n            info=\"The background color of the icon.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"chat_icon\",\n            display_name=\"Icon\",\n            info=\"The icon of the message.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"text_color\",\n            display_name=\"Text Color\",\n            info=\"The text color of the name\",\n            advanced=True,\n        ),\n    ]\n    outputs = [\n        Output(display_name=\"Message\", name=\"message\", method=\"message_response\"),\n    ]\n\n    async def message_response(self) -> Message:\n        background_color = self.background_color\n        text_color = self.text_color\n        icon = self.chat_icon\n\n        message = await Message.create(\n            text=self.input_value,\n            sender=self.sender,\n            sender_name=self.sender_name,\n            session_id=self.session_id,\n            files=self.files,\n            properties={\n                \"background_color\": background_color,\n                \"text_color\": text_color,\n                \"icon\": icon,\n            },\n        )\n        if self.session_id and isinstance(message, Message) and self.should_store_message:\n            stored_message = await self.send_message(\n                message,\n            )\n            self.message.value = stored_message\n            message = stored_message\n\n        self.status = message\n        return message\n"
               },
               "files": {
                 "advanced": true,
@@ -403,10 +363,7 @@
                 "dynamic": false,
                 "info": "Type of sender.",
                 "name": "sender",
-                "options": [
-                  "Machine",
-                  "User"
-                ],
+                "options": ["Machine", "User"],
                 "placeholder": "",
                 "required": false,
                 "show": true,
@@ -420,9 +377,7 @@
                 "display_name": "Sender Name",
                 "dynamic": false,
                 "info": "Name of the sender.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "load_from_db": false,
                 "name": "sender_name",
@@ -440,9 +395,7 @@
                 "display_name": "Session ID",
                 "dynamic": false,
                 "info": "The session ID of the chat. If empty, the current session ID parameter will be used.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "load_from_db": false,
                 "name": "session_id",
@@ -477,9 +430,7 @@
                 "display_name": "Text Color",
                 "dynamic": false,
                 "info": "The text color of the name",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "load_from_db": false,
                 "name": "text_color",
@@ -521,9 +472,7 @@
           "display_name": "Prompt",
           "id": "Prompt-MabiH",
           "node": {
-            "base_classes": [
-              "Message"
-            ],
+            "base_classes": ["Message"],
             "beta": false,
             "conditional_paths": [],
             "custom_fields": {
@@ -534,9 +483,7 @@
             "documentation": "",
             "edited": false,
             "error": null,
-            "field_order": [
-              "template"
-            ],
+            "field_order": ["template"],
             "frozen": false,
             "full_path": null,
             "icon": "prompts",
@@ -561,9 +508,7 @@
                 "required_inputs": null,
                 "selected": "Message",
                 "tool_mode": true,
-                "types": [
-                  "Message"
-                ],
+                "types": ["Message"],
                 "value": "__UNDEFINED__"
               }
             ],
@@ -587,7 +532,7 @@
                 "show": true,
                 "title_case": false,
                 "type": "code",
-                "value": "from langflow.base.prompts.api_utils import process_prompt_template\nfrom langflow.custom import Component\nfrom langflow.inputs.inputs import DefaultPromptField\nfrom langflow.io import MessageTextInput, Output, PromptInput\nfrom langflow.schema.message import Message\nfrom langflow.template.utils import update_template_values\n\n\nclass PromptComponent(Component):\n    display_name: str = \"Prompt\"\n    description: str = \"Create a prompt template with dynamic variables.\"\n    icon = \"prompts\"\n    trace_type = \"prompt\"\n    name = \"Prompt\"\n\n    inputs = [\n        PromptInput(name=\"template\", display_name=\"Template\"),\n        MessageTextInput(\n            name=\"tool_placeholder\",\n            display_name=\"Tool Placeholder\",\n            tool_mode=True,\n            advanced=True,\n            info=\"A placeholder input for tool mode.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Prompt Message\", name=\"prompt\", method=\"build_prompt\"),\n    ]\n\n    async def build_prompt(self) -> Message:\n        prompt = Message.from_template(**self._attributes)\n        self.status = prompt.text\n        return prompt\n\n    def _update_template(self, frontend_node: dict):\n        prompt_template = frontend_node[\"template\"][\"template\"][\"value\"]\n        custom_fields = frontend_node[\"custom_fields\"]\n        frontend_node_template = frontend_node[\"template\"]\n        _ = process_prompt_template(\n            template=prompt_template,\n            name=\"template\",\n            custom_fields=custom_fields,\n            frontend_node_template=frontend_node_template,\n        )\n        return frontend_node\n\n    async def update_frontend_node(self, new_frontend_node: dict, current_frontend_node: dict):\n        \"\"\"This function is called after the code validation is done.\"\"\"\n        frontend_node = await super().update_frontend_node(new_frontend_node, current_frontend_node)\n        template = frontend_node[\"template\"][\"template\"][\"value\"]\n        # Kept it duplicated for backwards compatibility\n        _ = process_prompt_template(\n            template=template,\n            name=\"template\",\n            custom_fields=frontend_node[\"custom_fields\"],\n            frontend_node_template=frontend_node[\"template\"],\n        )\n        # Now that template is updated, we need to grab any values that were set in the current_frontend_node\n        # and update the frontend_node with those values\n        update_template_values(new_template=frontend_node, previous_template=current_frontend_node[\"template\"])\n        return frontend_node\n\n    def _get_fallback_input(self, **kwargs):\n        return DefaultPromptField(**kwargs)\n"
+                "value": "from portals.base.prompts.api_utils import process_prompt_template\nfrom portals.custom import Component\nfrom portals.inputs.inputs import DefaultPromptField\nfrom portals.io import MessageTextInput, Output, PromptInput\nfrom portals.schema.message import Message\nfrom portals.template.utils import update_template_values\n\n\nclass PromptComponent(Component):\n    display_name: str = \"Prompt\"\n    description: str = \"Create a prompt template with dynamic variables.\"\n    icon = \"prompts\"\n    trace_type = \"prompt\"\n    name = \"Prompt\"\n\n    inputs = [\n        PromptInput(name=\"template\", display_name=\"Template\"),\n        MessageTextInput(\n            name=\"tool_placeholder\",\n            display_name=\"Tool Placeholder\",\n            tool_mode=True,\n            advanced=True,\n            info=\"A placeholder input for tool mode.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Prompt Message\", name=\"prompt\", method=\"build_prompt\"),\n    ]\n\n    async def build_prompt(self) -> Message:\n        prompt = Message.from_template(**self._attributes)\n        self.status = prompt.text\n        return prompt\n\n    def _update_template(self, frontend_node: dict):\n        prompt_template = frontend_node[\"template\"][\"template\"][\"value\"]\n        custom_fields = frontend_node[\"custom_fields\"]\n        frontend_node_template = frontend_node[\"template\"]\n        _ = process_prompt_template(\n            template=prompt_template,\n            name=\"template\",\n            custom_fields=custom_fields,\n            frontend_node_template=frontend_node_template,\n        )\n        return frontend_node\n\n    async def update_frontend_node(self, new_frontend_node: dict, current_frontend_node: dict):\n        \"\"\"This function is called after the code validation is done.\"\"\"\n        frontend_node = await super().update_frontend_node(new_frontend_node, current_frontend_node)\n        template = frontend_node[\"template\"][\"template\"][\"value\"]\n        # Kept it duplicated for backwards compatibility\n        _ = process_prompt_template(\n            template=template,\n            name=\"template\",\n            custom_fields=frontend_node[\"custom_fields\"],\n            frontend_node_template=frontend_node[\"template\"],\n        )\n        # Now that template is updated, we need to grab any values that were set in the current_frontend_node\n        # and update the frontend_node with those values\n        update_template_values(new_template=frontend_node, previous_template=current_frontend_node[\"template\"])\n        return frontend_node\n\n    def _get_fallback_input(self, **kwargs):\n        return DefaultPromptField(**kwargs)\n"
               },
               "template": {
                 "_input_type": "PromptInput",
@@ -613,9 +558,7 @@
                 "display_name": "Tool Placeholder",
                 "dynamic": false,
                 "info": "A placeholder input for tool mode.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "load_from_db": false,
                 "name": "tool_placeholder",
@@ -657,10 +600,7 @@
         "data": {
           "id": "OpenAIModel-1P8nP",
           "node": {
-            "base_classes": [
-              "LanguageModel",
-              "Message"
-            ],
+            "base_classes": ["LanguageModel", "Message"],
             "beta": false,
             "conditional_paths": [],
             "custom_fields": {},
@@ -701,9 +641,7 @@
                 "required_inputs": [],
                 "selected": "Message",
                 "tool_mode": true,
-                "types": [
-                  "Message"
-                ],
+                "types": ["Message"],
                 "value": "__UNDEFINED__"
               },
               {
@@ -712,14 +650,10 @@
                 "display_name": "Language Model",
                 "method": "build_model",
                 "name": "model_output",
-                "required_inputs": [
-                  "api_key"
-                ],
+                "required_inputs": ["api_key"],
                 "selected": "LanguageModel",
                 "tool_mode": true,
-                "types": [
-                  "LanguageModel"
-                ],
+                "types": ["LanguageModel"],
                 "value": "__UNDEFINED__"
               }
             ],
@@ -759,7 +693,7 @@
                 "show": true,
                 "title_case": false,
                 "type": "code",
-                "value": "from typing import Any\n\nfrom langchain_openai import ChatOpenAI\nfrom pydantic.v1 import SecretStr\n\nfrom langflow.base.models.model import LCModelComponent\nfrom langflow.base.models.openai_constants import (\n    OPENAI_MODEL_NAMES,\n    OPENAI_REASONING_MODEL_NAMES,\n)\nfrom langflow.field_typing import LanguageModel\nfrom langflow.field_typing.range_spec import RangeSpec\nfrom langflow.inputs import BoolInput, DictInput, DropdownInput, IntInput, SecretStrInput, SliderInput, StrInput\nfrom langflow.logging import logger\n\n\nclass OpenAIModelComponent(LCModelComponent):\n    display_name = \"OpenAI\"\n    description = \"Generates text using OpenAI LLMs.\"\n    icon = \"OpenAI\"\n    name = \"OpenAIModel\"\n\n    inputs = [\n        *LCModelComponent._base_inputs,\n        IntInput(\n            name=\"max_tokens\",\n            display_name=\"Max Tokens\",\n            advanced=True,\n            info=\"The maximum number of tokens to generate. Set to 0 for unlimited tokens.\",\n            range_spec=RangeSpec(min=0, max=128000),\n        ),\n        DictInput(\n            name=\"model_kwargs\",\n            display_name=\"Model Kwargs\",\n            advanced=True,\n            info=\"Additional keyword arguments to pass to the model.\",\n        ),\n        BoolInput(\n            name=\"json_mode\",\n            display_name=\"JSON Mode\",\n            advanced=True,\n            info=\"If True, it will output JSON regardless of passing a schema.\",\n        ),\n        DropdownInput(\n            name=\"model_name\",\n            display_name=\"Model Name\",\n            advanced=False,\n            options=OPENAI_MODEL_NAMES + OPENAI_REASONING_MODEL_NAMES,\n            value=OPENAI_MODEL_NAMES[1],\n            combobox=True,\n            real_time_refresh=True,\n        ),\n        StrInput(\n            name=\"openai_api_base\",\n            display_name=\"OpenAI API Base\",\n            advanced=True,\n            info=\"The base URL of the OpenAI API. \"\n            \"Defaults to https://api.openai.com/v1. \"\n            \"You can change this to use other APIs like JinaChat, LocalAI and Prem.\",\n        ),\n        SecretStrInput(\n            name=\"api_key\",\n            display_name=\"OpenAI API Key\",\n            info=\"The OpenAI API Key to use for the OpenAI model.\",\n            advanced=False,\n            value=\"OPENAI_API_KEY\",\n            required=True,\n        ),\n        SliderInput(\n            name=\"temperature\",\n            display_name=\"Temperature\",\n            value=0.1,\n            range_spec=RangeSpec(min=0, max=1, step=0.01),\n            show=True,\n        ),\n        IntInput(\n            name=\"seed\",\n            display_name=\"Seed\",\n            info=\"The seed controls the reproducibility of the job.\",\n            advanced=True,\n            value=1,\n        ),\n        IntInput(\n            name=\"max_retries\",\n            display_name=\"Max Retries\",\n            info=\"The maximum number of retries to make when generating.\",\n            advanced=True,\n            value=5,\n        ),\n        IntInput(\n            name=\"timeout\",\n            display_name=\"Timeout\",\n            info=\"The timeout for requests to OpenAI completion API.\",\n            advanced=True,\n            value=700,\n        ),\n    ]\n\n    def build_model(self) -> LanguageModel:  # type: ignore[type-var]\n        parameters = {\n            \"api_key\": SecretStr(self.api_key).get_secret_value() if self.api_key else None,\n            \"model_name\": self.model_name,\n            \"max_tokens\": self.max_tokens or None,\n            \"model_kwargs\": self.model_kwargs or {},\n            \"base_url\": self.openai_api_base or \"https://api.openai.com/v1\",\n            \"seed\": self.seed,\n            \"max_retries\": self.max_retries,\n            \"timeout\": self.timeout,\n            \"temperature\": self.temperature if self.temperature is not None else 0.1,\n        }\n\n        logger.info(f\"Model name: {self.model_name}\")\n        if self.model_name in OPENAI_REASONING_MODEL_NAMES:\n            logger.info(\"Getting reasoning model parameters\")\n            parameters.pop(\"temperature\")\n            parameters.pop(\"seed\")\n        output = ChatOpenAI(**parameters)\n        if self.json_mode:\n            output = output.bind(response_format={\"type\": \"json_object\"})\n\n        return output\n\n    def _get_exception_message(self, e: Exception):\n        \"\"\"Get a message from an OpenAI exception.\n\n        Args:\n            e (Exception): The exception to get the message from.\n\n        Returns:\n            str: The message from the exception.\n        \"\"\"\n        try:\n            from openai import BadRequestError\n        except ImportError:\n            return None\n        if isinstance(e, BadRequestError):\n            message = e.body.get(\"message\")\n            if message:\n                return message\n        return None\n\n    def update_build_config(self, build_config: dict, field_value: Any, field_name: str | None = None) -> dict:\n        if field_name in {\"base_url\", \"model_name\", \"api_key\"} and field_value in OPENAI_REASONING_MODEL_NAMES:\n            build_config[\"temperature\"][\"show\"] = False\n            build_config[\"seed\"][\"show\"] = False\n        if field_name in {\"base_url\", \"model_name\", \"api_key\"} and field_value in OPENAI_MODEL_NAMES:\n            build_config[\"temperature\"][\"show\"] = True\n            build_config[\"seed\"][\"show\"] = True\n        return build_config\n"
+                "value": "from typing import Any\n\nfrom langchain_openai import ChatOpenAI\nfrom pydantic.v1 import SecretStr\n\nfrom portals.base.models.model import LCModelComponent\nfrom portals.base.models.openai_constants import (\n    OPENAI_MODEL_NAMES,\n    OPENAI_REASONING_MODEL_NAMES,\n)\nfrom portals.field_typing import LanguageModel\nfrom portals.field_typing.range_spec import RangeSpec\nfrom portals.inputs import BoolInput, DictInput, DropdownInput, IntInput, SecretStrInput, SliderInput, StrInput\nfrom portals.logging import logger\n\n\nclass OpenAIModelComponent(LCModelComponent):\n    display_name = \"OpenAI\"\n    description = \"Generates text using OpenAI LLMs.\"\n    icon = \"OpenAI\"\n    name = \"OpenAIModel\"\n\n    inputs = [\n        *LCModelComponent._base_inputs,\n        IntInput(\n            name=\"max_tokens\",\n            display_name=\"Max Tokens\",\n            advanced=True,\n            info=\"The maximum number of tokens to generate. Set to 0 for unlimited tokens.\",\n            range_spec=RangeSpec(min=0, max=128000),\n        ),\n        DictInput(\n            name=\"model_kwargs\",\n            display_name=\"Model Kwargs\",\n            advanced=True,\n            info=\"Additional keyword arguments to pass to the model.\",\n        ),\n        BoolInput(\n            name=\"json_mode\",\n            display_name=\"JSON Mode\",\n            advanced=True,\n            info=\"If True, it will output JSON regardless of passing a schema.\",\n        ),\n        DropdownInput(\n            name=\"model_name\",\n            display_name=\"Model Name\",\n            advanced=False,\n            options=OPENAI_MODEL_NAMES + OPENAI_REASONING_MODEL_NAMES,\n            value=OPENAI_MODEL_NAMES[1],\n            combobox=True,\n            real_time_refresh=True,\n        ),\n        StrInput(\n            name=\"openai_api_base\",\n            display_name=\"OpenAI API Base\",\n            advanced=True,\n            info=\"The base URL of the OpenAI API. \"\n            \"Defaults to https://api.openai.com/v1. \"\n            \"You can change this to use other APIs like JinaChat, LocalAI and Prem.\",\n        ),\n        SecretStrInput(\n            name=\"api_key\",\n            display_name=\"OpenAI API Key\",\n            info=\"The OpenAI API Key to use for the OpenAI model.\",\n            advanced=False,\n            value=\"OPENAI_API_KEY\",\n            required=True,\n        ),\n        SliderInput(\n            name=\"temperature\",\n            display_name=\"Temperature\",\n            value=0.1,\n            range_spec=RangeSpec(min=0, max=1, step=0.01),\n            show=True,\n        ),\n        IntInput(\n            name=\"seed\",\n            display_name=\"Seed\",\n            info=\"The seed controls the reproducibility of the job.\",\n            advanced=True,\n            value=1,\n        ),\n        IntInput(\n            name=\"max_retries\",\n            display_name=\"Max Retries\",\n            info=\"The maximum number of retries to make when generating.\",\n            advanced=True,\n            value=5,\n        ),\n        IntInput(\n            name=\"timeout\",\n            display_name=\"Timeout\",\n            info=\"The timeout for requests to OpenAI completion API.\",\n            advanced=True,\n            value=700,\n        ),\n    ]\n\n    def build_model(self) -> LanguageModel:  # type: ignore[type-var]\n        parameters = {\n            \"api_key\": SecretStr(self.api_key).get_secret_value() if self.api_key else None,\n            \"model_name\": self.model_name,\n            \"max_tokens\": self.max_tokens or None,\n            \"model_kwargs\": self.model_kwargs or {},\n            \"base_url\": self.openai_api_base or \"https://api.openai.com/v1\",\n            \"seed\": self.seed,\n            \"max_retries\": self.max_retries,\n            \"timeout\": self.timeout,\n            \"temperature\": self.temperature if self.temperature is not None else 0.1,\n        }\n\n        logger.info(f\"Model name: {self.model_name}\")\n        if self.model_name in OPENAI_REASONING_MODEL_NAMES:\n            logger.info(\"Getting reasoning model parameters\")\n            parameters.pop(\"temperature\")\n            parameters.pop(\"seed\")\n        output = ChatOpenAI(**parameters)\n        if self.json_mode:\n            output = output.bind(response_format={\"type\": \"json_object\"})\n\n        return output\n\n    def _get_exception_message(self, e: Exception):\n        \"\"\"Get a message from an OpenAI exception.\n\n        Args:\n            e (Exception): The exception to get the message from.\n\n        Returns:\n            str: The message from the exception.\n        \"\"\"\n        try:\n            from openai import BadRequestError\n        except ImportError:\n            return None\n        if isinstance(e, BadRequestError):\n            message = e.body.get(\"message\")\n            if message:\n                return message\n        return None\n\n    def update_build_config(self, build_config: dict, field_value: Any, field_name: str | None = None) -> dict:\n        if field_name in {\"base_url\", \"model_name\", \"api_key\"} and field_value in OPENAI_REASONING_MODEL_NAMES:\n            build_config[\"temperature\"][\"show\"] = False\n            build_config[\"seed\"][\"show\"] = False\n        if field_name in {\"base_url\", \"model_name\", \"api_key\"} and field_value in OPENAI_MODEL_NAMES:\n            build_config[\"temperature\"][\"show\"] = True\n            build_config[\"seed\"][\"show\"] = True\n        return build_config\n"
               },
               "input_value": {
                 "_input_type": "MessageInput",
@@ -767,9 +701,7 @@
                 "display_name": "Input",
                 "dynamic": false,
                 "info": "",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -955,9 +887,7 @@
                 "display_name": "System Message",
                 "dynamic": false,
                 "info": "System message to pass to the model.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1043,11 +973,7 @@
         "data": {
           "id": "CleanlabEvaluator-Pfyl2",
           "node": {
-            "base_classes": [
-              "float",
-              "Message",
-              "number"
-            ],
+            "base_classes": ["float", "Message", "number"],
             "beta": false,
             "conditional_paths": [],
             "custom_fields": {},
@@ -1082,9 +1008,7 @@
                 "required_inputs": null,
                 "selected": "Message",
                 "tool_mode": true,
-                "types": [
-                  "Message"
-                ],
+                "types": ["Message"],
                 "value": "__UNDEFINED__"
               },
               {
@@ -1098,10 +1022,7 @@
                 "required_inputs": null,
                 "selected": "number",
                 "tool_mode": true,
-                "types": [
-                  "number",
-                  "float"
-                ],
+                "types": ["number", "float"],
                 "value": "__UNDEFINED__"
               },
               {
@@ -1115,9 +1036,7 @@
                 "required_inputs": null,
                 "selected": "Message",
                 "tool_mode": true,
-                "types": [
-                  "Message"
-                ],
+                "types": ["Message"],
                 "value": "__UNDEFINED__"
               }
             ],
@@ -1157,7 +1076,7 @@
                 "show": true,
                 "title_case": false,
                 "type": "code",
-                "value": "from langflow.custom import Component\nfrom langflow.io import (\n    MessageTextInput,\n    Output,\n    SecretStrInput,\n    DropdownInput,\n)\nfrom langflow.schema.message import Message\nfrom cleanlab_tlm import TLM\n\n\nclass CleanlabEvaluator(Component):\n    \"\"\"\n    A component that evaluates the trustworthiness of LLM responses using Cleanlab.\n\n    This component takes a prompt and response pair, along with optional system instructions,\n    and uses Cleanlab's evaluation algorithms to generate a trust score and explanation.\n\n    Inputs:\n        - system_prompt (MessageTextInput): Optional system-level instructions prepended to the user prompt.\n        - prompt (MessageTextInput): The user's prompt or query sent to the LLM.\n        - response (MessageTextInput): The response generated by the LLM to be evaluated. This should come from the LLM component, i.e. OpenAI, Gemini, etc.\n        - api_key (SecretStrInput): Your Cleanlab API key.\n        - model (DropdownInput): The model used by Cleanlab to evaluate the response (can differ from the generation model).\n        - quality_preset (DropdownInput): Tradeoff setting for accuracy vs. speed and cost. Higher presets are slower but more accurate.\n\n    Outputs:\n        - response_passthrough (Message): The original response, passed through for downstream use.\n        - score (number): A float between 0 and 1 indicating Cleanlab's trustworthiness score for the response.\n        - explanation (Message): A textual explanation of why the response received its score.\n\n    This component works well in conjunction with the CleanlabRemediator to create a complete trust evaluation and remediation pipeline.\n\n    More details on the evaluation metrics can be found here: https://help.cleanlab.ai/tlm/tutorials/tlm/\n    \"\"\"\n\n    display_name = \"Cleanlab Evaluator\"\n    description = \"Evaluates any LLM response using Cleanlab and outputs trust score and explanation.\"\n    icon = \"Cleanlab\"\n    name = \"CleanlabEvaluator\"\n\n    inputs = [\n        MessageTextInput(\n            name=\"system_prompt\",\n            display_name=\"System Message\",\n            info=\"System-level instructions prepended to the user query.\",\n            value=\"\",\n        ),\n        MessageTextInput(\n            name=\"prompt\",\n            display_name=\"Prompt\",\n            info=\"The user's query to the model.\",\n            required=True,\n        ),\n        MessageTextInput(\n            name=\"response\",\n            display_name=\"Response\",\n            info=\"The response to the user's query.\",\n            required=True,\n        ),\n        SecretStrInput(\n            name=\"api_key\",\n            display_name=\"Cleanlab API Key\",\n            info=\"Your Cleanlab API key.\",\n            required=True,\n        ),\n        DropdownInput(\n            name=\"model\",\n            display_name=\"Cleanlab Evaluation Model\",\n            options=[\n                \"gpt-4.1\", \"gpt-4.1-mini\", \"gpt-4.1-nano\", \"o4-mini\", \"o3\",\n                \"gpt-4.5-preview\", \"gpt-4o-mini\", \"gpt-4o\", \"o3-mini\", \"o1\", \"o1-mini\",\n                \"gpt-4\", \"gpt-3.5-turbo-16k\",\n                \"claude-3.7-sonnet\", \"claude-3.5-sonnet-v2\", \"claude-3.5-sonnet\",\n                \"claude-3.5-haiku\", \"claude-3-haiku\",\n                \"nova-micro\", \"nova-lite\", \"nova-pro\"\n            ],\n            info=\"The model Cleanlab uses to evaluate the response. This does NOT need to be the same model that generated the response.\",\n            value=\"gpt-4o-mini\",\n            required=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"quality_preset\",\n            display_name=\"Quality Preset\",\n            options=[\"base\", \"low\", \"medium\", \"high\", \"best\"],\n            value=\"medium\",\n            info=\"This determines the accuracy, latency, and cost of the evaluation. Higher quality is generally slower but more accurate.\",\n            required=True,\n            advanced=True,\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Response\", name=\"response_passthrough\", method=\"pass_response\", types=[\"Message\"]),\n        Output(display_name=\"Trust Score\", name=\"score\", method=\"get_score\", types=[\"number\"]),\n        Output(display_name=\"Explanation\", name=\"explanation\", method=\"get_explanation\", types=[\"Message\"]),\n    ]\n\n    def _evaluate_once(self):\n        if not hasattr(self, \"_cached_result\"):\n            full_prompt = f\"{self.system_prompt}\\n\\n{self.prompt}\" if self.system_prompt else self.prompt\n            tlm = TLM(\n                api_key=self.api_key,\n                options={\"log\": [\"explanation\"], \"model\": self.model},\n                quality_preset=self.quality_preset,\n            )\n            self._cached_result = tlm.get_trustworthiness_score(full_prompt, self.response)\n        return self._cached_result\n\n    def get_score(self) -> float:\n        result = self._evaluate_once()\n        score = result.get(\"trustworthiness_score\", 0.0)\n        self.status = f\"Trust score: {score:.2f}\"\n        return score\n\n    def get_explanation(self) -> Message:\n        result = self._evaluate_once()\n        explanation = result.get(\"log\", {}).get(\"explanation\", \"No explanation returned.\")\n        return Message(text=explanation)\n    \n    def pass_response(self) -> Message:\n        self.status = \"Passing through response.\"\n        return Message(text=self.response)"
+                "value": "from portals.custom import Component\nfrom portals.io import (\n    MessageTextInput,\n    Output,\n    SecretStrInput,\n    DropdownInput,\n)\nfrom portals.schema.message import Message\nfrom cleanlab_tlm import TLM\n\n\nclass CleanlabEvaluator(Component):\n    \"\"\"\n    A component that evaluates the trustworthiness of LLM responses using Cleanlab.\n\n    This component takes a prompt and response pair, along with optional system instructions,\n    and uses Cleanlab's evaluation algorithms to generate a trust score and explanation.\n\n    Inputs:\n        - system_prompt (MessageTextInput): Optional system-level instructions prepended to the user prompt.\n        - prompt (MessageTextInput): The user's prompt or query sent to the LLM.\n        - response (MessageTextInput): The response generated by the LLM to be evaluated. This should come from the LLM component, i.e. OpenAI, Gemini, etc.\n        - api_key (SecretStrInput): Your Cleanlab API key.\n        - model (DropdownInput): The model used by Cleanlab to evaluate the response (can differ from the generation model).\n        - quality_preset (DropdownInput): Tradeoff setting for accuracy vs. speed and cost. Higher presets are slower but more accurate.\n\n    Outputs:\n        - response_passthrough (Message): The original response, passed through for downstream use.\n        - score (number): A float between 0 and 1 indicating Cleanlab's trustworthiness score for the response.\n        - explanation (Message): A textual explanation of why the response received its score.\n\n    This component works well in conjunction with the CleanlabRemediator to create a complete trust evaluation and remediation pipeline.\n\n    More details on the evaluation metrics can be found here: https://help.cleanlab.ai/tlm/tutorials/tlm/\n    \"\"\"\n\n    display_name = \"Cleanlab Evaluator\"\n    description = \"Evaluates any LLM response using Cleanlab and outputs trust score and explanation.\"\n    icon = \"Cleanlab\"\n    name = \"CleanlabEvaluator\"\n\n    inputs = [\n        MessageTextInput(\n            name=\"system_prompt\",\n            display_name=\"System Message\",\n            info=\"System-level instructions prepended to the user query.\",\n            value=\"\",\n        ),\n        MessageTextInput(\n            name=\"prompt\",\n            display_name=\"Prompt\",\n            info=\"The user's query to the model.\",\n            required=True,\n        ),\n        MessageTextInput(\n            name=\"response\",\n            display_name=\"Response\",\n            info=\"The response to the user's query.\",\n            required=True,\n        ),\n        SecretStrInput(\n            name=\"api_key\",\n            display_name=\"Cleanlab API Key\",\n            info=\"Your Cleanlab API key.\",\n            required=True,\n        ),\n        DropdownInput(\n            name=\"model\",\n            display_name=\"Cleanlab Evaluation Model\",\n            options=[\n                \"gpt-4.1\", \"gpt-4.1-mini\", \"gpt-4.1-nano\", \"o4-mini\", \"o3\",\n                \"gpt-4.5-preview\", \"gpt-4o-mini\", \"gpt-4o\", \"o3-mini\", \"o1\", \"o1-mini\",\n                \"gpt-4\", \"gpt-3.5-turbo-16k\",\n                \"claude-3.7-sonnet\", \"claude-3.5-sonnet-v2\", \"claude-3.5-sonnet\",\n                \"claude-3.5-haiku\", \"claude-3-haiku\",\n                \"nova-micro\", \"nova-lite\", \"nova-pro\"\n            ],\n            info=\"The model Cleanlab uses to evaluate the response. This does NOT need to be the same model that generated the response.\",\n            value=\"gpt-4o-mini\",\n            required=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"quality_preset\",\n            display_name=\"Quality Preset\",\n            options=[\"base\", \"low\", \"medium\", \"high\", \"best\"],\n            value=\"medium\",\n            info=\"This determines the accuracy, latency, and cost of the evaluation. Higher quality is generally slower but more accurate.\",\n            required=True,\n            advanced=True,\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Response\", name=\"response_passthrough\", method=\"pass_response\", types=[\"Message\"]),\n        Output(display_name=\"Trust Score\", name=\"score\", method=\"get_score\", types=[\"number\"]),\n        Output(display_name=\"Explanation\", name=\"explanation\", method=\"get_explanation\", types=[\"Message\"]),\n    ]\n\n    def _evaluate_once(self):\n        if not hasattr(self, \"_cached_result\"):\n            full_prompt = f\"{self.system_prompt}\\n\\n{self.prompt}\" if self.system_prompt else self.prompt\n            tlm = TLM(\n                api_key=self.api_key,\n                options={\"log\": [\"explanation\"], \"model\": self.model},\n                quality_preset=self.quality_preset,\n            )\n            self._cached_result = tlm.get_trustworthiness_score(full_prompt, self.response)\n        return self._cached_result\n\n    def get_score(self) -> float:\n        result = self._evaluate_once()\n        score = result.get(\"trustworthiness_score\", 0.0)\n        self.status = f\"Trust score: {score:.2f}\"\n        return score\n\n    def get_explanation(self) -> Message:\n        result = self._evaluate_once()\n        explanation = result.get(\"log\", {}).get(\"explanation\", \"No explanation returned.\")\n        return Message(text=explanation)\n    \n    def pass_response(self) -> Message:\n        self.status = \"Passing through response.\"\n        return Message(text=self.response)"
               },
               "model": {
                 "_input_type": "DropdownInput",
@@ -1208,9 +1127,7 @@
                 "display_name": "Prompt",
                 "dynamic": false,
                 "info": "The user's query to the model.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1234,13 +1151,7 @@
                 "dynamic": false,
                 "info": "This determines the accuracy, latency, and cost of the evaluation. Higher quality is generally slower but more accurate.",
                 "name": "quality_preset",
-                "options": [
-                  "base",
-                  "low",
-                  "medium",
-                  "high",
-                  "best"
-                ],
+                "options": ["base", "low", "medium", "high", "best"],
                 "options_metadata": [],
                 "placeholder": "",
                 "required": true,
@@ -1258,9 +1169,7 @@
                 "display_name": "Response",
                 "dynamic": false,
                 "info": "The response to the user's query.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1281,9 +1190,7 @@
                 "display_name": "System Message",
                 "dynamic": false,
                 "info": "System-level instructions prepended to the user query.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1321,9 +1228,7 @@
         "data": {
           "id": "CleanlabRemediator-YB1Ss",
           "node": {
-            "base_classes": [
-              "Message"
-            ],
+            "base_classes": ["Message"],
             "beta": false,
             "conditional_paths": [],
             "custom_fields": {},
@@ -1359,9 +1264,7 @@
                 "required_inputs": null,
                 "selected": "Message",
                 "tool_mode": true,
-                "types": [
-                  "Message"
-                ],
+                "types": ["Message"],
                 "value": "__UNDEFINED__"
               }
             ],
@@ -1384,7 +1287,7 @@
                 "show": true,
                 "title_case": false,
                 "type": "code",
-                "value": "from langflow.custom import Component\nfrom langflow.io import (\n    MessageTextInput,\n    PromptInput,\n    Output,\n    BoolInput,\n    HandleInput,\n    FloatInput\n)\nfrom langflow.template import Input\nfrom langflow.schema.message import Message\nfrom langflow.field_typing.range_spec import RangeSpec\n\n\nclass CleanlabRemediator(Component):\n    \"\"\"\n    A component that remediates potentially untrustworthy LLM responses based on trust scores computed by the Cleanlab Evaluator.\n\n    This component takes a response and its associated trust score,\n    and applies remediation strategies based on configurable thresholds and settings.\n\n    Inputs:\n        - response (MessageTextInput): The original LLM-generated response to be evaluated and possibly remediated. The CleanlabEvaluator passes this response through.\n        - score (HandleInput): The trust score output from CleanlabEvaluator (expected to be a float between 0 and 1).\n        - explanation (MessageTextInput): Optional textual explanation for the trust score, to be included in the output.\n        - threshold (Input[float]): Minimum trust score required to accept the response. If the score is lower, the response is remediated.\n        - show_untrustworthy_response (BoolInput): If true, returns the original response with a warning; if false, returns fallback text.\n        - untrustworthy_warning_text (PromptInput): Text warning to append to responses deemed untrustworthy (when showing them).\n        - fallback_text (PromptInput): Replacement message returned if the response is untrustworthy and should be hidden.\n\n    Outputs:\n        - remediated_response (Message): Either:\n            • the original response,\n            • the original response with appended warning, or\n            • the fallback response,\n          depending on the trust score and configuration.\n\n    This component is typically used downstream of CleanlabEvaluator or CleanlabRagValidator\n    to take appropriate action on low-trust responses and inform users accordingly.\n    \"\"\"\n    \n    display_name = \"Cleanlab Remediator\"\n    description = \"Remediates an untrustworthy response based on trust score from the Cleanlab Evaluator, score threshold, and message handling settings.\"\n    icon = \"Cleanlab\"\n    name = \"CleanlabRemediator\"\n\n    inputs = [\n        MessageTextInput(\n            name=\"response\",\n            display_name=\"Response\",\n            info=\"The response to the user's query.\",\n            required=True,\n        ),\n        HandleInput(\n            name=\"score\",\n            display_name=\"Trust Score\",\n            info=\"The trustworthiness score output from the Cleanlab Evaluator.\",\n            input_types=[\"number\"],\n            required=True,\n        ),\n        MessageTextInput(\n            name=\"explanation\",\n            display_name=\"Explanation\",\n            info=\"The explanation from the Cleanlab Evaluator.\",\n            required=False,\n        ),\n        FloatInput(\n            name=\"threshold\",\n            display_name=\"Threshold\",\n            field_type=\"float\",\n            value=0.7,\n            range_spec=RangeSpec(min=0.0, max=1.0, step=0.05),\n            info=\"Minimum score required to show the response unmodified. Reponses with scores above this threshold are considered trustworthy. Reponses with scores below this threshold are considered untrustworthy and will be remediated based on the settings below.\",\n            required=True,\n            show=True,\n        ),\n        BoolInput(\n            name=\"show_untrustworthy_response\",\n            display_name=\"Show Untrustworthy Response\",\n            info=\"If enabled, and the trust score is below the threshold, the original response is shown with the added warning. If disabled, and the trust score is below the threshold, the fallback answer is returned.\",\n            value=True,\n        ),\n        PromptInput(\n            name=\"untrustworthy_warning_text\",\n            display_name=\"Warning for Untrustworthy Response\",\n            info=\"Warning to append to the response if Show Untrustworthy Response is enabled and trust score is below the threshold.\",\n            value=\"⚠️ WARNING: The following response is potentially untrustworthy.\",\n        ),\n        PromptInput(\n            name=\"fallback_text\",\n            display_name=\"Fallback Answer\",\n            info=\"Response returned if the trust score is below the threshold and 'Show Untrustworthy Response' is disabled.\",\n            value=\"Based on the available information, I cannot provide a complete answer to this question.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Remediated Message\", name=\"remediated_response\", method=\"remediate_response\", types=[\"Message\"]),\n    ]\n    \n    def remediate_response(self) -> Message:\n        if self.score >= self.threshold:\n            self.status = f\"Score {self.score:.2f} ≥ threshold {self.threshold:.2f} → accepted\"\n            return Message(\n                text=f\"{self.response}\\n\\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n**Trust Score:** {self.score:.2f}\"\n            )\n    \n        self.status = f\"Score {self.score:.2f} < threshold {self.threshold:.2f} → flagged\"\n    \n        if self.show_untrustworthy_response:\n            parts = [\n                self.response,\n                \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\",\n                f\"**{self.untrustworthy_warning_text.strip()}**\",\n                f\"**Trust Score:** {self.score:.2f}\",\n            ]\n            if self.explanation:\n                parts.append(f\"**Explanation:** {self.explanation}\")\n            return Message(text=\"\\n\\n\".join(parts))\n    \n        return Message(text=self.fallback_text)\n"
+                "value": "from portals.custom import Component\nfrom portals.io import (\n    MessageTextInput,\n    PromptInput,\n    Output,\n    BoolInput,\n    HandleInput,\n    FloatInput\n)\nfrom portals.template import Input\nfrom portals.schema.message import Message\nfrom portals.field_typing.range_spec import RangeSpec\n\n\nclass CleanlabRemediator(Component):\n    \"\"\"\n    A component that remediates potentially untrustworthy LLM responses based on trust scores computed by the Cleanlab Evaluator.\n\n    This component takes a response and its associated trust score,\n    and applies remediation strategies based on configurable thresholds and settings.\n\n    Inputs:\n        - response (MessageTextInput): The original LLM-generated response to be evaluated and possibly remediated. The CleanlabEvaluator passes this response through.\n        - score (HandleInput): The trust score output from CleanlabEvaluator (expected to be a float between 0 and 1).\n        - explanation (MessageTextInput): Optional textual explanation for the trust score, to be included in the output.\n        - threshold (Input[float]): Minimum trust score required to accept the response. If the score is lower, the response is remediated.\n        - show_untrustworthy_response (BoolInput): If true, returns the original response with a warning; if false, returns fallback text.\n        - untrustworthy_warning_text (PromptInput): Text warning to append to responses deemed untrustworthy (when showing them).\n        - fallback_text (PromptInput): Replacement message returned if the response is untrustworthy and should be hidden.\n\n    Outputs:\n        - remediated_response (Message): Either:\n            • the original response,\n            • the original response with appended warning, or\n            • the fallback response,\n          depending on the trust score and configuration.\n\n    This component is typically used downstream of CleanlabEvaluator or CleanlabRagValidator\n    to take appropriate action on low-trust responses and inform users accordingly.\n    \"\"\"\n    \n    display_name = \"Cleanlab Remediator\"\n    description = \"Remediates an untrustworthy response based on trust score from the Cleanlab Evaluator, score threshold, and message handling settings.\"\n    icon = \"Cleanlab\"\n    name = \"CleanlabRemediator\"\n\n    inputs = [\n        MessageTextInput(\n            name=\"response\",\n            display_name=\"Response\",\n            info=\"The response to the user's query.\",\n            required=True,\n        ),\n        HandleInput(\n            name=\"score\",\n            display_name=\"Trust Score\",\n            info=\"The trustworthiness score output from the Cleanlab Evaluator.\",\n            input_types=[\"number\"],\n            required=True,\n        ),\n        MessageTextInput(\n            name=\"explanation\",\n            display_name=\"Explanation\",\n            info=\"The explanation from the Cleanlab Evaluator.\",\n            required=False,\n        ),\n        FloatInput(\n            name=\"threshold\",\n            display_name=\"Threshold\",\n            field_type=\"float\",\n            value=0.7,\n            range_spec=RangeSpec(min=0.0, max=1.0, step=0.05),\n            info=\"Minimum score required to show the response unmodified. Reponses with scores above this threshold are considered trustworthy. Reponses with scores below this threshold are considered untrustworthy and will be remediated based on the settings below.\",\n            required=True,\n            show=True,\n        ),\n        BoolInput(\n            name=\"show_untrustworthy_response\",\n            display_name=\"Show Untrustworthy Response\",\n            info=\"If enabled, and the trust score is below the threshold, the original response is shown with the added warning. If disabled, and the trust score is below the threshold, the fallback answer is returned.\",\n            value=True,\n        ),\n        PromptInput(\n            name=\"untrustworthy_warning_text\",\n            display_name=\"Warning for Untrustworthy Response\",\n            info=\"Warning to append to the response if Show Untrustworthy Response is enabled and trust score is below the threshold.\",\n            value=\"⚠️ WARNING: The following response is potentially untrustworthy.\",\n        ),\n        PromptInput(\n            name=\"fallback_text\",\n            display_name=\"Fallback Answer\",\n            info=\"Response returned if the trust score is below the threshold and 'Show Untrustworthy Response' is disabled.\",\n            value=\"Based on the available information, I cannot provide a complete answer to this question.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Remediated Message\", name=\"remediated_response\", method=\"remediate_response\", types=[\"Message\"]),\n    ]\n    \n    def remediate_response(self) -> Message:\n        if self.score >= self.threshold:\n            self.status = f\"Score {self.score:.2f} ≥ threshold {self.threshold:.2f} → accepted\"\n            return Message(\n                text=f\"{self.response}\\n\\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n**Trust Score:** {self.score:.2f}\"\n            )\n    \n        self.status = f\"Score {self.score:.2f} < threshold {self.threshold:.2f} → flagged\"\n    \n        if self.show_untrustworthy_response:\n            parts = [\n                self.response,\n                \"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\",\n                f\"**{self.untrustworthy_warning_text.strip()}**\",\n                f\"**Trust Score:** {self.score:.2f}\",\n            ]\n            if self.explanation:\n                parts.append(f\"**Explanation:** {self.explanation}\")\n            return Message(text=\"\\n\\n\".join(parts))\n    \n        return Message(text=self.fallback_text)\n"
               },
               "explanation": {
                 "_input_type": "MessageTextInput",
@@ -1392,9 +1295,7 @@
                 "display_name": "Explanation",
                 "dynamic": false,
                 "info": "The explanation from the Cleanlab Evaluator.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1433,9 +1334,7 @@
                 "display_name": "Response",
                 "dynamic": false,
                 "info": "The response to the user's query.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1456,9 +1355,7 @@
                 "display_name": "Trust Score",
                 "dynamic": false,
                 "info": "The trustworthiness score output from the Cleanlab Evaluator.",
-                "input_types": [
-                  "number"
-                ],
+                "input_types": ["number"],
                 "list": false,
                 "list_add_label": "Add More",
                 "name": "score",
@@ -1554,9 +1451,7 @@
         "data": {
           "id": "ChatOutput-9jsnO",
           "node": {
-            "base_classes": [
-              "Message"
-            ],
+            "base_classes": ["Message"],
             "beta": false,
             "category": "outputs",
             "conditional_paths": [],
@@ -1594,9 +1489,7 @@
                 "name": "message",
                 "selected": "Message",
                 "tool_mode": true,
-                "types": [
-                  "Message"
-                ],
+                "types": ["Message"],
                 "value": "__UNDEFINED__"
               }
             ],
@@ -1610,9 +1503,7 @@
                 "display_name": "Background Color",
                 "dynamic": false,
                 "info": "The background color of the icon.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1633,9 +1524,7 @@
                 "display_name": "Icon",
                 "dynamic": false,
                 "info": "The icon of the message.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1684,7 +1573,7 @@
                 "show": true,
                 "title_case": false,
                 "type": "code",
-                "value": "from collections.abc import Generator\nfrom typing import Any\n\nfrom langflow.base.io.chat import ChatComponent\nfrom langflow.inputs import BoolInput\nfrom langflow.inputs.inputs import HandleInput\nfrom langflow.io import DropdownInput, MessageTextInput, Output\nfrom langflow.schema.data import Data\nfrom langflow.schema.dataframe import DataFrame\nfrom langflow.schema.message import Message\nfrom langflow.schema.properties import Source\nfrom langflow.utils.constants import (\n    MESSAGE_SENDER_AI,\n    MESSAGE_SENDER_NAME_AI,\n    MESSAGE_SENDER_USER,\n)\n\n\nclass ChatOutput(ChatComponent):\n    display_name = \"Chat Output\"\n    description = \"Display a chat message in the Playground.\"\n    icon = \"MessagesSquare\"\n    name = \"ChatOutput\"\n    minimized = True\n\n    inputs = [\n        HandleInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            info=\"Message to be passed as output.\",\n            input_types=[\"Data\", \"DataFrame\", \"Message\"],\n            required=True,\n        ),\n        BoolInput(\n            name=\"should_store_message\",\n            display_name=\"Store Messages\",\n            info=\"Store the message in the history.\",\n            value=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"sender\",\n            display_name=\"Sender Type\",\n            options=[MESSAGE_SENDER_AI, MESSAGE_SENDER_USER],\n            value=MESSAGE_SENDER_AI,\n            advanced=True,\n            info=\"Type of sender.\",\n        ),\n        MessageTextInput(\n            name=\"sender_name\",\n            display_name=\"Sender Name\",\n            info=\"Name of the sender.\",\n            value=MESSAGE_SENDER_NAME_AI,\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"session_id\",\n            display_name=\"Session ID\",\n            info=\"The session ID of the chat. If empty, the current session ID parameter will be used.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"data_template\",\n            display_name=\"Data Template\",\n            value=\"{text}\",\n            advanced=True,\n            info=\"Template to convert Data to Text. If left empty, it will be dynamically set to the Data's text key.\",\n        ),\n        MessageTextInput(\n            name=\"background_color\",\n            display_name=\"Background Color\",\n            info=\"The background color of the icon.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"chat_icon\",\n            display_name=\"Icon\",\n            info=\"The icon of the message.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"text_color\",\n            display_name=\"Text Color\",\n            info=\"The text color of the name\",\n            advanced=True,\n        ),\n        BoolInput(\n            name=\"clean_data\",\n            display_name=\"Basic Clean Data\",\n            value=True,\n            info=\"Whether to clean the data\",\n            advanced=True,\n        ),\n    ]\n    outputs = [\n        Output(\n            display_name=\"Message\",\n            name=\"message\",\n            method=\"message_response\",\n        ),\n    ]\n\n    def _build_source(self, id_: str | None, display_name: str | None, source: str | None) -> Source:\n        source_dict = {}\n        if id_:\n            source_dict[\"id\"] = id_\n        if display_name:\n            source_dict[\"display_name\"] = display_name\n        if source:\n            # Handle case where source is a ChatOpenAI object\n            if hasattr(source, \"model_name\"):\n                source_dict[\"source\"] = source.model_name\n            elif hasattr(source, \"model\"):\n                source_dict[\"source\"] = str(source.model)\n            else:\n                source_dict[\"source\"] = str(source)\n        return Source(**source_dict)\n\n    async def message_response(self) -> Message:\n        # First convert the input to string if needed\n        text = self.convert_to_string()\n        # Get source properties\n        source, icon, display_name, source_id = self.get_properties_from_source_component()\n        background_color = self.background_color\n        text_color = self.text_color\n        if self.chat_icon:\n            icon = self.chat_icon\n\n        # Create or use existing Message object\n        if isinstance(self.input_value, Message):\n            message = self.input_value\n            # Update message properties\n            message.text = text\n        else:\n            message = Message(text=text)\n\n        # Set message properties\n        message.sender = self.sender\n        message.sender_name = self.sender_name\n        message.session_id = self.session_id\n        message.flow_id = self.graph.flow_id if hasattr(self, \"graph\") else None\n        message.properties.source = self._build_source(source_id, display_name, source)\n        message.properties.icon = icon\n        message.properties.background_color = background_color\n        message.properties.text_color = text_color\n\n        # Store message if needed\n        if self.session_id and self.should_store_message:\n            stored_message = await self.send_message(message)\n            self.message.value = stored_message\n            message = stored_message\n\n        self.status = message\n        return message\n\n    def _validate_input(self) -> None:\n        \"\"\"Validate the input data and raise ValueError if invalid.\"\"\"\n        if self.input_value is None:\n            msg = \"Input data cannot be None\"\n            raise ValueError(msg)\n        if isinstance(self.input_value, list) and not all(\n            isinstance(item, Message | Data | DataFrame | str) for item in self.input_value\n        ):\n            invalid_types = [\n                type(item).__name__\n                for item in self.input_value\n                if not isinstance(item, Message | Data | DataFrame | str)\n            ]\n            msg = f\"Expected Data or DataFrame or Message or str, got {invalid_types}\"\n            raise TypeError(msg)\n        if not isinstance(\n            self.input_value,\n            Message | Data | DataFrame | str | list | Generator | type(None),\n        ):\n            type_name = type(self.input_value).__name__\n            msg = f\"Expected Data or DataFrame or Message or str, Generator or None, got {type_name}\"\n            raise TypeError(msg)\n\n    def _safe_convert(self, data: Any) -> str:\n        \"\"\"Safely convert input data to string.\"\"\"\n        try:\n            if isinstance(data, str):\n                return data\n            if isinstance(data, Message):\n                return data.get_text()\n            if isinstance(data, Data):\n                if data.get_text() is None:\n                    msg = \"Empty Data object\"\n                    raise ValueError(msg)\n                return data.get_text()\n            if isinstance(data, DataFrame):\n                if self.clean_data:\n                    # Remove empty rows\n                    data = data.dropna(how=\"all\")\n                    # Remove empty lines in each cell\n                    data = data.replace(r\"^\\s*$\", \"\", regex=True)\n                    # Replace multiple newlines with a single newline\n                    data = data.replace(r\"\\n+\", \"\\n\", regex=True)\n\n                # Replace pipe characters to avoid markdown table issues\n                processed_data = data.replace(r\"\\|\", r\"\\\\|\", regex=True)\n\n                processed_data = processed_data.map(\n                    lambda x: str(x).replace(\"\\n\", \"<br/>\") if isinstance(x, str) else x\n                )\n\n                return processed_data.to_markdown(index=False)\n            return str(data)\n        except (ValueError, TypeError, AttributeError) as e:\n            msg = f\"Error converting data: {e!s}\"\n            raise ValueError(msg) from e\n\n    def convert_to_string(self) -> str | Generator[Any, None, None]:\n        \"\"\"Convert input data to string with proper error handling.\"\"\"\n        self._validate_input()\n        if isinstance(self.input_value, list):\n            return \"\\n\".join([self._safe_convert(item) for item in self.input_value])\n        if isinstance(self.input_value, Generator):\n            return self.input_value\n        return self._safe_convert(self.input_value)\n"
+                "value": "from collections.abc import Generator\nfrom typing import Any\n\nfrom portals.base.io.chat import ChatComponent\nfrom portals.inputs import BoolInput\nfrom portals.inputs.inputs import HandleInput\nfrom portals.io import DropdownInput, MessageTextInput, Output\nfrom portals.schema.data import Data\nfrom portals.schema.dataframe import DataFrame\nfrom portals.schema.message import Message\nfrom portals.schema.properties import Source\nfrom portals.utils.constants import (\n    MESSAGE_SENDER_AI,\n    MESSAGE_SENDER_NAME_AI,\n    MESSAGE_SENDER_USER,\n)\n\n\nclass ChatOutput(ChatComponent):\n    display_name = \"Chat Output\"\n    description = \"Display a chat message in the Playground.\"\n    icon = \"MessagesSquare\"\n    name = \"ChatOutput\"\n    minimized = True\n\n    inputs = [\n        HandleInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            info=\"Message to be passed as output.\",\n            input_types=[\"Data\", \"DataFrame\", \"Message\"],\n            required=True,\n        ),\n        BoolInput(\n            name=\"should_store_message\",\n            display_name=\"Store Messages\",\n            info=\"Store the message in the history.\",\n            value=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"sender\",\n            display_name=\"Sender Type\",\n            options=[MESSAGE_SENDER_AI, MESSAGE_SENDER_USER],\n            value=MESSAGE_SENDER_AI,\n            advanced=True,\n            info=\"Type of sender.\",\n        ),\n        MessageTextInput(\n            name=\"sender_name\",\n            display_name=\"Sender Name\",\n            info=\"Name of the sender.\",\n            value=MESSAGE_SENDER_NAME_AI,\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"session_id\",\n            display_name=\"Session ID\",\n            info=\"The session ID of the chat. If empty, the current session ID parameter will be used.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"data_template\",\n            display_name=\"Data Template\",\n            value=\"{text}\",\n            advanced=True,\n            info=\"Template to convert Data to Text. If left empty, it will be dynamically set to the Data's text key.\",\n        ),\n        MessageTextInput(\n            name=\"background_color\",\n            display_name=\"Background Color\",\n            info=\"The background color of the icon.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"chat_icon\",\n            display_name=\"Icon\",\n            info=\"The icon of the message.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"text_color\",\n            display_name=\"Text Color\",\n            info=\"The text color of the name\",\n            advanced=True,\n        ),\n        BoolInput(\n            name=\"clean_data\",\n            display_name=\"Basic Clean Data\",\n            value=True,\n            info=\"Whether to clean the data\",\n            advanced=True,\n        ),\n    ]\n    outputs = [\n        Output(\n            display_name=\"Message\",\n            name=\"message\",\n            method=\"message_response\",\n        ),\n    ]\n\n    def _build_source(self, id_: str | None, display_name: str | None, source: str | None) -> Source:\n        source_dict = {}\n        if id_:\n            source_dict[\"id\"] = id_\n        if display_name:\n            source_dict[\"display_name\"] = display_name\n        if source:\n            # Handle case where source is a ChatOpenAI object\n            if hasattr(source, \"model_name\"):\n                source_dict[\"source\"] = source.model_name\n            elif hasattr(source, \"model\"):\n                source_dict[\"source\"] = str(source.model)\n            else:\n                source_dict[\"source\"] = str(source)\n        return Source(**source_dict)\n\n    async def message_response(self) -> Message:\n        # First convert the input to string if needed\n        text = self.convert_to_string()\n        # Get source properties\n        source, icon, display_name, source_id = self.get_properties_from_source_component()\n        background_color = self.background_color\n        text_color = self.text_color\n        if self.chat_icon:\n            icon = self.chat_icon\n\n        # Create or use existing Message object\n        if isinstance(self.input_value, Message):\n            message = self.input_value\n            # Update message properties\n            message.text = text\n        else:\n            message = Message(text=text)\n\n        # Set message properties\n        message.sender = self.sender\n        message.sender_name = self.sender_name\n        message.session_id = self.session_id\n        message.flow_id = self.graph.flow_id if hasattr(self, \"graph\") else None\n        message.properties.source = self._build_source(source_id, display_name, source)\n        message.properties.icon = icon\n        message.properties.background_color = background_color\n        message.properties.text_color = text_color\n\n        # Store message if needed\n        if self.session_id and self.should_store_message:\n            stored_message = await self.send_message(message)\n            self.message.value = stored_message\n            message = stored_message\n\n        self.status = message\n        return message\n\n    def _validate_input(self) -> None:\n        \"\"\"Validate the input data and raise ValueError if invalid.\"\"\"\n        if self.input_value is None:\n            msg = \"Input data cannot be None\"\n            raise ValueError(msg)\n        if isinstance(self.input_value, list) and not all(\n            isinstance(item, Message | Data | DataFrame | str) for item in self.input_value\n        ):\n            invalid_types = [\n                type(item).__name__\n                for item in self.input_value\n                if not isinstance(item, Message | Data | DataFrame | str)\n            ]\n            msg = f\"Expected Data or DataFrame or Message or str, got {invalid_types}\"\n            raise TypeError(msg)\n        if not isinstance(\n            self.input_value,\n            Message | Data | DataFrame | str | list | Generator | type(None),\n        ):\n            type_name = type(self.input_value).__name__\n            msg = f\"Expected Data or DataFrame or Message or str, Generator or None, got {type_name}\"\n            raise TypeError(msg)\n\n    def _safe_convert(self, data: Any) -> str:\n        \"\"\"Safely convert input data to string.\"\"\"\n        try:\n            if isinstance(data, str):\n                return data\n            if isinstance(data, Message):\n                return data.get_text()\n            if isinstance(data, Data):\n                if data.get_text() is None:\n                    msg = \"Empty Data object\"\n                    raise ValueError(msg)\n                return data.get_text()\n            if isinstance(data, DataFrame):\n                if self.clean_data:\n                    # Remove empty rows\n                    data = data.dropna(how=\"all\")\n                    # Remove empty lines in each cell\n                    data = data.replace(r\"^\\s*$\", \"\", regex=True)\n                    # Replace multiple newlines with a single newline\n                    data = data.replace(r\"\\n+\", \"\\n\", regex=True)\n\n                # Replace pipe characters to avoid markdown table issues\n                processed_data = data.replace(r\"\\|\", r\"\\\\|\", regex=True)\n\n                processed_data = processed_data.map(\n                    lambda x: str(x).replace(\"\\n\", \"<br/>\") if isinstance(x, str) else x\n                )\n\n                return processed_data.to_markdown(index=False)\n            return str(data)\n        except (ValueError, TypeError, AttributeError) as e:\n            msg = f\"Error converting data: {e!s}\"\n            raise ValueError(msg) from e\n\n    def convert_to_string(self) -> str | Generator[Any, None, None]:\n        \"\"\"Convert input data to string with proper error handling.\"\"\"\n        self._validate_input()\n        if isinstance(self.input_value, list):\n            return \"\\n\".join([self._safe_convert(item) for item in self.input_value])\n        if isinstance(self.input_value, Generator):\n            return self.input_value\n        return self._safe_convert(self.input_value)\n"
               },
               "data_template": {
                 "_input_type": "MessageTextInput",
@@ -1692,9 +1581,7 @@
                 "display_name": "Data Template",
                 "dynamic": false,
                 "info": "Template to convert Data to Text. If left empty, it will be dynamically set to the Data's text key.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1715,11 +1602,7 @@
                 "display_name": "Text",
                 "dynamic": false,
                 "info": "Message to be passed as output.",
-                "input_types": [
-                  "Data",
-                  "DataFrame",
-                  "Message"
-                ],
+                "input_types": ["Data", "DataFrame", "Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "name": "input_value",
@@ -1740,10 +1623,7 @@
                 "dynamic": false,
                 "info": "Type of sender.",
                 "name": "sender",
-                "options": [
-                  "Machine",
-                  "User"
-                ],
+                "options": ["Machine", "User"],
                 "options_metadata": [],
                 "placeholder": "",
                 "required": false,
@@ -1761,9 +1641,7 @@
                 "display_name": "Sender Name",
                 "dynamic": false,
                 "info": "Name of the sender.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1784,9 +1662,7 @@
                 "display_name": "Session ID",
                 "dynamic": false,
                 "info": "The session ID of the chat. If empty, the current session ID parameter will be used.",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1825,9 +1701,7 @@
                 "display_name": "Text Color",
                 "dynamic": false,
                 "info": "The text color of the name",
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": ["Message"],
                 "list": false,
                 "list_add_label": "Add More",
                 "load_from_db": false,
@@ -1874,7 +1748,5 @@
   "is_component": false,
   "last_tested_version": "1.4.1",
   "name": "Cleanlab Evaluator and Remediator",
-  "tags": [
-    "chatbots"
-  ]
+  "tags": ["chatbots"]
 }

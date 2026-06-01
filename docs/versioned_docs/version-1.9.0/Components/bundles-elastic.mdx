@@ -9,7 +9,7 @@ import PartialConditionalParams from '@site/docs/_partial-conditional-params.mdx
 import PartialVectorSearchResults from '@site/docs/_partial-vector-search-results.mdx';
 import PartialVectorStoreInstance from '@site/docs/_partial-vector-store-instance.mdx';
 
-<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Langflow.
+<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Portals.
 
 This page describes the components that are available in the **Elastic** bundle.
 
@@ -77,7 +77,7 @@ For information about accepted values and functionality, see the [OpenSearch doc
 | Name | Type | Description |
 |------|------|-------------|
 | opensearch_url | String | Input parameter. URL for OpenSearch cluster, such as `https://192.168.1.1:9200`. |
-| index_name | String | Input parameter. The index name where the vectors are stored in OpenSearch cluster. Default: `langflow`. |
+| index_name | String | Input parameter. The index name where the vectors are stored in OpenSearch cluster. Default: `portals`. |
 | ingest_data | JSON | Input parameter. The data to be ingested into the vector store. |
 | search_input | String | Input parameter. Enter a search query. Leave empty to retrieve all documents or if hybrid search is being used. |
 | cache_vector_store | Boolean | Input parameter. If `true`, the component caches the vector store in memory for faster reads. Default: Enabled (`true`). |
@@ -130,7 +130,7 @@ For information about accepted values and functionality, see the [OpenSearch doc
 |------|------|-------------|
 | docs_metadata | Table | Input parameter. Additional metadata key-value pairs to attach to every ingested document. |
 | opensearch_url | String | Input parameter. URL for the OpenSearch cluster. Default: `http://localhost:9200`. |
-| index_name | String | Input parameter. Name of the index to create or query. Default: `langflow`. |
+| index_name | String | Input parameter. Name of the index to create or query. Default: `portals`. |
 | engine | String | Input parameter. Vector engine to use. Options are `nmslib`, `faiss`, `lucene`, or `jvector` (default). |
 | space_type | String | Input parameter. Distance metric for vector similarity. Options are `l2` (default), `l1`, `cosinesimil`, `linf`, or `innerproduct`. |
 | ef_construction | Integer | Input parameter. HNSW index-construction candidate list size. Default: `512`. |

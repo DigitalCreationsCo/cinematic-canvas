@@ -3,11 +3,11 @@ title: Projects endpoints
 slug: /api-projects
 ---
 
-Use the `/projects` endpoint to create, read, update, and delete [Langflow projects](/concepts-flows#projects).
+Use the `/projects` endpoint to create, read, update, and delete [Portals projects](/concepts-flows#projects).
 
 ## Read projects
 
-Get a list of Langflow projects, including project IDs, names, and descriptions.
+Get a list of Portals projects, including project IDs, names, and descriptions.
 
 ```bash
 curl -X GET \
@@ -185,12 +185,12 @@ curl -X GET \
   "$LANGFLOW_URL/api/v1/projects/download/$PROJECT_ID" \
   -H "accept: application/json" \
   -H "x-api-key: $LANGFLOW_API_KEY" \
-  --output langflow-project.zip
+  --output portals-project.zip
 ```
 
 ## Import a project
 
-Import a project and its flows by uploading a Langflow project zip file:
+Import a project and its flows by uploading a Portals project zip file:
 
 ```bash
 curl -X POST \
@@ -198,5 +198,5 @@ curl -X POST \
   -H "accept: application/json" \
   -H "Content-Type: multipart/form-data" \
   -H "x-api-key: $LANGFLOW_API_KEY" \
-  -F "file=@20241230_135006_langflow_flows.zip;type=application/zip"
+  -F "file=@20241230_135006_portals_flows.zip;type=application/zip"
 ```

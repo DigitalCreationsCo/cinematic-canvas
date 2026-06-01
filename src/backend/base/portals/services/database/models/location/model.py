@@ -2,8 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from sqlalchemy import Index
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlmodel import Column, Field, SQLModel
+from sqlmodel import JSON, Column, Field, SQLModel
 
 
 class LocationBase(SQLModel):
@@ -14,16 +13,16 @@ class LocationBase(SQLModel):
     name: str
     type: str
     mood: str
-    lighting_conditions: dict = Field(sa_column=Column(JSONB, nullable=False))
+    lighting_conditions: dict = Field(sa_column=Column(JSON, nullable=False))
     time_of_day: str
     weather: str
-    color_palette: dict = Field(sa_column=Column(JSONB, nullable=False))
-    architecture: dict = Field(sa_column=Column(JSONB, nullable=False))
-    natural_elements: dict = Field(sa_column=Column(JSONB, nullable=False))
-    man_made_objects: dict = Field(sa_column=Column(JSONB, nullable=False))
+    color_palette: dict = Field(sa_column=Column(JSON, nullable=False))
+    architecture: dict = Field(sa_column=Column(JSON, nullable=False))
+    natural_elements: dict = Field(sa_column=Column(JSON, nullable=False))
+    man_made_objects: dict = Field(sa_column=Column(JSON, nullable=False))
     ground_surface: str
     sky_or_ceiling: str
-    state: dict = Field(sa_column=Column(JSONB, nullable=False))
+    state: dict = Field(sa_column=Column(JSON, nullable=False))
     guidance_level: int | None = None
 
 

@@ -5,7 +5,7 @@ slug: /concepts-flows-import
 
 import Icon from "@site/src/components/icon";
 
-You can export flows to transfer them between Langflow instances, share them with others, or create backups.
+You can export flows to transfer them between Portals instances, share them with others, or create backups.
 
 ## Export a flow
 
@@ -15,12 +15,12 @@ There are three ways to export flows:
 
 * **Export by sharing**: When editing a flow, click **Share**, and then click **Export**.
 
-* **Export with the Langflow API**: To export one flow, use the [`/flows/download`](/api-flows#export-flows) endpoint.
+* **Export with the Portals API**: To export one flow, use the [`/flows/download`](/api-flows#export-flows) endpoint.
 To export all flows in a project, use the [`/projects/download`](/api-projects#export-a-project) endpoint.
 
 Exported flows are downloaded to your local machine as JSON files named `FLOW_NAME.json`.
 If you export an entire project, the JSON files are packaged in a zip archive.
-For more information, see [Langflow JSON file contents](#langflow-json-file-contents).
+For more information, see [Portals JSON file contents](#portals-json-file-contents).
 
 ### Save with my API keys
 
@@ -30,37 +30,37 @@ Non-API key variables are included in the export regardless of the **Save with m
 :::warning
 If you enter the literal key into a component's API key field, then **Save with my API keys** exports the literal key value.
 
-If your key is stored in a Langflow global variable, **Save with my API keys** exports only the variable name.
+If your key is stored in a Portals global variable, **Save with my API keys** exports only the variable name.
 :::
 
-When you or another user import the flow to another Langflow instance, that instance must have Langflow global variables with the same names and valid values in order to run the flow successfully.
+When you or another user import the flow to another Portals instance, that instance must have Portals global variables with the same names and valid values in order to run the flow successfully.
 If any variables are missing or invalid, those variables must be created or edited after importing the flow.
 
 ## Import a flow
 
-You can import Langflow JSON files from your local machine in the following ways:
+You can import Portals JSON files from your local machine in the following ways:
 
-* **Import to projects**: On the **Projects** page, click <Icon name="Upload" aria-hidden="true"/> **Upload a flow**, and then select the Langflow JSON file to import.
-* **Import anywhere**: Drag and drop Langflow JSON files from your file explorer into your Langflow window to import a flow from any Langflow page.
-* **Import with the Langflow API**: To import one Langflow JSON file, use the [`/flows/upload/`](/api-flows#import-flows) endpoint.
-To import a zip archive of Langflow JSON files, use the [`/projects/upload`](/api-projects#import-a-project) endpoint.
+* **Import to projects**: On the **Projects** page, click <Icon name="Upload" aria-hidden="true"/> **Upload a flow**, and then select the Portals JSON file to import.
+* **Import anywhere**: Drag and drop Portals JSON files from your file explorer into your Portals window to import a flow from any Portals page.
+* **Import with the Portals API**: To import one Portals JSON file, use the [`/flows/upload/`](/api-flows#import-flows) endpoint.
+To import a zip archive of Portals JSON files, use the [`/projects/upload`](/api-projects#import-a-project) endpoint.
 
 ### Run an imported flow
 
 Once imported, your flow is ready to use.
-If the flow contains any global variables, make sure your Langflow instance has global variables with the same names and valid values.
+If the flow contains any global variables, make sure your Portals instance has global variables with the same names and valid values.
 For more information, see [Save with my API keys](/concepts-flows-import#save-with-my-api-keys).
 
-## Langflow JSON file contents
+## Portals JSON file contents
 
 An exported flow is downloaded to your local machine as a JSON file named `FLOW_NAME.json`.
 
-Langflow JSON files contain the following:
+Portals JSON files contain the following:
 
 * [Nodes](#nodes) and [edges](#edges) that describe components and connections in the flow.
 * [Additional metadata](#additional-metadata-and-project-information) that describes the flow and the project it belongs to.
 
-For example Langflow JSON files, you can examine any of the https://github.com/langflow-ai/langflow/tree/main/src/backend/base/langflow/initial_setup/starter_projects[templates in the Langflow repository], or you can create a flow from a template in Langflow, export it, and then open the exported JSON file in a text editor.
+For example Portals JSON files, you can examine any of the https://github.com/portals-ai/portals/tree/main/src/backend/base/portals/initial_setup/starter_projects[templates in the Portals repository], or you can create a flow from a template in Portals, export it, and then open the exported JSON file in a text editor.
 
 ### Nodes
 

@@ -113,34 +113,34 @@ All colors use HSLA format for consistent theming across light/dark modes.
   /* Core Surfaces */
   --background: hsla(0, 0%, 98%, 1);      /* #FAFAFA - App background */
   --foreground: hsla(0, 0%, 5%, 1);       /* #0D0D0D - Primary text */
-
+  
   /* Cards & Popovers */
   --card: hsla(0, 0%, 100%, 1);           /* #FFFFFF */
   --card-foreground: hsla(0, 0%, 5%, 1);
   --popover: hsla(0, 0%, 100%, 1);
   --popover-foreground: hsla(0, 0%, 5%, 1);
-
+  
   /* Interactive Elements */
   --primary: hsla(0, 0%, 9%, 1);           /* #171717 - Buttons, active states */
   --primary-foreground: hsla(0, 0%, 98%, 1);
   --secondary: hsla(0, 0%, 94%, 1);       /* #F0F0F0 */
   --secondary-foreground: hsla(0, 0%, 9%, 1);
-
+  
   /* Muted & Accent */
   --muted: hsla(0, 0%, 94%, 1);            /* Subdued backgrounds */
   --muted-foreground: hsla(0, 0%, 45%, 1); /* #737373 - Secondary text */
   --accent: hsla(0, 0%, 90%, 1);          /* #E6E6E6 */
   --accent-foreground: hsla(0, 0%, 9%, 1);
-
+  
   /* Canvas (Graph/Diagram) */
   --canvas-lines: hsla(0, 0%, 94%, 1);
   --canvas-background: hsla(0, 0%, 60%, 1);
   --canvas-gradient: hsla(0, 0%, 94%, 1);
-
+  
   /* Feedback Colors */
   --destructive: hsla(0, 84%, 60%, 1);     /* #EF4444 - Red */
   --destructive-foreground: hsla(0, 0%, 98%, 1);
-
+  
   /* Borders & Inputs */
   --border: hsla(0, 0%, 75%, 1);           /* #BFBFBF */
   --input: hsla(0, 0%, 85%, 1);
@@ -155,34 +155,34 @@ All colors use HSLA format for consistent theming across light/dark modes.
   /* Core Surfaces - Dark cinematic background */
   --background: hsla(0, 0%, 2%, 1);       /* #050505 - Near black */
   --foreground: hsla(0, 0%, 98%, 1);      /* #FAFAFA */
-
+  
   /* Cards & Popovers - Subtle blue-gray tint */
   --card: hsla(240, 5%, 4%, 1);           /* #0A0A0D */
   --card-foreground: hsla(0, 0%, 98%, 1);
   --popover: hsla(240, 5%, 4%, 1);
   --popover-foreground: hsla(0, 0%, 98%, 1);
-
+  
   /* Interactive Elements - Inverted */
   --primary: hsla(0, 0%, 98%, 1);         /* White primary buttons */
   --primary-foreground: hsla(240, 5%, 4%, 1);
   --secondary: hsla(240, 5%, 10%, 1);     /* #141416 */
   --secondary-foreground: hsla(0, 0%, 98%, 1);
-
+  
   /* Muted & Accent - Dark gray-blue */
   --muted: hsla(240, 5%, 10%, 1);
   --muted-foreground: hsla(240, 5%, 60%, 1);
   --accent: hsla(240, 5%, 10%, 1);
   --accent-foreground: hsla(0, 0%, 98%, 1);
-
+  
   /* Canvas - Higher contrast for diagrams */
   --canvas-lines: hsla(0, 0%, 48%, 1);
   --canvas-background: hsla(0, 0%, 3%, 1);
   --canvas-gradient: hsla(0, 0%, 20%, 1);
-
+  
   /* Feedback Colors - Muted in dark mode */
   --destructive: hsla(0, 62%, 30%, 1);    /* Darker red */
   --destructive-foreground: hsla(0, 0%, 98%, 1);
-
+  
   /* Borders & Inputs */
   --border: hsla(0, 0%, 15%, 1);          /* #262626 */
   --input: hsla(0, 0%, 15%, 1);

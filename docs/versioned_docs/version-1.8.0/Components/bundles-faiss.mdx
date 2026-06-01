@@ -9,7 +9,7 @@ import PartialConditionalParams from '@site/docs/_partial-conditional-params.mdx
 import PartialVectorSearchResults from '@site/docs/_partial-vector-search-results.mdx';
 import PartialVectorStoreInstance from '@site/docs/_partial-vector-store-instance.mdx';
 
-<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Langflow.
+<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Portals.
 
 This page describes the components that are available in the **FAISS** bundle.
 
@@ -38,8 +38,8 @@ For information about accepted values and functionality, see the [FAISS document
 
 | Name                      | Type          | Description                                      |
 |---------------------------|---------------|--------------------------------------------------|
-| index_name                 | String        | Input parameter. The name of the FAISS index. Default: "langflow_index". |
-| persist_directory          | String        | Input parameter. Path to save the FAISS index. It is relative to where Langflow is running. |
+| index_name                 | String        | Input parameter. The name of the FAISS index. Default: "portals_index". |
+| persist_directory          | String        | Input parameter. Path to save the FAISS index. It is relative to where Portals is running. |
 | search_query               | String        | Input parameter. The query to search for in the vector store.     |
 | ingest_data                | Data          | Input parameter. The list of data to ingest into the vector store. |
 | allow_dangerous_deserialization | Boolean  | Input parameter. Set to `True` to allow loading pickle files from untrusted sources. Default: `True`. |

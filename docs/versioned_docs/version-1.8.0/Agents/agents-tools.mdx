@@ -5,7 +5,7 @@ slug: /agents-tools
 
 import Icon from "@site/src/components/icon";
 
-By default, [Langflow agents](/agents) only include the functionality built-in to their base LLM.
+By default, [Portals agents](/agents) only include the functionality built-in to their base LLM.
 
 You can attach tools to agents to provide access to additional, targeted functionality.
 For example, tools can be used to create domain-specific agents, such as a customer support agent that can access a company's knowledge base, a financial agent that can retrieve stock prices, or a math tutor agent that can use advanced math functions to solve complex equations.
@@ -96,15 +96,15 @@ An agent can use [custom components](/components-custom-components) as tools.
     This code creates a text analyzer component.
 
     ```python
-    from langflow.custom import Component
-    from langflow.io import MessageTextInput, Output
-    from langflow.schema import Data
+    from portals.custom import Component
+    from portals.io import MessageTextInput, Output
+    from portals.schema import Data
     import re
 
     class TextAnalyzerComponent(Component):
         display_name = "Text Analyzer"
         description = "Analyzes and transforms input text."
-        documentation: str = "http://docs.langflow.org/components/custom"
+        documentation: str = "http://docs.portals.org/components/custom"
         icon = "chart-bar"
         name = "TextAnalyzerComponent"
 
@@ -173,7 +173,7 @@ An agent can use [custom components](/components-custom-components) as tools.
 
 If the component you want to use as a tool doesn't have a **Tool Mode** button, add `tool_mode=True` to one of the component's inputs, and connect the new **Toolset** output to the agent's **Tools** input.
 
-Langflow supports **Tool Mode** for the following data types:
+Portals supports **Tool Mode** for the following data types:
 
 * `DataInput`
 * `DataFrameInput`
@@ -215,5 +215,5 @@ The connected flow returns an answer based on your question.
 ## See also
 
 * [Agent components](/components-agents)
-* [Use Langflow as an MCP client](/mcp-client)
-* [Use Langflow as an MCP server](/mcp-server)
+* [Use Portals as an MCP client](/mcp-client)
+* [Use Portals as an MCP server](/mcp-server)

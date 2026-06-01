@@ -13,7 +13,7 @@ from px.io import (
 )
 from px.log.logger import logger
 from px.schema.data import Data
-
+from px.base.data.utils import AUDIO_FILE_TYPES
 
 class AssemblyAITranscriptionJobCreator(Component):
     display_name = "AssemblyAI Start Transcript"
@@ -31,47 +31,7 @@ class AssemblyAITranscriptionJobCreator(Component):
         FileInput(
             name="audio_file",
             display_name="Audio File",
-            file_types=[
-                "3ga",
-                "8svx",
-                "aac",
-                "ac3",
-                "aif",
-                "aiff",
-                "alac",
-                "amr",
-                "ape",
-                "au",
-                "dss",
-                "flac",
-                "flv",
-                "m4a",
-                "m4b",
-                "m4p",
-                "m4r",
-                "mp3",
-                "mpga",
-                "ogg",
-                "oga",
-                "mogg",
-                "opus",
-                "qcp",
-                "tta",
-                "voc",
-                "wav",
-                "wma",
-                "wv",
-                "webm",
-                "mts",
-                "m2ts",
-                "ts",
-                "mov",
-                "mp2",
-                "mp4",
-                "m4p",
-                "m4v",
-                "mxf",
-            ],
+            file_types=AUDIO_FILE_TYPES,
             info="The audio file to transcribe",
             required=True,
         ),

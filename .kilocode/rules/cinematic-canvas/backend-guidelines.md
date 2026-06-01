@@ -9,7 +9,7 @@ globs: src/server, src/shared, src/pipeline, src/worker
 
 api route paths are defined in src/shared and should be used in the backend code. Hard-coded api route paths should not be used.
 
-When creating new api routes, implement the route in the api routes defined in src/shared and the api object as a path accessor.
+When creating new api routes, implement the route in the api routes defined in src/shared and the api object as a path accessor. 
 
 ## 2. Batch Processing
 

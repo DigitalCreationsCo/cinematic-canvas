@@ -7,27 +7,27 @@ import Icon from "@site/src/components/icon";
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Bundles contain custom components that support specific third-party integrations with Langflow.
-You add them to your flows and configure them in the same way as Langflow's core components.
+Bundles contain custom components that support specific third-party integrations with Portals.
+You add them to your flows and configure them in the same way as Portals's core components.
 
 To browse bundles, click <Icon name="Blocks" aria-hidden="true" /> **Bundles** in the visual editor.
 
 ## Bundle maintenance and documentation
 
-Many bundled components are developed by third-party contributors to the Langflow codebase.
+Many bundled components are developed by third-party contributors to the Portals codebase.
 
 Some providers contribute documentation with their bundles, whereas others document their bundles in their own documentation.
 Some bundles have no documentation.
 
-To find documentation for a specific bundled component, browse the Langflow docs and your provider's documentation.
+To find documentation for a specific bundled component, browse the Portals docs and your provider's documentation.
 If available, you can also find links to relevant documentation, such as API endpoints, through the component itself:
 
 1. Click the component to expose the [component inspection panel](/concepts-components#component-menus).
 2. Click <Icon name="Ellipsis" aria-hidden="true" /> **More**.
 3. Select **Docs**.
 
-The Langflow documentation focuses on using bundles within flows.
-For that reason, it focuses on the Langflow-specific configuration steps for bundled components.
+The Portals documentation focuses on using bundles within flows.
+For that reason, it focuses on the Portals-specific configuration steps for bundled components.
 For information about provider-specific features or APIs, see the provider's documentation.
 
 ## Component parameters
@@ -39,13 +39,13 @@ import PartialParams from '@site/docs/_partial-hidden-params.mdx';
 ## Core components and bundles
 
 :::tip
-The Langflow documentation doesn't list all bundles or components in bundles.
-For the most accurate and up-to-date list of bundles and components for your version of Langflow, check <Icon name="Blocks" aria-hidden="true" /> **Bundles** in the visual editor.
+The Portals documentation doesn't list all bundles or components in bundles.
+For the most accurate and up-to-date list of bundles and components for your version of Portals, check <Icon name="Blocks" aria-hidden="true" /> **Bundles** in the visual editor.
 
-If you can't find a component that you used in an earlier version of Langflow, it may have been removed or marked as a [legacy component](#legacy-bundles).
+If you can't find a component that you used in an earlier version of Portals, it may have been removed or marked as a [legacy component](#legacy-bundles).
 :::
 
-Langflow offers generic <Icon name="Component" aria-hidden="true" /> **Core components** in addition to third-party, provider-specific bundles.
+Portals offers generic <Icon name="Component" aria-hidden="true" /> **Core components** in addition to third-party, provider-specific bundles.
 
 If you are looking for a specific service or integration, you can <Icon name="Search" aria-hidden="true" /> **Search** components in the visual editor.
 
@@ -175,8 +175,8 @@ All other vector store components can be found within their respective provider-
 
 Replace the **Local DB** component with the **Chroma DB** vector store component (in the **Chroma** bundle) or another vector store component.
 
-The **Local DB** component reads and writes to a persistent, in-memory Chroma DB instance intended for use with Langflow.
-It has separate modes for reads and writes, automatic collection management, and default persistence in your Langflow cache directory.
+The **Local DB** component reads and writes to a persistent, in-memory Chroma DB instance intended for use with Portals.
+It has separate modes for reads and writes, automatic collection management, and default persistence in your Portals cache directory.
 
 Set the **Mode** parameter to reflect the operation you want the component to perform, and then configure the other parameters accordingly.
 Some parameters are only available for one mode.
@@ -190,8 +190,8 @@ The following parameters are available in **Ingest** mode:
 
 | Name | Type | Description |
 |------|------|-------------|
-| **Name Your Collection** (`collection_name`) | String | Input parameter. The name for your Chroma vector store collection. Default: `langflow`. Only available in **Ingest** mode. |
-| **Persist Directory** (`persist_directory`) | String | Input parameter. The base directory where you want to create and persist the vector store. If you use the **Local DB** component in multiple flows or to create multiple collections, collections are stored at `$PERSISTENT_DIRECTORY/vector_stores/$COLLECTION_NAME`. If not specified, the default location is your Langflow configuration directory. For more information, see [Memory management options](/memory). |
+| **Name Your Collection** (`collection_name`) | String | Input parameter. The name for your Chroma vector store collection. Default: `portals`. Only available in **Ingest** mode. |
+| **Persist Directory** (`persist_directory`) | String | Input parameter. The base directory where you want to create and persist the vector store. If you use the **Local DB** component in multiple flows or to create multiple collections, collections are stored at `$PERSISTENT_DIRECTORY/vector_stores/$COLLECTION_NAME`. If not specified, the default location is your Portals configuration directory. For more information, see [Memory management options](/memory). |
 | **Embedding** (`embedding`) | Embeddings | Input parameter. The embedding function to use for the vector store. |
 | **Allow Duplicates** (`allow_duplicates`) | Boolean | Input parameter. If `true` (default), writes don't check for existing duplicates in the collection, allowing you to store multiple copies of the same content. If `false`, writes won't add documents that match existing documents already present in the collection. If `false`, it can strictly enforce deduplication by searching the entire collection or only search the number of records, specified in `limit`. Only available in **Ingest** mode. |
 | **Ingest Data** (`ingest_data`) | JSON or Table | Input parameter. The records to write to the collection. Records are embedded and indexed for semantic search. Only available in **Ingest** mode. |
@@ -206,7 +206,7 @@ The following parameters are available in **Retrieve** mode:
 
 | Name | Type | Description |
 |------|------|-------------|
-| **Persist Directory** (`persist_directory`) | String | Input parameter. The base directory where you want to create and persist the vector store. If you use the **Local DB** component in multiple flows or to create multiple collections, collections are stored at `$PERSISTENT_DIRECTORY/vector_stores/$COLLECTION_NAME`. If not specified, the default location is your Langflow configuration directory. For more information, see [Memory management options](/memory). |
+| **Persist Directory** (`persist_directory`) | String | Input parameter. The base directory where you want to create and persist the vector store. If you use the **Local DB** component in multiple flows or to create multiple collections, collections are stored at `$PERSISTENT_DIRECTORY/vector_stores/$COLLECTION_NAME`. If not specified, the default location is your Portals configuration directory. For more information, see [Memory management options](/memory). |
 | **Existing Collections** (`existing_collections`) | String | Input parameter. Select a previously-created collection to search. Only available in **Retrieve** mode. |
 | **Embedding** (`embedding`) | Embeddings | Input parameter. The embedding function to use for the vector store. |
 | **Search Type** (`search_type`) | String | Input parameter. The type of search to perform, either `Similarity` or `MMR`. Only available in **Retrieve** mode. |
@@ -246,7 +246,7 @@ It accepts the following parameters:
 
 
 
-<!-- Not documented but in Langflow as of 1.5.11 -->
+<!-- Not documented but in Portals as of 1.5.11 -->
 <!--
 * AgentQL
 * Confluence

@@ -9,21 +9,21 @@ This document details how to set up a local development environment that will al
 
 ## Set up Git Repository Fork
 
-You will push changes to a fork of the Langflow repository, and from there create a Pull Request into the project repository.
+You will push changes to a fork of the Portals repository, and from there create a Pull Request into the project repository.
 
-Fork the [Langflow GitHub repository](https://github.com/langflow-ai/langflow/fork), and follow the instructions to create a new fork.
+Fork the [Portals GitHub repository](https://github.com/portals-ai/portals/fork), and follow the instructions to create a new fork.
 
 On your new fork, click the "<> Code" button to get a URL to [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) using your preferred method, and clone the repository; for example using `https`:
 
 ```bash
-git clone https://github.com/<your username>/langflow.git
+git clone https://github.com/<your username>/portals.git
 ```
 
 Finally, add the Project repository as `upstream`:
 
 ```bash
-cd langflow
-git remote add upstream https://github.com/langflow-ai/langflow.git
+cd portals
+git remote add upstream https://github.com/portals-ai/portals.git
 git remote set-url --push upstream no_push
 ```
 
@@ -68,16 +68,16 @@ make init
 This sets up the development environment by installing backend and frontend dependencies and installing pre-commit hooks. It runs `make install_backend`, `make install_frontend`, and `uvx pre-commit install`.
 
 > [!TIP]
-> If you want to quickly run Langflow from source without setting up the full development environment, you can use `make run_cli` instead. This command installs dependencies, builds the frontend, and starts the application in one step.
+> If you want to quickly run Portals from source without setting up the full development environment, you can use `make run_cli` instead. This command installs dependencies, builds the frontend, and starts the application in one step.
 
-After running `make init`, you have two options for running Langflow:
+After running `make init`, you have two options for running Portals:
 
 - Use `make run_cli` to build and run the application immediately.
-- Continue to the next section to run Langflow in Development mode.
+- Continue to the next section to run Portals in Development mode.
 
 ### Troubleshooting frontend build issues
 
-If you encounter frontend build problems or are upgrading from an older version of Langflow, run `make run_clic` once.
+If you encounter frontend build problems or are upgrading from an older version of Portals, run `make run_clic` once.
 
 ```bash
 make run_clic
@@ -103,7 +103,7 @@ uv sync
 uv run pre-commit install
 ```
 
-## Run Langflow in Development mode
+## Run Portals in Development mode
 
 With the above validation, you can now run the backend (FastAPI) and frontend (Node) services in a way that will "hot-reload" your changes. In this mode, the FastAPI server requires a Node.js server to serve the frontend pages rather than serving them directly.
 
@@ -123,19 +123,19 @@ make backend
 ```
 
 > [!TIP]
-> **Component Development Mode**: By default, Langflow uses a prebuilt component index for fast startup (~10ms). If you're actively developing or modifying components, enable dynamic component loading with `LFX_DEV`:
+> **Component Development Mode**: By default, Portals uses a prebuilt component index for fast startup (~10ms). If you're actively developing or modifying components, enable dynamic component loading with `PX_DEV`:
 >
 > ```bash
 > # Load all components dynamically
-> LFX_DEV=1 make backend
+> PX_DEV=1 make backend
 >
 > # Load only specific component modules (faster dev workflow)
-> LFX_DEV=mistral,openai,anthropic make backend
+> PX_DEV=mistral,openai,anthropic make backend
 > ```
 >
 > The list mode is particularly useful when working on specific integrations, as it significantly speeds up startup time by only loading the components you need.
 >
-> Without `LFX_DEV`, component changes require rebuilding the index:
+> Without `PX_DEV`, component changes require rebuilding the index:
 >
 > ```bash
 > uv run python scripts/build_component_index.py
@@ -144,11 +144,11 @@ make backend
 You will get output similar to:
 
 ```
-INFO:     Will watch for changes in these directories: ['/home/phil/git/langflow']
+INFO:     Will watch for changes in these directories: ['/home/phil/git/portals']
 INFO:     Loading environment from '.env'
 INFO:     Uvicorn running on http://0.0.0.0:7860 (Press CTRL+C to quit)
 INFO:     Started reloader process [22330] using WatchFiles
-Starting Langflow ...
+Starting Portals ...
 ```
 
 At which point you can check http://localhost:7860/health in a browser; when the backend service is ready it will return a document like:
@@ -159,7 +159,7 @@ At which point you can check http://localhost:7860/health in a browser; when the
 
 ### Start the Frontend Service
 
-The frontend (User Interface) is, in shipped code (i.e. via `langflow run`), statically-compiled files that the backend FastAPI service provides to clients via port `7860`. In development mode, these are served by a Node.js service on port `3000`. In the _Frontend Terminal_, start the frontend service:
+The frontend (User Interface) is, in shipped code (i.e. via `portals run`), statically-compiled files that the backend FastAPI service provides to clients via port `7860`. In development mode, these are served by a Node.js service on port `3000`. In the _Frontend Terminal_, start the frontend service:
 
 ```bash
 make frontend
@@ -175,7 +175,7 @@ You will get output similar to:
   ➜  press h + enter to show help
 ```
 
-At this point, you can navigate to http://localhost:3000/ in a browser and access the Langflow User Interface.
+At this point, you can navigate to http://localhost:3000/ in a browser and access the Portals User Interface.
 
 ### Build and display documentation
 
@@ -202,20 +202,20 @@ Navigate to http://localhost:3001/ in a browser and view the documentation. Docu
 
 ## Adding or Modifying a Component
 
-Components reside in folders under `src/backend/base/langflow`, and their unit tests under `src/backend/base/tests/unit/components`.
+Components reside in folders under `src/backend/base/portals`, and their unit tests under `src/backend/base/tests/unit/components`.
 
 > [!IMPORTANT]
-> **Component Development Mode**: When actively developing components, make sure to run the backend with `LFX_DEV=1` to enable live reloading:
+> **Component Development Mode**: When actively developing components, make sure to run the backend with `PX_DEV=1` to enable live reloading:
 >
 > ```bash
-> LFX_DEV=1 make backend
+> PX_DEV=1 make backend
 > ```
 >
 > This ensures your component changes are immediately reflected without needing to rebuild the component index.
 
 ### Adding a Component
 
-Add the component to the appropriate subdirectory, and add the component to the `__init__.py` file (alphabetical ordering on the `import` and the `__all__` list). Assuming the backend and frontend services are running **with `LFX_DEV=1`**, the backend service will restart as these files are changed. The new component will be visible after the backend is restarted, _*and*_ after you hit "refresh" in the browser.
+Add the component to the appropriate subdirectory, and add the component to the `__init__.py` file (alphabetical ordering on the `import` and the `__all__` list). Assuming the backend and frontend services are running **with `PX_DEV=1`**, the backend service will restart as these files are changed. The new component will be visible after the backend is restarted, _*and*_ after you hit "refresh" in the browser.
 
 > [!TIP]
 > It is faster to copy-paste the component code from your editor into the UI _without_ saving in the source code in the editor, and once you are satisfied it is working you can save (restarting the backend) and refresh the browser to confirm it is present.
@@ -227,7 +227,7 @@ You should try to add a unit test for your component, though templates and best 
 Modifying a component is much the same as adding a component: it is generally easier to make changes in the UI and then save the file in the repository. Please be sure to review and modify unit tests; if there is not a unit test for the component, the addition of one that at least covers your changes would be much appreciated!
 
 > [!NOTE]
-> If you have an old version of the component on the canvas when changes are saved and the backend service restarts, that component should show "Updates Available" when the canvas is reloaded (i.e. a browser refresh). [Issue 5179](https://github.com/langflow-ai/langflow/issues/5179) indicates this behavior is not consistent, at least in a development setting.
+> If you have an old version of the component on the canvas when changes are saved and the backend service restarts, that component should show "Updates Available" when the canvas is reloaded (i.e. a browser refresh). [Issue 5179](https://github.com/portals-ai/portals/issues/5179) indicates this behavior is not consistent, at least in a development setting.
 
 ### Component Index
 
@@ -249,7 +249,7 @@ When you are ready to commit, and before you commit, you should consider the fol
 
 Once these changes are ready, it is helpful to rebase your changes on top of `upstream`'s `main` branch, to ensure you have the latest code version! Of course if you have had to merge changes into your component you may want to re-lint/format/unit_test.
 
-As a final validation, stop the backend and frontend services and run `make init`; this will do a clean build and the UI should be available in port `7860` (as it has invoked `langflow run`). Open a **new** browser tab to this service and do a final check of your changes by adding your new/modified component onto the canvas from the Components list.
+As a final validation, stop the backend and frontend services and run `make init`; this will do a clean build and the UI should be available in port `7860` (as it has invoked `portals run`). Open a **new** browser tab to this service and do a final check of your changes by adding your new/modified component onto the canvas from the Components list.
 
 ## Committing, Pushing, and Pull Requests
 
@@ -272,7 +272,7 @@ You may observe some quirky things:
 
 There are some files that change without you having made changes:
 
-- Files in `src/backend/base/langflow/initial_setup/starter_projects` modify after `langflow run`; these are formatting changes. Feel free to commit (or ignore) them.
+- Files in `src/backend/base/portals/initial_setup/starter_projects` modify after `portals run`; these are formatting changes. Feel free to commit (or ignore) them.
 - `uv.lock` and `src/frontend/package-lock.json` files can be modified by `make` targets; changes should not be committed by individual contributors.
   - You can exclude these from consideration in git: `git update-index --assume-unchanged uv.lock src/frontend/package-lock.json`
   - You can re-include these from consideration in git: `git update-index --no-assume-unchanged uv.lock src/frontend/package-lock.json`

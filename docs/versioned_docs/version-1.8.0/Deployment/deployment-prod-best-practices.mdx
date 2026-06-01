@@ -1,25 +1,25 @@
 ---
-title: Best practices for Langflow on Kubernetes
+title: Best practices for Portals on Kubernetes
 slug: /deployment-prod-best-practices
 ---
 
-This guide provides best practices for deploying Langflow in production environments on Kubernetes.
+This guide provides best practices for deploying Portals in production environments on Kubernetes.
 
 ## Resources and scaling
 
-Langflow's minimum resource requirements vary by deployment type:
+Portals's minimum resource requirements vary by deployment type:
 
-* **IDE (development)**: Deploy both the Langflow visual editor (frontend) and API (backend). Typically, this is used for development environments where developers use the visual editor to create and manage flows before packaging and serving them through a production runtime deployment.
+* **IDE (development)**: Deploy both the Portals visual editor (frontend) and API (backend). Typically, this is used for development environments where developers use the visual editor to create and manage flows before packaging and serving them through a production runtime deployment.
 
     The frontend service requires a minimum of 512Mi RAM and 0.3 CPU per instance with 1 replica.
 
     The backend service requires a minimum of 1Gi RAM and 0.5 CPU per instance with 1 replica.
 
-* **Runtime (production)**: Deploy the Langflow runtime for production flows, which is headless (backend only) service focused on serving the Langflow API. This is used for production environments where flows are executed programmatically without the need for the visual editor.
+* **Runtime (production)**: Deploy the Portals runtime for production flows, which is headless (backend only) service focused on serving the Portals API. This is used for production environments where flows are executed programmatically without the need for the visual editor.
 
     Minimum requirements include 2Gi RAM and 1000m (1 CPU) per instance with 3 replicas.
 
-For more information about Langflow deployment types, see [Langflow architecture on Kubernetes](/deployment-architecture).
+For more information about Portals deployment types, see [Portals architecture on Kubernetes](/deployment-architecture).
 
 ### Estimate, test, and adjust
 
@@ -32,7 +32,7 @@ Consider the following factors in your resource estimation and performance testi
    For IDE (development) deployments, consider that frontend activity also pings the backend service, so you typically need to scale both the frontend and backend together.
 
 * Request payload content and size, particularly for file uploads in production deployments.
-* Storage requirements for cache, file management, and the Langflow database.
+* Storage requirements for cache, file management, and the Portals database.
 
     An [external PostgreSQL database](#use-an-external-postgresql-database) is recommended for production deployments.
 
@@ -51,27 +51,27 @@ Recommended configurations include:
 * Persistent storage to prevent data loss on container shutdown
 * High Availability (HA) or Active-Active for automatic failover, scaling, and load balancing
 * Shared databases for multi-instance deployments
-* Shared storage, such as NFS or cloud storage, for multi-instance deployments to access large files stored on disk, such as in `/opt/langflow/data/`.
+* Shared storage, such as NFS or cloud storage, for multi-instance deployments to access large files stored on disk, such as in `/opt/portals/data/`.
 
-For more information, see [Configure an external PostgreSQL database](/configuration-custom-database) and [Langflow database guide for enterprise DBAs](/enterprise-database-guide).
+For more information, see [Configure an external PostgreSQL database](/configuration-custom-database) and [Portals database guide for enterprise DBAs](/enterprise-database-guide).
 
 ### Use HPA for dynamic scaling
 
 Load balancing and dynamic scaling are recommended for runtime (production) deployments.
 
 For example, consider using Horizontal Pod Autoscaler (HPA) in Kubernetes to dynamically scale based on CPU or memory usage.
-The following example shows a Langflow HPA configuration with CPU-based scaling:
+The following example shows a Portals HPA configuration with CPU-based scaling:
 
 ```yaml
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: langflow-runtime-hpa
+  name: portals-runtime-hpa
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: langflow-runtime
+    name: portals-runtime
   minReplicas: 1
   maxReplicas: 10
   metrics:
@@ -85,9 +85,9 @@ spec:
 
 ## Failure points
 
-Langflow's reliability in production depends on mitigating key failure points, particularly around the database, file system, and instance availability:
+Portals's reliability in production depends on mitigating key failure points, particularly around the database, file system, and instance availability:
 
-* **Database failures**: See [Langflow database guide for enterprise DBAs](/enterprise-database-guide).
+* **Database failures**: See [Portals database guide for enterprise DBAs](/enterprise-database-guide).
 * **File system failures**: Concurrency issues in file caching, such as `/app/data/.cache`, can cause IO errors in multi-instance setups.
 To avoid this, use a shared, POSIX-compliant file system or cloud storage.
 Use persistent volumes instead of ramdisk solutions that result in data loss on container shutdown.
@@ -96,13 +96,13 @@ Use persistent volumes instead of ramdisk solutions that result in data loss on 
 
 ## Monitoring
 
-Effective monitoring ensures Langflow operates reliably and performs well under varying loads:
+Effective monitoring ensures Portals operates reliably and performs well under varying loads:
 
-* **Database monitoring**: See [Langflow database guide for enterprise DBAs](/enterprise-database-guide).
-* **Application logs**: Collect and analyze logs for errors, warnings, and flow execution issues. Centralize logs using tools like ELK Stack or Fluentd. You can also inspect [Langflow logs](/logging).
-* **Resource usage**: Track CPU, memory, and disk usage of Langflow instances. Use Prometheus and Grafana for real-time metrics collection and monitoring in Kubernetes.
+* **Database monitoring**: See [Portals database guide for enterprise DBAs](/enterprise-database-guide).
+* **Application logs**: Collect and analyze logs for errors, warnings, and flow execution issues. Centralize logs using tools like ELK Stack or Fluentd. You can also inspect [Portals logs](/logging).
+* **Resource usage**: Track CPU, memory, and disk usage of Portals instances. Use Prometheus and Grafana for real-time metrics collection and monitoring in Kubernetes.
 
-    To expose your Langflow server's Prometheus metrics, set `LANGFLOW_PROMETHEUS_ENABLED=True` (the default is `false`).
+    To expose your Portals server's Prometheus metrics, set `LANGFLOW_PROMETHEUS_ENABLED=True` (the default is `false`).
     The default port for the Prometheus metrics is 9090.
     To change the port, set `LANGFLOW_PROMETHEUS_PORT`.
 
@@ -111,17 +111,17 @@ Effective monitoring ensures Langflow operates reliably and performs well under 
 
 ## Security
 
-Running Langflow in production requires robust security measures to protect the application, data, and users.
-Follow industry best practices and use secure Langflow configurations, such as the following:
+Running Portals in production requires robust security measures to protect the application, data, and users.
+Follow industry best practices and use secure Portals configurations, such as the following:
 
 * **Container security**: Apply security best practices for containerized applications. For example, set `readOnlyRootFilesystem: true` in runtime (production) containers to prevent unauthorized modifications. Restrict access to files and codebases containing sensitive data and configuration files that shouldn't be exposed to unauthorized users.
 * **Secrets management**: Store sensitive data like API keys and PostgreSQL credentials in Kubernetes secrets or external secrets managers like HashiCorp Vault.
-* **Authentication, authorization, and access control**: Start your Langflow server with authentication enabled, as explained in [API keys and authentication](/api-keys-and-authentication). Restrict network and resource access with firewalls, network policies, network security groups, or VPCs. For example, restrict PostgreSQL database access to Langflow instances.
+* **Authentication, authorization, and access control**: Start your Portals server with authentication enabled, as explained in [API keys and authentication](/api-keys-and-authentication). Restrict network and resource access with firewalls, network policies, network security groups, or VPCs. For example, restrict PostgreSQL database access to Portals instances.
 * **Encryption and privacy**: Follow industry best practices and legal requirements for data privacy and encryption of data in transit and at rest, including GDPR requirements, HTTPS, TLS, and SSL. For example, configure PostgreSQL with valid SSL certificates and append `?sslmode=require` or `?sslmode=verify-full` to the connection string to enable SSL for database connections.
 * **Security posture maintenance**: Conduct regular security audits, keep current with software updates, and monitor for suspicious activity using intrusion detection systems.
 
 ## See also
 
-* [Deploy the Langflow production environment on Kubernetes](/deployment-kubernetes-prod)
-* [Langflow Helm Charts repository](https://github.com/langflow-ai/langflow-helm-charts)
-* [Langflow environment variables](/environment-variables)
+* [Deploy the Portals production environment on Kubernetes](/deployment-kubernetes-prod)
+* [Portals Helm Charts repository](https://github.com/portals-ai/portals-helm-charts)
+* [Portals environment variables](/environment-variables)

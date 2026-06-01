@@ -21,7 +21,7 @@ For example:
 
 To use the **Webhook** component in a flow, do the following:
 
-1. In Langflow, open the flow where you want to use the **Webhook** component.
+1. In Portals, open the flow where you want to use the **Webhook** component.
 
 2. Add a [**Webhook** component](/webhook) and a [**Parser** component](/parser) to your flow.
 
@@ -70,7 +70,7 @@ To use the **Webhook** component in a flow, do the following:
         -d '{"id": "12345", "name": "alex", "email": "alex@email.com"}'
     ```
 
-    A successful response indicates that Langflow started the flow.
+    A successful response indicates that Portals started the flow.
     The response doesn't include the output for the entire flow, only an indication that the flow started.
 
     ```json
@@ -86,15 +86,15 @@ For the preceding example, the parsed payload would be a string like `ID: 12345 
 ## Trigger flows with Composio webhooks
 
 Typically, you won't manually trigger the **Webhook** component.
-To learn about triggering flows with payloads from external applications, see the video tutorial [How to Use Webhooks in Langflow](https://www.youtube.com/watch?v=IC1CAtzFRE0).
+To learn about triggering flows with payloads from external applications, see the video tutorial [How to Use Webhooks in Portals](https://www.youtube.com/watch?v=IC1CAtzFRE0).
 
 ## Require authentication for webhooks {#require-authentication-for-webhooks}
 
 By default, webhooks require API key authentication (`LANGFLOW_WEBHOOK_AUTH_ENABLE=True`).
 
-To allow webhooks to run without authentication (not recommended; use only in trusted environments), in your Langflow `.env` file, set `LANGFLOW_WEBHOOK_AUTH_ENABLE=False`. When disabled, requests to the webhook endpoint are treated as being sent by the flow owner.
+To allow webhooks to run without authentication (not recommended; use only in trusted environments), in your Portals `.env` file, set `LANGFLOW_WEBHOOK_AUTH_ENABLE=False`. When disabled, requests to the webhook endpoint are treated as being sent by the flow owner.
 
-When webhook authentication is enabled, you must provide a Langflow API key with each webhook request.
+When webhook authentication is enabled, you must provide a Portals API key with each webhook request.
 
 To include the API key with a request as an HTTP header:
 ```bash
@@ -144,6 +144,6 @@ Then, you can examine the string output and troubleshoot your parsing template, 
 
 ## See also
 
-- [Get started with the Langflow API](/api-reference-api-examples)
+- [Get started with the Portals API](/api-reference-api-examples)
 - [**Webhook** component](/webhook)
 - [Flow trigger endpoints](/api-flows-run)

@@ -8,10 +8,10 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import PartialBasicComponentStructure from '../_partial-basic-component-structure.mdx';
 
-Create your own custom components to add any functionality you need to Langflow, from API integrations to data processing.
+Create your own custom components to add any functionality you need to Portals, from API integrations to data processing.
 
-In Langflow's node-based environment, each node is a "component" that performs discrete functions.
-Custom components in Langflow are built upon:
+In Portals's node-based environment, each node is a "component" that performs discrete functions.
+Custom components in Portals are built upon:
 
 * The Python class that inherits from `Component`.
 * Class-level attributes that identify and describe the component.
@@ -19,11 +19,11 @@ Custom components in Langflow are built upon:
 * Methods that define the component's behavior and logic.
 * Internal variables for [Error handling and logging](#error-handling-and-logging)
 
-Use the [Custom component quickstart](#quickstart) to add an example component to Langflow, and then use the reference guide that follows for more advanced component customization.
+Use the [Custom component quickstart](#quickstart) to add an example component to Portals, and then use the reference guide that follows for more advanced component customization.
 
 ## Custom component quickstart {#quickstart}
 
-Create a custom `DataFrameProcessor` component by creating a Python file, saving it in the correct folder, including an `__init__.py` file, and loading it into Langflow.
+Create a custom `DataFrameProcessor` component by creating a Python file, saving it in the correct folder, including an `__init__.py` file, and loading it into Portals.
 
 ### Create a Python file
 
@@ -31,19 +31,19 @@ Create a custom `DataFrameProcessor` component by creating a Python file, saving
 
 ### Save the custom component {#custom-component-path}
 
-Save the custom component in the Langflow directory where the UI will discover and load it.
+Save the custom component in the Portals directory where the UI will discover and load it.
 
-By default, Langflow looks for custom components in the `src/lfx/src/lfx/components` directory.
+By default, Portals looks for custom components in the `src/px/src/px/components` directory.
 
 When saving components in the default directory, components must be organized in a specific directory structure to be properly loaded and displayed in the visual editor.
 
 Components must be placed inside category folders, not directly in the base directory.
 
-The category folder name determines where the component appears in the Langflow <Icon name="Component" aria-hidden="true" /> **Core components** menu.
+The category folder name determines where the component appears in the Portals <Icon name="Component" aria-hidden="true" /> **Core components** menu.
 For example, to add the example `DataFrameProcessor` component to the **Data** category, place it in the `data` subfolder:
 
 ```
-src/lfx/src/lfx/components/
+src/px/src/px/components/
     └── data/                      # Category folder (determines menu location)
         ├── __init__.py            # Required - makes it a Python package
         └── dataframe_processor.py # Your custom component file
@@ -72,7 +72,7 @@ You can have multiple category folders to organize components into different cat
 
 ### Create the `__init__.py` file
 
-Each category directory **must** contain an `__init__.py` file for Langflow to properly recognize and load the components.
+Each category directory **must** contain an `__init__.py` file for Portals to properly recognize and load the components.
 This is a Python package requirement that ensures the directory is treated as a module.
 
 To include the `DataFrameProcessor` component, create a file named `__init__.py` in your component's directory with the following content.
@@ -93,10 +93,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lfx.components._importing import import_mod
+from px.components._importing import import_mod
 
 if TYPE_CHECKING:
-    from lfx.components.data.dataframe_processor import DataFrameProcessor
+    from px.components.data.dataframe_processor import DataFrameProcessor
 
 _dynamic_imports = {
     "DataFrameProcessor": "dataframe_processor",
@@ -123,7 +123,7 @@ def __dir__() -> list[str]:
     return list(__all__)
 ```
 
-For an additional example of lazy loading, see the [FAISS component](https://github.com/langflow-ai/langflow/blob/main/src/lfx/src/lfx/components/FAISS/__init__.py).
+For an additional example of lazy loading, see the [FAISS component](https://github.com/portals-ai/portals/blob/main/src/px/src/px/components/FAISS/__init__.py).
 
 </details>
 
@@ -131,22 +131,22 @@ For an additional example of lazy loading, see the [FAISS component](https://git
 
 Ensure the application builds your component.
 
-1. To rebuild the backend and frontend, run `make install_frontend && make build_frontend && make install_backend && uv run langflow run --port 7860`.
+1. To rebuild the backend and frontend, run `make install_frontend && make build_frontend && make install_backend && uv run portals run --port 7860`.
 
 2. Refresh the frontend application.
 Your new `DataFrameProcessor` component is available in the <Icon name="Component" aria-hidden="true" /> **Core components** menu under the **Data** category in the visual editor.
 
 ### Docker deployment
 
-When running Langflow in Docker, mount your custom components directory and set the `LANGFLOW_COMPONENTS_PATH` environment variable in the `docker run` command to point to the custom components directory.
+When running Portals in Docker, mount your custom components directory and set the `LANGFLOW_COMPONENTS_PATH` environment variable in the `docker run` command to point to the custom components directory.
 
 ```bash
 docker run -d \
-  --name langflow \
+  --name portals \
   -p 7860:7860 \
   -v ./custom_components:/app/custom_components \
   -e LANGFLOW_COMPONENTS_PATH=/app/custom_components \
-  langflowai/langflow:latest
+  portalsai/portals:latest
 ```
 
 Create the same custom components directory structure as the example in [Save the custom component](#custom-component-path).
@@ -160,7 +160,7 @@ Create the same custom components directory structure as the example in [Save th
 
 ## How components execute
 
-Langflow's engine manages:
+Portals's engine manages:
 
 1. **Instantiation**:  A component is created and internal structures are initialized.
 2. **Assigning Inputs**: Values from the visual editor or connections are assigned to component fields.
@@ -218,14 +218,14 @@ Inputs and outputs are **class-level configurations** that define how data flows
 
 ### Inputs
 
-Inputs are defined in a class-level `inputs` list. When Langflow loads the component, it uses this list to render component fields and [ports](/concepts-components#component-ports) in the visual editor. Users or other components provide values or connections to fill these inputs.
+Inputs are defined in a class-level `inputs` list. When Portals loads the component, it uses this list to render component fields and [ports](/concepts-components#component-ports) in the visual editor. Users or other components provide values or connections to fill these inputs.
 
-An input is usually an instance of a class from `lfx.io` (such as `StrInput`, `DataInput`, or `MessageTextInput`).
+An input is usually an instance of a class from `px.io` (such as `StrInput`, `DataInput`, or `MessageTextInput`).
 
 For example, this component has three inputs: a text field (`StrInput`), a Boolean toggle (`BoolInput`), and a dropdown selection (`DropdownInput`).
 
 ```python
-from lfx.io import StrInput, BoolInput, DropdownInput
+from px.io import StrInput, BoolInput, DropdownInput
 
 inputs = [
     StrInput(name="title", display_name="Title"),
@@ -241,25 +241,25 @@ The `BoolInput` creates a boolean toggle that's enabled by default with `value=T
 The `DropdownInput` provides a selection menu with three predefined options: "Fast", "Safe", and "Experimental".
 The `value="Safe"` sets "Safe" as the default selection, and you access the user's choice with `self.mode`.
 
-For a list of all available parameters, see the [BaseInputMixin definition](https://github.com/langflow-ai/langflow/blob/main/src/lfx/src/lfx/inputs/input_mixin.py) in the Langflow codebase.
+For a list of all available parameters, see the [BaseInputMixin definition](https://github.com/portals-ai/portals/blob/main/src/px/src/px/inputs/input_mixin.py) in the Portals codebase.
 
-For a list of all available input types, see the [input type definitions](https://github.com/langflow-ai/langflow/blob/main/src/lfx/src/lfx/inputs/inputs.py) in the Langflow codebase.
+For a list of all available input types, see the [input type definitions](https://github.com/portals-ai/portals/blob/main/src/px/src/px/inputs/inputs.py) in the Portals codebase.
 
 ```python
-from lfx.io import StrInput, DataInput, MultilineInput, IntInput, BoolInput, DropdownInput, FileInput, CodeInput, ModelInput, HandleInput, Output
+from px.io import StrInput, DataInput, MultilineInput, IntInput, BoolInput, DropdownInput, FileInput, CodeInput, ModelInput, HandleInput, Output
 ```
 
 ### Outputs
 
-Outputs are defined in a class-level `outputs` list. When Langflow renders a component, each output becomes a connector point in the visual editor. When you connect something to an output, Langflow automatically calls the corresponding method and passes the returned object to the next component.
+Outputs are defined in a class-level `outputs` list. When Portals renders a component, each output becomes a connector point in the visual editor. When you connect something to an output, Portals automatically calls the corresponding method and passes the returned object to the next component.
 
-An output is usually an instance of `Output` from `lfx.io`.
+An output is usually an instance of `Output` from `px.io`.
 
 For example, this component has one `output` that returns a `DataFrame`:
 
 ```python
-from lfx.io import Output
-from lfx.schema import DataFrame
+from px.io import Output
+from px.schema import DataFrame
 
 outputs = [
     Output(
@@ -276,11 +276,11 @@ def build_df(self) -> DataFrame:
     return df
 ```
 
-The `Output` creates a connector point in the visual editor labeled **DataFrame Output**. The `name="df_out"` parameter identifies this output, while `display_name="DataFrame Output"` shows the label in the UI. The `method="build_df"` parameter tells Langflow to call the `build_df` method when this output is connected to another component.
+The `Output` creates a connector point in the visual editor labeled **DataFrame Output**. The `name="df_out"` parameter identifies this output, while `display_name="DataFrame Output"` shows the label in the UI. The `method="build_df"` parameter tells Portals to call the `build_df` method when this output is connected to another component.
 
-The `build_df` method processes data and returns a `DataFrame`. The `-> DataFrame` type annotation helps Langflow validate connections and provides color-coding in the visual editor. You can also set `self.status` to show progress messages in the UI.
+The `build_df` method processes data and returns a `DataFrame`. The `-> DataFrame` type annotation helps Portals validate connections and provides color-coding in the visual editor. You can also set `self.status` to show progress messages in the UI.
 
-For a complete list of all available parameters, see the [Output class definition](https://github.com/langflow-ai/langflow/blob/main/src/lfx/src/lfx/template/field/base.py) in the Langflow codebase. Common parameters include:
+For a complete list of all available parameters, see the [Output class definition](https://github.com/portals-ai/portals/blob/main/src/px/src/px/template/field/base.py) in the Portals codebase. Common parameters include:
 
 **Additional return types:**
 * **`Message`**: Structured chat messages
@@ -323,7 +323,7 @@ outputs = [
 ]
 ```
 
-By default, components in Langflow that produce multiple outputs only allow one output selection in the visual editor.
+By default, components in Portals that produce multiple outputs only allow one output selection in the visual editor.
 The component will have only one output port where the user can select the preferred output type.
 
 This behavior is controlled by the `group_outputs` parameter:
@@ -401,7 +401,7 @@ inputs = [
 
 ## Typed annotations
 
-In Langflow, typed annotations allow Langflow to visually guide users and maintain flow consistency.
+In Portals, typed annotations allow Portals to visually guide users and maintain flow consistency.
 Always annotate your output methods with return types like `-> Data`, `-> Message`, or `-> DataFrame` to enable proper visual editor color-coding and validation.
 Use `Data`, `Message`, or `DataFrame` wrappers instead of returning plain structures for better consistency. Stay consistent with types across your components to make flows predictable and easier to build.
 
@@ -457,14 +457,14 @@ def compute_sum(self) -> int:
 
 ## Enable dynamic fields
 
-In **Langflow**, dynamic fields allow inputs to change or appear based on user interactions. You can make an input dynamic by setting `dynamic=True`. Optionally, setting `real_time_refresh=True` triggers the `update_build_config` method to adjust the input's visibility or properties in real time, creating a contextual visual editor experience that only exposes relevant fields based on the user's choices.
+In **Portals**, dynamic fields allow inputs to change or appear based on user interactions. You can make an input dynamic by setting `dynamic=True`. Optionally, setting `real_time_refresh=True` triggers the `update_build_config` method to adjust the input's visibility or properties in real time, creating a contextual visual editor experience that only exposes relevant fields based on the user's choices.
 
 In this example, the operator field triggers updates with `real_time_refresh=True`.
 The `regex_pattern` field is initially hidden and controlled with `dynamic=True`.
 
 ```python
-from lfx.custom import Component
-from lfx.io import DropdownInput, StrInput
+from px.custom import Component
+from px.io import DropdownInput, StrInput
 
 class RegexRouter(Component):
     display_name = "Regex Router"
@@ -490,7 +490,7 @@ class RegexRouter(Component):
 
 ### Show or hide fields based on user selections
 
-When a user changes a field with `real_time_refresh=True`, Langflow calls your `update_build_config` method.
+When a user changes a field with `real_time_refresh=True`, Portals calls your `update_build_config` method.
 
 This method lets you show, hide, or modify other fields based on what the user selected.
 
@@ -534,7 +534,7 @@ You can modify additional field properties in `update_build_config` other than j
 
 ## Error handling and logging
 
-You can raise standard Python exceptions such as `ValueError` or specialized exceptions like `ToolException` when validation fails. Langflow automatically catches these and displays appropriate error messages in the visual editor, helping users quickly identify what went wrong.
+You can raise standard Python exceptions such as `ValueError` or specialized exceptions like `ToolException` when validation fails. Portals automatically catches these and displays appropriate error messages in the visual editor, helping users quickly identify what went wrong.
 
 ```python
 def compute_result(self) -> str:
@@ -553,7 +553,7 @@ def run_model(self) -> Data:
         return Data(data={"error": str(e)})
 ```
 
-Langflow provides several tools to help you debug and manage component execution. You can use `self.status` to display short messages about execution results directly in the visual editor, making troubleshooting easier for users.
+Portals provides several tools to help you debug and manage component execution. You can use `self.status` to display short messages about execution results directly in the visual editor, making troubleshooting easier for users.
 
 ```python
 def parse_data(self) -> Data:
@@ -575,7 +575,7 @@ if not self.user_input or len(self.user_input.strip()) == 0:
 
 You can log key execution details inside components using `self.log()`. These logs are stored as structured data and displayed in the "Logs" or "Events" section of the component's detail view, and can be accessed later through the **Logs** button in the visual editor or exported files.
 
-Component logs are distinct from Langflow's main application logging system. `self.log()` creates component-specific logs that appear in the UI, while Langflow's main logging system uses [structlog](https://www.structlog.org) for application-level logging  that outputs to `langflow.log` files. For more information, see [Logs](/logging).
+Component logs are distinct from Portals's main application logging system. `self.log()` creates component-specific logs that appear in the UI, while Portals's main logging system uses [structlog](https://www.structlog.org) for application-level logging  that outputs to `portals.log` files. For more information, see [Logs](/logging).
 
 This example logs a message when the component starts processing a file.
 
@@ -584,6 +584,6 @@ def process_file(self, file_path: str):
 self.log(f"Processing file {file_path}")
 ```
 
-## Contribute custom components to Langflow
+## Contribute custom components to Portals
 
-To contribute your custom component to the Langflow project, see [Contribute components](/contributing-components).
+To contribute your custom component to the Portals project, see [Contribute components](/contributing-components).

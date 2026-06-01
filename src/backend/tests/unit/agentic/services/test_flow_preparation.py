@@ -59,9 +59,7 @@ class TestInjectModelIntoFlow:
         with patch(f"{MODULE}.get_provider_config", return_value=OPENAI_CONFIG):
             result = inject_model_into_flow(flow_data, "OpenAI", "gpt-4o")
 
-        model_val = result["data"]["nodes"][0]["data"]["node"]["template"]["model"][
-            "value"
-        ]
+        model_val = result["data"]["nodes"][0]["data"]["node"]["template"]["model"]["value"]
         assert len(model_val) == 1
         assert model_val[0]["name"] == "gpt-4o"
         assert model_val[0]["provider"] == "OpenAI"
@@ -79,9 +77,7 @@ class TestInjectModelIntoFlow:
 
         # Agent node should have the injected model
         agent = result["data"]["nodes"][1]
-        assert (
-            agent["data"]["node"]["template"]["model"]["value"][0]["name"] == "gpt-4o"
-        )
+        assert agent["data"]["node"]["template"]["model"]["value"][0]["name"] == "gpt-4o"
 
     def test_should_use_provided_api_key_var(self):
         """Should use provided api_key_var instead of provider default."""
@@ -114,9 +110,7 @@ class TestInjectModelIntoFlow:
         with patch(f"{MODULE}.get_provider_config", return_value=config_with_extras):
             result = inject_model_into_flow(flow_data, "Azure", "gpt-4o")
 
-        metadata = result["data"]["nodes"][0]["data"]["node"]["template"]["model"][
-            "value"
-        ][0]["metadata"]
+        metadata = result["data"]["nodes"][0]["data"]["node"]["template"]["model"]["value"][0]["metadata"]
         assert metadata["url_param"] == "azure_endpoint"
         assert metadata["base_url_param"] == "base_url"
 
@@ -167,9 +161,7 @@ class TestLoadAndPrepareFlow:
             result_json = load_and_prepare_flow(flow_file, "OpenAI", "gpt-4o", None)
 
         result = json.loads(result_json)
-        model_val = result["data"]["nodes"][0]["data"]["node"]["template"]["model"][
-            "value"
-        ]
+        model_val = result["data"]["nodes"][0]["data"]["node"]["template"]["model"]["value"]
         assert model_val[0]["name"] == "gpt-4o"
 
     def test_should_return_original_when_no_provider(self, tmp_path):
@@ -182,10 +174,7 @@ class TestLoadAndPrepareFlow:
         result = json.loads(result_json)
 
         # Model should remain empty (no injection)
-        assert (
-            result["data"]["nodes"][0]["data"]["node"]["template"]["model"]["value"]
-            == []
-        )
+        assert result["data"]["nodes"][0]["data"]["node"]["template"]["model"]["value"] == []
 
 
 def _make_directory_flow(path_value: str) -> dict:
@@ -214,7 +203,7 @@ def _make_directory_flow(path_value: str) -> dict:
     }
 
 
-class TestInjectLfxComponentsPath:
+class TestInjectPxComponentsPath:
     """Tests for inject_px_components_path.
 
     Regression guard for the Portals Desktop bug where the PortalsAssistant
@@ -231,9 +220,7 @@ class TestInjectLfxComponentsPath:
 
         result = inject_px_components_path(flow_data)
 
-        rewritten = result["data"]["nodes"][0]["data"]["node"]["template"]["path"][
-            "value"
-        ]
+        rewritten = result["data"]["nodes"][0]["data"]["node"]["template"]["path"]["value"]
         expected = str(Path(px.__file__).parent / "components")
         assert rewritten == expected
         # Must be absolute — the whole point of the fix.
@@ -246,10 +233,7 @@ class TestInjectLfxComponentsPath:
 
         result = inject_px_components_path(flow_data)
 
-        assert (
-            result["data"]["nodes"][0]["data"]["node"]["template"]["path"]["value"]
-            == "/custom/user/path"
-        )
+        assert result["data"]["nodes"][0]["data"]["node"]["template"]["path"]["value"] == "/custom/user/path"
 
     def test_should_not_modify_non_directory_nodes(self):
         flow_data = _make_flow_data(["Agent"])
@@ -279,8 +263,6 @@ class TestInjectLfxComponentsPath:
         result_json = load_and_prepare_flow(flow_file, None, None, None)
         result = json.loads(result_json)
 
-        rewritten = result["data"]["nodes"][0]["data"]["node"]["template"]["path"][
-            "value"
-        ]
+        rewritten = result["data"]["nodes"][0]["data"]["node"]["template"]["path"]["value"]
         expected = str(Path(px.__file__).parent / "components")
         assert rewritten == expected

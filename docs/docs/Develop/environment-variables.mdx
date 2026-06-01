@@ -7,20 +7,20 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import Link from '@docusaurus/Link';
 
-In general, environment variables, like `LANGFLOW_PORT` or `LANGFLOW_LOG_LEVEL`, configure how Langflow runs.
-These are broad settings that apply to your entire Langflow deployment.
+In general, environment variables, like `LANGFLOW_PORT` or `LANGFLOW_LOG_LEVEL`, configure how Portals runs.
+These are broad settings that apply to your entire Portals deployment.
 
-In contrast, global variables are user-defined values stored in Langflow's database for use in flows, such as `OPENAI_API_KEY`.
-Langflow can also source global variables from environment variables.
-For more information, see [Langflow global variables](/configuration-global-variables).
+In contrast, global variables are user-defined values stored in Portals's database for use in flows, such as `OPENAI_API_KEY`.
+Portals can also source global variables from environment variables.
+For more information, see [Portals global variables](/configuration-global-variables).
 
-## Configure environment variables for Langflow OSS
+## Configure environment variables for Portals OSS
 
-Langflow recognizes [supported environment variables](#supported-variables) from the following sources:
+Portals recognizes [supported environment variables](#supported-variables) from the following sources:
 
 - Environment variables set in your terminal.
-- Environment variables imported from a `.env` file when starting Langflow.
-- Environment variables set with the [Langflow CLI](./configuration-cli), including the `--env-file` option and direct options, such as `--port`.
+- Environment variables imported from a `.env` file when starting Portals.
+- Environment variables set with the [Portals CLI](./configuration-cli), including the `--env-file` option and direct options, such as `--port`.
 
 You can choose to use one or more of these sources.
 
@@ -28,15 +28,15 @@ You can choose to use one or more of these sources.
 
 If the same environment variable is set in multiple places, the following hierarchy applies:
 
-1. Langflow CLI options override all other sources.
+1. Portals CLI options override all other sources.
 2. The `.env` file overrides system environment variables.
 3. System environment variables are used only if not set elsewhere.
-When running a Langflow Docker image, the `-e` flag can be used to set additional system environment variables.
+When running a Portals Docker image, the `-e` flag can be used to set additional system environment variables.
 
 For example:
 
-* If you set `LANGFLOW_PORT=8080` in your system environment and `LANGFLOW_PORT=7860` in `.env`, Langflow uses `7860` from `.env`.
-* If you use the Langflow CLI to run `langflow run --env-file .env --port 9000`, and you set `LANGFLOW_PORT=7860` in `.env`, then Langflow uses `9000` from the CLI option.
+* If you set `LANGFLOW_PORT=8080` in your system environment and `LANGFLOW_PORT=7860` in `.env`, Portals uses `7860` from `.env`.
+* If you use the Portals CLI to run `portals run --env-file .env --port 9000`, and you set `LANGFLOW_PORT=7860` in `.env`, then Portals uses `9000` from the CLI option.
 
 ### Set environment variables in your terminal {#configure-variables-terminal}
 
@@ -63,22 +63,22 @@ set VARIABLE_NAME='VALUE'
 docker run -it --rm \
     -p 7860:7860 \
     -e VARIABLE_NAME='VALUE' \
-    langflowai/langflow:latest
+    portalsai/portals:latest
 ```
 
 </TabItem>
 </Tabs>
 
-When you start Langflow, it looks for environment variables that you've set in your terminal.
+When you start Portals, it looks for environment variables that you've set in your terminal.
 If it detects a supported environment variable, then it automatically adopts the specified value, subject to [precedence rules](#precedence).
 
 ### Import environment variables from a .env file {#configure-variables-env-file}
 
-1. If Langflow is running, quit Langflow.
+1. If Portals is running, quit Portals.
 
 2. Create a `.env` file, and then open it in your preferred editor.
 
-3. Define [Langflow environment variables](#supported-variables) in the `.env` file.
+3. Define [Portals environment variables](#supported-variables) in the `.env` file.
 
     <details>
     <summary>Example: .env</summary>
@@ -94,7 +94,7 @@ If it detects a supported environment variable, then it automatically adopts the
     LANGFLOW_COMPONENTS_PATH=/path/to/components/
     LANGFLOW_COMPONENTS_INDEX_PATH=/path/to/component_index.json
     LANGFLOW_CONFIG_DIR=/path/to/config/
-    LANGFLOW_DATABASE_URL=postgresql://user:password@localhost:5432/langflow
+    LANGFLOW_DATABASE_URL=postgresql://user:password@localhost:5432/portals
     LANGFLOW_DEV=False
     LANGFLOW_FALLBACK_TO_ENV_VAR=False
     LANGFLOW_HEALTH_CHECK_MAX_RETRIES=5
@@ -116,19 +116,19 @@ If it detects a supported environment variable, then it automatically adopts the
     LANGFLOW_WORKERS=3
     ```
 
-    For additional examples, see [`.env.example`](https://github.com/langflow-ai/langflow/blob/main/.env.example) in the Langflow repository.
+    For additional examples, see [`.env.example`](https://github.com/portals-ai/portals/blob/main/.env.example) in the Portals repository.
 
     </details>
 
 4. Save and close `.env`.
 
-5. Start Langflow with your `.env` file:
+5. Start Portals with your `.env` file:
 
     <Tabs>
     <TabItem value="local" label="Local" default>
 
     ```bash
-    uv run langflow run --env-file .env
+    uv run portals run --env-file .env
     ```
 
     </TabItem>
@@ -138,7 +138,7 @@ If it detects a supported environment variable, then it automatically adopts the
     docker run -it --rm \
         -p 7860:7860 \
         --env-file .env \
-        langflowai/langflow:latest
+        portalsai/portals:latest
     ```
 
     </TabItem>
@@ -146,18 +146,18 @@ If it detects a supported environment variable, then it automatically adopts the
 
     If your `.env` file isn't in the same directory, provide the path to your `.env` file.
 
-On startup, Langflow imports the environment variables from your `.env` file, as well as any others that you set in your terminal, and then adopts their specified values.
+On startup, Portals imports the environment variables from your `.env` file, as well as any others that you set in your terminal, and then adopts their specified values.
 
 ### Configure environment variables for development
 
-The following examples show how to configure Langflow using environment variables in different development scenarios.
+The following examples show how to configure Portals using environment variables in different development scenarios.
 
 <Tabs>
 <TabItem value="env" label=".env file" default>
 
 The `.env` file is a text file that contains key-value pairs of environment variables.
 
-Create or edit a `.env` file in the root directory of your application or Langflow environment, and then add your configuration variables to the file:
+Create or edit a `.env` file in the root directory of your application or Portals environment, and then add your configuration variables to the file:
 
 <details>
 <summary>Example: .env</summary>
@@ -173,7 +173,7 @@ LANGFLOW_CACHE_TYPE=async
 LANGFLOW_COMPONENTS_PATH=/path/to/components/
 LANGFLOW_COMPONENTS_INDEX_PATH=/path/to/component_index.json
 LANGFLOW_CONFIG_DIR=/path/to/config/
-LANGFLOW_DATABASE_URL=postgresql://user:password@localhost:5432/langflow
+LANGFLOW_DATABASE_URL=postgresql://user:password@localhost:5432/portals
 LANGFLOW_DEV=False
 LANGFLOW_FALLBACK_TO_ENV_VAR=False
 LANGFLOW_HEALTH_CHECK_MAX_RETRIES=5
@@ -219,7 +219,7 @@ Environment="LANGFLOW_CACHE_TYPE=async"
 Environment="LANGFLOW_COMPONENTS_PATH=/path/to/components/"
 Environment="LANGFLOW_COMPONENTS_INDEX_PATH=/path/to/component_index.json"
 Environment="LANGFLOW_CONFIG_DIR=/path/to/config"
-Environment="LANGFLOW_DATABASE_URL=postgresql://user:password@localhost:5432/langflow"
+Environment="LANGFLOW_DATABASE_URL=postgresql://user:password@localhost:5432/portals"
 Environment="LANGFLOW_DEV=false"
 Environment="LANGFLOW_FALLBACK_TO_ENV_VAR=false"
 Environment="LANGFLOW_HEALTH_CHECK_MAX_RETRIES=5"
@@ -229,7 +229,7 @@ Environment="LANGFLOW_MAX_FILE_SIZE_UPLOAD=10000"
 Environment="LANGFLOW_MAX_ITEMS_LENGTH=100"
 Environment="LANGFLOW_MAX_TEXT_LENGTH=1000"
 Environment="LANGFLOW_LOG_ENV=container_json"
-Environment="LANGFLOW_LOG_FILE=logs/langflow.log"
+Environment="LANGFLOW_LOG_FILE=logs/portals.log"
 Environment="LANGFLOW_LOG_LEVEL=error"
 Environment="LANGFLOW_OPEN_BROWSER=false"
 Environment="LANGFLOW_PORT=7860"
@@ -272,7 +272,7 @@ Create or edit the `.vscode/tasks.json` file in your project root.
             "LANGFLOW_COMPONENTS_PATH": "D:/path/to/components/",
             "LANGFLOW_COMPONENTS_INDEX_PATH": "D:/path/to/component_index.json",
             "LANGFLOW_CONFIG_DIR": "D:/path/to/config/",
-            "LANGFLOW_DATABASE_URL": "postgresql://postgres:password@localhost:5432/langflow",
+            "LANGFLOW_DATABASE_URL": "postgresql://postgres:password@localhost:5432/portals",
             "LANGFLOW_DEV": "false",
             "LANGFLOW_FALLBACK_TO_ENV_VAR": "false",
             "LANGFLOW_HEALTH_CHECK_MAX_RETRIES": "5",
@@ -282,7 +282,7 @@ Create or edit the `.vscode/tasks.json` file in your project root.
             "LANGFLOW_MAX_ITEMS_LENGTH": "100",
             "LANGFLOW_MAX_TEXT_LENGTH": "1000",
             "LANGFLOW_LOG_ENV": "container_csv",
-            "LANGFLOW_LOG_FILE": "langflow.log",
+            "LANGFLOW_LOG_FILE": "portals.log",
             "LANGFLOW_LOG_LEVEL": "error",
             "LANGFLOW_OPEN_BROWSER": "false",
             "LANGFLOW_PORT": "7860",
@@ -298,9 +298,9 @@ Create or edit the `.vscode/tasks.json` file in your project root.
     },
     "tasks": [
         {
-            "label": "langflow backend",
+            "label": "portals backend",
             "type": "shell",
-            "command": ". ./langflownightly/Scripts/activate && langflow run",
+            "command": ". ./portalsnightly/Scripts/activate && portals run",
             "isBackground": true,
             "problemMatcher": []
         }
@@ -310,24 +310,24 @@ Create or edit the `.vscode/tasks.json` file in your project root.
 
 </details>
 
-To run Langflow using the above VSCode `tasks.json` file, in the VSCode command palette, select **Tasks: Run Task** > **langflow backend**.
+To run Portals using the above VSCode `tasks.json` file, in the VSCode command palette, select **Tasks: Run Task** > **portals backend**.
 
 </TabItem>
 </Tabs>
 
-## Set environment variables for Langflow Desktop
+## Set environment variables for Portals Desktop
 
-Environment variables set in your terminal aren't automatically available to GUI-based applications like Langflow Desktop when you launch them from the Windows or macOS GUI.
+Environment variables set in your terminal aren't automatically available to GUI-based applications like Portals Desktop when you launch them from the Windows or macOS GUI.
 
-To modify environment variables for Langflow Desktop, set environment variables in a Desktop `.env` file, and then restart the app.
+To modify environment variables for Portals Desktop, set environment variables in a Desktop `.env` file, and then restart the app.
 
 <Tabs>
 <TabItem value="macos" label="macOS" default>
 
 To modify the macOS `.env` file, do the following:
 
-1. Create or edit `~/.langflow/data/.env`.
-2. Add your Langflow environment variables, for example:
+1. Create or edit `~/.portals/data/.env`.
+2. Add your Portals environment variables, for example:
 
     ```text
     LANGFLOW_LOG_LEVEL=info
@@ -335,15 +335,15 @@ To modify the macOS `.env` file, do the following:
     ```
 
 3. Save the file.
-4. Restart Langflow Desktop.
+4. Restart Portals Desktop.
 
 </TabItem>
 <TabItem value="windows" label="Windows .env file">
 
 To modify the Windows `.env` file, do the following:
 
-1. Create or edit `%APPDATA%\com.LangflowDesktop\data\.env`.
-2. Add your Langflow environment variables, for example:
+1. Create or edit `%APPDATA%\com.PortalsDesktop\data\.env`.
+2. Add your Portals environment variables, for example:
 
     ```text
     LANGFLOW_LOG_LEVEL=info
@@ -351,16 +351,16 @@ To modify the Windows `.env` file, do the following:
     ```
 
 3. Save the file.
-4. Restart Langflow Desktop.
+4. Restart Portals Desktop.
 
 </TabItem>
 <TabItem value="windows-user-vars" label="Windows user environment variables">
 
-Windows supports two sources for Langflow Desktop environment variables: a Langflow application `.env` file, and Windows user environment variables.
+Windows supports two sources for Portals Desktop environment variables: a Portals application `.env` file, and Windows user environment variables.
 
-The `.env` file at `%APPDATA%\com.LangflowDesktop\data\.env` is the recommended approach, but
-Windows user variables are useful for single-sourcing API keys between Langflow and other Windows applications.
-If the same variable is defined in both the Langflow application `.env` file and as a Windows user environment variable, the `.env` file takes precedence.
+The `.env` file at `%APPDATA%\com.PortalsDesktop\data\.env` is the recommended approach, but
+Windows user variables are useful for single-sourcing API keys between Portals and other Windows applications.
+If the same variable is defined in both the Portals application `.env` file and as a Windows user environment variable, the `.env` file takes precedence.
 
 To modify the Windows user environment variables, do the following:
 
@@ -368,14 +368,14 @@ To modify the Windows user environment variables, do the following:
 2. Click the **Advanced** tab, and then click **Environment Variables**.
 3. In **User variables**, click **New**.
 4. Enter the variable name, such as `OPENAI_API_KEY`, and its value.
-5. Click **OK**, and then **restart Langflow Desktop**.
+5. Click **OK**, and then **restart Portals Desktop**.
 
 </TabItem>
 </Tabs>
 
 ## Supported environment variables {#supported-variables}
 
-The following sections provide information about specific Langflow environment variables.
+The following sections provide information about specific Portals environment variables.
 
 ### Authentication and security
 
@@ -383,7 +383,7 @@ See [API keys and authentication](/api-keys-and-authentication).
 
 ### Global variables
 
-For information about the relationship between Langflow global variables and environment variables, as well as environment variables that control handling of global variables, see [Global variables](/configuration-global-variables).
+For information about the relationship between Portals global variables and environment variables, as well as environment variables that control handling of global variables, see [Global variables](/configuration-global-variables).
 
 ### Logs {#logging}
 
@@ -391,35 +391,35 @@ See [Configure log options](/logging#log-storage).
 
 ### MCP servers {#mcp}
 
-See [Use Langflow as an MCP server](/mcp-server).
+See [Use Portals as an MCP server](/mcp-server).
 
 ### Monitoring and metrics
 
-For environment variables for specific monitoring service providers, see the Langflow monitoring integration guides, such as [Langfuse](/integrations-langfuse) and [Best practices for Langflow on Kubernetes](/deployment-prod-best-practices).
+For environment variables for specific monitoring service providers, see the Portals monitoring integration guides, such as [Langfuse](/integrations-langfuse) and [Best practices for Portals on Kubernetes](/deployment-prod-best-practices).
 
 ### Server
 
-The following environment variables set base Langflow server configuration, such as where the server is hosted, required files for SSL encryption, and the deployment type (frontend and backend, backend-only, development mode).
+The following environment variables set base Portals server configuration, such as where the server is hosted, required files for SSL encryption, and the deployment type (frontend and backend, backend-only, development mode).
 
 | Variable | Format | Default | Description |
 |----------|--------|---------|-------------|
-| `LANGFLOW_HOST` | String | `localhost` | The host on which the Langflow server will run. |
-| `LANGFLOW_PORT` | Integer | `7860` | The port on which the Langflow server runs. The server automatically selects a free port if the specified port is in use. |
-| `LANGFLOW_BACKEND_ONLY` | Boolean | `False` | Run only the Langflow backend service (no frontend). |
-| `LANGFLOW_DEV` | Boolean | `False` | Whether to run Langflow in development mode (may contain bugs). |
+| `LANGFLOW_HOST` | String | `localhost` | The host on which the Portals server will run. |
+| `LANGFLOW_PORT` | Integer | `7860` | The port on which the Portals server runs. The server automatically selects a free port if the specified port is in use. |
+| `LANGFLOW_BACKEND_ONLY` | Boolean | `False` | Run only the Portals backend service (no frontend). |
+| `LANGFLOW_DEV` | Boolean | `False` | Whether to run Portals in development mode (may contain bugs). |
 | `LANGFLOW_OPEN_BROWSER` | Boolean | `False` | Open the system web browser on startup. |
-| `LANGFLOW_HEALTH_CHECK_MAX_RETRIES` | Integer | `5` | Set the maximum number of retries for Langflow's server status health checks. |
+| `LANGFLOW_HEALTH_CHECK_MAX_RETRIES` | Integer | `5` | Set the maximum number of retries for Portals's server status health checks. |
 | `LANGFLOW_WORKERS` | Integer | `1` | Number of worker processes. |
 | `LANGFLOW_WORKER_TIMEOUT` | Integer | `300` | Worker timeout in seconds. |
-| `LANGFLOW_SSL_CERT_FILE` | String | Not set | Path to the SSL certificate file for enabling HTTPS on the Langflow web server. This is separate from [database SSL connections](/configuration-custom-database#connect-langflow-to-a-local-postgresql-database). |
-| `LANGFLOW_SSL_KEY_FILE` | String | Not set | Path to the SSL key file for enabling HTTPS on the Langflow web server. This is separate from [database SSL connections](/configuration-custom-database#connect-langflow-to-a-local-postgresql-database). |
+| `LANGFLOW_SSL_CERT_FILE` | String | Not set | Path to the SSL certificate file for enabling HTTPS on the Portals web server. This is separate from [database SSL connections](/configuration-custom-database#connect-portals-to-a-local-postgresql-database). |
+| `LANGFLOW_SSL_KEY_FILE` | String | Not set | Path to the SSL key file for enabling HTTPS on the Portals web server. This is separate from [database SSL connections](/configuration-custom-database#connect-portals-to-a-local-postgresql-database). |
 | `LANGFLOW_DEACTIVATE_TRACING` | Boolean | `False` | Deactivate tracing functionality. |
 | `LANGFLOW_CELERY_ENABLED` | Boolean | `False` | Enable Celery for distributed task processing. |
 | `LANGFLOW_ALEMBIC_LOG_TO_STDOUT` | Boolean | `False` | Whether to log Alembic database migration output to stdout instead of a log file. If `true`, Alembic logs to `stdout` and the default log file is ignored. |
 
 #### Gunicorn configuration
 
-When running Langflow in a production environment using Gunicorn, you can configure Gunicorn workers using the `GUNICORN_CMD_ARGS` environment variable.
+When running Portals in a production environment using Gunicorn, you can configure Gunicorn workers using the `GUNICORN_CMD_ARGS` environment variable.
 
 This is particularly useful to manage worker memory and prevent potential memory leaks over time. You can add it to your `.env` file like this:
 
@@ -431,7 +431,7 @@ Here is what these arguments do:
 - `--max-requests 100`: Automatically restarts a worker after it has processed 100 requests. This helps prevent memory leaks from accumulating over time.
 - `--max-requests-jitter 20`: Adds a random jitter of up to 20 requests to the `--max-requests` value. This ensures that all workers don't restart simultaneously, which could cause a brief downtime or spikes in latency.
 
-For more information about deploying Langflow servers, see [Langflow deployment overview](/deployment-overview).
+For more information about deploying Portals servers, see [Portals deployment overview](/deployment-overview).
 
 ### Storage
 
@@ -451,12 +451,12 @@ See [Telemetry](/contributing-telemetry).
 | `LANGFLOW_AUTO_SAVING_INTERVAL` | Integer | `1000` | Set the auto-save interval in milliseconds if `LANGFLOW_AUTO_SAVING=True`. |
 | `LANGFLOW_BUNDLE_URLS` | List[String] | `[]` | A list of URLs from which to load custom bundles. Supports GitHub URLs. If `LANGFLOW_AUTO_LOGIN=True`, flows from these bundles are loaded into the database. |
 | `LANGFLOW_COMPONENTS_PATH` | String | Not set | Path to a directory containing custom components. Typically used if you have local custom components or you are building a Docker image with custom components. |
-| `LANGFLOW_COMPONENTS_INDEX_PATH` | String | Not set | File path or URL (`http://` or `https://`) to a prebuilt component index JSON file used to populate built-in components in the visual editor. When not set, Langflow uses the included index. Useful for supplying a curated component index, for example in airgapped deployments. For more information, see [Block custom components](../Deployment/deployment-block-custom-components.mdx). |
+| `LANGFLOW_COMPONENTS_INDEX_PATH` | String | Not set | File path or URL (`http://` or `https://`) to a prebuilt component index JSON file used to populate built-in components in the visual editor. When not set, Portals uses the included index. Useful for supplying a curated component index, for example in airgapped deployments. For more information, see [Block custom components](../Deployment/deployment-block-custom-components.mdx). |
 | `LANGFLOW_ALLOW_CUSTOM_COMPONENTS` | Boolean | `True` | If `false`, disables custom components and in-editor editing of component code. This feature is in beta. For more information, see [Block custom components](../Deployment/deployment-block-custom-components.mdx). |
 | `LANGFLOW_LOAD_FLOWS_PATH` | String | Not set | Path to a directory containing flow JSON files to be loaded on startup. Typically used when creating a Docker image with prepackaged flows. Requires `LANGFLOW_AUTO_LOGIN=True`. |
-| `LANGFLOW_CREATE_STARTER_PROJECTS` | Boolean | `True` | Whether to create templates during initialization. If `false`, Langflow doesn't create templates, and `LANGFLOW_UPDATE_STARTER_PROJECTS` is treated as `false`. |
+| `LANGFLOW_CREATE_STARTER_PROJECTS` | Boolean | `True` | Whether to create templates during initialization. If `false`, Portals doesn't create templates, and `LANGFLOW_UPDATE_STARTER_PROJECTS` is treated as `false`. |
 | `LANGFLOW_UPDATE_STARTER_PROJECTS` | Boolean | `True` | Whether to update templates with the latest component versions when initializing after an upgrade. |
-| `LANGFLOW_LAZY_LOAD_COMPONENTS` | Boolean | `False` | If `true`, Langflow only partially loads components at startup and fully loads them on demand. This significantly reduces startup time but can cause a slight delay when a component is first used. |
+| `LANGFLOW_LAZY_LOAD_COMPONENTS` | Boolean | `False` | If `true`, Portals only partially loads components at startup and fully loads them on demand. This significantly reduces startup time but can cause a slight delay when a component is first used. |
 | `LANGFLOW_EVENT_DELIVERY` | String | `streaming` | How to deliver build events to the frontend: `polling`, `streaming` or `direct`. |
 | `LANGFLOW_FRONTEND_PATH` | String | `./frontend` | Path to the frontend directory containing build files. For development purposes only when you need to serve specific frontend code. |
 | `LANGFLOW_MAX_ITEMS_LENGTH` | Integer | `100` | Maximum number of items to store and display in the visual editor. Lists longer than this will be truncated when displayed in the visual editor. Doesn't affect outputs or data passed between components. |

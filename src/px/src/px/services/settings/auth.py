@@ -93,7 +93,7 @@ class AuthSettings(BaseSettings):
     )
     """If True, allows creation of superusers via the CLI 'portals superuser' command."""
 
-    NEW_USER_IS_ACTIVE: bool = False
+    NEW_USER_IS_ACTIVE: bool = True
     SUPERUSER: str = DEFAULT_SUPERUSER
     # Store password as SecretStr to prevent accidental plaintext exposure
     SUPERUSER_PASSWORD: SecretStr = Field(default=DEFAULT_SUPERUSER_PASSWORD)

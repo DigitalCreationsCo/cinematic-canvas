@@ -295,6 +295,11 @@ export const SIDEBAR_CATEGORIES = [
     icon: "Database",
   },
   {
+    display_name: "sidebar.category.narrative",
+    name: "narrative",
+    icon: "Bot",
+  },
+  {
     display_name: "sidebar.category.modelsAndAgents",
     name: "models_and_agents",
     icon: "Bot",

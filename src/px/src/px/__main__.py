@@ -34,7 +34,7 @@ def _app_callback(
         callback=_version_callback,
     ),
 ) -> None:
-    """Lfx - Portals Executor."""
+    """Px - Portals Executor."""
 
 
 # Register command groups (order determines help-panel ordering)

@@ -5,13 +5,13 @@ slug: /bundles-google
 
 import Icon from "@site/src/components/icon";
 
-<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Langflow.
+<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Portals.
 
 This page describes the components that are available in the **Google** bundle.
 
 ## BigQuery
 
-Langflow integrates with [Google BigQuery](https://cloud.google.com/bigquery) through the **BigQuery** component in the [**Google** bundle](/bundles-google), allowing you to execute SQL queries and retrieve data from your BigQuery datasets.
+Portals integrates with [Google BigQuery](https://cloud.google.com/bigquery) through the **BigQuery** component in the [**Google** bundle](/bundles-google), allowing you to execute SQL queries and retrieve data from your BigQuery datasets.
 
 ### Use the BigQuery component in a flow
 
@@ -20,7 +20,7 @@ To use the **BigQuery** component in a flow, you need the following:
 * A [Google Cloud project](https://developers.google.com/workspace/guides/create-project) with the BigQuery API enabled
 * A [service account](https://developers.google.com/workspace/guides/create-credentials#service-account) with the **BigQuery Job User** role
 * A [BigQuery dataset and table](https://cloud.google.com/bigquery/docs/datasets-intro)
-* A [running Langflow server](/get-started-installation)
+* A [running Portals server](/get-started-installation)
 
 #### Create a service account with BigQuery access
 
@@ -29,20 +29,20 @@ For more information, see [Create a Google Cloud project](https://developers.goo
 2. Create a service account in your Google Cloud project.
 For more information, see [Create a service account](https://developers.google.com/workspace/guides/create-credentials#service-account).
 3. Assign the **BigQuery Job User** role to your new account.
-This role allows Langflow to access BigQuery resources with the service account.
+This role allows Portals to access BigQuery resources with the service account.
 You may also need to allow access to your BigQuery dataset.
 For more information, see [BigQuery access control with IAM](https://cloud.google.com/bigquery/docs/access-control).
 4. To generate a new JSON key for the service account, navigate to your service account.
 5. Click **Add Key**, and then click **Create new key**.
 6. Under **Key type**, select **JSON**, and then click **Create**.
 A JSON private key file is downloaded to your machine.
-Now that you have a service account and a JSON private key, you need to configure the credentials in the Langflow **BigQuery** component.
+Now that you have a service account and a JSON private key, you need to configure the credentials in the Portals **BigQuery** component.
 
-#### Configure credentials in the Langflow component
+#### Configure credentials in the Portals component
 
-With your service account configured and your credentials JSON file created, follow these steps to authenticate the Langflow application.
+With your service account configured and your credentials JSON file created, follow these steps to authenticate the Portals application.
 
-1. Create a new flow in Langflow.
+1. Create a new flow in Portals.
 2. In <Icon name="Blocks" aria-hidden="true" /> **Bundles**, find the Google **BigQuery** component, and then add it to your flow.
 3. In the **BigQuery** component's **Upload Service Account JSON** field, click **Select file**.
 4. In the **My Files** pane, select **Click or drag files here**.
@@ -65,7 +65,7 @@ With your component credentials configured, query your BigQuery datasets and tab
 
     ```sql
     SELECT film, category, year_film
-    FROM `big-query-langflow-project.the_oscar_award.oscar_winners`
+    FROM `big-query-portals-project.the_oscar_award.oscar_winners`
     WHERE winner = TRUE
     LIMIT 10
     ```
@@ -141,7 +141,7 @@ This component allows you to call the Google Search API.
 
 ### Other Google Search components
 
-Langflow includes multiple components that support Google Search, such as the following:
+Portals includes multiple components that support Google Search, such as the following:
 
 * [**Apify Actors** component](/bundles-apify)
 * [**SearchApi** component](/bundles-searchapi)
@@ -163,7 +163,7 @@ The following Google components are in legacy status:
 <details>
 <summary>Google OAuth Token</summary>
 
-The **Google OAuth Token** component was deprecated in Langflow 1.4.0.
+The **Google OAuth Token** component was deprecated in Portals 1.4.0.
 
 To connect your flows to Google OAuth services, use [Composio components](/bundles-composio).
 

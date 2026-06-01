@@ -7,4 +7,4 @@ curl -X POST \
   "e1e40c77-0541-41a9-88ab-ddb3419398b5",
   "92f9a4c5-cfc8-4656-ae63-1f0881163c28"
 ]' \
-  --output langflow-flows.zip
+  --output portals-flows.zip

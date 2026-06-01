@@ -13,7 +13,7 @@ To create, read, update, and delete flows, see [Flow management endpoints](/api-
 ## Run flow
 
 :::tip
-Langflow automatically generates Python, JavaScript, and curl code snippets for the `/v1/run/$FLOW_ID` endpoint for all flows.
+Portals automatically generates Python, JavaScript, and curl code snippets for the `/v1/run/$FLOW_ID` endpoint for all flows.
 For more information, see [Generate API code snippets](/concepts-publish#generate-api-code-snippets).
 :::
 
@@ -142,7 +142,7 @@ The following example illustrates a response from a Basic Prompting flow:
 </details>
 
 If you are parsing the response in an application, you most likely need to extract the relevant content from the response, rather than pass the entire response back to the user.
-For an example of a script that extracts data from a Langflow API response, see the [Quickstart](/get-started-quickstart).
+For an example of a script that extracts data from a Portals API response, see the [Quickstart](/get-started-quickstart).
 
 ### Stream LLM token responses
 
@@ -273,7 +273,7 @@ The following example is truncated to illustrate a series of `token` events as w
 |--------|------|---------|
 | Content-Type | Required. Specifies the JSON format. | "application/json" |
 | accept | Optional. Specifies the response format. Defaults to JSON if not specified. | "application/json" |
-| x-api-key | Required. Your Langflow API key for authentication. Can be passed as a header or query parameter. | "sk-..." |
+| x-api-key | Required. Your Portals API key for authentication. Can be passed as a header or query parameter. | "sk-..." |
 | `X-LANGFLOW-GLOBAL-VAR-*` | Optional. Pass global variables to the flow. Variable names are automatically converted to uppercase. These variables take precedence over OS environment variables and are only available during this specific request execution. | `"X-LANGFLOW-GLOBAL-VAR-API_KEY: sk-..."` |
 
 ### Run endpoint parameters
@@ -409,7 +409,7 @@ Variables passed in headers take precedence over OS environment variables. If a 
 
 Variable names are automatically converted to uppercase. For example, `X-LANGFLOW-GLOBAL-VAR-api-key` becomes `API_KEY` in your flow.
 
-You don't need to create these variables in Langflow's Global Variables section first. Pass any variable name using this header format.
+You don't need to create these variables in Portals's Global Variables section first. Pass any variable name using this header format.
 
 <Tabs>
 <TabItem value="Python" label="Python" default>
@@ -492,7 +492,7 @@ curl -X POST \
 </TabItem>
 </Tabs>
 
-If your flow components reference variables that aren't provided in headers or your Langflow database, the flow fails by default. To avoid this, you can set `LANGFLOW_FALLBACK_TO_ENV_VAR=True` in your `.env` file, which allows the flow to use values from OS environment variables if they aren't otherwise specified.
+If your flow components reference variables that aren't provided in headers or your Portals database, the flow fails by default. To avoid this, you can set `LANGFLOW_FALLBACK_TO_ENV_VAR=True` in your `.env` file, which allows the flow to use values from OS environment variables if they aren't otherwise specified.
 
 
 ## Webhook run flow

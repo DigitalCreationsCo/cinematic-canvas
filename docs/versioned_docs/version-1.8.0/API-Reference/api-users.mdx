@@ -3,13 +3,13 @@ title: Users endpoints
 slug: /api-users
 ---
 
-Use the `/users` endpoint to manage user accounts in Langflow.
+Use the `/users` endpoint to manage user accounts in Portals.
 
 ## Add user
 
 Create a new user account with a given username and password.
 
-Requires authentication as a superuser if the Langflow server has authentication enabled.
+Requires authentication as a superuser if the Portals server has authentication enabled.
 
 ```bash
 curl -X POST \
@@ -23,8 +23,8 @@ curl -X POST \
 ```
 
 The request returns an object describing the new user.
-The user's UUID is stored in `user_id` in the Langflow database, and returned as `id` in the `/users` API response.
-This `user_id` key is specifically for Langflow user management.
+The user's UUID is stored in `user_id` in the Portals database, and returned as `id` in the `/users` API response.
+This `user_id` key is specifically for Portals user management.
 
 <details>
 <summary>Result</summary>
@@ -67,7 +67,7 @@ curl -X GET \
 ```json
 {
   "id": "07e5b864-e367-4f52-b647-a48035ae7e5e",
-  "username": "langflow",
+  "username": "portals",
   "profile_image": null,
   "store_api_key": null,
   "is_active": true,
@@ -84,7 +84,7 @@ curl -X GET \
 
 Get a paginated list of all users in the system.
 
-Requires authentication as a superuser if the Langflow server has authentication enabled.
+Requires authentication as a superuser if the Portals server has authentication enabled.
 
 ```bash
 curl -X GET \
@@ -102,7 +102,7 @@ curl -X GET \
   "users": [
     {
       "id": "07e5b864-e367-4f52-b647-a48035ae7e5e",
-      "username": "langflow",
+      "username": "portals",
       "profile_image": null,
       "store_api_key": null,
       "is_active": true,
@@ -159,7 +159,7 @@ curl -X GET \
 
 Modify an existing user's information with a PATCH request.
 
-Requires authentication as a superuser if the Langflow server has authentication enabled.
+Requires authentication as a superuser if the Portals server has authentication enabled.
 
 This example activates the specified user's account and makes them a superuser:
 
@@ -220,7 +220,7 @@ curl -X PATCH \
 ```json
 {
   "id": "10c1c6a2-ab8a-4748-8700-0e4832fd5ce8",
-  "username": "langflow",
+  "username": "portals",
   "profile_image": null,
   "store_api_key": null,
   "is_active": true,
@@ -242,7 +242,7 @@ curl -X PATCH \
 
 Remove a user account from the system.
 
-Requires authentication as a superuser if the Langflow server has authentication enabled.
+Requires authentication as a superuser if the Portals server has authentication enabled.
 
 ```bash
 curl -X DELETE \

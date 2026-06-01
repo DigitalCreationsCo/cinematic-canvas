@@ -52,9 +52,7 @@ TEST_MESSAGES = {
     "minimal": "Hi",
     "simple": "Can you help me?",
     "medium": "I need help understanding how machine learning works in this context.",
-    "complex": "Please analyze this data: "
-    + "x" * 500
-    + " and provide detailed insights.",
+    "complex": "Please analyze this data: " + "x" * 500 + " and provide detailed insights.",
     "large": "Here's a complex scenario: " + "data " * 1000,
 }
 
@@ -133,9 +131,7 @@ def on_test_start(environment, **_kwargs):
 
 
 @events.request.add_listener
-def on_request(
-    request_type, name, response_time, response_length, exception, context, **kwargs
-):  # noqa: ARG001
+def on_request(request_type, name, response_time, response_length, exception, context, **kwargs):  # noqa: ARG001
     """Track slow requests using Locust's built-in timing."""
     # response_time is in milliseconds from Locust
     bag = _env_bags.get(context.get("environment") if context else None)
@@ -196,19 +192,15 @@ def on_test_stop(environment, **_kwargs):
     _env_bags.pop(environment, None)
 
 
-class BaseLfxUser(FastHttpUser):
+class BasePxUser(FastHttpUser):
     """Base class for all PX API load testing user types."""
 
     abstract = True
-    REQUEST_TIMEOUT = float(
-        os.getenv("REQUEST_TIMEOUT", "10")
-    )  # Tighter timeout for production
+    REQUEST_TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "10"))  # Tighter timeout for production
 
     def on_start(self):
         """Called when a user starts before any task is scheduled."""
-        self.session_id = (
-            f"locust_{self.__class__.__name__}_{id(self)}_{int(time.time())}"
-        )
+        self.session_id = f"locust_{self.__class__.__name__}_{id(self)}_{int(time.time())}"
         self.request_count = 0
 
     def make_request(self, message_type="simple", tag_suffix=""):
@@ -250,16 +242,12 @@ class BaseLfxUser(FastHttpUser):
 
                 # Application-level failure - success is False, None, or missing
                 msg = str(data.get("result", "Unknown error"))[:200]
-                success_status = (
-                    f"success={success}" if success is not None else "success=missing"
-                )
+                success_status = f"success={success}" if success is not None else "success=missing"
                 return response.failure(f"Flow failed ({success_status}): {msg}")
 
             # Handle specific error cases for better monitoring
             if response.status_code in (429, 503):
-                return response.failure(
-                    f"Backpressure/capacity: {response.status_code}"
-                )
+                return response.failure(f"Backpressure/capacity: {response.status_code}")
             if response.status_code == 401:
                 return response.failure("Unauthorized - API key issue")
             if response.status_code == 404:
@@ -270,7 +258,7 @@ class BaseLfxUser(FastHttpUser):
             return response.failure(f"HTTP {response.status_code}")
 
 
-class NormalUser(BaseLfxUser):
+class NormalUser(BasePxUser):
     """Normal user simulating typical API interactions.
 
     Based on the main stress test patterns with realistic message distribution.
@@ -302,7 +290,7 @@ class NormalUser(BaseLfxUser):
         self.make_request(message_type="complex")
 
 
-class AggressiveUser(BaseLfxUser):
+class AggressiveUser(BasePxUser):
     """Aggressive user with minimal wait times.
 
     Tests the system under extreme concurrent load.
@@ -317,7 +305,7 @@ class AggressiveUser(BaseLfxUser):
         self.make_request(message_type="simple", tag_suffix="-rapid")
 
 
-class SustainedLoadUser(BaseLfxUser):
+class SustainedLoadUser(BasePxUser):
     """Maintains exactly 1 request/second for steady load testing.
 
     Based on constant throughput testing patterns.
@@ -332,7 +320,7 @@ class SustainedLoadUser(BaseLfxUser):
         self.make_request(message_type="medium", tag_suffix="-steady")
 
 
-class TailLatencyHunter(BaseLfxUser):
+class TailLatencyHunter(BasePxUser):
     """Mixed workload designed to expose tail latency issues.
 
     Alternates between light and heavy requests to stress the system.
@@ -350,7 +338,7 @@ class TailLatencyHunter(BaseLfxUser):
             self.make_request(message_type="large", tag_suffix="-tail-heavy")
 
 
-class ScalabilityTestUser(BaseLfxUser):
+class ScalabilityTestUser(BasePxUser):
     """Tests for the scalability cliff at 30 users.
 
     Uses patterns that specifically stress concurrency limits.
@@ -365,7 +353,7 @@ class ScalabilityTestUser(BaseLfxUser):
         self.make_request(message_type="medium", tag_suffix="-scale")
 
 
-class BurstUser(BaseLfxUser):
+class BurstUser(BasePxUser):
     """Sends bursts of 10 requests to test connection pooling.
 
     Based on connection pool exhaustion test patterns.

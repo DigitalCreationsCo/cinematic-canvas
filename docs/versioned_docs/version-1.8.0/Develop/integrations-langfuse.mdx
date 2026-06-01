@@ -6,19 +6,19 @@ slug: /integrations-langfuse
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-[Langfuse](https://langfuse.com) is an open-source platform for LLM observability. It provides tracing and monitoring capabilities for AI applications, helping developers debug, analyze, and optimize their AI systems. Langfuse integrates with various tools and frameworks, including workflow builders and runtimes like Langflow.
+[Langfuse](https://langfuse.com) is an open-source platform for LLM observability. It provides tracing and monitoring capabilities for AI applications, helping developers debug, analyze, and optimize their AI systems. Langfuse integrates with various tools and frameworks, including workflow builders and runtimes like Portals.
 
-This guide explains how to configure Langflow to collect [tracing](https://langfuse.com/docs/tracing) data about your flow executions and automatically send the data to Langfuse.
+This guide explains how to configure Portals to collect [tracing](https://langfuse.com/docs/tracing) data about your flow executions and automatically send the data to Langfuse.
 
 <iframe width="760" height="415" src="https://www.youtube.com/embed/SA9gGbzwNGU?si=eDKvdtvhb3fJCSbl" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## Prerequisites
 
 - An account in a [Langfuse Cloud](https://cloud.langfuse.com) or [Langfuse self-hosted](https://langfuse.com/self-hosting) instance
-- A [running Langflow server](/get-started-installation) with a [flow](/concepts-flows) that you want to trace
+- A [running Portals server](/get-started-installation) with a [flow](/concepts-flows) that you want to trace
 
 :::tip
-If you need a flow to test the Langfuse integration, see the [Langflow quickstart](/get-started-quickstart).
+If you need a flow to test the Langfuse integration, see the [Portals quickstart](/get-started-quickstart).
 :::
 
 ## Set Langfuse credentials as environment variables {#langfuse-credentials}
@@ -32,7 +32,7 @@ If you need a flow to test the Langfuse integration, see the [Langflow quickstar
     - Base URL
 
     :::tip
-    Langflow previously used `LANGFUSE_HOST` as the variable for the Langfuse base URL.
+    Portals previously used `LANGFUSE_HOST` as the variable for the Langfuse base URL.
     This is still supported for backward compatibility, but `LANGFUSE_BASE_URL` is now the preferred environment variable and will be used if both values are set.
     :::
 
@@ -47,15 +47,15 @@ If you need a flow to test the Langfuse integration, see the [Langflow quickstar
     LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
     ```
 
-4. Start Langflow with the configuration in the `.env` file:
+4. Start Portals with the configuration in the `.env` file:
 
     ```bash
-    uv run langflow run --env-file .env
+    uv run portals run --env-file .env
     ```
 
 5. Run a flow.
 
-    Langflow automatically collects and sends tracing data about the flow execution to Langfuse.
+    Portals automatically collects and sends tracing data about the flow execution to Langfuse.
 
 6. View the collected data in your [Langfuse dashboard](https://langfuse.com/docs/analytics/overview).
 
@@ -63,9 +63,9 @@ If you need a flow to test the Langfuse integration, see the [Langflow quickstar
 
 ## Disable Langfuse tracing
 
-To disable the Langfuse integration, remove the [Langfuse environment variables](#langfuse-credentials), and then restart Langflow.
+To disable the Langfuse integration, remove the [Langfuse environment variables](#langfuse-credentials), and then restart Portals.
 
-## Run Langfuse and Langflow with Docker Compose
+## Run Langfuse and Portals with Docker Compose
 
 As an alternative to the previous setup, particularly for self-hosted Langfuse, you can run both services with Docker Compose.
 
@@ -78,48 +78,48 @@ As an alternative to the previous setup, particularly for self-hosted Langfuse, 
     - Base URL
 
     :::tip
-    Langflow previously used `LANGFUSE_HOST` as the variable for the Langfuse base URL.
+    Portals previously used `LANGFUSE_HOST` as the variable for the Langfuse base URL.
     `LANGFUSE_HOST` is still supported for backward compatibility, but `LANGFUSE_BASE_URL` is the preferred environment variable.
     If both values are set, then `LANGFLOW_BASE_URL` is used.
     :::
 
-3. Add your Langflow credentials to your Langflow `docker-compose.yml` file in the `environment` section.
+3. Add your Portals credentials to your Portals `docker-compose.yml` file in the `environment` section.
 
-    The following example is based on the [example `docker-compose.yml`](https://github.com/langflow-ai/langflow/blob/main/docker_example/docker-compose.yml).
+    The following example is based on the [example `docker-compose.yml`](https://github.com/portals-ai/portals/blob/main/docker_example/docker-compose.yml).
 
     ```yml
     services:
-      langflow:
-        image: langflowai/langflow:latest # or another version tag on https://hub.docker.com/r/langflowai/langflow
+      portals:
+        image: portalsai/portals:latest # or another version tag on https://hub.docker.com/r/portalsai/portals
         pull_policy: always               # set to 'always' when using 'latest' image
         ports:
           - "7860:7860"
         depends_on:
           - postgres
         environment:
-          - LANGFLOW_DATABASE_URL=postgresql://langflow:langflow@postgres:5432/langflow
+          - LANGFLOW_DATABASE_URL=postgresql://portals:portals@postgres:5432/portals
           # This variable defines where the logs, file storage, monitor data and secret keys are stored.
-          - LANGFLOW_CONFIG_DIR=app/langflow
+          - LANGFLOW_CONFIG_DIR=app/portals
           - LANGFUSE_SECRET_KEY=sk-...
           - LANGFUSE_PUBLIC_KEY=pk-...
           - LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
         volumes:
-          - langflow-data:/app/langflow
+          - portals-data:/app/portals
 
       postgres:
         image: postgres:16
         environment:
-          POSTGRES_USER: langflow
-          POSTGRES_PASSWORD: langflow
-          POSTGRES_DB: langflow
+          POSTGRES_USER: portals
+          POSTGRES_PASSWORD: portals
+          POSTGRES_DB: portals
         ports:
           - "5432:5432"
         volumes:
-          - langflow-postgres:/var/lib/postgresql/data
+          - portals-postgres:/var/lib/postgresql/data
 
     volumes:
-      langflow-postgres:
-      langflow-data:
+      portals-postgres:
+      portals-data:
     ```
 
 4. Start the Docker container:
@@ -128,10 +128,10 @@ As an alternative to the previous setup, particularly for self-hosted Langfuse, 
     docker-compose up
     ```
 
-5. To confirm Langfuse is connected to your Langflow container, run the following command:
+5. To confirm Langfuse is connected to your Portals container, run the following command:
 
     ```sh
-    docker compose exec langflow python -c "import requests, os; addr = os.environ.get('LANGFUSE_BASE_URL'); print(addr); res = requests.get(addr, timeout=5); print(res.status_code)"
+    docker compose exec portals python -c "import requests, os; addr = os.environ.get('LANGFUSE_BASE_URL'); print(addr); res = requests.get(addr, timeout=5); print(res.status_code)"
     ```
 
     If there is an error, make sure you have set the `LANGFUSE_BASE_URL` environment variable in your `docker-compose.yml` file.

@@ -1,4 +1,4 @@
-"""Unit tests for lfx push / PortalsClient.upsert_flow.
+"""Unit tests for px push / PortalsClient.upsert_flow.
 
 Uses respx to mock HTTP without a live server.
 """
@@ -152,7 +152,7 @@ def test_push_command_creates_flow(tmp_path: Path):
         encoding="utf-8",
     )
 
-    from lfx.cli.push import push_command
+    from px.cli.push import push_command
 
     # Should not raise
     push_command(
@@ -186,7 +186,7 @@ def test_push_command_dry_run_makes_no_requests(tmp_path: Path):
     )
 
     # Register NO respx routes -- if any request is made the test will fail
-    from lfx.cli.push import push_command
+    from px.cli.push import push_command
 
     push_command(
         flow_paths=[str(flow_file)],
@@ -251,7 +251,7 @@ def test_push_command_project_dir(tmp_path: Path):
         encoding="utf-8",
     )
 
-    from lfx.cli.push import push_command
+    from px.cli.push import push_command
 
     push_command(
         flow_paths=[],

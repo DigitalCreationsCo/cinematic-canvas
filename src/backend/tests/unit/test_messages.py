@@ -848,8 +848,8 @@ class TestMessageModelPostInitFiles:
 
     def test_model_post_init_with_string_image_path(self, tmp_path):
         """Test string path that is an image file."""
-        from px.schema.image import Image
         from PIL import Image as PILImage
+        from px.schema.image import Image
 
         img_path = tmp_path / "photo.jpg"
         PILImage.new("RGB", (10, 10)).save(img_path)
@@ -923,8 +923,8 @@ class TestMessageModelPostInitFiles:
 
     def test_model_post_init_with_multiple_images(self, tmp_path):
         """Test multiple image files."""
-        from px.schema.image import Image
         from PIL import Image as PILImage
+        from px.schema.image import Image
 
         img_path1 = tmp_path / "image1.png"
         img_path2 = tmp_path / "image2.jpg"
@@ -945,8 +945,8 @@ class TestMessageModelPostInitFiles:
 
     def test_model_post_init_mixed_image_and_non_image(self, tmp_path):
         """Test mixed image and non-image files."""
-        from px.schema.image import Image
         from PIL import Image as PILImage
+        from px.schema.image import Image
 
         img_path = tmp_path / "image.png"
         PILImage.new("RGB", (10, 10)).save(img_path)
@@ -968,8 +968,8 @@ class TestMessageModelPostInitFiles:
 
     def test_model_post_init_preserves_existing_image_instances(self, tmp_path):
         """Test that existing Image instances are not re-processed."""
-        from px.schema.image import Image
         from PIL import Image as PILImage
+        from px.schema.image import Image
 
         img_path = tmp_path / "image.png"
         PILImage.new("RGB", (10, 10)).save(img_path)
@@ -1176,12 +1176,12 @@ class TestMessageEdgeCases:
     def test_content_blocks_validation(self):
         """Test content_blocks field validation."""
         from portals.services.database.models.message.model import MessageTable
-        from px.schema.content_block import ContentBlock as LfxContentBlock
-        from px.schema.content_types import TextContent as LfxTextContent
+        from px.schema.content_block import ContentBlock as PxContentBlock
+        from px.schema.content_types import TextContent as PxTextContent
 
-        content_block = LfxContentBlock(
+        content_block = PxContentBlock(
             title="Test Block",
-            contents=[LfxTextContent(type="text", text="Test content")],
+            contents=[PxTextContent(type="text", text="Test content")],
         )
 
         message = Message(
@@ -1199,13 +1199,13 @@ class TestMessageEdgeCases:
     def test_properties_validation(self):
         """Test properties field validation."""
         from portals.services.database.models.message.model import MessageTable
-        from px.schema.properties import Properties as LfxProperties
-        from px.schema.properties import Source as LfxSource
+        from px.schema.properties import Properties as PxProperties
+        from px.schema.properties import Source as PxSource
 
-        props = LfxProperties(
+        props = PxProperties(
             text_color="blue",
             background_color="white",
-            source=LfxSource(id="src1", display_name="Source 1", source="test"),
+            source=PxSource(id="src1", display_name="Source 1", source="test"),
         )
 
         message = Message(

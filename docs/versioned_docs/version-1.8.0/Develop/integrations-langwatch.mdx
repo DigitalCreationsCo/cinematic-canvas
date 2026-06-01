@@ -7,11 +7,11 @@ slug: /integrations-langwatch
 
 ## Integrate LangWatch observability
 
-To integrate with Langflow, add your LangWatch API key as a Langflow environment variable:
+To integrate with Portals, add your LangWatch API key as a Portals environment variable:
 
 1. Get a LangWatch API key from your LangWatch account.
 
-2. Add the key to your Langflow `.env` file:
+2. Add the key to your Portals `.env` file:
 
     ```shell
     LANGWATCH_API_KEY="API_KEY_STRING"
@@ -23,10 +23,10 @@ To integrate with Langflow, add your LangWatch API key as a Langflow environment
     export LANGWATCH_API_KEY="API_KEY_STRING"
     ```
 
-3. Restart Langflow with your `.env` file, if you modified the Langflow `.env`:
+3. Restart Portals with your `.env` file, if you modified the Portals `.env`:
 
     ```
-    langflow run --env-file .env
+    portals run --env-file .env
     ```
 
 4. Run a flow.

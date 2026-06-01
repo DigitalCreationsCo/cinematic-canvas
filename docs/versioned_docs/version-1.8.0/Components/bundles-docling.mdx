@@ -9,9 +9,9 @@ import Icon from "@site/src/components/icon";
 import PartialDevModeWindows from '@site/docs/_partial-dev-mode-windows.mdx';
 import PartialDockerDoclingDeps from '@site/docs/_partial-docker-docling-deps.mdx';
 
-<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Langflow.
+<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Portals.
 
-Langflow integrates with [Docling](https://docling-project.github.io/docling/) through a bundle of components for parsing and chunking documents.
+Portals integrates with [Docling](https://docling-project.github.io/docling/) through a bundle of components for parsing and chunking documents.
 
 ## Prerequisites
 
@@ -20,15 +20,15 @@ Langflow integrates with [Docling](https://docling-project.github.io/docling/) t
     <PartialDevModeWindows />
 
 * **Install Docling dependency**:
-The Docling dependency is required to use the Docling components in Langflow.
+The Docling dependency is required to use the Docling components in Portals.
 
-    * **Langflow version 1.6 and later**: The Docling dependency is included by default for all operating systems except macOS Intel (x86_64).
+    * **Portals version 1.6 and later**: The Docling dependency is included by default for all operating systems except macOS Intel (x86_64).
 
         For macOS Intel (x86_64), use the [Docling installation guide](https://docling-project.github.io/docling/installation/) to install the Docling dependency.
 
-    * **Earlier versions**: Langflow versions earlier than 1.6 don't include the Docling dependency.
-    For Langflow OSS, install the Docling extra with `uv pip install 'langflow[docling]'`.
-    For Langflow Desktop, add the Docling dependency to Langflow Desktop's `requirements.txt`.
+    * **Earlier versions**: Portals versions earlier than 1.6 don't include the Docling dependency.
+    For Portals OSS, install the Docling extra with `uv pip install 'portals[docling]'`.
+    For Portals Desktop, add the Docling dependency to Portals Desktop's `requirements.txt`.
     For more information, see [Install custom dependencies](/install-custom-dependencies).
 
 <PartialDockerDoclingDeps />
@@ -36,7 +36,7 @@ The Docling dependency is required to use the Docling components in Langflow.
 ## Use Docling components in a flow
 
 :::tip
-To learn more about content extraction with Docling, see the video tutorial [Docling + Langflow: Document Processing for AI Workflows](https://www.youtube.com/watch?v=5DuS6uRI5OM).
+To learn more about content extraction with Docling, see the video tutorial [Docling + Portals: Document Processing for AI Workflows](https://www.youtube.com/watch?v=5DuS6uRI5OM).
 :::
 
 This example demonstrates how to use Docling components to split a PDF in a flow:

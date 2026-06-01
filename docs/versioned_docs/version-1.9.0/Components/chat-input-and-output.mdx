@@ -11,7 +11,7 @@ import PartialParams from '@site/docs/_partial-hidden-params.mdx';
 For more information, see [Test flows in the Playground](/concepts-playground).
 :::
 
-**Chat Input and Output** components are designed to handle conversational interactions in Langflow.
+**Chat Input and Output** components are designed to handle conversational interactions in Portals.
 
 ## Chat Input
 
@@ -64,14 +64,14 @@ message = await Message.create(
 ## Chat Output
 
 The **Chat Output** component ingests `Message`, `JSON`, or `Table` data from other components, transforms it into `Message` data if needed, and then emits the final output as a chat message.
-For information about these data types, see [Use Langflow data types](/data-types).
+For information about these data types, see [Use Portals data types](/data-types).
 
 In the **Playground**, chat output is limited to the parts of the `Message` object that are relevant to the chat interface, such as the text response, sender name, and file attachments.
 To see the metadata associated with a chat message, inspect the message logs in the **Playground**.
 
-When using the Langflow API, the API response includes the **Chat Output** `Message` object along with other response data from the flow run.
-Langflow API responses can be extremely verbose, so your applications must include code to extract relevant data from the response to return to the user.
-For an example, see the [Langflow quickstart](/get-started-quickstart).
+When using the Portals API, the API response includes the **Chat Output** `Message` object along with other response data from the flow run.
+Portals API responses can be extremely verbose, so your applications must include code to extract relevant data from the response to return to the user.
+For an example, see the [Portals quickstart](/get-started-quickstart).
 
 ### Chat Output parameters
 
@@ -103,14 +103,14 @@ For example, the following flow connects **Chat Input** and **Chat Output** to a
 :::tip
 For detailed examples of **Chat Input and Output** components in flows, see the following:
 
-* [Langflow quickstart](/get-started-quickstart): Create and run a basic agent flow.
-* **Basic Prompting** template: Create an LLM-based chat flow that accepts chat input as well as a prompt with additional instructions for the LLM. Many other Langflow templates also use **Chat Input and Output** components.
+* [Portals quickstart](/get-started-quickstart): Create and run a basic agent flow.
+* **Basic Prompting** template: Create an LLM-based chat flow that accepts chat input as well as a prompt with additional instructions for the LLM. Many other Portals templates also use **Chat Input and Output** components.
 * [Connect applications to agents](/agent-tutorial): Explore more advanced concepts around agent flows and prompting, including triggering agent flows from external applications.
 :::
 
-### Send chat input with the Langflow API
+### Send chat input with the Portals API
 
-You can use the Langflow API to run a flow by sending input to a **Chat Input** component:
+You can use the Portals API to run a flow by sending input to a **Chat Input** component:
 
 ```bash
 curl --request POST \
@@ -124,7 +124,7 @@ curl --request POST \
 }'
 ```
 
-When triggering flows with the Langflow API, the payload must contain the values for the **Chat Input** component's input parameters, such as `input_value`.
+When triggering flows with the Portals API, the payload must contain the values for the **Chat Input** component's input parameters, such as `input_value`.
 
 Not all parameters need to be specified in the request.
 For example, `session_id` uses the flow's default session ID if omitted.
@@ -143,4 +143,4 @@ curl --request POST \
 }'
 ```
 
-For more information, see [Trigger flows with the Langflow API](/concepts-publish).
+For more information, see [Trigger flows with the Portals API](/concepts-publish).

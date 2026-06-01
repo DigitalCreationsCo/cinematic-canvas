@@ -1,6 +1,6 @@
 # Test Generation Checklist
 
-Verify each item before submitting test code for Langflow frontend.
+Verify each item before submitting test code for Portals frontend.
 
 ## Pre-Writing
 

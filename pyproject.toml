@@ -57,7 +57,8 @@ packages = ["src/backend/base"]
 
 [project.optional-dependencies]
 postgresql = [
-    "sqlalchemy[aiosqlite,postgresql-psycopg,postgresql-psycopg2binary]>=2.0.49",
+    "sqlalchemy[postgresql_psycopg2binary]>=2.0.38,<3.0.0",
+    "sqlalchemy[postgresql_psycopg]>=2.0.38,<3.0.0",
 ]
 
 [project.scripts]
@@ -67,7 +68,7 @@ portals = "portals.portals_launcher:main"
 timeout = 150
 timeout_method = "signal"
 minversion = "6.0"
-testpaths = ["src/backend/tests", "src/lfx/tests"]
+testpaths = ["src/backend/tests", "src/px/tests"]
 console_output_style = "progress"
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -117,9 +118,9 @@ directory = "coverage"
 [tool.ruff]
 target-version = "py310"
 exclude = [
-    "src/backend/base/langflow/alembic/*",
+    "src/backend/base/portals/alembic/*",
     "src/frontend/tests/assets/*",
-    "src/lfx/src/lfx/_assets/component_index.json",
+    "src/px/src/px/_assets/component_index.json",
     "docs/**/API-Reference/python-examples/**",
 ]
 line-length = 120
@@ -171,115 +172,115 @@ external = ["RUF027"]
     "TRY003",  # Long exception messages
     "EM101",   # String literals in exceptions
 ]
-"src/backend/base/langflow/alembic/versions/*" = ["INP001", "D415", "PGH003"]
-"src/backend/base/langflow/custom/__init__.py" = [
+"src/backend/base/portals/alembic/versions/*" = ["INP001", "D415", "PGH003"]
+"src/backend/base/portals/custom/__init__.py" = [
     "I001",  # Import order affects initialization - must import custom module first
 ]
-"src/backend/base/langflow/api/v1/*" = [
+"src/backend/base/portals/api/v1/*" = [
     "TCH",  # FastAPI needs to evaluate types at runtime
 ]
-"src/backend/base/langflow/api/v2/*" = [
+"src/backend/base/portals/api/v2/*" = [
     "TCH",  # FastAPI needs to evaluate types at runtime
 ]
-"src/backend/base/langflow/__main__.py" = [
+"src/backend/base/portals/__main__.py" = [
     "B008",  # Typer CLI requires function calls in defaults
 ]
-"src/backend/base/langflow/services/cache/*" = [
+"src/backend/base/portals/services/cache/*" = [
     "S301",  # Pickle usage is intentional for caching
 ]
-"src/backend/base/langflow/services/tracing/*" = [
+"src/backend/base/portals/services/tracing/*" = [
     "SLF001",  # Third-party library private member access (langwatch, opik)
 ]
-"src/lfx/src/lfx/base/curl/parse.py" = [
+"src/px/src/px/base/curl/parse.py" = [
     "S105",  # False positive: 'token' variable name, not a password
 ]
-"src/lfx/src/lfx/services/auth/service.py" = [
+"src/px/src/px/services/auth/service.py" = [
     "ARG002",  # No-op impl: unused args required by interface
     "EM101",  # NotImplementedError messages as literals
     "TC003",  # Type-only imports used in signatures
 ]
-"src/lfx/src/lfx/base/mcp/util.py" = [
+"src/px/src/px/base/mcp/util.py" = [
     "SLF001",  # MCP library private member access
 ]
-"src/lfx/src/lfx/cli/common.py" = [
+"src/px/src/px/cli/common.py" = [
     "S104",  # Intentional binding to all interfaces for server
     "S105",  # False positive: GITHUB_TOKEN_ENV is an env var name
 ]
-"src/lfx/src/lfx/components/__init__.py" = [
+"src/px/src/px/components/__init__.py" = [
     "SLF001",  # Accessing _dynamic_imports from modules
 ]
-"src/lfx/src/lfx/components/data/save_file.py" = [
+"src/px/src/px/components/data/save_file.py" = [
     "SLF001",  # Google API client private member access
 ]
-"src/lfx/src/lfx/components/datastax/astradb_vectorstore.py" = [
+"src/px/src/px/components/datastax/astradb_vectorstore.py" = [
     "S110",  # Try-except-pass for optional metadata
 ]
-"src/lfx/src/lfx/components/google/google_generative_ai_embeddings.py" = [
+"src/px/src/px/components/google/google_generative_ai_embeddings.py" = [
     "SLF001",  # Google AI library private member access
 ]
-"src/lfx/src/lfx/components/knowledge_bases/retrieval.py" = [
+"src/px/src/px/components/knowledge_bases/retrieval.py" = [
     "SLF001",  # Chroma client private member access
 ]
-"src/lfx/src/lfx/components/mongodb/mongodb_atlas.py" = [
+"src/px/src/px/components/mongodb/mongodb_atlas.py" = [
     "SLF001",  # MongoDB collection private member access
 ]
-"src/lfx/src/lfx/components/tools/{python_code_structured_tool.py,searxng.py}" = [
+"src/px/src/px/components/tools/{python_code_structured_tool.py,searxng.py}" = [
     "S102",  # Use of exec/eval for dynamic code execution
     "SLF001",  # Component internal member access
 ]
-"src/lfx/src/lfx/components/vectorstores/astradb.py" = [
+"src/px/src/px/components/vectorstores/astradb.py" = [
     "S110",  # Try-except-pass for optional metadata
 ]
-"src/lfx/src/lfx/custom/{code_parser/code_parser.py,validate.py}" = [
+"src/px/src/px/custom/{code_parser/code_parser.py,validate.py}" = [
     "S102",  # Use of exec for code validation
 ]
-"src/lfx/src/lfx/custom/custom_component/component.py" = [
+"src/px/src/px/custom/custom_component/component.py" = [
     "SLF001",  # Component internal state management
 ]
-"src/lfx/src/lfx/custom/directory_reader/directory_reader.py" = [
+"src/px/src/px/custom/directory_reader/directory_reader.py" = [
     "SLF001",  # Component introspection
 ]
-"src/lfx/src/lfx/custom/utils.py" = [
+"src/px/src/px/custom/utils.py" = [
     "SLF001",  # Component code analysis
 ]
-"src/lfx/src/lfx/graph/graph/ascii.py" = [
+"src/px/src/px/graph/graph/ascii.py" = [
     "SLF001",  # Grandalf library private member access
 ]
-"src/lfx/src/lfx/inputs/input_mixin.py" = [
+"src/px/src/px/inputs/input_mixin.py" = [
     "S105",  # False positive: PASSWORD is a type constant
 ]
-"src/lfx/src/lfx/__main__.py" = [
+"src/px/src/px/__main__.py" = [
     "B008",   # Typer CLI requires function calls in argument defaults
     "FBT001", # Bool flags are the standard typer pattern
     "FBT003", # Boolean positional values in typer.Option() calls
 ]
-"src/lfx/src/lfx/cli/_setup_commands.py" = [
+"src/px/src/px/cli/_setup_commands.py" = [
     "B008",   # Typer CLI requires function calls in argument defaults
     "FBT001", # Bool flags are the standard typer pattern
     "FBT003", # Boolean positional values in typer.Option() calls
 ]
-"src/lfx/src/lfx/cli/_authoring_commands.py" = [
+"src/px/src/px/cli/_authoring_commands.py" = [
     "B008",   # Typer CLI requires function calls in argument defaults
     "FBT001", # Bool flags are the standard typer pattern
     "FBT003", # Boolean positional values in typer.Option() calls
 ]
-"src/lfx/src/lfx/cli/_running_commands.py" = [
+"src/px/src/px/cli/_running_commands.py" = [
     "B008",   # Typer CLI requires function calls in argument defaults
     "FBT001", # Bool flags are the standard typer pattern
     "FBT003", # Boolean positional values in typer.Option() calls
 ]
-"src/lfx/src/lfx/cli/_remote_commands.py" = [
+"src/px/src/px/cli/_remote_commands.py" = [
     "B008",   # Typer CLI requires function calls in argument defaults
     "FBT001", # Bool flags are the standard typer pattern
     "FBT003", # Boolean positional values in typer.Option() calls
 ]
-"src/backend/base/langflow/api/utils/*" = [
+"src/backend/base/portals/api/utils/*" = [
     "TCH",  # Imports are used at runtime (FastAPI deps, SQLAlchemy queries, model constructors)
 ]
-"src/sdk/src/langflow_sdk/_http.py" = [
+"src/sdk/src/portals_sdk/_http.py" = [
     "TCH",  # httpx is used at runtime (response object methods)
 ]
-"src/sdk/src/langflow_sdk/environments.py" = [
+"src/sdk/src/portals_sdk/environments.py" = [
     "TRY003", # Contextual error messages are necessary here
     "EM102",  # f-string messages assigned before raise where possible
 ]
@@ -288,10 +289,10 @@ external = ["RUF027"]
     "INP001", # Not a package namespace issue in tests
     "TC003",  # pytest fixture type hints are evaluated at runtime
 ]
-"src/lfx/src/lfx/schema/table.py" = [
+"src/px/src/px/schema/table.py" = [
     "S105",  # False positive: PASSWORD is a formatter type
 ]
-"src/lfx/src/lfx/services/mcp_composer/service.py" = [
+"src/px/src/px/services/mcp_composer/service.py" = [
     "S104",  # Intentional binding to all interfaces for server
     "S110",  # Try-except-pass for optional error logging
 ]
@@ -302,14 +303,15 @@ external = ["RUF027"]
     "SLF001",
     "BLE001",  # allow broad-exception catching in tests
 ]
-"src/backend/base/langflow/tests/*" = [
+"src/backend/base/portals/tests/*" = [
     "D1",
     "PLR2004",
     "S101",
     "SLF001",
     "BLE001",  # allow broad-exception catching in tests
 ]
-"src/lfx/tests/*" = [
+"src/px/tests/*" = [
+    "ARG002",
     "D1",
     "PLR2004",
     "S101",
@@ -323,7 +325,7 @@ external = ["RUF027"]
     "T201",    # Print statements (needed for CLI output)
     "S603",    # Subprocess calls (needed for running commands)
     "S607",    # Starting process with partial executable path
-    "S104",    # Binding to all interfaces (needed for Langflow server)
+    "S104",    # Binding to all interfaces (needed for Portals server)
     "S105",    # Hardcoded passwords (test credentials)
     "FBT001",  # Boolean-typed positional arguments (common in CLI)
     "FBT002",  # Boolean default arguments (common in CLI tools)

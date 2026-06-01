@@ -9,12 +9,12 @@ This tutorial shows you how to build a chatbot that can read and answer question
 
 For example, you could upload a contract and ask, “What are the termination clauses in this agreement?” Or upload a resume and ask, “Does this candidate have experience with marketing analytics?”
 
-The main focus of this tutorial is to show you how to provide files as input to a Langflow flow, so your chatbot can use the content of those files in its responses.
+The main focus of this tutorial is to show you how to provide files as input to a Portals flow, so your chatbot can use the content of those files in its responses.
 
 ## Prerequisites
 
-* [Install and start Langflow](/get-started-installation)
-* Create a [Langflow API key](/api-keys-and-authentication)
+* [Install and start Portals](/get-started-installation)
+* Create a [Portals API key](/api-keys-and-authentication)
 * Create an [OpenAI API key](https://platform.openai.com/api-keys)
 
 This tutorial uses an OpenAI LLM. If you want to use a different provider, you need a valid credential for that provider.
@@ -25,7 +25,7 @@ To ingest files, your flow must have a **Read File** component attached to a com
 
 The following steps modify the **Basic Prompting** template to accept file input:
 
-1. In Langflow, click **New Flow**, and then select the **Basic Prompting** template.
+1. In Portals, click **New Flow**, and then select the **Basic Prompting** template.
 2. In the **Language Model** component, enter your OpenAI API key.
 
     If you want to use a different provider or model, edit the **Model Provider**, **Model Name**, and **API Key** fields accordingly.
@@ -63,10 +63,10 @@ To connect ports, click and drag from one port to the other.
 
 This section of the tutorial demonstrates how you can send file input to a flow from an application.
 
-To do this, your application must send a `POST /run` request to your Langflow server with the file you want to upload and a text prompt.
+To do this, your application must send a `POST /run` request to your Portals server with the file you want to upload and a text prompt.
 The result includes the outcome of the flow run and the LLM's response.
 
-This example uses a local Langflow instance, and it asks the LLM to evaluate a sample resume.
+This example uses a local Portals instance, and it asks the LLM to evaluate a sample resume.
 If you don't have a resume on hand, you can download [fake-resume.txt](/files/fake-resume.txt).
 
 :::tip
@@ -75,12 +75,12 @@ For an example of constructing file upload requests in JavaScript, see the [Crea
 
 1. To construct the request, gather the following information:
 
-    * `LANGFLOW_SERVER_ADDRESS`: Your Langflow server's domain. The default value is `127.0.0.1:7860`. You can get this value from the code snippets on your flow's [**API access** pane](/concepts-publish#api-access).
+    * `LANGFLOW_SERVER_ADDRESS`: Your Portals server's domain. The default value is `127.0.0.1:7860`. You can get this value from the code snippets on your flow's [**API access** pane](/concepts-publish#api-access).
     * `FLOW_ID`: Your flow's UUID or custom endpoint name. You can get this value from the code snippets on your flow's [**API access** pane](/concepts-publish#api-access).
-    * `FILE_COMPONENT_ID`: The UUID of the **Read File** component in your flow, such as `File-KZP68`. To find the component ID, open your flow in Langflow, click the **Read File** component, and then click **Controls**. The component ID is at the top of the **Controls** pane.
+    * `FILE_COMPONENT_ID`: The UUID of the **Read File** component in your flow, such as `File-KZP68`. To find the component ID, open your flow in Portals, click the **Read File** component, and then click **Controls**. The component ID is at the top of the **Controls** pane.
     * `CHAT_INPUT`: The message you want to send to the Chat Input of your flow, such as `Evaluate this resume for a job opening in my Marketing department.`
     * `FILE_NAME` and `FILE_PATH`: The name and path to the local file that you want to send to your flow.
-    * `LANGFLOW_API_KEY`: A valid [Langflow API key](/api-keys-and-authentication).
+    * `LANGFLOW_API_KEY`: A valid [Portals API key](/api-keys-and-authentication).
 
 2. Copy the following script into a Python file, and then replace the placeholders with the information you gathered in the previous step:
 
@@ -102,7 +102,7 @@ For an example of constructing file upload requests in JavaScript, see the [Crea
       'x-api-key': 'LANGFLOW_API_KEY'
     }
 
-    # 3. Upload the file to Langflow
+    # 3. Upload the file to Portals
     response = requests.request("POST", url, headers=headers, data=payload, files=files)
     print(response.text)
 
@@ -110,7 +110,7 @@ For an example of constructing file upload requests in JavaScript, see the [Crea
     uploaded_data = response.json()
     uploaded_path = uploaded_data.get('path')
 
-    # 5. Call the Langflow run endpoint with the uploaded file path
+    # 5. Call the Portals run endpoint with the uploaded file path
     run_url = "http://LANGFLOW_SERVER_ADDRESS/api/v1/run/FLOW_ID"
     run_payload = {
         "input_value": "CHAT_INPUT",
@@ -128,11 +128,11 @@ For an example of constructing file upload requests in JavaScript, see the [Crea
         'x-api-key': 'LANGFLOW_API_KEY'
     }
     run_response = requests.post(run_url, headers=run_headers, data=json.dumps(run_payload))
-    langflow_data = run_response.json()
+    portals_data = run_response.json()
     # Output only the message
     message = None
     try:
-        message = langflow_data['outputs'][0]['outputs'][0]['results']['message']['data']['text']
+        message = portals_data['outputs'][0]['outputs'][0]['results']['message']['data']['text']
     except (KeyError, IndexError, TypeError):
         pass
     print(message)
@@ -141,14 +141,14 @@ For an example of constructing file upload requests in JavaScript, see the [Crea
 
     This script contains two requests.
 
-    The first request uploads a file, such as `fake-resume.txt`, to your Langflow server at the `/v2/files` endpoint. This request returns a file path that can be referenced in subsequent Langflow requests, such as `02791d46-812f-4988-ab1c-7c430214f8d5/fake-resume.txt`
+    The first request uploads a file, such as `fake-resume.txt`, to your Portals server at the `/v2/files` endpoint. This request returns a file path that can be referenced in subsequent Portals requests, such as `02791d46-812f-4988-ab1c-7c430214f8d5/fake-resume.txt`
 
-    The second request sends a chat message to the Langflow flow at the `/v1/run/` endpoint.
+    The second request sends a chat message to the Portals flow at the `/v1/run/` endpoint.
     The `tweaks` parameter includes the path to the uploaded file as the variable `uploaded_path`, and sends this file directly to the **Read File** component.
 
 3. Save and run the script to send the requests and test the flow.
 
-    The initial output contains the JSON response object from the file upload endpoint, including the internal path where Langflow stores the file.
+    The initial output contains the JSON response object from the file upload endpoint, including the internal path where Portals stores the file.
     Then, the LLM retrieves the file and evaluates its content, in this case the suitability of the resume for a job position.
 
     <details>
@@ -215,13 +215,13 @@ You can also use a [**Directory** component](/directory) to load all files in a 
 
 ### Upload external files at runtime
 
-To upload files from another machine that isn't your local environment, your Langflow server must first be accessible over the internet. Then, authenticated users can upload files to your public Langflow server's `/v2/files/` endpoint, as shown in the tutorial. For more information, see [Langflow deployment overview](/deployment-overview).
+To upload files from another machine that isn't your local environment, your Portals server must first be accessible over the internet. Then, authenticated users can upload files to your public Portals server's `/v2/files/` endpoint, as shown in the tutorial. For more information, see [Portals deployment overview](/deployment-overview).
 
 ### Preload files outside the chat session
 
 You can use the **Read File** component to load files anywhere in a flow, not just in a chat session.
 
-In the visual editor, you can preload files to the **Read File** component by selecting them from your local machine or [Langflow file management](/concepts-file-management).
+In the visual editor, you can preload files to the **Read File** component by selecting them from your local machine or [Portals file management](/concepts-file-management).
 
 For example, you can preload an instructions file for a prompt template, or you can preload a vector store with documents that you want to query in a Retrieval Augmented Generation (RAG) flow.
 

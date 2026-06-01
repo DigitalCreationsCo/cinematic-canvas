@@ -1,8 +1,8 @@
 # Component Development
 
-Components are the unit of work in Langflow. They render as nodes on the canvas, persist into flow JSON, and become tools for Agents. Get the contract right and the rest of the system follows; get it wrong and you orphan every saved flow that referenced your component.
+Components are the unit of work in Portals. They render as nodes on the canvas, persist into flow JSON, and become tools for Agents. Get the contract right and the rest of the system follows; get it wrong and you orphan every saved flow that referenced your component.
 
-Components live in **`src/lfx/src/lfx/components/<category>/`**. The mirror tree under `src/backend/base/langflow/components/` is legacy stubs — do not add files there.
+Components live in **`src/px/src/px/components/<category>/`**. The mirror tree under `src/backend/base/portals/components/` is legacy stubs — do not add files there.
 
 ## Before you add a component (decision checklist)
 
@@ -10,12 +10,12 @@ Stop and check, in order. If any answer is "yes," do not create a new component.
 
 1. **Does one already exist?** Search:
    ```bash
-   rg -l 'display_name = ".*<keyword>.*"' src/lfx/src/lfx/components/
+   rg -l 'display_name = ".*<keyword>.*"' src/px/src/px/components/
    ```
    and check the category folder. The Calculator regret (two of them, see `tools/calculator.py` `legacy = True, replacement = ["helpers.CalculatorComponent"]`) is what happens when this step is skipped.
 2. **Is this a thin wrapper around an existing tool/SDK that an Agent could call directly via `tool_mode=True`?** If yes, add `tool_mode=True` to the relevant input on the existing component instead of building a new one.
 3. **Does it belong in a vendor bundle** (e.g., `openai/`, `anthropic/`, `datastax/`) rather than in generic `tools/` or `helpers/`? Vendor logic goes in vendor folders so bundles can ship/version independently.
-4. **Is this an lfx-runtime concern** (graph execution, schema, IO primitives) or a **Langflow-app concern** (auth, DB, tracing)? Components are lfx; never import `langflow.services.*` from a component.
+4. **Is this an px-runtime concern** (graph execution, schema, IO primitives) or a **Portals-app concern** (auth, DB, tracing)? Components are px; never import `portals.services.*` from a component.
 5. **Does an existing base class cover this category?** Use it:
    - LLMs → `LCModelComponent` (see `openai/openai_chat_model.py`)
    - Tools → `LCToolComponent` (see `tools/calculator.py`)
@@ -60,7 +60,7 @@ These appear all over the codebase but rarely in old docs.
 - **`real_time_refresh=True` + `update_build_config(self, build_config, value, name)`**: dynamic form. Use for mode switches and dependent-field hide/show. Examples: `openai/openai_chat_model.py`, `vectorstores/local_db.py`.
 - **`metadata = {"keywords": [...]}`**: extra search terms for the component picker. Example: `data_source/sql_executor.py`.
 - **`minimized = True`**: render collapsed by default. Example: `input_output/chat.py`.
-- **`documentation = "https://docs.langflow.org/..."`**: deep-link from the node UI. Example: `input_output/chat.py`.
+- **`documentation = "https://docs.portals.org/..."`**: deep-link from the node UI. Example: `input_output/chat.py`.
 
 ## Placement rules
 
@@ -130,9 +130,9 @@ See [TESTING.md](./TESTING.md) for the full testing contract. Quick reference:
 
 When in doubt, read these files before starting:
 
-- LLM with dynamic provider switching: `src/lfx/src/lfx/components/openai/openai_chat_model.py`
-- Tool with `tool_mode` and legacy/replacement: `src/lfx/src/lfx/components/tools/calculator.py`
-- Vector store with cache + tab inputs: `src/lfx/src/lfx/components/vectorstores/local_db.py`
-- Chat input with `minimized`: `src/lfx/src/lfx/components/input_output/chat.py`
-- Component with searchable metadata: `src/lfx/src/lfx/components/data_source/sql_executor.py`
-- Legacy + replacement pattern: `src/lfx/src/lfx/components/flow_controls/sub_flow.py`
+- LLM with dynamic provider switching: `src/px/src/px/components/openai/openai_chat_model.py`
+- Tool with `tool_mode` and legacy/replacement: `src/px/src/px/components/tools/calculator.py`
+- Vector store with cache + tab inputs: `src/px/src/px/components/vectorstores/local_db.py`
+- Chat input with `minimized`: `src/px/src/px/components/input_output/chat.py`
+- Component with searchable metadata: `src/px/src/px/components/data_source/sql_executor.py`
+- Legacy + replacement pattern: `src/px/src/px/components/flow_controls/sub_flow.py`

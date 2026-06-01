@@ -6,32 +6,32 @@ slug: /contributing-bundles
 import Icon from "@site/src/components/icon";
 
 <Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) are groups of components that are related to a specific service provider.
-If you want to contribute your custom components back to the Langflow project, you must put them into a bundle.
+If you want to contribute your custom components back to the Portals project, you must put them into a bundle.
 
-Follow these steps to add components to <Icon name="Blocks" aria-hidden="true" /> **Bundles** in the Langflow visual editor.
+Follow these steps to add components to <Icon name="Blocks" aria-hidden="true" /> **Bundles** in the Portals visual editor.
 This example adds a bundle named `DarthVader`.
 
 For more information on creating custom components, see [Create custom Python components](/components-custom-components).
 
-## Add the bundle to the lfx components folder
+## Add the bundle to the px components folder
 
-1. Navigate to the lfx directory in the Langflow repository and create a new folder for your bundle.
-The path for your new component is `src/lfx/src/lfx/components/darth_vader`.
-You can view the [components folder](https://github.com/langflow-ai/langflow/tree/main/src/lfx/src/lfx/components) in the Langflow repository.
+1. Navigate to the px directory in the Portals repository and create a new folder for your bundle.
+The path for your new component is `src/px/src/px/components/darth_vader`.
+You can view the [components folder](https://github.com/portals-ai/portals/tree/main/src/px/src/px/components) in the Portals repository.
 
 2. Within the newly created `darth_vader` folder, add the following files:
 
     * `darth_vader_component.py` — This file contains the backend logic for the new bundle. Create multiple `.py` files for multiple components.
     * `__init__.py` — This file initializes the bundle components. You can use any existing `__init__.py` as an example to see how it should be structured.
 
-    For an example of adding multiple components in a bundle, see the [Notion](https://github.com/langflow-ai/langflow/tree/main/src/lfx/src/lfx/components/Notion) bundle.
+    For an example of adding multiple components in a bundle, see the [Notion](https://github.com/portals-ai/portals/tree/main/src/px/src/px/components/Notion) bundle.
 
 
 ## Add the bundle to the frontend folder
 
-1. Navigate to the frontend directory in the Langflow repository to add your bundle's icon.
+1. Navigate to the frontend directory in the Portals repository to add your bundle's icon.
 The path for your new component icon is `src/frontend/src/icons/DarthVader`
-You can view the [icons folder](https://github.com/langflow-ai/langflow/tree/main/src/frontend/src/icons) in the Langflow repository.
+You can view the [icons folder](https://github.com/portals-ai/portals/tree/main/src/frontend/src/icons) in the Portals repository.
 To add your icon, create **three** files inside the `icons/darth_vader` folder.
 
 2. In the `icons/darth_vader` folder, add the raw SVG file of your icon, such as `darth_vader-icon.svg`.
@@ -93,7 +93,7 @@ Ensure the icon's React component name corresponds to the JSX component you just
     ```
 
 6. To link your new bundle to the frontend, open `/src/frontend/src/icons/lazyIconImports.ts`.
-You can view the [lazyIconImports.ts](https://github.com/langflow-ai/langflow/blob/main/src/frontend/src/icons/lazyIconImports.ts) in the Langflow repository.
+You can view the [lazyIconImports.ts](https://github.com/portals-ai/portals/blob/main/src/frontend/src/icons/lazyIconImports.ts) in the Portals repository.
 
 7. Add the name of your icon, which should match the icon name you used in the `.tsx` file.
 For example:
@@ -107,12 +107,12 @@ For example:
         import("@/icons/DeepSeek").then((mod) => ({ default: mod.DeepSeekIcon })),
     ```
 
-8. To add your bundle to the <Icon name="Blocks" aria-hidden="true" /> **Bundles** menu, edit the [`SIDEBAR_BUNDLES` array](https://github.com/langflow-ai/langflow/blob/main/src/frontend/src/utils/styleUtils.ts#L243) in `/src/frontend/src/utils/styleUtils.ts`.
+8. To add your bundle to the <Icon name="Blocks" aria-hidden="true" /> **Bundles** menu, edit the [`SIDEBAR_BUNDLES` array](https://github.com/portals-ai/portals/blob/main/src/frontend/src/utils/styleUtils.ts#L243) in `/src/frontend/src/utils/styleUtils.ts`.
 
     Add an object to the array with the following keys:
 
-    * `display_name`: The text label shown in the Langflow visual editor
-    * `name`: The name of the folder you created within the `/src/lfx/src/lfx/components` directory
+    * `display_name`: The text label shown in the Portals visual editor
+    * `name`: The name of the folder you created within the `/src/px/src/px/components` directory
     * `icon`: The name of the bundle's icon that you defined in the previous steps
 
     For example:
@@ -140,7 +140,7 @@ class DarthVaderAPIComponent(LCToolComponent):
 
 ## Ensure the application builds your component bundle
 
-1. To rebuild the backend and frontend, run `make install_frontend && make build_frontend && make install_backend && uv run langflow run --port 7860`.
+1. To rebuild the backend and frontend, run `make install_frontend && make build_frontend && make install_backend && uv run portals run --port 7860`.
 
 2. Refresh the frontend application.
 Your new bundle called `DarthVader` is available in the <Icon name="Blocks" aria-hidden="true" /> **Bundles** menu in the visual editor.

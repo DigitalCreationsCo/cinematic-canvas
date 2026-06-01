@@ -7,7 +7,7 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import Icon from "@site/src/components/icon";
 
-Langflow's **Playground** is a dynamic interface you can use to test your LLM-based flows in real-time.
+Portals's **Playground** is a dynamic interface you can use to test your LLM-based flows in real-time.
 
 You can test how a flow responds to different inputs, review and modify memories, and monitor flow output and logic.
 For example, you can make sure agent flows use the appropriate tools to respond to different inputs.
@@ -21,14 +21,14 @@ Then, if your flow has a [**Chat Input** component](/chat-input-and-output), ent
 
 To expand the **Playground** view, click <Icon name="Expand" aria-hidden="true"/> **Enter fullscreen** within the **Playground** panel.
 
-![The Langflow visual builder with the Playground active](/img/playground.png)
+![The Portals visual builder with the Playground active](/img/playground.png)
 
 :::tip
 If there is no message input field in the **Playground**, make sure your flow has a **Chat Input** component that is connected, directly or indirectly, to the **Input** port of a **Language Model** or **Agent** component.
 
 Because the **Playground** is designed for flows that use an LLM in a query-and-response format, such as chatbots and agents, a flow must have **Chat Input**, **Language Model**/**Agent**, and **Chat Output** components to be fully supported by the **Playground** chat interface
 
-For flows that require another type of input, such as a webhook event, file upload, or text input, you can [use the Langflow API to trigger the flow](/api-flows-run), and then open the **Playground** to review the LLM activity for the flow run, if applicable.
+For flows that require another type of input, such as a webhook event, file upload, or text input, you can [use the Portals API to trigger the flow](/api-flows-run), and then open the **Playground** to review the LLM activity for the flow run, if applicable.
 :::
 
 ![Playground window](/img/playground.png)
@@ -63,8 +63,8 @@ You can also delete entire chat sessions from the sidebar: click <Icon name="Ell
 
 Modifying memories influences the behavior of the chatbot responses if you continue the chat session or if you preserve memories over multiple chat sessions.
 
-**Editing message logs edits Langflow's internal `messages` table, which is the default chat memory storage.**
-For more information about managing sessions and chat memory in Langflow, see [Use custom session IDs](#session-ids) and [Memory management options](/memory).
+**Editing message logs edits Portals's internal `messages` table, which is the default chat memory storage.**
+For more information about managing sessions and chat memory in Portals, see [Use custom session IDs](#session-ids) and [Memory management options](/memory).
 
 ## Set custom session IDs {#session-ids}
 
@@ -98,9 +98,9 @@ If the field is empty, the flow uses the default session ID.
 Make sure to change the **Session ID** when you want to start a new chat session or continue an earlier chat session with a different session ID.
 
 </TabItem>
-<TabItem value="api" label="Langflow API">
+<TabItem value="api" label="Portals API">
 
-When you trigger a flow with the Langflow API, include the `session_id` parameter in the request payload.
+When you trigger a flow with the Portals API, include the `session_id` parameter in the request payload.
 For example:
 
 ```bash
@@ -133,19 +133,19 @@ For more information, see [Use session ID to manage communication between compon
 
 :::warning
 The **Shareable Playground** is for testing purposes only.
-The **Playground** isn't meant for embedding flows in applications. For information about running flows in applications or websites, see [Trigger flows with the Langflow API](/concepts-publish).
+The **Playground** isn't meant for embedding flows in applications. For information about running flows in applications or websites, see [Trigger flows with the Portals API](/concepts-publish).
 
-The **Shareable Playground** isn't available in Langflow Desktop.
+The **Shareable Playground** isn't available in Portals Desktop.
 :::
 
 The **Shareable Playground** option exposes the **Playground** for a single flow at the `/public_flow/$FLOW_ID` endpoint.
 
-After you [deploy a public Langflow server](/deployment-overview), you can share this public URL with another user to allow them to access the specified flow's **Playground** only.
-The user can interact with the flow's chat input and output and view the results without installing Langflow or generating a Langflow API key.
+After you [deploy a public Portals server](/deployment-overview), you can share this public URL with another user to allow them to access the specified flow's **Playground** only.
+The user can interact with the flow's chat input and output and view the results without installing Portals or generating a Portals API key.
 
 To share a flow's **Playground** with another user, do the following:
 
-1. In Langflow, open the flow you want share.
+1. In Portals, open the flow you want share.
 2. In the [workspace](/concepts-overview#workspace), click **Share**, and then enable **Shareable Playground**.
 3. Click **Shareable Playground** again to open the **Playground** window.
 This window's URL is the flow's **Shareable Playground** address, such as `https://3f7c-73-64-93-151.ngrok-free.app/playground/d764c4b8-5cec-4c0f-9de0-4b419b11901a`.
@@ -155,5 +155,5 @@ This window's URL is the flow's **Shareable Playground** address, such as `https
 
 - [Upload images](/concepts-file-management#upload-images)
 - [Use voice mode](/concepts-voice-mode)
-- [Trigger flows with the Langflow API](/concepts-publish)
+- [Trigger flows with the Portals API](/concepts-publish)
 - [Session ID](/session-id)

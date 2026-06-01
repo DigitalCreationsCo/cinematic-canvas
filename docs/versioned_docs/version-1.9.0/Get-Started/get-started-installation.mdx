@@ -1,5 +1,5 @@
 ---
-title: Install Langflow
+title: Install Portals
 slug: /get-started-installation
 ---
 
@@ -9,82 +9,82 @@ import Cards from "@site/src/components/Cards";
 import Card from "@site/src/components/Card";
 import Icon from "@site/src/components/icon";
 
-Langflow can be installed in multiple ways. Choose an option below to jump to the steps.
+Portals can be installed in multiple ways. Choose an option below to jump to the steps.
 
 <Cards cols={2}>
-  <Card icon={<Icon name="Monitor" size={20} />} title="Langflow Desktop (recommended)" href="#install-and-run-langflow-desktop">
+  <Card icon={<Icon name="Monitor" size={20} />} title="Portals Desktop (recommended)" href="#install-and-run-portals-desktop">
     Standalone app with dependency management and simple upgrades.
   </Card>
-  <Card icon={<Icon name="Container" size={20} />} title="Docker" href="#install-and-run-langflow-docker">
-    Run Langflow in a container in isolation.
+  <Card icon={<Icon name="Container" size={20} />} title="Docker" href="#install-and-run-portals-docker">
+    Run Portals in a container in isolation.
   </Card>
-  <Card icon={<Icon name="Package" size={20} />} title="Python package" href="#install-and-run-the-langflow-oss-python-package">
+  <Card icon={<Icon name="Package" size={20} />} title="Python package" href="#install-and-run-the-portals-oss-python-package">
     Full control over environment, dependencies, and versioning.
   </Card>
-  <Card icon={<Icon name="GitFork" size={20} />} title="Install from source" href="/contributing-how-to-contribute#install-langflow-from-source">
-    Contribute to Langflow or work from a local clone.
+  <Card icon={<Icon name="GitFork" size={20} />} title="Install from source" href="/contributing-how-to-contribute#install-portals-from-source">
+    Contribute to Portals or work from a local clone.
   </Card>
 </Cards>
 
-## Install and run Langflow Desktop {#install-and-run-langflow-desktop}
+## Install and run Portals Desktop {#install-and-run-portals-desktop}
 
-Langflow Desktop is a desktop version of Langflow that simplifies dependency management and upgrades.
-However, some features aren't available for Langflow Desktop, such as the **Shareable Playground** and **Voice Mode**.
+Portals Desktop is a desktop version of Portals that simplifies dependency management and upgrades.
+However, some features aren't available for Portals Desktop, such as the **Shareable Playground** and **Voice Mode**.
 
 <Tabs>
 <TabItem value="macos" label="macOS" default>
 
-Langflow Desktop requires macOS 13 or later.
+Portals Desktop requires macOS 13 or later.
 
-1. Navigate to [Langflow Desktop](https://www.langflow.org/desktop).
-2. Click **Download Langflow**, enter your contact information, and then click **Download**.
-3. Mount and install the Langflow application.
-4. When the installation completes, open the Langflow application, and then create your first flow with the [Quickstart](/get-started-quickstart).
+1. Navigate to [Portals Desktop](https://www.portals.org/desktop).
+2. Click **Download Portals**, enter your contact information, and then click **Download**.
+3. Mount and install the Portals application.
+4. When the installation completes, open the Portals application, and then create your first flow with the [Quickstart](/get-started-quickstart).
 
 </TabItem>
 <TabItem value="Windows" label="Windows">
 
     :::warning
-    If you are upgrading Langflow Desktop on Windows, **don't** use the in-app update feature to upgrade to Langflow version 1.6.0.
+    If you are upgrading Portals Desktop on Windows, **don't** use the in-app update feature to upgrade to Portals version 1.6.0.
     For more information, see [Known issues for 1.6.0](/release-notes#windows-desktop-update-issue).
     :::
 
-1. Navigate to [Langflow Desktop](https://www.langflow.org/desktop).
-2. Click **Download Langflow**, enter your contact information, and then click **Download**.
+1. Navigate to [Portals Desktop](https://www.portals.org/desktop).
+2. Click **Download Portals**, enter your contact information, and then click **Download**.
 3. Open the **File Explorer**, and then navigate to **Downloads**.
-4. Double-click the downloaded `.msi` file, and then use the install wizard to install Langflow Desktop.
+4. Double-click the downloaded `.msi` file, and then use the install wizard to install Portals Desktop.
 
     :::tip
-    Windows installations of Langflow Desktop require a C++ compiler that may not be present on your system. If you receive a `C++ Build Tools Required!` error, follow the on-screen prompt to install Microsoft C++ Build Tools, or [install Microsoft Visual Studio](https://visualstudio.microsoft.com/downloads/).
+    Windows installations of Portals Desktop require a C++ compiler that may not be present on your system. If you receive a `C++ Build Tools Required!` error, follow the on-screen prompt to install Microsoft C++ Build Tools, or [install Microsoft Visual Studio](https://visualstudio.microsoft.com/downloads/).
     :::
 
-5. When the installation completes, open the Langflow application, and then create your first flow with the [Quickstart](/get-started-quickstart).
+5. When the installation completes, open the Portals application, and then create your first flow with the [Quickstart](/get-started-quickstart).
 
 </TabItem>
 </Tabs>
 
 For upgrade information, see the [Release notes](/release-notes).
 
-To manage dependencies in Langflow Desktop, see [Install custom dependencies in Langflow Desktop](/install-custom-dependencies#langflow-desktop).
+To manage dependencies in Portals Desktop, see [Install custom dependencies in Portals Desktop](/install-custom-dependencies#portals-desktop).
 
-## Install and run Langflow with Docker {#install-and-run-langflow-docker}
+## Install and run Portals with Docker {#install-and-run-portals-docker}
 
-You can use the Langflow Docker image to start a Langflow container.
-For more information, see [Deploy Langflow on Docker](/deployment-docker).
+You can use the Portals Docker image to start a Portals container.
+For more information, see [Deploy Portals on Docker](/deployment-docker).
 
 1. Install and start [Docker](https://docs.docker.com/).
 
-2. Pull the latest [Langflow Docker image](https://hub.docker.com/r/langflowai/langflow) and start it:
+2. Pull the latest [Portals Docker image](https://hub.docker.com/r/portalsai/portals) and start it:
 
     ```bash
-    docker run -p 7860:7860 langflowai/langflow:latest
+    docker run -p 7860:7860 portalsai/portals:latest
     ```
 
-3. To access Langflow, navigate to `http://localhost:7860/`.
+3. To access Portals, navigate to `http://localhost:7860/`.
 
 4. Create your first flow with the [Quickstart](/get-started-quickstart).
 
-## Install and run the Langflow OSS Python package {#install-and-run-the-langflow-oss-python-package}
+## Install and run the Portals OSS Python package {#install-and-run-the-portals-oss-python-package}
 
 1. Make sure you have the required dependencies and infrastructure:
 
@@ -103,7 +103,7 @@ For more information, see [Deploy Langflow on Docker](/deployment-docker).
     <details>
     <summary>Need help with virtual environments?</summary>
 
-    Virtual environments ensure Langflow is installed in an isolated, fresh environment.
+    Virtual environments ensure Portals is installed in an isolated, fresh environment.
     To create a new virtual environment, do the following.
 
         <Tabs>
@@ -126,7 +126,7 @@ For more information, see [Deploy Langflow on Docker](/deployment-docker).
             Your shell's prompt changes to display that you're currently working in a virtual environment:
 
             ```text
-            (VENV_NAME) ➜  langflow git:(main) ✗
+            (VENV_NAME) ➜  portals git:(main) ✗
             ```
 
         3. To deactivate the virtual environment and return to your regular shell, type `deactivate`.
@@ -157,7 +157,7 @@ For more information, see [Deploy Langflow on Docker](/deployment-docker).
             Your shell's prompt changes to display that you're currently working in a virtual environment:
 
             ```text
-            (VENV_NAME) PS C:/users/username/langflow-dir>
+            (VENV_NAME) PS C:/users/username/portals-dir>
             ```
 
         3. To deactivate the virtual environment and return to your regular shell, type `deactivate`.
@@ -173,43 +173,43 @@ For more information, see [Deploy Langflow on Docker](/deployment-docker).
 
     </details>
 
-3. In your virtual environment, install Langflow:
+3. In your virtual environment, install Portals:
 
     ```bash
-    uv pip install langflow
+    uv pip install portals
     ```
 
-    To install a specific version of the Langflow package, add the required version to the command, such as `uv pip install langflow==1.4.22`.
+    To install a specific version of the Portals package, add the required version to the command, such as `uv pip install portals==1.4.22`.
 
     <details>
-    <summary>Reinstall or upgrade Langflow</summary>
+    <summary>Reinstall or upgrade Portals</summary>
 
-    To reinstall Langflow and all of its dependencies, run `uv pip install langflow --force-reinstall`.
+    To reinstall Portals and all of its dependencies, run `uv pip install portals --force-reinstall`.
 
-    To upgrade Langflow to the latest version, run `uv pip install langflow -U`.
-    However, the Langflow team recommends taking steps to backup your existing installation before you upgrade Langflow.
+    To upgrade Portals to the latest version, run `uv pip install portals -U`.
+    However, the Portals team recommends taking steps to backup your existing installation before you upgrade Portals.
     For more information, see [Prepare to upgrade](/release-notes#prepare-to-upgrade).
 
     </details>
 
-4. Start Langflow:
+4. Start Portals:
 
     ```bash
-    uv run langflow run
+    uv run portals run
     ```
 
-    It can take a few minutes for Langflow to start.
+    It can take a few minutes for Portals to start.
 
-5. To confirm that a local Langflow instance is running, navigate to the default Langflow URL `http://127.0.0.1:7860`.
+5. To confirm that a local Portals instance is running, navigate to the default Portals URL `http://127.0.0.1:7860`.
 
 6. Create your first flow with the [Quickstart](/get-started-quickstart).
 
 For upgrade information, see the [Release notes](/release-notes).
 
-For information about optional dependency groups and support for custom dependencies to extend Langflow OSS functionality, see [Install custom dependencies](/install-custom-dependencies).
+For information about optional dependency groups and support for custom dependencies to extend Portals OSS functionality, see [Install custom dependencies](/install-custom-dependencies).
 
 ## Next steps
 
 * [Quickstart](/get-started-quickstart): Build and run your first flow in minutes.
 * [Build flows](/concepts-flows): Learn about building flows.
-* [Troubleshoot Langflow](/troubleshoot): Get help with common Langflow install and startup issues.
+* [Troubleshoot Portals](/troubleshoot): Get help with common Portals install and startup issues.

@@ -6,8 +6,8 @@ re-exported from different modules (e.g., px.schema.Message vs portals.schema.Me
 
 from portals.schema import Data as PortalsData
 from portals.schema import Message as PortalsMessage
-from px.schema.data import Data as LfxData
-from px.schema.message import Message as LfxMessage
+from px.schema.data import Data as PxData
+from px.schema.message import Message as PxMessage
 
 
 class TestDuckTypingData:
@@ -15,17 +15,17 @@ class TestDuckTypingData:
 
     def test_px_data_isinstance_portals_data(self):
         """Test that px.Data instance is recognized as portals.Data."""
-        px_data = LfxData(data={"key": "value"})
+        px_data = PxData(data={"key": "value"})
         assert isinstance(px_data, PortalsData)
 
     def test_portals_data_isinstance_px_data(self):
         """Test that portals.Data instance is recognized as px.Data."""
         portals_data = PortalsData(data={"key": "value"})
-        assert isinstance(portals_data, LfxData)
+        assert isinstance(portals_data, PxData)
 
     def test_data_equality_across_modules(self):
         """Test that Data objects from different modules are equal."""
-        px_data = LfxData(data={"key": "value"})
+        px_data = PxData(data={"key": "value"})
         portals_data = PortalsData(data={"key": "value"})
         assert px_data == portals_data
 
@@ -35,14 +35,14 @@ class TestDuckTypingData:
         def process_data(data: PortalsData) -> str:
             return data.get_text()
 
-        px_data = LfxData(data={"text": "hello"})
+        px_data = PxData(data={"text": "hello"})
         # Should not raise type error
         result = process_data(px_data)
         assert result == "hello"
 
     def test_data_model_dump_compatible(self):
         """Test that model_dump works across module boundaries."""
-        px_data = LfxData(data={"key": "value"})
+        px_data = PxData(data={"key": "value"})
         portals_data = PortalsData(**px_data.model_dump())
         assert portals_data.data == {"key": "value"}
 
@@ -52,17 +52,17 @@ class TestDuckTypingMessage:
 
     def test_px_message_isinstance_portals_message(self):
         """Test that px.Message instance is recognized as portals.Message."""
-        px_message = LfxMessage(text="hello")
+        px_message = PxMessage(text="hello")
         assert isinstance(px_message, PortalsMessage)
 
     def test_portals_message_isinstance_px_message(self):
         """Test that portals.Message instance is recognized as px.Message."""
         portals_message = PortalsMessage(text="hello")
-        assert isinstance(portals_message, LfxMessage)
+        assert isinstance(portals_message, PxMessage)
 
     def test_message_equality_across_modules(self):
         """Test that Message objects from different modules are equal."""
-        px_message = LfxMessage(text="hello", sender="user")
+        px_message = PxMessage(text="hello", sender="user")
         portals_message = PortalsMessage(text="hello", sender="user")
         # Note: Direct equality might not work due to timestamps
         assert px_message.text == portals_message.text
@@ -74,14 +74,14 @@ class TestDuckTypingMessage:
         def process_message(msg: PortalsMessage) -> str:
             return f"Processed: {msg.text}"
 
-        px_message = LfxMessage(text="hello")
+        px_message = PxMessage(text="hello")
         # Should not raise type error
         result = process_message(px_message)
         assert result == "Processed: hello"
 
     def test_message_model_dump_compatible(self):
         """Test that model_dump works across module boundaries."""
-        px_message = LfxMessage(text="hello", sender="user")
+        px_message = PxMessage(text="hello", sender="user")
         dump = px_message.model_dump()
         portals_message = PortalsMessage(**dump)
         assert portals_message.text == "hello"
@@ -89,10 +89,10 @@ class TestDuckTypingMessage:
 
     def test_message_inherits_data_duck_typing(self):
         """Test that Message inherits duck-typing from Data."""
-        px_message = LfxMessage(text="hello")
+        px_message = PxMessage(text="hello")
         # Should work as Data too
         assert isinstance(px_message, PortalsData)
-        assert isinstance(px_message, LfxData)
+        assert isinstance(px_message, PxData)
 
 
 class TestDuckTypingWithInputs:
@@ -102,9 +102,9 @@ class TestDuckTypingWithInputs:
         """Test that MessageInput accepts px.Message."""
         from px.inputs.inputs import MessageInput
 
-        px_message = LfxMessage(text="hello")
+        px_message = PxMessage(text="hello")
         msg_input = MessageInput(name="test", value=px_message)
-        assert isinstance(msg_input.value, (LfxMessage, PortalsMessage))
+        assert isinstance(msg_input.value, (PxMessage, PortalsMessage))
 
     def test_message_input_converts_cross_module(self):
         """Test that MessageInput handles cross-module Messages."""
@@ -119,7 +119,7 @@ class TestDuckTypingWithInputs:
         """Test that DataInput accepts px.Data."""
         from px.inputs.inputs import DataInput
 
-        px_data = LfxData(data={"key": "value"})
+        px_data = PxData(data={"key": "value"})
         data_input = DataInput(name="test", value=px_data)
         assert data_input.value == px_data
 
@@ -136,7 +136,7 @@ class TestDuckTypingEdgeCases:
 
         custom = CustomModel(value="test")
         # Should not be considered a Data
-        assert not isinstance(custom, LfxData)
+        assert not isinstance(custom, PxData)
         assert not isinstance(custom, PortalsData)
 
     def test_non_pydantic_model_not_cross_module(self):
@@ -147,7 +147,7 @@ class TestDuckTypingEdgeCases:
                 self.data = {}
 
         fake = FakeData()
-        assert not isinstance(fake, LfxData)
+        assert not isinstance(fake, PxData)
         assert not isinstance(fake, PortalsData)
 
     def test_missing_fields_not_cross_module(self):
@@ -159,7 +159,7 @@ class TestDuckTypingEdgeCases:
 
         partial = PartialData(text_key="text")
         # Should not be considered a full Data (missing data field)
-        assert not isinstance(partial, LfxData)
+        assert not isinstance(partial, PxData)
         assert not isinstance(partial, PortalsData)
 
 
@@ -194,7 +194,7 @@ class TestDuckTypingInputMixin:
         from px.inputs.inputs import MessageInput
 
         # Create with px Message
-        px_msg = LfxMessage(text="hello")
+        px_msg = PxMessage(text="hello")
         input1 = MessageInput(name="test1", value=px_msg)
 
         # Create with portals Message

@@ -8,16 +8,16 @@ import TabItem from '@theme/TabItem';
 
 [Openlayer](https://www.openlayer.com/) is a testing and evaluation platform for LLM applications. It provides comprehensive observability, testing, and monitoring capabilities to help you ship high-quality AI systems with confidence.
 
-You can configure Langflow to collect tracing data about your flow executions and automatically send the data to Openlayer for analysis, monitoring, and evaluation.
+You can configure Portals to collect tracing data about your flow executions and automatically send the data to Openlayer for analysis, monitoring, and evaluation.
 
 ## Prerequisites
 
 - An [Openlayer account](https://www.openlayer.com/)
-- A [running Langflow server](/get-started-installation) with a [flow](/concepts-flows) that you want to trace
+- A [running Portals server](/get-started-installation) with a [flow](/concepts-flows) that you want to trace
 - An Openlayer inference pipeline
 
 :::tip
-If you need a flow to test the Openlayer integration, see the [Langflow quickstart](/get-started-quickstart).
+If you need a flow to test the Openlayer integration, see the [Portals quickstart](/get-started-quickstart).
 :::
 
 ## Set Openlayer credentials as environment variables
@@ -26,7 +26,7 @@ If you need a flow to test the Openlayer integration, see the [Langflow quicksta
 
 2. Create an inference pipeline in Openlayer and copy the pipeline ID.
 
-3. Set your Openlayer credentials as environment variables in the same environment where you run Langflow.
+3. Set your Openlayer credentials as environment variables in the same environment where you run Portals.
 
     In the following examples, replace `YOUR_API_KEY` and `YOUR_PIPELINE_ID` with your actual Openlayer credentials.
 
@@ -53,17 +53,17 @@ If you need a flow to test the Openlayer integration, see the [Langflow quicksta
     </TabItem>
     </Tabs>
 
-## Start Langflow and view traces in Openlayer
+## Start Portals and view traces in Openlayer
 
-1. Start Langflow in the same environment where you set the Openlayer environment variables:
+1. Start Portals in the same environment where you set the Openlayer environment variables:
 
     ```bash
-    uv run langflow run
+    uv run portals run
     ```
 
-2. Run a flow in Langflow.
+2. Run a flow in Portals.
 
-    Langflow automatically collects and sends tracing data about the flow execution to Openlayer, including:
+    Portals automatically collects and sends tracing data about the flow execution to Openlayer, including:
     - Component inputs and outputs
     - Execution timing and latency
     - LLM calls and nested operations
@@ -119,7 +119,7 @@ This allows you to set a default pipeline for all flows and override it for spec
 
 ## Disable Openlayer tracing
 
-To disable the Openlayer integration, remove the `OPENLAYER_API_KEY` environment variable, and then restart Langflow.
+To disable the Openlayer integration, remove the `OPENLAYER_API_KEY` environment variable, and then restart Portals.
 
 ## Features
 

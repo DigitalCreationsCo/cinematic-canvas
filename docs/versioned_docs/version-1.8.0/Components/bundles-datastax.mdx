@@ -9,7 +9,7 @@ import PartialConditionalParams from '@site/docs/_partial-conditional-params.mdx
 import PartialVectorSearchResults from '@site/docs/_partial-vector-search-results.mdx';
 import PartialVectorStoreInstance from '@site/docs/_partial-vector-store-instance.mdx';
 
-<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Langflow.
+<Icon name="Blocks" aria-hidden="true" /> [**Bundles**](/components-bundle-components) contain custom components that support specific third-party integrations with Portals.
 
 This page describes the components that are available in the **DataStax** bundle, including components that read and write to Astra DB databases.
 
@@ -18,7 +18,7 @@ This page describes the components that are available in the **DataStax** bundle
 :::warning
 It is recommended that you create any databases, keyspaces, and collections you need before configuring the **Astra DB** component.
 
-You can create new databases and collections through this component, but this is only possible in the Langflow visual editor (not at runtime), and you must wait while the database or collection initializes before proceeding with flow configuration.
+You can create new databases and collections through this component, but this is only possible in the Portals visual editor (not at runtime), and you must wait while the database or collection initializes before proceeding with flow configuration.
 Additionally, not all database and collection configuration options are available through the **Astra DB** component, such as hybrid search options, PCU groups, vectorize integration management, and multi-region deployments.
 :::
 
@@ -52,7 +52,7 @@ For information about accepted values and functionality, see the [Astra DB Serve
 | embedding_model | Embedding Model | Input parameter. Attach an [embedding model component](/components-embedding-models) to generate embeddings. Only available if the specified collection doesn't have a [vectorize integration](https://docs.datastax.com/en/astra-db-serverless/databases/embedding-generation.html). If a vectorize integration exists, the component automatically uses the collection's integrated model. |
 | ingest_data | Ingest Data | Input parameter. The documents to load into the specified collection. Accepts `Data` or `DataFrame` input. |
 | search_query | Search Query | Input parameter. The query string for vector search. |
-| cache_vector_store | Cache Vector Store | Input parameter. Whether to cache the vector store in Langflow memory for faster reads. Default: Enabled (`true`). |
+| cache_vector_store | Cache Vector Store | Input parameter. Whether to cache the vector store in Portals memory for faster reads. Default: Enabled (`true`). |
 | search_method | Search Method | Input parameter. The search methods to use, either `Hybrid Search` or `Vector Search`. Your collection must be configured to support the chosen option, and the default depends on what your collection supports. All vector-enabled collections in Astra DB Serverless (vector) databases support vector search, but hybrid search requires that you set specific collection settings when creating the collection. These options are only available when creating a collection programmatically. For more information, see [Ways to find data in Astra DB Serverless](https://docs.datastax.com/en/astra-db-serverless/databases/about-search.html) and [Create a collection that supports hybrid search](https://docs.datastax.com/en/astra-db-serverless/api-reference/collection-methods/create-collection.html#example-hybrid). |
 | reranker | Reranker | Input parameter. The re-ranker model to use for hybrid search, depending on the collection configuration. This parameter is only available for collections that support hybrid search. To determine if a collection supports hybrid search, [get collection metadata](https://docs.datastax.com/en/astra-db-serverless/api-reference/collection-methods/list-collection-metadata.html), and then check that `lexical` and `rerank` both have `"enabled": true`. |
 | lexical_terms | Lexical Terms | Input parameter. A space-separated string of keywords for hybrid search, like `features, data, attributes, characteristics`. This parameter is only available if the collection supports hybrid search. For more information, see the [Hybrid search example](#astra-db-examples). |
@@ -283,7 +283,7 @@ Specifically, the component creates an instance of `AstraDBChatMessageHistory`, 
 :::warning
 The **Astra DB Chat Memory** component isn't recommended for most memory storage because memories tend to be long JSON objects or strings, often exceeding the maximum size of a document or object supported by Astra DB.
 
-However, Langflow's **Agent** component includes built-in chat memory that is enabled by default.
+However, Portals's **Agent** component includes built-in chat memory that is enabled by default.
 Your agentic flows don't need an external database to store chat memory.
 For more information, see [Memory management options](/memory).
 :::
@@ -372,7 +372,7 @@ For information about accepted values and functionality, see the [Astra DB Serve
 | metadata_incoming_links_key | Metadata Incoming Links Key | Input parameter. The metadata key for the incoming links in the vector store. |
 | ingest_data | Ingest Data | Input parameter. Records to load into the vector store. Only relevant for writes. |
 | search_input | Search Query | Input parameter. Query string for similarity search. Only relevant to reads. |
-| cache_vector_store | Cache Vector Store | Input parameter. Whether to cache the vector store in Langflow memory for faster reads. Default: Enabled (`true`). |
+| cache_vector_store | Cache Vector Store | Input parameter. Whether to cache the vector store in Portals memory for faster reads. Default: Enabled (`true`). |
 | embedding_model | Embedding Model | Input parameter. Attach an [embedding model component](/components-embedding-models) to generate embeddings. If the collection has a [vectorize integration](https://docs.datastax.com/en/astra-db-serverless/databases/embedding-generation.html), don't attach an embedding model component. |
 | metric | Metric | Input parameter. The metrics to use for similarity search calculations, either `cosine` (default), `dot_product`, or `euclidean`. This is a collection setting. |
 | batch_size | Batch Size | Input parameter. Optional number of records to process in a single batch. |
@@ -403,7 +403,7 @@ The following DataStax components were used to create and manage Assistants API 
 * **List Assistants**
 * **Run Assistant**
 
-These components are legacy and should be replaced with Langflow's native agent components.
+These components are legacy and should be replaced with Portals's native agent components.
 
 </details>
 
@@ -415,14 +415,14 @@ The following DataStax components were used to load and retrieve environment var
 * **Dotenv**: Loads environment variables from a `.env` file
 * **Get Environment Variable**: Retrieves the value of an environment variable
 
-These components are legacy. Use Langflow's built-in environment variable support or global variables instead.
+These components are legacy. Use Portals's built-in environment variable support or global variables instead.
 
 </details>
 
 <details>
 <summary>Astra Vectorize</summary>
 
-This component was deprecated in Langflow version 1.1.2.
+This component was deprecated in Portals version 1.1.2.
 Replace it with the [**Astra DB** component](#astra-db).
 
 The **Astra DB Vectorize** component was used to generate embeddings with Astra DB's vectorize feature in conjunction with an **Astra DB** component.

@@ -145,7 +145,7 @@ for file in "${PY_FILES[@]}"; do
   fi
 
   if [[ "$MODE" == "execute" ]]; then
-    # api-openai-responses/* call Langflow's HTTP API (e.g. /api/v1/responses) with x-api-key;
+    # api-openai-responses/* call Portals's HTTP API (e.g. /api/v1/responses) with x-api-key;
     # they do not require OPENAI_API_KEY in the environment (same as the JS examples).
 
     # Streaming / long-running examples: skip in local harness (hang, flaky, or need extra setup).
@@ -188,7 +188,7 @@ for file in "${PY_FILES[@]}"; do
       continue
     fi
 
-    if ! uv run python - "$file" "$PY_TIMEOUT_SECONDS" >/tmp/langflow-python-example.out 2>/tmp/langflow-python-example.err <<'PY'
+    if ! uv run python - "$file" "$PY_TIMEOUT_SECONDS" >/tmp/portals-python-example.out 2>/tmp/portals-python-example.err <<'PY'
 import runpy
 import signal
 import sys
@@ -208,7 +208,7 @@ finally:
 PY
     then
       echo "FAIL  $rel (execution)"
-      print_failure_logs "/tmp/langflow-python-example.out" "/tmp/langflow-python-example.err"
+      print_failure_logs "/tmp/portals-python-example.out" "/tmp/portals-python-example.err"
       ((FAIL+=1))
       continue
     fi

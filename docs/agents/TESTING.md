@@ -41,11 +41,11 @@ Every subclass provides three fixtures:
 
 1. **`component_class`** — the component class under test.
 2. **`default_kwargs`** — dict of kwargs to instantiate the component (can be empty).
-3. **`file_names_mapping`** — list of `VersionComponentMapping` entries mapping each historical Langflow version (from `src/backend/tests/constants.py::SUPPORTED_VERSIONS`) to module/file names. Use `DID_NOT_EXIST` for versions before the component was added.
+3. **`file_names_mapping`** — list of `VersionComponentMapping` entries mapping each historical Portals version (from `src/backend/tests/constants.py::SUPPORTED_VERSIONS`) to module/file names. Use `DID_NOT_EXIST` for versions before the component was added.
 
 ```python
 from tests.base import ComponentTestBaseWithClient, VersionComponentMapping, DID_NOT_EXIST
-from langflow.components.my_namespace import MyComponent
+from portals.components.my_namespace import MyComponent
 
 class TestMyComponent(ComponentTestBaseWithClient):
     @pytest.fixture
@@ -150,8 +150,8 @@ make unit_tests async=false                  # Sequential
 uv run pytest path/to/test.py                # Single file
 uv run pytest path/to/test.py::test_name     # Single test
 
-# lfx tests specifically — must be run after `uv sync` inside src/lfx
-cd src/lfx && uv sync && uv run pytest
+# px tests specifically — must be run after `uv sync` inside src/px
+cd src/px && uv sync && uv run pytest
 ```
 
 ## Verification checklist before claiming "tests pass"
