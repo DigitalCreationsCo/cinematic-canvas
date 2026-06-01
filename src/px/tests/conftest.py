@@ -35,11 +35,32 @@ def allow_custom_components_by_default(monkeypatch):
     )
 
 
+def _remove_backend_paths() -> None:
+    """Strip backend source directories from ``sys.path``.
+
+    When running inside the Portals monorepo workspace, ``uv run`` adds the
+    sibling backend packages (``src/backend``, ``src/backend/base``) to
+    ``sys.path``.  The px unit tests are designed to run **without** the
+    ``portals`` backend installed — they rely on the ``px`` package only.
+
+    Removing these paths ensures ``import portals`` correctly fails from the
+    test runner's perspective, matching the behaviour of a standalone px
+    installation.
+    """
+    import sys
+
+    suffixes_to_strip = ("/backend", "/backend/base")
+    sys.path = [p for p in sys.path if not any(p.endswith(suf) for suf in suffixes_to_strip)]
+
+
 # Set up test data paths
 def pytest_configure(config):  # noqa: ARG001
     """Configure pytest with data paths and check prerequisites."""
-    # Check if portals is installed first - fail fast
     import os
+
+    # Strip backend paths first so that ``import portals`` below behaves as it
+    # would in a standalone px installation (ImportError, not a real import).
+    _remove_backend_paths()
 
     if not os.getenv("PX_TEST_ALLOW_PORTALS"):
         try:

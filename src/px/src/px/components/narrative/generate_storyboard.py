@@ -1,30 +1,35 @@
 """Generate Storyboard - Langflow Component.
 
 Multi-pass storyboard generation with optional audio analysis support.
+Project-aware: fetches existing characters, locations, and props from the
+database to inform storyboard generation.
 
 Execution flow (build_storyboard)
 ---------------------------------
   Pass 1  - Generate initial context: characters, locations, props, metadata.
+            Existing DB entities are injected into the prompt so the LLM
+            extends (rather than duplicates) what was previously authored.
   Pass 2+ - Generate scenes in batches:
                * Audio-guided mode: each audio segment is a scene anchor.
                * Prompt-only mode: a single open-ended slot lets the LLM
                  determine the scene count from the narrative.
 
-Single-pass outputs (build_structured_output / build_structured_dataframe)
-are retained unchanged for backward compatibility.
-
-Bug fixes vs. original
------------------------
-  * build_system_prompt: added missing `return`; replaced undefined `project`
-    with graceful fallback to `self.title or ""`.
-  * system_prompt class attribute: was called as an unbound method at class
-    definition time (TypeError); replaced with `None` and computed at runtime
-    inside _extract_output_with_trustcall / _extract_output_with_langchain.
+Key changes vs earlier versions
+-------------------------------
+  * Removed ``audio_segments_json`` input; replaced with ``audio_file``
+    (``FileInput``). When present the component calls a multimodal LLM
+    to generate analysis segments automatically.
+  * Inherits ``BaseStateAwareComponent`` for live DB project context.
+  * Passes pre-existing characters / locations / props from the relational
+    database into the generation prompt so the storyboard builds on
+    previously authored content.
+  * ``_save_to_project_db`` preserved unchanged for backward compat.
 """
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, create_model
@@ -33,12 +38,15 @@ from trustcall import create_extractor
 from px.base.agents.token_callback import TokenUsageCallbackHandler
 from px.base.models.chat_result import get_chat_result
 from px.base.models.unified_models import get_llm, handle_model_input_update
+from px.base.narrative.audio_analysis import analyze_audio_file
 from px.base.prompts.storyboard_vision_prompt import build_storyboard_vision_prompt
 from px.components.llm_operations.structured_output import StructuredOutputComponent
+from px.components.narrative.base_state_aware import BaseStateAwareComponent
 from px.field_typing.range_spec import RangeSpec
 from px.helpers.base_model import build_model_from_schema
 from px.inputs.inputs import BoolInput
 from px.io import (
+    FileInput,
     IntInput,
     MessageTextInput,
     ModelInput,
@@ -58,6 +66,12 @@ from px.schema.table import EditMode
 # ---------------------------------------------------------------------------
 
 _SCENE_BATCH_SIZE_DEFAULT: int = 10
+
+# Audio file types supported by the FileInput.
+# Defined inline (rather than imported from px.base.data.utils) to avoid
+# triggering the px.base.data import chain which attempts to load the
+# `portals` backend package (not available in standalone px test environments).
+_AUDIO_FILE_TYPES: list[str] = ["mp3", "wav"]
 
 # Reusable table-column definition shared by the three schema TableInputs.
 _SCHEMA_TABLE_COLUMNS: list[dict] = [
@@ -168,14 +182,15 @@ _DEFAULT_SCENE_SCHEMA: list[dict] = [
 ]
 
 
-class GenerateStoryboardComponent(StructuredOutputComponent):
+class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputComponent):
     display_name = "Generate Storyboard"
     name = "GenerateStoryboard"
     description = (
         "Generates a structured storyboard via multi-pass LLM calls. "
         "Pass 1 builds initial context (characters, locations, props, metadata). "
         "Pass 2+ generates scenes in batches, optionally guided by audio-analysis segments. "
-        "Single-pass outputs (Build Structured Output / Dataframe) are retained for backward compatibility."
+        "Single-pass outputs (Build Structured Output / Dataframe) are retained for backward compatibility. "
+        "Project-aware: fetches existing characters, locations, and props from the database."
     )
     icon = "sparkles"
     documentation: str = "https://docs.portals.org/components-models"
@@ -201,8 +216,6 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
     ]
 
     # Preserved as None; actual value computed at runtime by build_system_prompt().
-    # (Original class-level `system_prompt = build_system_prompt()` called the method
-    # as an unbound function before `self` exists — a TypeError at import time.)
     system_prompt: str | None = None
 
     inputs = [
@@ -233,18 +246,18 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
             display_name="Title",
             info="Title of the project.",
         ),
-        # ── Multi-pass / Audio ────────────────────────────────────────────────
-        MultilineInput(
-            name="audio_segments_json",
-            display_name="Audio Segments (JSON)",
+        # ── Audio File (replaces the old audio_segments_json) ────────────────
+        FileInput(
+            name="audio_file",
+            display_name="Audio File",
             info=(
-                "Optional. JSON array of audio-analysis segments "
-                "(e.g. [{startTime, endTime, duration, transcript, …}]). "
-                "When provided, scene generation is anchored to audio timing — "
-                "enabling the audio-guided multi-pass mode."
+                "Optional. When provided, the LLM analyses the audio "
+                "in the context of your narrative prompt and produces "
+                "timed segments that anchor scene generation. "
+                "Supports mp3, wav, m4a, flac, ogg, aac."
             ),
+            file_types=_AUDIO_FILE_TYPES,
             required=False,
-            advanced=False,
         ),
         MessageTextInput(
             name="project_id",
@@ -279,7 +292,6 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
                 "(used by Build Structured Output / Build Structured Dataframe)."
             ),
             required=True,
-            # TODO: remove default value
             table_schema=[
                 {
                     "name": "name",
@@ -375,7 +387,7 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
     ]
 
     # =========================================================================
-    # CONFIG UPDATE (unchanged)
+    # CONFIG UPDATE
     # =========================================================================
 
     def update_build_config(self, build_config: dict, field_value: str, field_name: str | None = None):
@@ -386,23 +398,38 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
     # SHARED INTERNAL HELPERS
     # =========================================================================
 
-    def _parse_audio_segments(self) -> list | None:
-        """Parse the optional ``audio_segments_json`` input field.
+    def _analyze_audio_if_provided(self, llm: Any, config_dict: dict) -> list | None:  # noqa: ARG002
+        """If ``audio_file`` is set, run multimodal analysis and return segments.
 
-        Returns a list of segment dicts, or None when the field is absent/invalid.
+        The returned segment list is compatible with the existing audio-guided
+        scene-generation path (same dict keys as the old ``audio_segments_json``).
+
+        ``config_dict`` is accepted for forward-compatibility with caller
+        signatures but not consumed here.
         """
-        raw = getattr(self, "audio_segments_json", None)
-        if not raw or not str(raw).strip():
+        audio_path: str | None = getattr(self, "audio_file", None)
+        if not audio_path:
             return None
-        try:
-            segments = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            logger.warning(f"Failed to parse audio_segments_json ({exc}) — audio-guided mode disabled.")
+
+        if not Path(audio_path).exists():
+            logger.warning(f"audio_file path does not exist: {audio_path}")
             return None
-        if not isinstance(segments, list):
-            logger.warning("audio_segments_json is not a JSON array — audio-guided mode disabled.")
+
+        logger.info(f"Audio file provided: {audio_path}")
+        segments = analyze_audio_file(
+            llm=llm,
+            audio_file_path=audio_path,
+            user_prompt=self.input_value,
+        )
+        if segments is None:
+            logger.info("Audio analysis returned no segments — proceeding in prompt-only mode.")
             return None
-        logger.info(f"Parsed {len(segments)} audio segment(s).")
+
+        # Add sceneIndex to each segment for downstream compatibility
+        for i, seg in enumerate(segments):
+            seg["sceneIndex"] = i
+
+        logger.info(f"Audio analysis produced {len(segments)} segment(s).")
         return segments
 
     def _setup_llm_and_config(self) -> tuple[Any, dict, TokenUsageCallbackHandler]:
@@ -418,7 +445,6 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
 
         token_handler = TokenUsageCallbackHandler()
         base_callbacks = self.get_langchain_callbacks()
-        # get_chat_result() expects get_langchain_callbacks as a callable.
         config_dict: dict = {
             "display_name": self.display_name,
             "get_project_name": self.get_project_name,
@@ -522,7 +548,7 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
             responses = raw["responses"]
             if responses:
                 first = responses[0]
-                raw = first.model_dump() if isinstance(first, BaseModel) else first
+                raw = first.model_dump()
         # Wrapper dict (from _build_wrapped_schema)
         if isinstance(raw, dict):
             raw = raw.get(key, raw.get("objects", raw))
@@ -539,9 +565,27 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
     # PROMPT BUILDERS (multi-pass)
     # =========================================================================
 
-    def _build_initial_context_prompt(self, audio_segments: list | None) -> str:
-        """System prompt for Pass 1: initial context (characters, locations, props, metadata)."""
-        base = build_storyboard_vision_prompt(title=self.title or "", user_prompt=self.input_value)
+    def _build_initial_context_prompt(
+        self,
+        audio_segments: list | None,
+        existing_entities: dict[str, list[dict]] | None = None,
+    ) -> str:
+        """System prompt for Pass 1: initial context (characters, locations, props, metadata).
+
+        Existing entities from the database are injected so the LLM extends
+        rather than duplicates previously authored content.
+        """
+        existing_entities = existing_entities or {}
+        existing_chars = existing_entities.get("characters") or []
+        existing_locs = existing_entities.get("locations") or []
+        existing_props = existing_entities.get("props") or []
+
+        base = build_storyboard_vision_prompt(
+            title=self.title or "",
+            user_prompt=self.input_value,
+            existing_characters=existing_chars,
+            existing_locations=existing_locs,
+        )
 
         audio_section = ""
         if audio_segments:
@@ -556,8 +600,17 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
                 "in the audio narrative."
             )
 
+        props_section = ""
+        if existing_props:
+            props_section = (
+                "\n\n## Existing Props (from project database)\n"
+                f"{json.dumps(existing_props, indent=2)}\n\n"
+                "Reference these props in your scenes as needed. "
+                "You may introduce new props if the narrative demands it."
+            )
+
         return (
-            f"{base}{audio_section}\n\n"
+            f"{base}{audio_section}{props_section}\n\n"
             "## Task — Pass 1: Initial Context\n"
             "Generate ONLY the foundational storyboard elements listed below.\n"
             "Do NOT generate individual scenes; scene enrichment follows in the next pass.\n\n"
@@ -600,17 +653,19 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
         llm: Any,
         config_dict: dict,
         audio_segments: list | None,
+        existing_entities: dict[str, list[dict]] | None = None,
     ) -> dict:
         """Call the LLM to produce storyboard metadata, characters, locations, and props.
 
         Audio segments are included in the prompt when present to ground the context
-        in the audio narrative.
+        in the audio narrative. Existing DB entities are included so the LLM extends
+        rather than duplicates previously authored content.
 
         Returns a single context dict (first element of the wrapped objects list).
         """
         schema_rows = getattr(self, "initial_context_schema", None) or _DEFAULT_INITIAL_CONTEXT_SCHEMA
         schema = self._build_wrapped_schema(schema_rows, "InitialContextModel", "Initial storyboard context.")
-        system_prompt = self._build_initial_context_prompt(audio_segments)
+        system_prompt = self._build_initial_context_prompt(audio_segments, existing_entities)
 
         if audio_segments:
             last = audio_segments[-1]
@@ -668,7 +723,7 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
 
         system_prompt = self._build_scene_batch_prompt(initial_context, batch_num, total_batches)
 
-        # Build user message with continuity signals (mirrors TypeScript agent logic)
+        # Build user message with continuity signals
         parts: list[str] = [f"Batch {batch_num}/{total_batches}"]
         if batch_num > 1 and first_scene:
             parts.append(f"Exposition (opening scene — for narrative coherence):\n{json.dumps(first_scene)}")
@@ -681,7 +736,7 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
         return self._unwrap_objects(raw, key="scenes")
 
     # =========================================================================
-    # PROJECT DATABASE PERSISTENCE
+    # PROJECT DATABASE PERSISTENCE (unchanged)
     # =========================================================================
 
     def _save_to_project_db(self, storyboard_data: dict) -> None:
@@ -720,25 +775,42 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
             logger.error(f"Non-fatal: failed to persist storyboard to project '{project_id}': {exc}")
 
     # =========================================================================
-    # OUTPUT — MULTI-PASS STORYBOARD  (new)
+    # OUTPUT — MULTI-PASS STORYBOARD
     # =========================================================================
 
     def build_storyboard(self) -> Data:
         """Multi-pass storyboard generation output.
 
-        Pass 1  — Generate initial context: characters, locations, props, metadata.
-        Pass 2+ — Generate scenes in batches:
-                    • Audio-guided: audio segments are the scene anchors;
-                      timing fields are preserved verbatim.
-                    • Prompt-only: a single open-ended slot lets the LLM
-                      decide the scene count from the narrative.
+        Flow:
+          1. Fetch project state from DB (existing characters, locations, props).
+          2. If ``audio_file`` is provided, analyse it via multimodal LLM.
+          3. Pass 1  — Generate initial context (characters, locations, props, metadata).
+          4. Pass 2+ — Generate scenes in batches.
+          5. Assemble & return final storyboard; optionally persist to DB.
 
-        The final storyboard is:
-          1. Returned as ``Data`` (component output).
-          2. Optionally persisted to the project database when ``project_id`` is set.
+        Returns:
+            ``Data`` with the full storyboard payload.
         """
         llm, config_dict, token_handler = self._setup_llm_and_config()
-        audio_segments = self._parse_audio_segments()
+
+        # ── Fetch existing entities from the database ───────────────────────
+        existing_entities: dict[str, list[dict]] | None = None
+        project_id_db: str | None = None
+        try:
+            project = self.get_fresh_project_state()
+            project_id_db = str(project.id)
+            existing_entities = self.get_all_existing_entities(project_id_db)
+            logger.info(
+                "Loaded project state | "
+                f"characters={len(existing_entities.get('characters', []))}, "
+                f"locations={len(existing_entities.get('locations', []))}, "
+                f"props={len(existing_entities.get('props', []))}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"Could not load project state ({exc!r}). Proceeding without existing entities.")
+
+        # ── Analyse audio if provided ──────────────────────────────────────
+        audio_segments = self._analyze_audio_if_provided(llm, config_dict)
         batch_size: int = getattr(self, "scene_batch_size", _SCENE_BATCH_SIZE_DEFAULT)
 
         logger.info(
@@ -750,7 +822,7 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
 
         # ── Pass 1: Initial Context ───────────────────────────────────────────
         logger.info("Pass 1: generating initial context (characters, locations, props, metadata)…")
-        initial_context = self._generate_initial_context(llm, config_dict, audio_segments)
+        initial_context = self._generate_initial_context(llm, config_dict, audio_segments, existing_entities)
         logger.info(
             "Pass 1 complete | "
             f"characters={len(initial_context.get('characters', []))}, "
@@ -841,10 +913,6 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
         """Compute and return the system prompt for single-pass generation.
 
         Also exposed as a component output so downstream nodes can inspect it.
-
-        Bug fixes vs original:
-          * Added missing ``return``.
-          * Replaced undefined ``project.metadata.title`` with ``self.title or ""``.
         """
         return build_storyboard_vision_prompt(title=self.title or "", user_prompt=self.input_value)
 
@@ -873,8 +941,6 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
             ),
         )
         # Tracing config with token usage handler injected into the callbacks chain.
-        # get_chat_result() reads "get_langchain_callbacks" as a callable, so we wrap
-        # the list in a lambda to match its expected interface.
         token_handler = TokenUsageCallbackHandler()
         base_callbacks = self.get_langchain_callbacks()
         config_dict = {
@@ -889,7 +955,6 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
         self._token_usage = token_handler.get_usage()
 
         # OPTIMIZATION NOTE: Simplified processing based on trustcall response structure
-        # Handle non-dict responses (shouldn't happen with trustcall, but defensive)
         if not isinstance(result, dict):
             return result
 
@@ -909,32 +974,26 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
     def build_structured_output(self) -> Data:
         output = self.build_structured_output_base()
         if not isinstance(output, list) or not output:
-            # handle empty or unexpected type case
             msg = "No structured output returned"
             raise ValueError(msg)
         if len(output) == 1:
             return Data(data=output[0])
         if len(output) > 1:
-            # Multiple outputs - wrap them in a results container
             return Data(data={"results": output})
         return Data()
 
     def build_structured_dataframe(self) -> DataFrame:
         output = self.build_structured_output_base()
         if not isinstance(output, list) or not output:
-            # handle empty or unexpected type case
             msg = "No structured output returned"
             raise ValueError(msg)
         if len(output) == 1:
-            # For single dictionary, wrap in a list to create DataFrame with one row
             return DataFrame([output[0]])
         if len(output) > 1:
-            # Multiple outputs - convert to DataFrame directly
             return DataFrame(output)
         return DataFrame()
 
     def _extract_output_with_trustcall(self, llm, schema: BaseModel, config_dict: dict) -> list[BaseModel] | None:
-        # system_prompt computed at runtime to avoid the broken class-level attribute.
         _system_prompt = self.build_system_prompt()
         try:
             llm_with_structured_output = create_extractor(llm, tools=[schema], tool_choice=schema.__name__)
@@ -947,14 +1006,14 @@ class GenerateStoryboardComponent(StructuredOutputComponent):
         except Exception as e:  # noqa: BLE001
             logger.warning(
                 f"Trustcall extraction failed, falling back to Langchain: {e} "
-                "(Note: This may not be an error—some models or configurations do not support tool calling. "
+                "(Note: This may not be an error—some models or configurations "
+                "do not support tool calling. "
                 "Falling back is normal in such cases.)"
             )
             return None
-        return result or None  # langchain fallback is used if error occurs or the result is empty
+        return result or None
 
     def _extract_output_with_langchain(self, llm, schema: BaseModel, config_dict: dict) -> list[BaseModel] | None:
-        # system_prompt computed at runtime to avoid the broken class-level attribute.
         _system_prompt = self.build_system_prompt()
         try:
             llm_with_structured_output = llm.with_structured_output(schema)
