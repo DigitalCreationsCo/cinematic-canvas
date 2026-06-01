@@ -1,6 +1,6 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import Optional
 
+from pydantic import BaseModel, Field
 
 # ============================================================================
 # PLACEHOLDERS & STUBS
@@ -28,8 +28,8 @@ class WorldRef(BaseModel):
 
 
 class PhysicalTraits(BaseModel):
-    hair_color: Optional[str] = None
-    height: Optional[str] = None
+    hair_color: str | None = None
+    height: str | None = None
 
 
 class CharacterState(BaseModel):
@@ -41,7 +41,7 @@ class GuidanceLevel(BaseModel):
 
 
 class AssetRegistry(BaseModel):
-    images: List[str] = Field(default_factory=list)
+    images: list[str] = Field(default_factory=list)
 
 
 # Mock function for buildAssetKeyShape dynamic fields
@@ -76,12 +76,12 @@ class ProjectMetadataAttributes(BaseModel):
     total_scenes: int = Field(default=0, description="Total number of scenes")
     style: str = Field(default="", description="Inferred cinematic style")
     description: str = Field(default="", description="Overall emotional arc")
-    color_palette: List[str] = Field(default_factory=list, description="Dominant colors")
-    tags: List[str] = Field(default_factory=list, description="Descriptive tags")
+    color_palette: list[str] = Field(default_factory=list, description="Dominant colors")
+    tags: list[str] = Field(default_factory=list, description="Descriptive tags")
     initial_prompt: str = Field(default="", description="Original creative prompt")
     enhanced_prompt: str = Field(default="", description="Enhanced user prompt with narrative, characters, settings")
-    audio_gcs_uri: Optional[str] = Field(default=None, description="GCS URI of uploaded audio file")
-    audio_public_uri: Optional[str] = Field(default=None, description="Audio file public URL")
+    audio_gcs_uri: str | None = Field(default=None, description="GCS URI of uploaded audio file")
+    audio_public_uri: str | None = Field(default=None, description="Audio file public URL")
     has_audio: bool = Field(default=False, description="Whether this workflow has user-provided audio")
 
     # AudioAnalysis.omit({ segments: true }).shape
@@ -91,8 +91,6 @@ class ProjectMetadataAttributes(BaseModel):
 
 class ProjectMetadata(ProjectMetadataAttributes, ProjectRef):
     """Combines ProjectMetadataAttributes and ProjectRef fields."""
-
-    pass
 
 
 class Storyboard(BaseModel):
@@ -113,7 +111,7 @@ class CharacterAttributes(BaseModel):
     )
     name: str = Field(..., description="Character name")
     description: str = Field(..., description="Character description: personality, background, and role in the story")
-    aliases: List[str] = Field(default_factory=list, description="Character aliases")
+    aliases: list[str] = Field(default_factory=list, description="Character aliases")
     physical_traits: PhysicalTraits
     # CharacterState.default(() => CharacterState.parse({}))
     state: CharacterState = Field(default_factory=lambda: CharacterState(), description="Character state")

@@ -30,9 +30,7 @@ def allow_custom_components_by_default(monkeypatch):
     """Keep PX tests aligned with the documented default unless a test opts out."""
     from px.services.deps import get_settings_service
 
-    monkeypatch.setattr(
-        get_settings_service().settings, "allow_custom_components", True
-    )
+    monkeypatch.setattr(get_settings_service().settings, "allow_custom_components", True)
 
 
 def _remove_backend_paths() -> None:
@@ -95,9 +93,7 @@ def pytest_configure(config):  # noqa: ARG001
     pytest.ONE_GROUPED_CHAT_EXAMPLE_PATH = data_path / "one_group_chat.json"
     pytest.VECTOR_STORE_GROUPED_EXAMPLE_PATH = data_path / "vector_store_grouped.json"
     pytest.WEBHOOK_TEST = data_path / "WebhookTest.json"
-    pytest.BASIC_CHAT_WITH_PROMPT_AND_HISTORY = (
-        data_path / "BasicChatwithPromptandHistory.json"
-    )
+    pytest.BASIC_CHAT_WITH_PROMPT_AND_HISTORY = data_path / "BasicChatwithPromptandHistory.json"
     pytest.CHAT_INPUT = data_path / "ChatInputTest.json"
     pytest.TWO_OUTPUTS = data_path / "TwoOutputsTest.json"
     pytest.VECTOR_STORE_PATH = data_path / "Vector_store.json"
