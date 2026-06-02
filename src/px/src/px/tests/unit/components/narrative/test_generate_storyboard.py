@@ -142,6 +142,17 @@ class TestPromptBuilding:
         assert "Audio Analysis Context" not in prompt, "No audio → no audio section"
         assert "Existing Props" not in prompt, "No entities → no props section"
 
+    def test_initial_context_prompt_with_explicit_title(self, component):
+        """Explicit title parameter should override self.title."""
+        prompt = component._build_initial_context_prompt(
+            audio_segments=None,
+            existing_entities=None,
+            title="DB-Backed Title",
+        )
+        assert "DB-Backed Title" in prompt
+        # Even though self.title is "Neon Chase", the explicit title wins
+        assert "Neon Chase" not in prompt
+
     def test_initial_context_prompt_with_audio(self, component):
         """Audio segments should add an 'Audio Analysis Context' block."""
         segments = [
@@ -209,6 +220,17 @@ class TestPromptBuilding:
         assert "Batch 1/3" in prompt
         assert "Alex" in prompt
         assert "Neon City" in prompt
+
+    def test_scene_batch_prompt_with_explicit_title(self, component):
+        """Explicit title parameter should appear in the scene batch prompt."""
+        init_ctx = {"characters": [], "locations": [], "props": []}
+        prompt = component._build_scene_batch_prompt(
+            initial_context=init_ctx,
+            batch_num=1,
+            total_batches=1,
+            title="Explicit Batch Title",
+        )
+        assert "Explicit Batch Title" in prompt
 
 
 # =========================================================================
@@ -498,6 +520,92 @@ class TestBuildStoryboard:
         assert isinstance(result, Data)
         # The storyboard should still have been assembled (with empty metadata)
         assert "metadata" in result.data
+
+    @patch.object(GenerateStoryboardComponent, "_extract_structured")
+    @patch.object(GenerateStoryboardComponent, "_setup_llm_and_config")
+    @patch.object(GenerateStoryboardComponent, "get_fresh_project_state")
+    @patch.object(GenerateStoryboardComponent, "get_all_existing_entities")
+    def test_build_storyboard_resolves_title_from_db(
+        self,
+        mock_get_entities,
+        mock_get_project,
+        mock_setup,
+        mock_extract,
+        component,
+    ):
+        """Title should be resolved from project.metadata_ (overrides component.title)."""
+        mock_llm = MagicMock()
+        mock_config = {"display_name": "Test", "get_langchain_callbacks": list, "get_project_name": str}
+        mock_setup.return_value = (mock_llm, mock_config, MagicMock())
+
+        # Project has metadata_ with title but component.title is different
+        folder = MagicMock()
+        folder.id = "proj-db-title"
+        folder.metadata_ = {"title": "DB-Backed Title", "genre": "action"}
+        mock_get_project.return_value = folder
+        mock_get_entities.return_value = {"characters": [], "locations": [], "props": []}
+
+        # Note: component.title is "Neon Chase" from fixture, but we expect
+        # "DB-Backed Title" to win because it's from the project DB.
+        # We verify this by checking the system prompt passed to _extract_structured.
+
+        captured_system_prompts: list[str] = []
+
+        def capture_extract(llm, schema, system_prompt, user_prompt, config_dict):
+            captured_system_prompts.append(system_prompt)
+            schema_name = schema.__name__ if hasattr(schema, "__name__") else "Model"
+            if "InitialContext" in schema_name:
+                return {
+                    "responses": [
+                        MagicMock(
+                            model_dump=lambda: {
+                                "objects": [
+                                    {
+                                        "characters": [],
+                                        "locations": [],
+                                        "props": [],
+                                        "metadata": {"title": "DB-Backed Title"},
+                                    }
+                                ]
+                            }
+                        )
+                    ]
+                }
+            if "SceneBatch" in schema_name:
+                return {
+                    "responses": [
+                        MagicMock(
+                            model_dump=lambda: {
+                                "scenes": [
+                                    {
+                                        "sceneIndex": 0,
+                                        "title": "Scene",
+                                        "description": "desc",
+                                        "startTime": 0.0,
+                                        "endTime": 5.0,
+                                        "duration": 5.0,
+                                        "characterReferenceIds": [],
+                                        "locationReferenceId": "",
+                                        "cameraAngle": "wide",
+                                        "mood": "neutral",
+                                    }
+                                ]
+                            }
+                        )
+                    ]
+                }
+            return {"responses": []}
+
+        mock_extract.side_effect = capture_extract
+
+        result = component.build_storyboard()
+
+        assert isinstance(result, Data)
+
+        # The DB-backed title should appear in all captured system prompts
+        for prompt in captured_system_prompts:
+            assert "DB-Backed Title" in prompt, f"DB title missing from: {prompt[:100]}"
+            assert "Neon Chase" not in prompt, f"Fixture title leaked into: {prompt[:100]}"
 
 
 # =========================================================================

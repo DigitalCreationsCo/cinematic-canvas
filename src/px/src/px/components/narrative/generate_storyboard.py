@@ -23,7 +23,11 @@ Key changes vs earlier versions
   * Passes pre-existing characters / locations / props from the relational
     database into the generation prompt so the storyboard builds on
     previously authored content.
-  * ``_save_to_project_db`` preserved unchanged for backward compat.
+  * Project title is resolved from ``project.metadata_`` (DB) with fallback
+    to the component ``title`` input for backward compatibility.
+  * Uses ``StoryboardManager`` (copy-modify-write merge) to persist the
+    generated storyboard into ``folder.storyboard``, ensuring no properties
+    are accidentally excluded during JSONB column updates.
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, create_model
+from sqlalchemy.orm.attributes import flag_modified
 from trustcall import create_extractor
 
 from px.base.agents.token_callback import TokenUsageCallbackHandler
@@ -42,6 +47,7 @@ from px.base.narrative.audio_analysis import analyze_audio_file
 from px.base.prompts.storyboard_vision_prompt import build_storyboard_vision_prompt
 from px.components.llm_operations.structured_output import StructuredOutputComponent
 from px.components.narrative.base_state_aware import BaseStateAwareComponent
+from px.components.narrative.storyboard_manager import StoryboardManager
 from px.field_typing.range_spec import RangeSpec
 from px.helpers.base_model import build_model_from_schema
 from px.inputs.inputs import BoolInput
@@ -569,19 +575,27 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         self,
         audio_segments: list | None,
         existing_entities: dict[str, list[dict]] | None = None,
+        title: str | None = None,
     ) -> str:
         """System prompt for Pass 1: initial context (characters, locations, props, metadata).
 
         Existing entities from the database are injected so the LLM extends
         rather than duplicates previously authored content.
+
+        Parameters
+        ----------
+        title:
+            Explicit project title.  Falls back to ``self.title`` (the
+            component input) when not provided.
         """
         existing_entities = existing_entities or {}
         existing_chars = existing_entities.get("characters") or []
         existing_locs = existing_entities.get("locations") or []
         existing_props = existing_entities.get("props") or []
 
+        effective_title = title if title is not None else (self.title or "")
         base = build_storyboard_vision_prompt(
-            title=self.title or "",
+            title=effective_title,
             user_prompt=self.input_value,
             existing_characters=existing_chars,
             existing_locations=existing_locs,
@@ -626,9 +640,18 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         initial_context: dict,
         batch_num: int,
         total_batches: int,
+        title: str | None = None,
     ) -> str:
-        """System prompt for Pass 2+: batched scene enrichment."""
-        base = build_storyboard_vision_prompt(title=self.title or "", user_prompt=self.input_value)
+        """System prompt for Pass 2+: batched scene enrichment.
+
+        Parameters
+        ----------
+        title:
+            Explicit project title.  Falls back to ``self.title`` (the
+            component input) when not provided.
+        """
+        effective_title = title if title is not None else (self.title or "")
+        base = build_storyboard_vision_prompt(title=effective_title, user_prompt=self.input_value)
         chars_json = json.dumps(initial_context.get("characters", []), indent=2)
         locs_json = json.dumps(initial_context.get("locations", []), indent=2)
 
@@ -654,6 +677,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         config_dict: dict,
         audio_segments: list | None,
         existing_entities: dict[str, list[dict]] | None = None,
+        title: str | None = None,
     ) -> dict:
         """Call the LLM to produce storyboard metadata, characters, locations, and props.
 
@@ -661,11 +685,17 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         in the audio narrative. Existing DB entities are included so the LLM extends
         rather than duplicates previously authored content.
 
+        Parameters
+        ----------
+        title:
+            Explicit project title forwarded to the prompt builder. Falls back to
+            the component's ``self.title`` input when not provided.
+
         Returns a single context dict (first element of the wrapped objects list).
         """
         schema_rows = getattr(self, "initial_context_schema", None) or _DEFAULT_INITIAL_CONTEXT_SCHEMA
         schema = self._build_wrapped_schema(schema_rows, "InitialContextModel", "Initial storyboard context.")
-        system_prompt = self._build_initial_context_prompt(audio_segments, existing_entities)
+        system_prompt = self._build_initial_context_prompt(audio_segments, existing_entities, title=title)
 
         if audio_segments:
             last = audio_segments[-1]
@@ -707,11 +737,18 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         total_batches: int,
         prev_scene: dict | None,
         first_scene: dict | None,
+        title: str | None = None,
     ) -> list[dict]:
         """Enrich one batch of scene slots using the established initial context.
 
         Continuity is maintained via the previous-scene and exposition (first-scene)
         signals appended to the user message.
+
+        Parameters
+        ----------
+        title:
+            Explicit project title forwarded to the prompt builder. Falls back to
+            ``self.title`` when not provided.
         """
         scene_schema_rows = getattr(self, "scene_schema", None) or _DEFAULT_SCENE_SCHEMA
         scene_batch_schema = self._build_wrapped_schema(
@@ -721,7 +758,12 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             key="scenes",
         )
 
-        system_prompt = self._build_scene_batch_prompt(initial_context, batch_num, total_batches)
+        system_prompt = self._build_scene_batch_prompt(
+            initial_context,
+            batch_num,
+            total_batches,
+            title=title,
+        )
 
         # Build user message with continuity signals
         parts: list[str] = [f"Batch {batch_num}/{total_batches}"]
@@ -736,41 +778,56 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         return self._unwrap_objects(raw, key="scenes")
 
     # =========================================================================
-    # PROJECT DATABASE PERSISTENCE (unchanged)
+    # PROJECT DATABASE PERSISTENCE
     # =========================================================================
 
-    def _save_to_project_db(self, storyboard_data: dict) -> None:
-        """Persist the assembled storyboard to the project database.
+    def _save_storyboard_to_project(self, project: Any, storyboard: dict) -> None:
+        """Merge *storyboard* into ``project.storyboard`` and persist to DB.
 
-        Non-fatal: logs errors without re-raising so the component output is
-        still returned even if persistence fails.
+        Uses ``StoryboardManager.merge_into_project`` to ensure no properties
+        are accidentally excluded during the merge.  Non-fatal: logs errors
+        without re-raising so the component output is still returned even if
+        persistence fails.
 
-        Looks for ``project_repository`` (primary) or ``get_project_context``
-        (secondary) on the component instance — whichever the platform injects.
+        Opens a fresh session, re-queries the ``Folder`` to get a session-
+        attached instance, applies the merge, and commits via the
+        ``flag_modified`` pattern (required for SQLAlchemy JSONB dirty-tracking).
         """
-        project_id = getattr(self, "project_id", None)
-        if not project_id:
-            logger.debug("No project_id set — skipping database persistence.")
+        if project is None:
+            logger.debug("No project object available — skipping DB persistence.")
             return
 
-        try:
-            if hasattr(self, "project_repository"):
-                self.project_repository.update_storyboard(project_id, storyboard_data)
-                logger.info(f"Storyboard persisted to project '{project_id}' via project_repository.")
-                return
+        project_id = str(project.id)
+        logger.info(f"Persisting storyboard to project '{project_id}'…")
 
-            if hasattr(self, "get_project_context"):
-                ctx = self.get_project_context(project_id)
-                if hasattr(ctx, "update_storyboard"):
-                    ctx.update_storyboard(storyboard_data)
-                    logger.info(f"Storyboard persisted to project '{project_id}' via project context.")
+        try:
+            from sqlmodel import select
+
+            from px.services.database.models.folder.model import Folder
+            from px.services.deps import get_db_service
+
+            db_service = get_db_service()
+            with db_service.with_session() as session:
+                statement = select(Folder).where(Folder.id == project_id)
+                folder = session.exec(statement).first()
+                if not folder:
+                    logger.warning(f"Project folder '{project_id}' not found — cannot persist storyboard.")
                     return
 
-            logger.warning(
-                f"project_id='{project_id}' provided but no persistence interface "
-                "(project_repository / get_project_context) found on this component. "
-                "Storyboard was NOT saved to the database."
-            )
+                # Merge the generated storyboard into the existing one
+                merged = StoryboardManager.merge_into_project(
+                    current_storyboard=folder.storyboard or {},
+                    generated=storyboard,
+                )
+
+                folder.storyboard = merged
+                # SQLAlchemy does not detect in-place mutations of JSONB columns;
+                # ``flag_modified`` forces a write on commit.
+                flag_modified(folder, "storyboard")
+                session.add(folder)
+                session.commit()
+
+            logger.info(f"Storyboard persisted to project '{project_id}' ({len(merged.get('scenes', []))} scenes).")
         except Exception as exc:  # noqa: BLE001
             logger.error(f"Non-fatal: failed to persist storyboard to project '{project_id}': {exc}")
 
@@ -783,31 +840,49 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
 
         Flow:
           1. Fetch project state from DB (existing characters, locations, props).
-          2. If ``audio_file`` is provided, analyse it via multimodal LLM.
-          3. Pass 1  — Generate initial context (characters, locations, props, metadata).
-          4. Pass 2+ — Generate scenes in batches.
-          5. Assemble & return final storyboard; optionally persist to DB.
+          2. Resolve project title from DB metadata (falls back to the
+             component ``title`` input for backward compatibility).
+          3. If ``audio_file`` is provided, analyse it via multimodal LLM.
+          4. Pass 1  — Generate initial context (characters, locations, props, metadata).
+          5. Pass 2+ — Generate scenes in batches.
+          6. Merge generated storyboard into the project DB record via
+             ``StoryboardManager`` (ensures no accidental property exclusion).
+          7. Assemble & return final storyboard.
 
         Returns:
             ``Data`` with the full storyboard payload.
         """
         llm, config_dict, token_handler = self._setup_llm_and_config()
 
-        # ── Fetch existing entities from the database ───────────────────────
+        # ── Fetch existing entities and project title from database ────────
+        project: Any | None = None
         existing_entities: dict[str, list[dict]] | None = None
         project_id_db: str | None = None
+        effective_title: str = ""
         try:
             project = self.get_fresh_project_state()
             project_id_db = str(project.id)
             existing_entities = self.get_all_existing_entities(project_id_db)
+
+            # Extract title from project metadata (the authoritative source).
+            # Falls back to the component ``title`` input for backward compat.
+            raw_meta = getattr(project, "metadata_", None) or {}
+            project_metadata = raw_meta if isinstance(raw_meta, dict) else {}
+            project_title = project_metadata.get("title", "") or ""
+            manual_title = getattr(self, "title", "") or ""
+            effective_title = project_title or manual_title
+
             logger.info(
                 "Loaded project state | "
+                f"project='{project_id_db}', "
+                f"title='{effective_title}', "
                 f"characters={len(existing_entities.get('characters', []))}, "
                 f"locations={len(existing_entities.get('locations', []))}, "
                 f"props={len(existing_entities.get('props', []))}"
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning(f"Could not load project state ({exc!r}). Proceeding without existing entities.")
+            logger.warning(f"Could not load project state ({exc!r}). Proceeding without project context.")
+            effective_title = getattr(self, "title", "") or ""
 
         # ── Analyse audio if provided ──────────────────────────────────────
         audio_segments = self._analyze_audio_if_provided(llm, config_dict)
@@ -815,14 +890,20 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
 
         logger.info(
             "Starting multi-pass storyboard generation | "
-            f"title='{self.title or ''}', "
+            f"title='{effective_title}', "
             f"audio_segments={len(audio_segments) if audio_segments else 0}, "
             f"batch_size={batch_size}"
         )
 
         # ── Pass 1: Initial Context ───────────────────────────────────────────
         logger.info("Pass 1: generating initial context (characters, locations, props, metadata)…")
-        initial_context = self._generate_initial_context(llm, config_dict, audio_segments, existing_entities)
+        initial_context = self._generate_initial_context(
+            llm,
+            config_dict,
+            audio_segments,
+            existing_entities,
+            title=effective_title,
+        )
         logger.info(
             "Pass 1 complete | "
             f"characters={len(initial_context.get('characters', []))}, "
@@ -873,6 +954,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
                 total_batches=total_batches,
                 prev_scene=prev_scene,
                 first_scene=first_scene,
+                title=effective_title,
             )
             all_scenes.extend(batch_scenes)
             logger.info(f"  Batch {batch_num}/{total_batches} complete — running total: {len(all_scenes)} scene(s)")
@@ -900,8 +982,8 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         self._token_usage = token_handler.get_usage()
         logger.info(f"Multi-pass generation complete — scenes={len(all_scenes)}, token_usage={self._token_usage}")
 
-        # Persist to project DB (non-fatal)
-        self._save_to_project_db(storyboard)
+        # Persist merged storyboard to project DB (non-fatal)
+        self._save_storyboard_to_project(project, storyboard)
 
         return Data(data=storyboard)
 
