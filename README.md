@@ -2,6 +2,8 @@
 
 Cinematic Canvas is the generative AI workspace for storytelling. The AI-assisted workspace treats story elements as structured primitives, giving you total control over cinematic worlds with character and narrative continuity.
 
+![Preview](preview.png)
+
 ## Overview
 
 Cinematic Canvas leverages Google's Vertex AI Gemini models and LangGraph to orchestrate a multi-agent workflow:
