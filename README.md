@@ -2,6 +2,12 @@
 
 Cinematic Canvas is the generative AI workspace for storytelling. The AI-assisted workspace treats story elements as structured primitives, giving you total control over cinematic worlds with character and narrative continuity.
 
+Actively under development. UI and workflows may change.
+
+##### Current Development Version
+![Current Version](workspace-v0.png)
+
+#### Previous Version
 ![Preview](preview.png)
 
 ## Overview
