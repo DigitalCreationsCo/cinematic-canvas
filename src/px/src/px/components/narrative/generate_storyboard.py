@@ -44,6 +44,7 @@ from px.base.agents.token_callback import TokenUsageCallbackHandler
 from px.base.models.chat_result import get_chat_result
 from px.base.models.unified_models import get_llm, handle_model_input_update
 from px.base.narrative.audio_analysis import analyze_audio_file
+from px.base.prompts.storyboard_enrichment_prompt import build_storyboard_enrichment_prompt
 from px.base.prompts.storyboard_vision_prompt import build_storyboard_vision_prompt
 from px.components.llm_operations.structured_output import StructuredOutputComponent
 from px.components.narrative.base_state_aware import BaseStateAwareComponent
@@ -64,7 +65,6 @@ from px.io import (
 )
 from px.log.logger import logger
 from px.schema.data import Data
-from px.schema.dataframe import DataFrame
 from px.schema.table import EditMode
 
 # ---------------------------------------------------------------------------
@@ -195,7 +195,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         "Generates a structured storyboard via multi-pass LLM calls. "
         "Pass 1 builds initial context (characters, locations, props, metadata). "
         "Pass 2+ generates scenes in batches, optionally guided by audio-analysis segments. "
-        "Single-pass outputs (Build Structured Output / Dataframe) are retained for backward compatibility. "
+        "Single-pass structured output retained for backward compatibility. "
         "Project-aware: fetches existing characters, locations, and props from the database."
     )
     icon = "sparkles"
@@ -213,11 +213,6 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             display_name="Structured Output",
             name="structured_output",
             method="build_structured_output",
-        ),
-        Output(
-            display_name="Structured Output (DataFrame)",
-            name="dataframe_output",
-            method="build_structured_dataframe",
         ),
     ]
 
@@ -293,10 +288,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         TableInput(
             name="output_schema",
             display_name="Output Schema",
-            info=(
-                "Schema for single-pass structured output "
-                "(used by Build Structured Output / Build Structured Dataframe)."
-            ),
+            info=("Schema for single-pass structured output (used by Build Structured Output)."),
             required=True,
             table_schema=[
                 {
@@ -638,34 +630,107 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
     def _build_scene_batch_prompt(
         self,
         initial_context: dict,
-        batch_num: int,
-        total_batches: int,
         title: str | None = None,
     ) -> str:
         """System prompt for Pass 2+: batched scene enrichment.
+
+        Builds the enrichment prompt using the exact specification from
+        ``composeStoryboardEnrichmentPrompt`` (``storyboard.prompt.ts``),
+        which includes narrative intent, character actions & positions,
+        emotional beats, musical context, and cinematographer/gaffer
+        guidelines.
+
+        Note that ``batch_num`` and ``total_batches`` are intentionally
+        omitted here — they are only included in the **user message** (built
+        by ``_generate_scene_batch``), not the system prompt, matching the
+        TS pattern where batch context is passed per-turn.
 
         Parameters
         ----------
         title:
             Explicit project title.  Falls back to ``self.title`` (the
             component input) when not provided.
-        """
-        effective_title = title if title is not None else (self.title or "")
-        base = build_storyboard_vision_prompt(title=effective_title, user_prompt=self.input_value)
-        chars_json = json.dumps(initial_context.get("characters", []), indent=2)
-        locs_json = json.dumps(initial_context.get("locations", []), indent=2)
 
-        return (
-            f"{base}\n\n"
-            "## Established Context (read-only — do not modify)\n"
-            f"### Characters\n```json\n{chars_json}\n```\n\n"
-            f"### Locations\n```json\n{locs_json}\n```\n\n"
-            f"## Task — Pass 2, Batch {batch_num}/{total_batches}: Scene Enrichment\n"
-            "Generate ONLY the scenes provided in the user message.\n"
-            "Reference characters and locations by their established referenceIds.\n"
-            "Do not invent new characters or locations.\n"
-            "Preserve all timing fields (startTime, endTime, duration) from the input exactly."
+        Returns:
+        -------
+        The enrichment system-prompt string.
+        """
+        # Build the SceneBatch schema for the prompt (mirrors
+        # ``getModelCompatibleSchema(SceneBatch)`` in the TS version).
+        scene_schema_rows = getattr(self, "scene_schema", None) or _DEFAULT_SCENE_SCHEMA
+        scene_batch_schema = self._build_wrapped_schema(
+            schema_rows=scene_schema_rows,
+            model_name="SceneBatch",
+            doc="A batch of enriched storyboard scenes.",
+            key="scenes",
         )
+        schema_json: str = json.dumps(scene_batch_schema.model_json_schema(), indent=2)
+
+        # The narrative to enrich: use the user's creative prompt.
+        # In the TS version this is the ``enhancedPrompt`` from prompt
+        # expansion; here we use ``self.input_value`` directly since
+        # expansion is handled by a separate component.
+        effective_title = title if title is not None else (self.title or "")
+        narrative = f"{effective_title}\n\n{self.input_value}" if effective_title else self.input_value
+
+        return build_storyboard_enrichment_prompt(
+            enhanced_prompt=narrative,
+            characters=initial_context.get("characters", []),
+            locations=initial_context.get("locations", []),
+            schema=schema_json,
+        )
+
+    # =========================================================================
+    # AUDIO TIMING PRESERVATION
+    # =========================================================================
+
+    @staticmethod
+    def _validate_audio_timing(
+        original_segments: list[dict],
+        enriched_scenes: list[dict],
+    ) -> None:
+        """Validate that enriched scenes preserve audio segment timings.
+
+        When the storyboard is audio-guided, each audio segment anchors one
+        scene.  This check verifies:
+
+        * Scene count matches segment count.
+        * Each scene's ``startTime`` and ``endTime`` match the original
+          segment (within a small tolerance for floating-point drift).
+
+        Non-fatal: all mismatches are logged as warnings so they are
+        discoverable during debugging without aborting generation.
+
+        Mirrors ``validateTimingPreservation`` in ``compositional-agent.ts``.
+        """
+        original_count = len(original_segments)
+        enriched_count = len(enriched_scenes)
+
+        if original_count != enriched_count:
+            logger.warning(f"Audio timing: scene count mismatch — original={original_count}, enriched={enriched_count}")
+            diff = abs(original_count - enriched_count)
+            for i in range(diff):
+                idx = min(original_count, enriched_count) + i
+                logger.warning(f"Audio timing: orphaned scene at index {idx}")
+
+        # Check each matching scene for timing drift
+        for i in range(min(original_count, enriched_count)):
+            orig = original_segments[i]
+            enrich = enriched_scenes[i]
+
+            orig_start = orig.get("startTime")
+            orig_end = orig.get("endTime")
+            enrich_start = enrich.get("startTime")
+            enrich_end = enrich.get("endTime")
+
+            if orig_start is not None and enrich_start is not None and orig_start != enrich_start:
+                logger.warning(
+                    f"Audio timing: startTime mismatch in scene {i} — original={orig_start}, enriched={enrich_start}"
+                )
+            if orig_end is not None and enrich_end is not None and orig_end != enrich_end:
+                logger.warning(
+                    f"Audio timing: endTime mismatch in scene {i} — original={orig_end}, enriched={enrich_end}"
+                )
 
     # =========================================================================
     # MULTI-PASS GENERATION — PASS 1
@@ -760,8 +825,6 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
 
         system_prompt = self._build_scene_batch_prompt(
             initial_context,
-            batch_num,
-            total_batches,
             title=title,
         )
 
@@ -861,25 +924,29 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         effective_title: str = ""
         try:
             project = self.get_fresh_project_state()
-            project_id_db = str(project.id)
-            existing_entities = self.get_all_existing_entities(project_id_db)
+            if project is None:
+                logger.warning("No project state available. Proceeding without project context.")
+                effective_title = getattr(self, "title", "") or ""
+            else:
+                project_id_db = str(project.id)
+                existing_entities = self.get_all_existing_entities(project_id_db)
 
-            # Extract title from project metadata (the authoritative source).
-            # Falls back to the component ``title`` input for backward compat.
-            raw_meta = getattr(project, "metadata_", None) or {}
-            project_metadata = raw_meta if isinstance(raw_meta, dict) else {}
-            project_title = project_metadata.get("title", "") or ""
-            manual_title = getattr(self, "title", "") or ""
-            effective_title = project_title or manual_title
+                # Extract title from project metadata (the authoritative source).
+                # Falls back to the component ``title`` input for backward compat.
+                raw_meta = getattr(project, "metadata_", None) or {}
+                project_metadata = raw_meta if isinstance(raw_meta, dict) else {}
+                project_title = project_metadata.get("title", "") or ""
+                manual_title = getattr(self, "title", "") or ""
+                effective_title = project_title or manual_title
 
-            logger.info(
-                "Loaded project state | "
-                f"project='{project_id_db}', "
-                f"title='{effective_title}', "
-                f"characters={len(existing_entities.get('characters', []))}, "
-                f"locations={len(existing_entities.get('locations', []))}, "
-                f"props={len(existing_entities.get('props', []))}"
-            )
+                logger.info(
+                    "Loaded project state | "
+                    f"project='{project_id_db}', "
+                    f"title='{effective_title}', "
+                    f"characters={len(existing_entities.get('characters', []))}, "
+                    f"locations={len(existing_entities.get('locations', []))}, "
+                    f"props={len(existing_entities.get('props', []))}"
+                )
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"Could not load project state ({exc!r}). Proceeding without project context.")
             effective_title = getattr(self, "title", "") or ""
@@ -963,6 +1030,13 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         for i, scene in enumerate(all_scenes):
             if isinstance(scene, dict):
                 scene["sceneIndex"] = i
+
+        # ── Audio timing preservation check ─────────────────────────────────
+        # When audio-guided, validate that enriched scenes preserve the
+        # original segment timings.  Non-fatal: logs warnings so the issue
+        # is discoverable without aborting generation.
+        if audio_segments:
+            self._validate_audio_timing(audio_segments, all_scenes)
 
         # ── Assemble final storyboard ─────────────────────────────────────────
         last_scene = all_scenes[-1] if all_scenes else {}
@@ -1063,17 +1137,6 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         if len(output) > 1:
             return Data(data={"results": output})
         return Data()
-
-    def build_structured_dataframe(self) -> DataFrame:
-        output = self.build_structured_output_base()
-        if not isinstance(output, list) or not output:
-            msg = "No structured output returned"
-            raise ValueError(msg)
-        if len(output) == 1:
-            return DataFrame([output[0]])
-        if len(output) > 1:
-            return DataFrame(output)
-        return DataFrame()
 
     def _extract_output_with_trustcall(self, llm, schema: BaseModel, config_dict: dict) -> list[BaseModel] | None:
         _system_prompt = self.build_system_prompt()
