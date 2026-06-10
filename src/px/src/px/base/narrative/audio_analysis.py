@@ -1,13 +1,18 @@
 """Multimodal audio analysis via LLM.
 
-Sends an audio file to a multimodal LLM (Google Gemini or equivalent) and
+Sends an audio file to the caller's configured Langchain LLM and
 returns structured segments suitable for storyboard generation.
+
+Consumer pattern
+----------------
+Pass the same ``llm`` instance that the calling component obtained from
+``get_llm()``.  The analysis function never reaches into provider-specific
+libraries — it always goes through the Langchain interface.
 """
 
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -57,11 +62,15 @@ def analyze_audio_file(
     audio_file_path: str,
     user_prompt: str,
 ) -> list[dict[str, Any]] | None:
-    """Analyze an audio file via a multimodal-capable LLM.
+    """Analyze an audio file via the caller's configured Langchain LLM.
+
+    The LLM is used as-is — this function never reaches into provider-specific
+    libraries.  If the model does not support audio input the call will fail
+    gracefully and return ``None``.
 
     Args:
-        llm: A Langchain ``BaseLanguageModel`` instance (expected to be
-            ``ChatGoogleGenerativeAI`` or similar multimodal model).
+        llm: A Langchain ``BaseLanguageModel`` instance obtained from
+            ``get_llm()`` (or any compatible Langchain model).
         audio_file_path: Absolute or relative path to the audio file (mp3/wav).
         user_prompt: The creative narrative prompt providing context.
 
@@ -75,102 +84,24 @@ def analyze_audio_file(
         return None
 
     logger.info(f"Attempting audio analysis via LLM for: {audio_file_path}")
-
-    # --- Route by provider ---
-    # Google Gemini via Langchain integration
-    model_class_name = type(llm).__name__
-    if model_class_name == "ChatGoogleGenerativeAI":
-        return _analyze_via_gemini_api(llm, audio_file_path, user_prompt)
-
-    # Generic Langchain multimodal fallback (works with some providers)
-    logger.info(
-        f"LLM type '{model_class_name}' is not a recognised multimodal model. Attempting generic multimodal call…"
-    )
-    return _analyze_via_langchain_multimodal(llm, audio_file_path, user_prompt)
+    return _analyze_via_llm(llm, audio_file_path, user_prompt)
 
 
 # ---------------------------------------------------------------------------
-# Google Gemini implementation
+# Langchain multimodal implementation
 # ---------------------------------------------------------------------------
 
 
-def _analyze_via_gemini_api(
+def _analyze_via_llm(
     llm: Any,
     audio_file_path: str,
     user_prompt: str,
 ) -> list[dict[str, Any]] | None:
-    """Use the underlying ``google.genai.Client`` to upload & analyse audio.
+    """Send audio to the configured Langchain LLM and parse the result.
 
-    ``ChatGoogleGenerativeAI`` wraps ``google.genai.Client`` at ``llm.client``.
-    We use it directly for the most reliable multimodal path.
-    """
-    client = getattr(llm, "client", None)
-    model_name: str | None = getattr(llm, "model", None)
-
-    if client is None or model_name is None:
-        logger.warning("Gemini LLM missing client or model name — falling back.")
-        return _analyze_via_langchain_multimodal(llm, audio_file_path, user_prompt)
-
-    try:
-        # Import Google SDK types (safe because we only reach here for Gemini)
-        from google.genai import types
-
-        # 1. Upload the audio file via Gemini's File API
-        logger.debug("Uploading audio file to Gemini File API…")
-        uploaded_file = client.files.upload(file=audio_file_path)
-        logger.debug(f"Uploaded: {uploaded_file.uri} ({uploaded_file.mime_type})")
-
-        # 2. Build the multimodal request
-        system_text = _AUDIO_ANALYSIS_SYSTEM_PROMPT
-        context_text = f"User creative context:\n{user_prompt}\n\nAnalyze this track and return the JSON as instructed."
-
-        response = client.models.generate_content(
-            model=model_name,
-            contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_uri(
-                            file_uri=uploaded_file.uri,
-                            mime_type=uploaded_file.mime_type or "audio/mp3",
-                        ),
-                        types.Part.from_text(text=system_text),
-                        types.Part.from_text(text=context_text),
-                    ],
-                )
-            ],
-            config=types.GenerateContentConfig(
-                temperature=0.4,
-                response_mime_type="application/json",
-            ),
-        )
-
-        raw_text: str = response.text
-        if not raw_text:
-            logger.warning("Gemini audio analysis returned empty response.")
-            return None
-
-        return _parse_analysis_response(raw_text)
-
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(f"Gemini audio analysis failed ({exc!r}). Falling back to generic multimodal path.")
-        return _analyze_via_langchain_multimodal(llm, audio_file_path, user_prompt)
-
-
-# ---------------------------------------------------------------------------
-# Generic Langchain multimodal fallback
-# ---------------------------------------------------------------------------
-
-
-def _analyze_via_langchain_multimodal(
-    llm: Any,
-    audio_file_path: str,
-    user_prompt: str,
-) -> list[dict[str, Any]] | None:
-    """Attempt a multimodal call via generic Langchain ``HumanMessage``.
-
-    This works with providers that accept ``"type": "file"`` in content parts
-    (e.g. recent ``ChatGoogleGenerativeAI`` versions) or inline data.
+    Uses ``HumanMessage`` with a ``"type": "file"`` content part, which
+    works with Langchain model integrations that support file-based inputs
+    (e.g. ``ChatGoogleGenerativeAI``).
     """
     try:
         from langchain_core.messages import HumanMessage
@@ -181,7 +112,7 @@ def _analyze_via_langchain_multimodal(
             {"type": "text", "text": _AUDIO_ANALYSIS_SYSTEM_PROMPT},
             {
                 "type": "file",
-                "file_path": os.path.abspath(audio_file_path),
+                "file_path": str(Path(audio_file_path).resolve()),
                 "mime_type": mime_type,
             },
             {
@@ -195,14 +126,14 @@ def _analyze_via_langchain_multimodal(
 
         raw_text = _extract_text(response)
         if not raw_text:
-            logger.warning("Generic multimodal audio analysis returned empty response.")
+            logger.warning("Audio analysis returned empty response.")
             return None
 
         return _parse_analysis_response(raw_text)
 
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            f"Generic multimodal audio analysis failed ({exc!r}). "
+            f"Audio analysis via LLM failed ({exc!r}). "
             "The selected model may not support audio input. "
             "Continuing with prompt-only mode."
         )
@@ -247,8 +178,8 @@ def _parse_analysis_response(raw_text: str) -> list[dict[str, Any]] | None:
     cleaned = raw_text.strip()
     if cleaned.startswith("```"):
         lines = cleaned.split("\n")
-        fence_indices = [i for i, l in enumerate(lines) if l.strip().startswith("```")]
-        if len(fence_indices) >= 2:
+        fence_indices = [i for i, line in enumerate(lines) if line.strip().startswith("```")]
+        if len(fence_indices) >= 2:  # noqa: PLR2004
             start = fence_indices[0] + 1
             end = fence_indices[1]
             cleaned = "\n".join(lines[start:end]).strip()

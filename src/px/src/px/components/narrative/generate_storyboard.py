@@ -44,7 +44,7 @@ from px.base.agents.token_callback import TokenUsageCallbackHandler
 from px.base.models.chat_result import get_chat_result
 from px.base.models.unified_models import get_llm, handle_model_input_update
 from px.base.narrative.audio_analysis import analyze_audio_file
-from px.base.prompts.storyboard_enrichment_prompt import build_storyboard_enrichment_prompt
+from px.base.prompts.storyboard_scene_batch import build_scene_batch_prompt
 from px.base.prompts.storyboard_vision_prompt import build_storyboard_vision_prompt
 from px.components.llm_operations.structured_output import StructuredOutputComponent
 from px.components.narrative.base_state_aware import BaseStateAwareComponent
@@ -399,6 +399,10 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
     def _analyze_audio_if_provided(self, llm: Any, config_dict: dict) -> list | None:  # noqa: ARG002
         """If ``audio_file`` is set, run multimodal analysis and return segments.
 
+        The caller's configured ``llm`` is passed through to
+        ``analyze_audio_file`` unchanged — the analysis always uses the
+        component's model, never reaching into provider-specific libraries.
+
         The returned segment list is compatible with the existing audio-guided
         scene-generation path (same dict keys as the old ``audio_segments_json``).
 
@@ -560,127 +564,6 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         return []
 
     # =========================================================================
-    # PROMPT BUILDERS (multi-pass)
-    # =========================================================================
-
-    def _build_initial_context_prompt(
-        self,
-        audio_segments: list | None,
-        existing_entities: dict[str, list[dict]] | None = None,
-        title: str | None = None,
-    ) -> str:
-        """System prompt for Pass 1: initial context (characters, locations, props, metadata).
-
-        Existing entities from the database are injected so the LLM extends
-        rather than duplicates previously authored content.
-
-        Parameters
-        ----------
-        title:
-            Explicit project title.  Falls back to ``self.title`` (the
-            component input) when not provided.
-        """
-        existing_entities = existing_entities or {}
-        existing_chars = existing_entities.get("characters") or []
-        existing_locs = existing_entities.get("locations") or []
-        existing_props = existing_entities.get("props") or []
-
-        effective_title = title if title is not None else (self.title or "")
-        base = build_storyboard_vision_prompt(
-            title=effective_title,
-            user_prompt=self.input_value,
-            existing_characters=existing_chars,
-            existing_locations=existing_locs,
-        )
-
-        audio_section = ""
-        if audio_segments:
-            last = audio_segments[-1]
-            total_dur = last.get("endTime", last.get("duration", "unknown"))
-            audio_section = (
-                "\n\n## Audio Analysis Context\n"
-                f"{len(audio_segments)} audio segments detected "
-                f"(total duration: {total_dur}s).\n"
-                f"Segments:\n{json.dumps(audio_segments, indent=2)}\n\n"
-                "Use these segments to ground your characters, locations, and props "
-                "in the audio narrative."
-            )
-
-        props_section = ""
-        if existing_props:
-            props_section = (
-                "\n\n## Existing Props (from project database)\n"
-                f"{json.dumps(existing_props, indent=2)}\n\n"
-                "Reference these props in your scenes as needed. "
-                "You may introduce new props if the narrative demands it."
-            )
-
-        return (
-            f"{base}{audio_section}{props_section}\n\n"
-            "## Task — Pass 1: Initial Context\n"
-            "Generate ONLY the foundational storyboard elements listed below.\n"
-            "Do NOT generate individual scenes; scene enrichment follows in the next pass.\n\n"
-            "Required elements:\n"
-            "  • **characters** — named individuals with referenceId, name, description, and traits\n"
-            "  • **locations**  — distinct settings with referenceId, name, and description\n"
-            "  • **props**      — key physical objects central to the narrative\n"
-            "  • **metadata**   — title, genre, mood, tone, logline, and duration estimates"
-        )
-
-    def _build_scene_batch_prompt(
-        self,
-        initial_context: dict,
-        title: str | None = None,
-    ) -> str:
-        """System prompt for Pass 2+: batched scene enrichment.
-
-        Builds the enrichment prompt using the exact specification from
-        ``composeStoryboardEnrichmentPrompt`` (``storyboard.prompt.ts``),
-        which includes narrative intent, character actions & positions,
-        emotional beats, musical context, and cinematographer/gaffer
-        guidelines.
-
-        Note that ``batch_num`` and ``total_batches`` are intentionally
-        omitted here — they are only included in the **user message** (built
-        by ``_generate_scene_batch``), not the system prompt, matching the
-        TS pattern where batch context is passed per-turn.
-
-        Parameters
-        ----------
-        title:
-            Explicit project title.  Falls back to ``self.title`` (the
-            component input) when not provided.
-
-        Returns:
-        -------
-        The enrichment system-prompt string.
-        """
-        # Build the SceneBatch schema for the prompt (mirrors
-        # ``getModelCompatibleSchema(SceneBatch)`` in the TS version).
-        scene_schema_rows = getattr(self, "scene_schema", None) or _DEFAULT_SCENE_SCHEMA
-        scene_batch_schema = self._build_wrapped_schema(
-            schema_rows=scene_schema_rows,
-            model_name="SceneBatch",
-            doc="A batch of enriched storyboard scenes.",
-            key="scenes",
-        )
-        schema_json: str = json.dumps(scene_batch_schema.model_json_schema(), indent=2)
-
-        # The narrative to enrich: use the user's creative prompt.
-        # In the TS version this is the ``enhancedPrompt`` from prompt
-        # expansion; here we use ``self.input_value`` directly since
-        # expansion is handled by a separate component.
-        effective_title = title if title is not None else (self.title or "")
-        narrative = f"{effective_title}\n\n{self.input_value}" if effective_title else self.input_value
-
-        return build_storyboard_enrichment_prompt(
-            enhanced_prompt=narrative,
-            characters=initial_context.get("characters", []),
-            locations=initial_context.get("locations", []),
-            schema=schema_json,
-        )
-
-    # =========================================================================
     # AUDIO TIMING PRESERVATION
     # =========================================================================
 
@@ -823,10 +706,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             key="scenes",
         )
 
-        system_prompt = self._build_scene_batch_prompt(
-            initial_context,
-            title=title,
-        )
+        system_prompt = build_scene_batch_prompt(initial_context, schema=scene_schema_rows, title=title)
 
         # Build user message with continuity signals
         parts: list[str] = [f"Batch {batch_num}/{total_batches}"]
