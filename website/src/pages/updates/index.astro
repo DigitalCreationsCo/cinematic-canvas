@@ -1,4 +1,5 @@
 ---
+import siteConfig from "../../../site.json";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getCollection } from "astro:content";
 
@@ -57,7 +58,7 @@ const categories = [
 
 <BaseLayout
   title="Blog"
-  description="Latest updates, new features, and improvements for Cinematic Canvas"
+  description={`Latest updates, new features, and improvements for ${siteConfig.name}`}
 >
   <main class="editor-root relative w-full">
     <div class="page-header">
@@ -136,7 +137,7 @@ const categories = [
         sortedUpdates.map((update, index) => (
           <a
             href={`/updates/${update.slug}`}
-            class={`hero-update reveal ${index === 0 ? "wide" : ""}`}
+            class={`hero-update group reveal ${index === 0 ? "wide" : ""}`}
           >
             <div class="hero-update-cover">
               <div class={`cover-cinematic cover-${(index % 6) + 1}`}>
@@ -144,7 +145,7 @@ const categories = [
                 <div class="cover-grid-lines" />
                 <div class="cover-ui">
                   <div
-                    class="cover-screenshot animate-ss-float"
+                    class="cover-screenshot group-hover:animate-ss-float"
                     style={{
                       backgroundImage: `url(${update.data.coverImage})`,
                     }}

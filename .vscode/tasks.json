@@ -2,7 +2,30 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Watch Backend",
+      "label": "Run Make Command",
+      "type": "shell",
+      "command": "make",
+      "args": [
+          "all"
+      ],
+      "group": {
+          "kind": "build",
+          "isDefault": true
+      },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "kill-port-3000",
+      "type": "shell",
+      "command": "lsof -t -i:3000 | xargs kill -9 2>/dev/null || true",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Watch Legacy Backend",
       "type": "shell",
       "command": "npx tsc -b --watch",
       "isBackground": true,
@@ -24,7 +47,7 @@
       }
     },
     {
-      "label": "Watch Client (dev)",
+      "label": "Watch Legacy Client (dev)",
       "type": "shell",
       "command": "npx vite dev --config src/server/vite.config.ts",
       "isBackground": true,
@@ -46,7 +69,7 @@
       }
     },
     {
-      "label": "Watch Client (build)",
+      "label": "Watch Legacy Client (build)",
       "type": "shell",
       "command": "npx vite build --watch --config src/server/vite.config.ts --clearScreen false --outDir ${workspaceFolder}/dist/server/public --emptyOutDir false",
       "isBackground": true,
@@ -68,7 +91,7 @@
       }
     },
     {
-      "label": "Watch All (dev)",
+      "label": "Watch Legacy All (dev)",
       "dependsOn": [
         "Watch Backend",
         "Watch Client (dev)"
@@ -81,7 +104,7 @@
       }
     },
     {
-      "label": "Watch All (build)",
+      "label": "Watch Legacy All (build)",
       "dependsOn": [
         "Watch Backend",
         "Watch Client (build)"
@@ -94,7 +117,7 @@
       }
     },
     {
-      "label": "Build Project",
+      "label": "Build Legacy Project",
       "type": "shell",
       "command": "npm run build",
       "presentation": {

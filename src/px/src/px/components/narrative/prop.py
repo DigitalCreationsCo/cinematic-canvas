@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
-
 from portals.schema import Data
-from portals.services.database.models.character.model import Character
+from portals.services.database.models.prop.model import Prop
 
 from px.base.models.model import LCModelComponent
 from px.base.models.unified_models import get_llm
@@ -33,20 +31,20 @@ from px.utils.constants import (
 )
 
 
-class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
-    """Display character details and generate persona-driven LLM responses.
+class PropComponent(BaseEntityReadPatchComponent, LCModelComponent):
+    """Display prop details and generate prop-aware LLM responses.
 
-    This component reads character records from the ``characters`` table scoped to
+    This component reads prop records from the ``props`` table scoped to
     the current project. It exposes two outputs:
 
-    * **character_data** — raw character record for downstream narrative processing.
-    * **character_response** — an LLM-generated reply delivered in the selected
-      character's persona.
+    * **prop_data** — raw prop record for downstream narrative processing.
+    * **prop_response** — an LLM-generated description or narrative usage
+      grounded in the selected prop's context.
     """
 
     # Override LCModelComponent._validate_outputs since our output names
-    # are character-specific (character_data, character_response) rather
-    # than the generic model-output names (text_output, model_output).
+    # are prop-specific (prop_data, prop_response) rather than
+    # the generic model-output names (text_output, model_output).
     def _validate_outputs(self) -> None:
         """Validate that every declared output has a corresponding method."""
         if self.selected_output is not None and self.selected_output not in self._outputs_map:
@@ -54,31 +52,31 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             msg = f"selected_output '{self.selected_output}' is not valid. Must be one of: {output_names}"
             raise ValueError(msg)
 
-    display_name = "Character"
-    description = "Display character details and generate persona-driven LLM responses."
-    icon = "user"
-    name = "Character"
+    display_name = "Prop"
+    description = "Display prop details and generate prop-aware LLM responses."
+    icon = "package"
+    name = "Prop"
     minimized = True
 
     # Bind to the specific relational model and storyboard JSON key
-    entity_model = Character
-    storyboard_key = "characters"
+    entity_model = Prop
+    storyboard_key = "props"
 
     # ── Instance-level cache ─────────────────────────────────────────────
-    # Maps entity_name → character_dict so that graph executions referencing
-    # both outputs for the same character only hit the database once.
-    _character_cache: dict[str, dict]
+    # Maps entity_name → prop_dict so that graph executions referencing
+    # both outputs for the same prop only hit the database once.
+    _prop_cache: dict[str, dict]
 
     def build_config(self):
         return {
             "selected_entity": {
-                "display_name": "Select Character",
+                "display_name": "Select Prop",
                 "options": self.get_entity_options,
                 "refresh_button": True,
             },
             "update_database": {
                 "display_name": "Patch Database?",
-                "info": "If true, the character's record will be updated with the traits/state below.",
+                "info": "If true, the prop's record will be updated with the traits/state below.",
                 "advanced": False,
             },
         }
@@ -86,7 +84,7 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ── Input ports ──────────────────────────────────────────────────────
 
     inputs = [
-        DropdownInput(name="selected_entity", display_name="Select Character"),
+        DropdownInput(name="selected_entity", display_name="Select Prop"),
         BoolInput(name="update_database", display_name="Patch Database?", value=False),
         ModelInput(
             name="model",
@@ -172,8 +170,8 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ── Output ports ─────────────────────────────────────────────────────
 
     outputs = [
-        Output(display_name="Character Data", name="character_data", method="build"),
-        Output(display_name="Character Response", name="character_response", method="character_response"),
+        Output(display_name="Prop Data", name="prop_data", method="build"),
+        Output(display_name="Prop Response", name="prop_response", method="prop_response"),
     ]
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -181,10 +179,10 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ═══════════════════════════════════════════════════════════════════════
 
     def build(self, selected_entity: str, *, update_database: bool = False) -> Data:
-        """Read the selected character from the database and return it as structured Data.
+        """Read the selected prop from the database and return it as structured Data.
 
         Results are cached per entity name so that a subsequent call to
-        ``character_response()`` within the same execution avoids a redundant
+        ``prop_response()`` within the same execution avoids a redundant
         database round-trip.
 
         When ``update_database`` is ``True`` the cache entry for the entity is
@@ -192,58 +190,58 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
         """
         # Evict cache when the caller signals a database mutation.
         if update_database:
-            self._character_cache.pop(selected_entity, None)
-            logger.debug(f"Cache evicted for character '{selected_entity}' after patch.")
+            self._prop_cache.pop(selected_entity, None)
+            logger.debug(f"Cache evicted for prop '{selected_entity}' after patch.")
 
         try:
-            character_dict = self._fetch_character_data(selected_entity)
-            return Data(data=character_dict)
+            prop_dict = self._fetch_prop_data(selected_entity)
+            return Data(data=prop_dict)
         except ValueError as exc:
-            logger.error(f"Failed to fetch character '{selected_entity}': {exc}")
+            logger.error(f"Failed to fetch prop '{selected_entity}': {exc}")
             return Data(data={"error": str(exc)})
 
-    async def character_response(self) -> Message:
-        """Generate a persona-driven LLM response as the selected character.
+    async def prop_response(self) -> Message:
+        """Generate a prop-aware LLM response grounded in the selected prop.
 
         Execution flow
         --------------
-        1. Validates that a character is selected.
-        2. Fetches character data from the database (served from cache when
+        1. Validates that a prop is selected.
+        2. Fetches prop data from the database (served from cache when
            ``build()`` already ran for the same entity).
-        3. Constructs a system prompt from the character's profile — name,
-           aliases, physical traits, and narrative state.
+        3. Constructs a system prompt from the prop's profile — name,
+           type, description.
         4. Invokes the connected language model with the user's input message.
         5. Returns the model's response as a ``Message``.
 
         Raises:
         ------
         ValueError
-            If no character is selected, the character is not found in the
+            If no prop is selected, the prop is not found in the
             database, or no language model is connected.
         """
         entity_name = getattr(self, "selected_entity", None)
-        _validate_selected_entity(entity_name)
+        _validate_selected_prop(entity_name)
 
-        # 1. Fetch character data (from cache or DB).
+        # 1. Fetch prop data (from cache or DB).
         try:
-            character_dict = self._fetch_character_data(entity_name)
+            prop_dict = self._fetch_prop_data(entity_name)
         except ValueError as exc:
-            logger.error(f"Character '{entity_name}' not found for response generation: {exc}")
+            logger.error(f"Prop '{entity_name}' not found for response generation: {exc}")
             raise
 
         logger.debug(
-            "Generating character response for '%s' with %d field(s).",
+            "Generating prop response for '%s' with %d field(s).",
             entity_name,
-            len(character_dict),
+            len(prop_dict),
         )
 
-        # 2. Build persona system prompt.
-        system_prompt = self._build_character_system_prompt(character_dict)
+        # 2. Build prop-aware system prompt.
+        system_prompt = self._build_prop_system_prompt(prop_dict)
 
         # 3. Validate model input.
         model = getattr(self, "model", None)
         if not model:
-            msg = "A Language Model must be connected to generate character responses."
+            msg = "A Language Model must be connected to generate prop responses."
             raise ValueError(msg)
 
         # 4. Build and invoke the LLM.
@@ -282,24 +280,24 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # INTERNAL HELPERS
     # ═══════════════════════════════════════════════════════════════════════
 
-    def _fetch_character_data(self, entity_name: str) -> dict:
-        """Fetch character data from the database with instance-level caching.
+    def _fetch_prop_data(self, entity_name: str) -> dict:
+        """Fetch prop data from the database with instance-level caching.
 
         Results are cached per entity name within a single component execution
-        so that both ``build()`` and ``character_response()`` can share the
+        so that both ``build()`` and ``prop_response()`` can share the
         same database record without a redundant read.
         """
         # Lazy-init the cache so subclasses or direct __new__ usage doesn't break.
-        if not hasattr(self, "_character_cache") or self._character_cache is None:
-            self._character_cache = {}
+        if not hasattr(self, "_prop_cache") or self._prop_cache is None:
+            self._prop_cache = {}
 
         # Return cached data when available.
-        cached = self._character_cache.get(entity_name)
+        cached = self._prop_cache.get(entity_name)
         if cached is not None:
-            logger.debug("Cache hit for character '%s'.", entity_name)
+            logger.debug("Cache hit for prop '%s'.", entity_name)
             return cached
 
-        logger.debug("Cache miss for character '%s' — reading from database.", entity_name)
+        logger.debug("Cache miss for prop '%s' — reading from database.", entity_name)
 
         # Read from DB via the shared base-entity logic.
         result = self._execute_read_patch_logic(
@@ -308,55 +306,45 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             updated_data={},
         )
 
-        # Surface DB-level errors (e.g. character not found).
+        # Surface DB-level errors (e.g. prop not found).
         if isinstance(result, Data) and isinstance(result.data, dict) and "error" in result.data:
             msg = str(result.data["error"])
             raise ValueError(msg)
 
         # Cache and return the raw dictionary.
-        character_dict: dict = result.data if isinstance(result.data, dict) else {}
-        self._character_cache[entity_name] = character_dict
-        return character_dict
+        prop_dict: dict = result.data if isinstance(result.data, dict) else {}
+        self._prop_cache[entity_name] = prop_dict
+        return prop_dict
 
     @staticmethod
-    def _build_character_system_prompt(character_dict: dict) -> str:
-        """Construct a persona-driven system prompt from character data.
+    def _build_prop_system_prompt(prop_dict: dict) -> str:
+        """Construct a prop-aware system prompt from prop data.
 
         Parameters
         ----------
-        character_dict : dict
-            A dictionary with keys from the ``Character`` model, typically
-            ``name``, ``aliases``, ``physical_traits``, ``state``, and
-            optionally ``guidance_level``.
+        prop_dict : dict
+            A dictionary with keys from the ``Prop`` model, typically
+            ``name``, ``type``, and optionally ``guidance_level``.
 
         Returns:
         -------
         str
-            A system-prompt string that instructs the LLM to roleplay as the
-            character.
+            A system-prompt string that instructs the LLM to respond as a
+            prop-aware narrator grounded in the prop's context.
         """
-        name: str = character_dict.get("name", "Unknown Character") or "Unknown Character"
-        aliases: list[str] = character_dict.get("aliases") or []
-        physical_traits: dict | None = character_dict.get("physical_traits")
-        state: dict | None = character_dict.get("state")
-        guidance_level: int | None = character_dict.get("guidance_level")
+        name: str = prop_dict.get("name", "Unknown Prop") or "Unknown Prop"
+        type_: str = prop_dict.get("type", "") or ""
+        guidance_level: int | None = prop_dict.get("guidance_level")
 
         parts: list[str] = [
-            f"You are roleplaying as {name}. Respond as this character would, "
-            "staying true to their personality, knowledge, mannerisms, and circumstances. "
+            f'You are a prop-aware narrator describing "{name}". '
+            "Ground your response in the prop's established context — "
+            "name, type, and its role in the narrative. "
             "Never break character. Do not refer to yourself as an AI or language model."
         ]
 
-        if aliases:
-            parts.append(f"\nYou are also known as: {', '.join(aliases)}.")
-
-        if physical_traits:
-            traits_str = json.dumps(physical_traits, indent=2)
-            parts.append(f"\nYour physical traits:\n```json\n{traits_str}\n```")
-
-        if state:
-            state_str = json.dumps(state, indent=2)
-            parts.append(f"\nYour current narrative state:\n```json\n{state_str}\n```")
+        if type_:
+            parts.append(f"\nProp type: {type_}.")
 
         if guidance_level is not None:
             parts.append(f"\n(Guidance level: {guidance_level})")
@@ -367,8 +355,8 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
 # ── Module-level helpers ─────────────────────────────────────────────
 
 
-def _validate_selected_entity(entity_name: str | None) -> None:
-    """Validate that ``entity_name`` is a meaningful character selection.
+def _validate_selected_prop(entity_name: str | None) -> None:
+    """Validate that ``entity_name`` is a meaningful prop selection.
 
     Raises:
     ------
@@ -378,8 +366,8 @@ def _validate_selected_entity(entity_name: str | None) -> None:
     """
     if not entity_name or not entity_name.strip():
         msg = (
-            "No character selected. Please select a valid character from the dropdown "
-            "or connect a valid character name to the 'selected_entity' input port."
+            "No prop selected. Please select a valid prop from the dropdown "
+            "or connect a valid prop name to the 'selected_entity' input port."
         )
         raise ValueError(msg)
 
@@ -391,7 +379,5 @@ def _validate_selected_entity(entity_name: str | None) -> None:
         }
     )
     if entity_name in placeholder_messages:
-        msg = (
-            f"No character available ('{entity_name}'). Ensure the project has characters before using this component."
-        )
+        msg = f"No prop available ('{entity_name}'). Ensure the project has props before using this component."
         raise ValueError(msg)

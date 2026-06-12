@@ -1,4 +1,5 @@
 ---
+import siteConfig from "../../site.json";
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
@@ -55,7 +56,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 <div class="stat-item reveal reveal-delay-3">
                     <div class="stat-num" data-target="14000">0</div>
                     <div class="stat-label">
-                        Stories in production on Cinematic Canvas
+                        Stories in production in {siteConfig.name}
                     </div>
                 </div>
             </div>
@@ -313,7 +314,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                         >
                         </div>
                         <span class="ws-title"
-                            >Cinematic Canvas — Neon Requiem · Act II</span
+                            >Neon Requiem · Act II</span
                         >
                     </div>
                     <div class="workspace-body">
@@ -411,7 +412,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
         <!-- ⑥ COMPARE -->
         <section class="compare-section">
-            <p class="section-label reveal">Why Cinematic Canvas</p>
+            <p class="section-label reveal">Why {siteConfig.name}</p>
             <h2 class="section-title reveal">
                 Built for storytellers,<br />not <em>tool-juggling</em>
             </h2>
@@ -420,7 +421,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 <div class="compare-header">
                     <span class="compare-col-label">Feature</span>
                     <span class="compare-col-label highlight"
-                        >Cinematic Canvas</span
+                        >{siteConfig.name}</span
                     >
                     <span class="compare-col-label">Generic AI Writers</span>
                     <span class="compare-col-label">Traditional Software</span>
@@ -530,7 +531,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                             ><span class="star">★</span>
                         </div>
                         <p class="testimonial-quote">
-                            "Cinematic Canvas turned a vague idea into a
+                            "{siteConfig.name} turned a vague idea into a
                             110-page screenplay in three weeks. The character
                             engine is unlike anything I've used before."
                         </p>

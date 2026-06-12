@@ -5,17 +5,36 @@ from typing import TYPE_CHECKING, Any
 from px.components._importing import import_mod
 
 if TYPE_CHECKING:
-    from px.components.narrative.characters import CharacterReadPatchComponent
+    from px.components.narrative.character import CharacterComponent
+    from px.components.narrative.expand_creative import ExpandCreativePromptComponent
+    from px.components.narrative.generate_characters import GenerateCharacters
     from px.components.narrative.generate_storyboard import GenerateStoryboardComponent
     from px.components.narrative.get_project_component import GetProjectComponent
+    from px.components.narrative.location import LocationComponent
+    from px.components.narrative.prop import PropComponent
+    from px.components.narrative.scene import SceneComponent
 
 _dynamic_imports = {
-    "CharacterReadPatchComponent": "characters",
+    "ExpandCreativePromptComponent": "expand_creative",
+    "CharacterComponent": "character",
+    "GenerateCharacters": "generate_characters",
     "GenerateStoryboardComponent": "generate_storyboard",
     "GetProjectComponent": "get_project_component",
+    "LocationComponent": "location",
+    "SceneComponent": "scene",
+    "PropComponent": "prop",
 }
 
-__all__ = ["CharacterReadPatchComponent", "GenerateStoryboardComponent", "GetProjectComponent"]
+__all__ = [
+    "CharacterComponent",
+    "ExpandCreativePromptComponent",
+    "GenerateCharacters",
+    "GenerateStoryboardComponent",
+    "GetProjectComponent",
+    "LocationComponent",
+    "PropComponent",
+    "SceneComponent",
+]
 
 
 def __getattr__(attr_name: str) -> Any:

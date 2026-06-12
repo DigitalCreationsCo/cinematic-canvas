@@ -1,4 +1,5 @@
 ---
+import siteConfig from "../../site.json";
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
@@ -16,7 +17,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       <p class="hero-eyebrow">The AI Storytelling Workspace</p>
 
       <h1 class="hero-title">
-        Where <span class="outline-text-gold">stories</span>
+        Where <span class="">stories</span>
         <br />
         become <em>worlds</em>
       </h1>
@@ -31,39 +32,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <a href="/docs" class="btn-primary">Begin Your Story</a>
       </div>
     </section>
-
-    <!-- Ticker Section -->
-    <!-- <div class="ticker-section">
-      <div class="ticker-track">
-        <span class="ticker-item"
-          ><span class="dot"></span> AI Scene Generation</span
-        >
-        <span class="ticker-item"><span class="dot"></span> Character Arcs</span
-        >
-        <span class="ticker-item"
-          ><span class="dot"></span> Visual Storyboards</span
-        >
-        <span class="ticker-item"
-          ><span class="dot"></span> Script Formatting</span
-        >
-        <span class="ticker-item"
-          ><span class="dot"></span> Dialogue Engine</span
-        >
-        <span class="ticker-item"
-          ><span class="dot"></span> World-Building Tools</span
-        >
-        <span class="ticker-item"><span class="dot"></span> Shot Lists</span>
-        <span class="ticker-item"><span class="dot"></span> Mood Boards</span>
-        <span class="ticker-item"><span class="dot"></span> Lore Keeper</span>
-        <span class="ticker-item"
-          ><span class="dot"></span> Screenplay Export</span
-        >
-        <span class="ticker-item"><span class="dot"></span> Collaboration</span>
-        <span class="ticker-item"
-          ><span class="dot"></span> Timeline Editor</span
-        >
-      </div>
-    </div> -->
 
     <!-- Stats Section -->
     <div class="stats-section">
@@ -93,7 +61,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <div class="stat-item card-cinematic-glass reveal reveal-delay-3">
           <div class="stat-num" data-target="4">0</div>
           <div class="stat-label">
-            Stories in production on Cinematic Canvas
+            Stories in production in {siteConfig.name}
           </div>
         </div>
         <!-- <div class="stat-item reveal">
@@ -347,7 +315,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             >
             </div>
             <span class="ws-title"
-              >Cinematic Canvas — Neon Requiem · Act II</span
+              >Neon Requiem · Act II</span
             >
           </div>
           <div class="workspace-body">
@@ -636,7 +604,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       <div class="compare-table reveal">
         <div class="compare-header">
           <span class="compare-col-label">Feature</span>
-          <span class="compare-col-label highlight">Cinematic Canvas</span>
+          <span class="compare-col-label highlight">{siteConfig.name}</span>
           <span class="compare-col-label">Generic AI Writers</span>
           <span class="compare-col-label">Video Generators</span>
         </div>

@@ -1,12 +1,12 @@
 from px.base.models.model import LCModelComponent
-from px.field_typing import LanguageModel
-from px.field_typing.range_spec import RangeSpec
 from px.base.models.unified_models import (
     get_llm,
     handle_model_input_update,
 )
 from px.base.prompts.prompt_expansion_prompt import build_prompt_expansion_prompt
-from px.io import BoolInput, MessageTextInput, ModelInput, MessageInput, DropdownInput, SliderInput, SecretStrInput
+from px.field_typing import LanguageModel
+from px.field_typing.range_spec import RangeSpec
+from px.io import BoolInput, DropdownInput, MessageInput, MessageTextInput, ModelInput, SecretStrInput, SliderInput
 from px.utils.constants import (
     MESSAGE_SENDER_AI,
     MESSAGE_SENDER_NAME_USER,

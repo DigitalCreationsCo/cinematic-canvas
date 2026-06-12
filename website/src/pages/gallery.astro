@@ -1,4 +1,5 @@
 ---
+import siteConfig from "../../site.json";
 import BaseLayout from "../layouts/BaseLayout.astro";
 
 const EXAMPLES = [
@@ -43,7 +44,7 @@ const EXAMPLES = [
 
 <BaseLayout
   title="Gallery"
-  description="Visual showcase of Cinematic Canvas generated content"
+  description={`Visual showcase of ${siteConfig.name} generated content`}
 >
   <main class="editor-root relative w-full">
     <div class="page-header">
@@ -53,7 +54,7 @@ const EXAMPLES = [
       <div>
         <p class="page-meta">Gallery</p>
         <p class="page-desc mb-0!">
-          Discover what creators are building with Cinematic Canvas.
+          Discover what creators are building with {siteConfig.name}.
         </p>
         <!-- <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
           <a

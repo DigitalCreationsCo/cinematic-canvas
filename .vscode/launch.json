@@ -2,7 +2,39 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Current File",
+            "name": "Debug Backend",
+            "type": "debugpy",
+            "request": "launch",
+            "env": {
+                "PX_DEV": "1"
+            },
+            "module": "uvicorn",
+            "args": [
+                "--factory",
+                "portals.main:create_app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "7860",
+                "--reload",
+                "--env-file",
+                ".env",
+                "--loop",
+                "asyncio"
+            ],
+            "jinja": true,
+            "python": "${workspaceFolder}/.venv/bin/python"
+        },
+        {
+            "name": "Debug Frontend",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "npm start",
+            "cwd": "${workspaceFolder}/src/frontend",
+            "preLaunchTask": "kill-port-3000"
+        },
+        {
+            "name": "Debug Current File (node)",
             "type": "node",
             "request": "launch",
             "program": "${file}",
@@ -21,7 +53,7 @@
             "internalConsoleOptions": "neverOpen"
         },
         {
-            "name": "Launch Worker",
+            "name": "Launch Legacy Worker",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.ts",
@@ -40,7 +72,7 @@
             "sourceMaps": true
         },
         {
-            "name": "Launch Pipeline",
+            "name": "Launch Legacy Pipeline",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.ts",
@@ -59,7 +91,7 @@
             "sourceMaps": true
         },
         {
-            "name": "Launch Server",
+            "name": "Launch Legacy Server",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.ts",
@@ -78,7 +110,7 @@
             "sourceMaps": true
         },
         {
-            "name": "🚀 Launch Monolith",
+            "name": "🚀 Launch Legacy Monolith",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.ts",
@@ -97,7 +129,7 @@
             "sourceMaps": true
         },
         {
-            "name": "Debug Client",
+            "name": "Debug Legacy Client",
             "type": "chrome",
             "request": "launch",
             "url": "http://localhost:8000",
@@ -108,7 +140,7 @@
             }
         },
         {
-            "name": "Debug Build (server)",
+            "name": "Debug Legacy Build (server)",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/server/index.js",
@@ -131,7 +163,7 @@
             "smartStep": true,
         },
         {
-            "name": "Debug Build (worker)",
+            "name": "Debug Legacy Build (worker)",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/worker/index.js",
@@ -154,7 +186,7 @@
             "smartStep": true
         },
         {
-            "name": "Debug Build (pipeline)",
+            "name": "Debug Legacy Build (pipeline)",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/pipeline/index.js",
@@ -177,7 +209,7 @@
             "smartStep": true
         },
         {
-            "name": "Attach Worker",
+            "name": "Attach Legacy Worker",
             "type": "node",
             "request": "attach",
             "port": 9231,
@@ -199,7 +231,7 @@
             ]
         },
         {
-            "name": "Attach Pipeline",
+            "name": "Attach Legacy Pipeline",
             "type": "node",
             "request": "attach",
             "port": 9230,
@@ -221,7 +253,7 @@
             ]
         },
         {
-            "name": "Attach Server",
+            "name": "Attach Legacy Server",
             "type": "node",
             "request": "attach",
             "port": 9229,
@@ -243,7 +275,7 @@
             ]
         },
         {
-            "name": "Launch Workflow - Debug Existing Video",
+            "name": "Launch Legacy Workflow - Debug Existing Video",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/pipeline/execute-workflow.js",
@@ -271,37 +303,37 @@
     ],
     "compounds": [
         {
-            "name": "Launch Microservices (dev)",
+            "name": "Launch Legacy Microservices (dev)",
             "configurations": [
-                "Launch Worker",
-                "Launch Pipeline",
-                "Launch Server",
+                "Launch Legacy Worker",
+                "Launch Legacy Pipeline",
+                "Launch Legacy Server",
             ],
             "preLaunchTask": "Watch All (dev)"
         },
         {
-            "name": "Launch Monolith (dev)",
+            "name": "Launch Legacy Monolith (dev)",
             "configurations": [
-                "🚀 Launch Monolith"
+                "🚀 Launch Legacy Monolith"
             ],
-            "preLaunchTask": "Watch All (dev)"
+            "preLaunchTask": "Watch Legacy All (dev)"
         },
         {
-            "name": "Attach All",
+            "name": "Attach Legacy All",
             "configurations": [
-                "Attach Server",
-                "Attach Pipeline",
-                "Attach Worker"
+                "Attach Legacy Server",
+                "Attach Legacy Pipeline",
+                "Attach Legacy Worker"
             ]
         },
         {
-            "name": "Launch Microservices (build)",
+            "name": "Launch Legacy Microservices (build)",
             "configurations": [
-                "Debug Build (server)",
-                "Debug Build (worker)",
-                "Debug Build (pipeline)"
+                "Debug Legacy Build (server)",
+                "Debug Legacy Build (worker)",
+                "Debug Legacy Build (pipeline)"
             ],
-            "preLaunchTask": "Build Project"
+            "preLaunchTask": "Build Legacy Project"
         }
     ]
 }

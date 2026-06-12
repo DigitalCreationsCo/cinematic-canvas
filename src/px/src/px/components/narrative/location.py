@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from portals.schema import Data
-from portals.services.database.models.character.model import Character
+from portals.services.database.models.location.model import Location
 
 from px.base.models.model import LCModelComponent
 from px.base.models.unified_models import get_llm
@@ -33,20 +33,20 @@ from px.utils.constants import (
 )
 
 
-class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
-    """Display character details and generate persona-driven LLM responses.
+class LocationComponent(BaseEntityReadPatchComponent, LCModelComponent):
+    """Display location details and generate location-aware LLM responses.
 
-    This component reads character records from the ``characters`` table scoped to
+    This component reads location records from the ``locations`` table scoped to
     the current project. It exposes two outputs:
 
-    * **character_data** — raw character record for downstream narrative processing.
-    * **character_response** — an LLM-generated reply delivered in the selected
-      character's persona.
+    * **location_data** — raw location record for downstream narrative processing.
+    * **location_response** — an LLM-generated atmospheric description or analysis
+      grounded in the selected location's context.
     """
 
     # Override LCModelComponent._validate_outputs since our output names
-    # are character-specific (character_data, character_response) rather
-    # than the generic model-output names (text_output, model_output).
+    # are location-specific (location_data, location_response) rather than
+    # the generic model-output names (text_output, model_output).
     def _validate_outputs(self) -> None:
         """Validate that every declared output has a corresponding method."""
         if self.selected_output is not None and self.selected_output not in self._outputs_map:
@@ -54,31 +54,31 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             msg = f"selected_output '{self.selected_output}' is not valid. Must be one of: {output_names}"
             raise ValueError(msg)
 
-    display_name = "Character"
-    description = "Display character details and generate persona-driven LLM responses."
-    icon = "user"
-    name = "Character"
+    display_name = "Location"
+    description = "Display location details and generate location-aware LLM responses."
+    icon = "map-pin"
+    name = "Location"
     minimized = True
 
     # Bind to the specific relational model and storyboard JSON key
-    entity_model = Character
-    storyboard_key = "characters"
+    entity_model = Location
+    storyboard_key = "locations"
 
     # ── Instance-level cache ─────────────────────────────────────────────
-    # Maps entity_name → character_dict so that graph executions referencing
-    # both outputs for the same character only hit the database once.
-    _character_cache: dict[str, dict]
+    # Maps entity_name → location_dict so that graph executions referencing
+    # both outputs for the same location only hit the database once.
+    _location_cache: dict[str, dict]
 
     def build_config(self):
         return {
             "selected_entity": {
-                "display_name": "Select Character",
+                "display_name": "Select Location",
                 "options": self.get_entity_options,
                 "refresh_button": True,
             },
             "update_database": {
                 "display_name": "Patch Database?",
-                "info": "If true, the character's record will be updated with the traits/state below.",
+                "info": "If true, the location's record will be updated with the traits/state below.",
                 "advanced": False,
             },
         }
@@ -86,7 +86,7 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ── Input ports ──────────────────────────────────────────────────────
 
     inputs = [
-        DropdownInput(name="selected_entity", display_name="Select Character"),
+        DropdownInput(name="selected_entity", display_name="Select Location"),
         BoolInput(name="update_database", display_name="Patch Database?", value=False),
         ModelInput(
             name="model",
@@ -172,8 +172,8 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ── Output ports ─────────────────────────────────────────────────────
 
     outputs = [
-        Output(display_name="Character Data", name="character_data", method="build"),
-        Output(display_name="Character Response", name="character_response", method="character_response"),
+        Output(display_name="Location Data", name="location_data", method="build"),
+        Output(display_name="Location Response", name="location_response", method="location_response"),
     ]
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -181,10 +181,10 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ═══════════════════════════════════════════════════════════════════════
 
     def build(self, selected_entity: str, *, update_database: bool = False) -> Data:
-        """Read the selected character from the database and return it as structured Data.
+        """Read the selected location from the database and return it as structured Data.
 
         Results are cached per entity name so that a subsequent call to
-        ``character_response()`` within the same execution avoids a redundant
+        ``location_response()`` within the same execution avoids a redundant
         database round-trip.
 
         When ``update_database`` is ``True`` the cache entry for the entity is
@@ -192,58 +192,58 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
         """
         # Evict cache when the caller signals a database mutation.
         if update_database:
-            self._character_cache.pop(selected_entity, None)
-            logger.debug(f"Cache evicted for character '{selected_entity}' after patch.")
+            self._location_cache.pop(selected_entity, None)
+            logger.debug(f"Cache evicted for location '{selected_entity}' after patch.")
 
         try:
-            character_dict = self._fetch_character_data(selected_entity)
-            return Data(data=character_dict)
+            location_dict = self._fetch_location_data(selected_entity)
+            return Data(data=location_dict)
         except ValueError as exc:
-            logger.error(f"Failed to fetch character '{selected_entity}': {exc}")
+            logger.error(f"Failed to fetch location '{selected_entity}': {exc}")
             return Data(data={"error": str(exc)})
 
-    async def character_response(self) -> Message:
-        """Generate a persona-driven LLM response as the selected character.
+    async def location_response(self) -> Message:
+        """Generate a location-aware LLM response grounded in the selected location.
 
         Execution flow
         --------------
-        1. Validates that a character is selected.
-        2. Fetches character data from the database (served from cache when
+        1. Validates that a location is selected.
+        2. Fetches location data from the database (served from cache when
            ``build()`` already ran for the same entity).
-        3. Constructs a system prompt from the character's profile — name,
-           aliases, physical traits, and narrative state.
+        3. Constructs a system prompt from the location's profile — name,
+           type, mood, weather, architecture, natural elements, and state.
         4. Invokes the connected language model with the user's input message.
         5. Returns the model's response as a ``Message``.
 
         Raises:
         ------
         ValueError
-            If no character is selected, the character is not found in the
+            If no location is selected, the location is not found in the
             database, or no language model is connected.
         """
         entity_name = getattr(self, "selected_entity", None)
-        _validate_selected_entity(entity_name)
+        _validate_selected_location(entity_name)
 
-        # 1. Fetch character data (from cache or DB).
+        # 1. Fetch location data (from cache or DB).
         try:
-            character_dict = self._fetch_character_data(entity_name)
+            location_dict = self._fetch_location_data(entity_name)
         except ValueError as exc:
-            logger.error(f"Character '{entity_name}' not found for response generation: {exc}")
+            logger.error(f"Location '{entity_name}' not found for response generation: {exc}")
             raise
 
         logger.debug(
-            "Generating character response for '%s' with %d field(s).",
+            "Generating location response for '%s' with %d field(s).",
             entity_name,
-            len(character_dict),
+            len(location_dict),
         )
 
-        # 2. Build persona system prompt.
-        system_prompt = self._build_character_system_prompt(character_dict)
+        # 2. Build location-aware system prompt.
+        system_prompt = self._build_location_system_prompt(location_dict)
 
         # 3. Validate model input.
         model = getattr(self, "model", None)
         if not model:
-            msg = "A Language Model must be connected to generate character responses."
+            msg = "A Language Model must be connected to generate location responses."
             raise ValueError(msg)
 
         # 4. Build and invoke the LLM.
@@ -282,24 +282,24 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # INTERNAL HELPERS
     # ═══════════════════════════════════════════════════════════════════════
 
-    def _fetch_character_data(self, entity_name: str) -> dict:
-        """Fetch character data from the database with instance-level caching.
+    def _fetch_location_data(self, entity_name: str) -> dict:
+        """Fetch location data from the database with instance-level caching.
 
         Results are cached per entity name within a single component execution
-        so that both ``build()`` and ``character_response()`` can share the
+        so that both ``build()`` and ``location_response()`` can share the
         same database record without a redundant read.
         """
         # Lazy-init the cache so subclasses or direct __new__ usage doesn't break.
-        if not hasattr(self, "_character_cache") or self._character_cache is None:
-            self._character_cache = {}
+        if not hasattr(self, "_location_cache") or self._location_cache is None:
+            self._location_cache = {}
 
         # Return cached data when available.
-        cached = self._character_cache.get(entity_name)
+        cached = self._location_cache.get(entity_name)
         if cached is not None:
-            logger.debug("Cache hit for character '%s'.", entity_name)
+            logger.debug("Cache hit for location '%s'.", entity_name)
             return cached
 
-        logger.debug("Cache miss for character '%s' — reading from database.", entity_name)
+        logger.debug("Cache miss for location '%s' — reading from database.", entity_name)
 
         # Read from DB via the shared base-entity logic.
         result = self._execute_read_patch_logic(
@@ -308,55 +308,74 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             updated_data={},
         )
 
-        # Surface DB-level errors (e.g. character not found).
+        # Surface DB-level errors (e.g. location not found).
         if isinstance(result, Data) and isinstance(result.data, dict) and "error" in result.data:
             msg = str(result.data["error"])
             raise ValueError(msg)
 
         # Cache and return the raw dictionary.
-        character_dict: dict = result.data if isinstance(result.data, dict) else {}
-        self._character_cache[entity_name] = character_dict
-        return character_dict
+        location_dict: dict = result.data if isinstance(result.data, dict) else {}
+        self._location_cache[entity_name] = location_dict
+        return location_dict
 
     @staticmethod
-    def _build_character_system_prompt(character_dict: dict) -> str:
-        """Construct a persona-driven system prompt from character data.
+    def _build_location_system_prompt(location_dict: dict) -> str:
+        """Construct a location-aware system prompt from location data.
 
         Parameters
         ----------
-        character_dict : dict
-            A dictionary with keys from the ``Character`` model, typically
-            ``name``, ``aliases``, ``physical_traits``, ``state``, and
+        location_dict : dict
+            A dictionary with keys from the ``Location`` model, typically
+            ``name``, ``type``, ``mood``, ``time_of_day``, ``weather``,
+            ``architecture``, ``natural_elements``, ``state``, and
             optionally ``guidance_level``.
 
         Returns:
         -------
         str
-            A system-prompt string that instructs the LLM to roleplay as the
-            character.
+            A system-prompt string that instructs the LLM to respond as a
+            location-aware narrator grounded in the location's context.
         """
-        name: str = character_dict.get("name", "Unknown Character") or "Unknown Character"
-        aliases: list[str] = character_dict.get("aliases") or []
-        physical_traits: dict | None = character_dict.get("physical_traits")
-        state: dict | None = character_dict.get("state")
-        guidance_level: int | None = character_dict.get("guidance_level")
+        name: str = location_dict.get("name", "Unknown Location") or "Unknown Location"
+        type_: str = location_dict.get("type", "") or ""
+        mood: str = location_dict.get("mood", "") or ""
+        time_of_day: str = location_dict.get("time_of_day", "") or ""
+        weather: str = location_dict.get("weather", "") or ""
+        architecture: list[str] | None = location_dict.get("architecture")
+        natural_elements: list[str] | None = location_dict.get("natural_elements")
+        state: dict | None = location_dict.get("state")
+        guidance_level: int | None = location_dict.get("guidance_level")
 
         parts: list[str] = [
-            f"You are roleplaying as {name}. Respond as this character would, "
-            "staying true to their personality, knowledge, mannerisms, and circumstances. "
+            f'You are a location-aware narrator describing "{name}". '
+            "Ground your response in the location's established context — "
+            "type, mood, weather, architecture, and natural surroundings. "
             "Never break character. Do not refer to yourself as an AI or language model."
         ]
 
-        if aliases:
-            parts.append(f"\nYou are also known as: {', '.join(aliases)}.")
+        if type_:
+            parts.append(f"\nLocation type: {type_}.")
 
-        if physical_traits:
-            traits_str = json.dumps(physical_traits, indent=2)
-            parts.append(f"\nYour physical traits:\n```json\n{traits_str}\n```")
+        if mood:
+            parts.append(f"\nAtmospheric mood: {mood}.")
+
+        if time_of_day:
+            parts.append(f"\nTime of day: {time_of_day}.")
+
+        if weather:
+            parts.append(f"\nWeather: {weather}.")
+
+        if architecture:
+            arch_str = json.dumps(architecture, indent=2)
+            parts.append(f"\nArchitectural features:\n```json\n{arch_str}\n```")
+
+        if natural_elements:
+            nat_str = json.dumps(natural_elements, indent=2)
+            parts.append(f"\nNatural elements:\n```json\n{nat_str}\n```")
 
         if state:
             state_str = json.dumps(state, indent=2)
-            parts.append(f"\nYour current narrative state:\n```json\n{state_str}\n```")
+            parts.append(f"\nLocation state:\n```json\n{state_str}\n```")
 
         if guidance_level is not None:
             parts.append(f"\n(Guidance level: {guidance_level})")
@@ -367,8 +386,8 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
 # ── Module-level helpers ─────────────────────────────────────────────
 
 
-def _validate_selected_entity(entity_name: str | None) -> None:
-    """Validate that ``entity_name`` is a meaningful character selection.
+def _validate_selected_location(entity_name: str | None) -> None:
+    """Validate that ``entity_name`` is a meaningful location selection.
 
     Raises:
     ------
@@ -378,8 +397,8 @@ def _validate_selected_entity(entity_name: str | None) -> None:
     """
     if not entity_name or not entity_name.strip():
         msg = (
-            "No character selected. Please select a valid character from the dropdown "
-            "or connect a valid character name to the 'selected_entity' input port."
+            "No location selected. Please select a valid location from the dropdown "
+            "or connect a valid location name to the 'selected_entity' input port."
         )
         raise ValueError(msg)
 
@@ -391,7 +410,5 @@ def _validate_selected_entity(entity_name: str | None) -> None:
         }
     )
     if entity_name in placeholder_messages:
-        msg = (
-            f"No character available ('{entity_name}'). Ensure the project has characters before using this component."
-        )
+        msg = f"No location available ('{entity_name}'). Ensure the project has locations before using this component."
         raise ValueError(msg)

@@ -1,8 +1,7 @@
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import String, Text, UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy import String, Text, UniqueConstraint
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel
 
 from portals.services.database.models.deployment.model import Deployment
@@ -42,46 +41,42 @@ class Folder(FolderBase, table=True):  # type: ignore[call-arg]
         back_populates="folder",
         sa_relationship_kwargs={"cascade": "all, delete, delete-orphan"},
     )
-    storyboard: dict = Field(default_factory=dict, sa_column=Column(JSONB, nullable=False))
-    metadata_: dict = Field(default_factory=dict, sa_column=Column("metadata", JSONB, nullable=False))
-    audio_analysis: dict | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+    storyboard: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    metadata_: dict = Field(default_factory=dict, sa_column=Column("metadata", JSON, nullable=False))
+    audio_analysis: dict | None = Field(default=None, sa_column=Column(JSON, nullable=True))
     status: str = Field(default="pending")
     current_scene_index: int = Field(default=0)
-    force_regenerate_scene_ids: list[str] = Field(
-        default_factory=list,
+    force_regenerate_scene_ids: str = Field(
+        default="",
         sa_column=Column(
             "force_regenerate_scene_ids",
-            ARRAY(String),
+            String,
             nullable=False,
-            server_default=text("'{}'::text[]"),
         ),
     )
-    generation_rules: list[str] = Field(
-        default_factory=list,
+    generation_rules: str = Field(
+        default="",
         sa_column=Column(
             "generation_rules",
-            ARRAY(String),
+            String,
             nullable=False,
-            server_default=text("'{}'::text[]"),
         ),
     )
     generation_rules_history: list = Field(
         default_factory=list,
         sa_column=Column(
             "generation_rules_history",
-            JSONB,
+            JSON,
             nullable=False,
-            server_default=text("'[]'::jsonb"),
         ),
     )
     guidance_level: int = Field(default=2)
-    style_references: list[str] = Field(
-        default_factory=list,
+    style_references: str = Field(
+        default="",
         sa_column=Column(
             "style_references",
-            ARRAY(String),
+            String,
             nullable=False,
-            server_default=text("'{}'::text[]"),
         ),
     )
 
@@ -101,11 +96,11 @@ class FolderRead(FolderBase):
     audio_analysis: dict | None = None
     status: str = "pending"
     current_scene_index: int = 0
-    force_regenerate_scene_ids: list[str] = Field(default_factory=list)
-    generation_rules: list[str] = Field(default_factory=list)
+    force_regenerate_scene_ids: str = Field(default="")
+    generation_rules: str = Field(default="")
     generation_rules_history: list = Field(default_factory=list)
     guidance_level: int = 2
-    style_references: list[str] = Field(default_factory=list)
+    style_references: str = Field(default="")
 
 
 class FolderReadWithFlows(FolderBase):

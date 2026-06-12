@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from portals.schema import Data
-from portals.services.database.models.character.model import Character
+from portals.services.database.models.scene.model import Scene
 
 from px.base.models.model import LCModelComponent
 from px.base.models.unified_models import get_llm
@@ -33,20 +33,17 @@ from px.utils.constants import (
 )
 
 
-class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
-    """Display character details and generate persona-driven LLM responses.
+class SceneComponent(BaseEntityReadPatchComponent, LCModelComponent):
+    """Display scene details and generate narrative LLM responses.
 
-    This component reads character records from the ``characters`` table scoped to
+    This component reads scene records from the ``scenes`` table scoped to
     the current project. It exposes two outputs:
 
-    * **character_data** — raw character record for downstream narrative processing.
-    * **character_response** — an LLM-generated reply delivered in the selected
-      character's persona.
+    * **scene_data** — raw scene record for downstream narrative processing.
+    * **scene_response** — an LLM-generated reply detailing the selected
+      scene's narrative progression and action.
     """
 
-    # Override LCModelComponent._validate_outputs since our output names
-    # are character-specific (character_data, character_response) rather
-    # than the generic model-output names (text_output, model_output).
     def _validate_outputs(self) -> None:
         """Validate that every declared output has a corresponding method."""
         if self.selected_output is not None and self.selected_output not in self._outputs_map:
@@ -54,31 +51,29 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             msg = f"selected_output '{self.selected_output}' is not valid. Must be one of: {output_names}"
             raise ValueError(msg)
 
-    display_name = "Character"
-    description = "Display character details and generate persona-driven LLM responses."
-    icon = "user"
-    name = "Character"
+    display_name = "Scene"
+    description = "Display scene details and generate narrative LLM responses."
+    icon = "film"
+    name = "Scene"
     minimized = True
 
     # Bind to the specific relational model and storyboard JSON key
-    entity_model = Character
-    storyboard_key = "characters"
+    entity_model = Scene
+    storyboard_key = "scenes"
 
     # ── Instance-level cache ─────────────────────────────────────────────
-    # Maps entity_name → character_dict so that graph executions referencing
-    # both outputs for the same character only hit the database once.
-    _character_cache: dict[str, dict]
+    _scene_cache: dict[str, dict]
 
     def build_config(self):
         return {
             "selected_entity": {
-                "display_name": "Select Character",
+                "display_name": "Select Scene",
                 "options": self.get_entity_options,
                 "refresh_button": True,
             },
             "update_database": {
                 "display_name": "Patch Database?",
-                "info": "If true, the character's record will be updated with the traits/state below.",
+                "info": "If true, the scene's record will be updated.",
                 "advanced": False,
             },
         }
@@ -86,7 +81,7 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ── Input ports ──────────────────────────────────────────────────────
 
     inputs = [
-        DropdownInput(name="selected_entity", display_name="Select Character"),
+        DropdownInput(name="selected_entity", display_name="Select Scene"),
         BoolInput(name="update_database", display_name="Patch Database?", value=False),
         ModelInput(
             name="model",
@@ -172,8 +167,8 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ── Output ports ─────────────────────────────────────────────────────
 
     outputs = [
-        Output(display_name="Character Data", name="character_data", method="build"),
-        Output(display_name="Character Response", name="character_response", method="character_response"),
+        Output(display_name="Scene Data", name="scene_data", method="build"),
+        Output(display_name="Scene Response", name="scene_response", method="scene_response"),
     ]
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -181,72 +176,40 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ═══════════════════════════════════════════════════════════════════════
 
     def build(self, selected_entity: str, *, update_database: bool = False) -> Data:
-        """Read the selected character from the database and return it as structured Data.
-
-        Results are cached per entity name so that a subsequent call to
-        ``character_response()`` within the same execution avoids a redundant
-        database round-trip.
-
-        When ``update_database`` is ``True`` the cache entry for the entity is
-        evicted before reading, ensuring the next read fetches fresh data.
-        """
-        # Evict cache when the caller signals a database mutation.
         if update_database:
-            self._character_cache.pop(selected_entity, None)
-            logger.debug(f"Cache evicted for character '{selected_entity}' after patch.")
+            self._scene_cache.pop(selected_entity, None)
+            logger.debug(f"Cache evicted for scene '{selected_entity}' after patch.")
 
         try:
-            character_dict = self._fetch_character_data(selected_entity)
-            return Data(data=character_dict)
+            scene_dict = self._fetch_scene_data(selected_entity)
+            return Data(data=scene_dict)
         except ValueError as exc:
-            logger.error(f"Failed to fetch character '{selected_entity}': {exc}")
+            logger.error(f"Failed to fetch scene '{selected_entity}': {exc}")
             return Data(data={"error": str(exc)})
 
-    async def character_response(self) -> Message:
-        """Generate a persona-driven LLM response as the selected character.
-
-        Execution flow
-        --------------
-        1. Validates that a character is selected.
-        2. Fetches character data from the database (served from cache when
-           ``build()`` already ran for the same entity).
-        3. Constructs a system prompt from the character's profile — name,
-           aliases, physical traits, and narrative state.
-        4. Invokes the connected language model with the user's input message.
-        5. Returns the model's response as a ``Message``.
-
-        Raises:
-        ------
-        ValueError
-            If no character is selected, the character is not found in the
-            database, or no language model is connected.
-        """
+    async def scene_response(self) -> Message:
         entity_name = getattr(self, "selected_entity", None)
         _validate_selected_entity(entity_name)
 
-        # 1. Fetch character data (from cache or DB).
         try:
-            character_dict = self._fetch_character_data(entity_name)
+            scene_dict = self._fetch_scene_data(entity_name)
         except ValueError as exc:
-            logger.error(f"Character '{entity_name}' not found for response generation: {exc}")
+            logger.error(f"Scene '{entity_name}' not found for response generation: {exc}")
             raise
 
         logger.debug(
-            "Generating character response for '%s' with %d field(s).",
+            "Generating scene response for '%s' with %d field(s).",
             entity_name,
-            len(character_dict),
+            len(scene_dict),
         )
 
-        # 2. Build persona system prompt.
-        system_prompt = self._build_character_system_prompt(character_dict)
+        system_prompt = self._build_scene_system_prompt(scene_dict)
 
-        # 3. Validate model input.
         model = getattr(self, "model", None)
         if not model:
-            msg = "A Language Model must be connected to generate character responses."
+            msg = "A Language Model must be connected to generate scene responses."
             raise ValueError(msg)
 
-        # 4. Build and invoke the LLM.
         runnable = self.build_model()
         input_value = getattr(self, "input_value", None) or ""
         stream: bool = getattr(self, "stream", False)
@@ -265,11 +228,6 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ═══════════════════════════════════════════════════════════════════════
 
     def build_model(self) -> LanguageModel:
-        """Build the language model from the configured model input.
-
-        Delegates to ``get_llm()`` which resolves the provider, API key, and
-        model-specific parameters.
-        """
         return get_llm(
             model=self.model,
             user_id=self.user_id,
@@ -282,104 +240,82 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # INTERNAL HELPERS
     # ═══════════════════════════════════════════════════════════════════════
 
-    def _fetch_character_data(self, entity_name: str) -> dict:
-        """Fetch character data from the database with instance-level caching.
+    def _fetch_scene_data(self, entity_name: str) -> dict:
+        if not hasattr(self, "_scene_cache") or self._scene_cache is None:
+            self._scene_cache = {}
 
-        Results are cached per entity name within a single component execution
-        so that both ``build()`` and ``character_response()`` can share the
-        same database record without a redundant read.
-        """
-        # Lazy-init the cache so subclasses or direct __new__ usage doesn't break.
-        if not hasattr(self, "_character_cache") or self._character_cache is None:
-            self._character_cache = {}
-
-        # Return cached data when available.
-        cached = self._character_cache.get(entity_name)
+        cached = self._scene_cache.get(entity_name)
         if cached is not None:
-            logger.debug("Cache hit for character '%s'.", entity_name)
+            logger.debug("Cache hit for scene '%s'.", entity_name)
             return cached
 
-        logger.debug("Cache miss for character '%s' — reading from database.", entity_name)
+        logger.debug("Cache miss for scene '%s' — reading from database.", entity_name)
 
-        # Read from DB via the shared base-entity logic.
         result = self._execute_read_patch_logic(
             entity_name,
             update_database=False,
             updated_data={},
         )
 
-        # Surface DB-level errors (e.g. character not found).
         if isinstance(result, Data) and isinstance(result.data, dict) and "error" in result.data:
             msg = str(result.data["error"])
             raise ValueError(msg)
 
-        # Cache and return the raw dictionary.
-        character_dict: dict = result.data if isinstance(result.data, dict) else {}
-        self._character_cache[entity_name] = character_dict
-        return character_dict
+        scene_dict: dict = result.data if isinstance(result.data, dict) else {}
+        self._scene_cache[entity_name] = scene_dict
+        return scene_dict
 
     @staticmethod
-    def _build_character_system_prompt(character_dict: dict) -> str:
-        """Construct a persona-driven system prompt from character data.
+    def _build_scene_system_prompt(scene_dict: dict) -> str:
+        name: str = scene_dict.get("name", "Unknown Scene") or "Unknown Scene"
+        description: str = scene_dict.get("description", "")
+        mood: str = scene_dict.get("mood", "")
+        audio_sync: str = scene_dict.get("audioSync", "")
+        continuity_notes: list[str] = scene_dict.get("continuityNotes") or []
+        character_references: list[str] = scene_dict.get("characterReferenceIds") or []
+        location_reference: str = scene_dict.get("locationReferenceId", "")
 
-        Parameters
-        ----------
-        character_dict : dict
-            A dictionary with keys from the ``Character`` model, typically
-            ``name``, ``aliases``, ``physical_traits``, ``state``, and
-            optionally ``guidance_level``.
-
-        Returns:
-        -------
-        str
-            A system-prompt string that instructs the LLM to roleplay as the
-            character.
-        """
-        name: str = character_dict.get("name", "Unknown Character") or "Unknown Character"
-        aliases: list[str] = character_dict.get("aliases") or []
-        physical_traits: dict | None = character_dict.get("physical_traits")
-        state: dict | None = character_dict.get("state")
-        guidance_level: int | None = character_dict.get("guidance_level")
+        cinematography: dict | None = scene_dict.get("cinematography")
+        lighting: dict | None = scene_dict.get("lighting")
 
         parts: list[str] = [
-            f"You are roleplaying as {name}. Respond as this character would, "
-            "staying true to their personality, knowledge, mannerisms, and circumstances. "
-            "Never break character. Do not refer to yourself as an AI or language model."
+            f"You are the director and narrative describer for the scene '{name}'. "
+            "Respond by expanding on the narrative action, emotional beats, and continuity of the scene. "
+            "Maintain consistency with the provided properties."
         ]
 
-        if aliases:
-            parts.append(f"\nYou are also known as: {', '.join(aliases)}.")
+        if description:
+            parts.append(f"\nDescription:\n{description}")
 
-        if physical_traits:
-            traits_str = json.dumps(physical_traits, indent=2)
-            parts.append(f"\nYour physical traits:\n```json\n{traits_str}\n```")
+        if mood:
+            parts.append(f"\nMood: {mood}")
 
-        if state:
-            state_str = json.dumps(state, indent=2)
-            parts.append(f"\nYour current narrative state:\n```json\n{state_str}\n```")
+        if location_reference:
+            parts.append(f"Location: {location_reference}")
 
-        if guidance_level is not None:
-            parts.append(f"\n(Guidance level: {guidance_level})")
+        if character_references:
+            parts.append(f"Characters Present: {', '.join(character_references)}")
+
+        if audio_sync:
+            parts.append(f"Audio Sync: {audio_sync}")
+
+        if continuity_notes:
+            parts.append("\nContinuity Notes:\n- " + "\n- ".join(continuity_notes))
+
+        if cinematography:
+            parts.append(f"\nCinematography:\n```json\n{json.dumps(cinematography, indent=2)}\n```")
+
+        if lighting:
+            parts.append(f"\nLighting:\n```json\n{json.dumps(lighting, indent=2)}\n```")
 
         return "\n".join(parts)
 
 
-# ── Module-level helpers ─────────────────────────────────────────────
-
-
 def _validate_selected_entity(entity_name: str | None) -> None:
-    """Validate that ``entity_name`` is a meaningful character selection.
-
-    Raises:
-    ------
-    ValueError
-        If the entity name is ``None``, empty, or one of the placeholder
-        messages returned by ``get_entity_options()`` when no entities exist.
-    """
     if not entity_name or not entity_name.strip():
         msg = (
-            "No character selected. Please select a valid character from the dropdown "
-            "or connect a valid character name to the 'selected_entity' input port."
+            "No scene selected. Please select a valid scene from the dropdown "
+            "or connect a valid scene name to the 'selected_entity' input port."
         )
         raise ValueError(msg)
 
@@ -391,7 +327,5 @@ def _validate_selected_entity(entity_name: str | None) -> None:
         }
     )
     if entity_name in placeholder_messages:
-        msg = (
-            f"No character available ('{entity_name}'). Ensure the project has characters before using this component."
-        )
+        msg = f"No scene available ('{entity_name}'). Ensure the project has scenes before using this component."
         raise ValueError(msg)

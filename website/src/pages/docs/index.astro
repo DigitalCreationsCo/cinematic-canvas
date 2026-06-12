@@ -1,8 +1,9 @@
 ---
+import siteConfig from "../../../site.json";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 ---
 
-<BaseLayout title="Docs" description="Documentation for Cinematic Canvas">
+<BaseLayout title="Docs" description={`Documentation for ${siteConfig.name}`}>
   <main class="editor-root relative w-full">
     <div class="docs-layout">
       <aside class="docs-sidebar">
@@ -50,9 +51,9 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 
       <article class="docs-content">
         <header class="docs-header">
-          <h1>Cinematic Canvas Documentation</h1>
+          <h1>{siteConfig.name} Documentation</h1>
           <p class="docs-lead">
-            Welcome to the Cinematic Canvas documentation. Here you'll find
+            Welcome to the {siteConfig.name} documentation. Here you'll find
             everything you need to build cinematic worlds with AI-assisted
             storytelling.
           </p>

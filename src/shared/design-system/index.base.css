@@ -417,6 +417,8 @@
   --animate-text-go-cinematic: text-go-cinematic var(--duration-slower) var(--ease-bounce-cinematic);
   --animate-gradient-bg: gradientBG var(--duration-gradient-bg) ease infinite;
   --animate-img-scale-cinematic: img-scale-cinematic var(--duration-slowest) var(--ease-cinematic) forwards;
+  --animate-ss-float: ss-float var(--duration-long) ease-in-out infinite;
+
 
   @keyframes accordion-down {
     from {
@@ -742,7 +744,7 @@
   }
 
   50% {
-    transform: perspective(600px) rotateX(3deg) rotateY(0deg) translateY(-6px);
+    transform: perspective(600px) rotateX(3deg) rotateY(0deg) translateY(-1px);
   }
 }
 

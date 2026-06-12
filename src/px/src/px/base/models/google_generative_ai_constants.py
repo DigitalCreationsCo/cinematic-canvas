@@ -3,7 +3,36 @@ from .model_metadata import create_model_metadata
 # Unified model metadata - single source of truth
 
 GOOGLE_GENERATIVE_AI_MODELS_DETAILED = [
-    # GEMINI 2.5 (stable - recommended)
+    # GEMINI 3.X (stable - recommended)
+    create_model_metadata(
+        provider="Google Generative AI",
+        name="gemini-3.5-flash",
+        icon="GoogleGenerativeAI",
+        tool_calling=True,
+        default=True,
+    ),
+    create_model_metadata(
+        provider="Google Generative AI",
+        name="gemini-3.1-flash-lite",
+        icon="GoogleGenerativeAI",
+        tool_calling=True,
+        default=True,
+    ),
+    create_model_metadata(
+        provider="Google Generative AI",
+        name="gemini-3.1-pro",
+        icon="GoogleGenerativeAI",
+        tool_calling=True,
+        default=True,
+    ),
+    create_model_metadata(
+        provider="Google Generative AI",
+        name="gemini-3-flash",
+        icon="GoogleGenerativeAI",
+        tool_calling=True,
+        default=True,
+    ),
+    # GEMINI 2.5
     create_model_metadata(
         provider="Google Generative AI",
         name="gemini-2.5-flash",
@@ -105,7 +134,6 @@ GOOGLE_GENERATIVE_AI_MODELS_DETAILED = [
         tool_calling=True,
         preview=True,
     ),
-    
     create_model_metadata(
         provider="Google Generative AI",
         name="veo-2.0-generate-exp",
@@ -113,7 +141,7 @@ GOOGLE_GENERATIVE_AI_MODELS_DETAILED = [
         icon="GoogleGenerativeAI",
         tool_calling=True,
         preview=True,
-    )
+    ),
 ]
 
 GOOGLE_GENERATIVE_AI_MODELS = [metadata["name"] for metadata in GOOGLE_GENERATIVE_AI_MODELS_DETAILED]

@@ -1,4 +1,6 @@
 ---
+import siteConfig from "../../site.json";
+
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/updates", label: "Blog" },
@@ -11,10 +13,9 @@ const navLinks = [
   <div class="nav-container">
     <a href="/" class="nav-logo">
       <span
-        class="logo-text leading-none hover:opacity-80 transition-opacity duration-100"
-        >Cinematic <span class="italic text-[var(--color-gold)]">Canvas</span
-        ></span
-      >
+        class="logo-text text-2xl leading-none transition-opacity duration-100"
+        >{siteConfig.name}
+        </span>
     </a>
     <nav class="nav-links">
       {
@@ -130,7 +131,7 @@ const navLinks = [
   .logo-text {
     font-family: var(--font-display);
     color: var(--color-warm);
-    @apply uppercase font-heading;
+    @apply font-heading;
   }
 
   .nav-links {
@@ -145,9 +146,10 @@ const navLinks = [
     font-size: 0.8rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--color-muted-warm);
+    font-weight: 500;
+    color: var(--color-muted-foreground);
     text-decoration: none;
-    transition: color 0.1s;
+    transition: color 0.5s;
     padding: 4px 2px;
   }
 
@@ -193,8 +195,8 @@ const navLinks = [
     opacity: 0;
     visibility: hidden;
     transition:
-      opacity 0.3s,
-      visibility 0.3s;
+      opacity 0.1s,
+      visibility 0.1s;
   }
 
   .mobile-menu.open {
@@ -214,7 +216,8 @@ const navLinks = [
     font-size: 0.875rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: var(--color-muted-warm);
+    font-weight: 500;
+    color: var(--color-muted-foreground);
     text-decoration: none;
     transition: color 0.1s;
     padding: 8px 0;
@@ -222,7 +225,7 @@ const navLinks = [
   }
 
   .mobile-nav-link:hover {
-    color: var(--color-warm);
+    color: var(--color-muted-foreground);
   }
 
   :global(body.menu-open) {

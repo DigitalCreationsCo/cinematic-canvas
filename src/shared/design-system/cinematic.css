@@ -261,9 +261,9 @@
 }
 
 .editor-root .hero-subtitle {
-  font-size: clamp(.95rem, 1.8vw, 1.15rem);
+  font-size: clamp(.95rem, 1.8vw, 1.20rem);
   font-weight: 300;
-  color: var(--muted-foreground);
+  color: var(--foreground);
   max-width: 560px;
   line-height: 1.75;
   margin-top: 28px;
@@ -286,7 +286,7 @@
 }
 
 .editor-root .btn-primary {
-  background: var(--color-gold);
+  background: var(--color-foreground);
   color: var(--background);
   padding: 14px 34px;
   font-family: var(--font-sans);
@@ -302,8 +302,7 @@
 }
 
 .editor-root .btn-primary:hover {
-  background: var(--color-gold-light);
-  transform: translateY(-2px);
+  background: var(--color-foreground);
   box-shadow: 0 8px 48px color-mix(in srgb, var(--color-gold), transparent 60%);
 }
 
@@ -325,7 +324,6 @@
 .editor-root .btn-ghost:hover {
   border-color: color-mix(in srgb, var(--foreground), transparent 60%);
   color: var(--foreground);
-  transform: translateY(-2px);
 }
 
 .editor-root .hero-scroll-indicator {
@@ -403,12 +401,10 @@
 .editor-root .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
-  background: var(--border-glass);
+  gap: 4px;
 }
 
 .editor-root .stat-item {
-  background: var(--secondary);
   padding: 44px 36px;
   position: relative;
   overflow: hidden;
@@ -1854,8 +1850,7 @@
   padding: 12px;
   backdrop-filter: blur(4px);
   box-shadow: 0 20px 60px color-mix(in srgb, var(--background), transparent 40%);
-  transform: perspective(600px) rotateX(4deg) rotateY(-4deg);
-  animation: ss-float 5s ease-in-out infinite;
+  transform: perspective(600px) rotateX(4deg) rotateY(0deg);
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;

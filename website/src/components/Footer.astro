@@ -1,4 +1,6 @@
 ---
+import siteConfig from '../../site.json';
+
 const currentYear = new Date().getFullYear();
 const pathname = Astro.url.pathname;
 const isHome = pathname === "/";
@@ -6,21 +8,19 @@ const isHome = pathname === "/";
 
 <footer class="footer">
   <div class="footer-main">
-    <div class="footer-inner">
-      <div class="footer-brand w-[260px]">
-        <div class="footer-logo">
-          <span class="footer-logo-text"
-            >Cinematic <span class="italic text-[var(--color-gold)]"
-              >Canvas</span
-            ></span
-          >
-        </div>
-        <p class="footer-tagline">
-          The AI storytelling workspace for directors, screenwriters, and
-          authors. From first concept to final frame — powered by AI.
-        </p>
+    <div class="footer-brand w-[280px]">
+      <div class="footer-logo">
+        <span class="footer-logo-text-underlay">
+      {siteConfig.name}
+        <span class="text-2xl">&copy;</span>
+    </span>
       </div>
+      <p class="footer-tagline">
+        {siteConfig.description}
+      </p>
+    </div>
 
+    <div class="footer-inner">
       <div class="footer-col">
         <h4 class="footer-col-title">Product</h4>
         <ul class="footer-links">
@@ -50,22 +50,12 @@ const isHome = pathname === "/";
     </div>
   </div>
 
-  {
-    isHome && (
-      <span class="footer-logo-text-underlay">
-        Cinematic{" "}
-        <>
-          <span class="italic text-[var(--color-gold)]">Canvas</span>
-          <span class="text-2xl">&copy;</span>
-        </>
-      </span>
-    )
-  }
+
 
   <div class="footer-bottom">
     <p class="footer-copy">
       &copy; {currentYear}
-      <span class="uppercase">Cinematic Canvas</span>. All rights reserved.
+      <span>{siteConfig.name}</span>. All rights reserved.
     </p>
   </div>
 </footer>
@@ -75,9 +65,9 @@ const isHome = pathname === "/";
 
   .footer {
     border-top: 1px solid var(--color-border-subtle);
-    padding: 60px clamp(20px, 5vw, 60px) 0;
     background: color-mix(in srgb, var(--color-background), transparent 100%);
     margin-top: auto;
+    padding-top: 60px;
   }
 
   .footer-main {
@@ -87,6 +77,8 @@ const isHome = pathname === "/";
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr;
     gap: 60px;
+    padding: 0 clamp(20px, 5vw, 60px);
+    align-items: end;
   }
 
   .footer-inner {
@@ -117,14 +109,16 @@ const isHome = pathname === "/";
     line-height: 1;
     font-weight: 500;
     text-align: center;
+    display: flex;
     width: min-content;
     margin-right: auto;
     margin-left: auto;
-    @apply uppercase font-heading tracking-tight;
+    @apply font-heading tracking-tight;
   }
 
   .footer-logo-text-underlay {
     position: relative;
+    display: flex;
     padding-top: 40px;
     bottom: 0;
     z-index: -1;
@@ -135,7 +129,8 @@ const isHome = pathname === "/";
     text-align: center;
     width: min-content;
     margin: 0 auto;
-    @apply uppercase font-heading tracking-tight;
+    @apply font-heading tracking-tight;
+
   }
 
   .footer-tagline {
@@ -173,7 +168,7 @@ const isHome = pathname === "/";
   }
 
   .footer-links a:hover {
-    color: var(--color-warm);
+    color: var(--color-foreground);
   }
 
   .footer-bottom {
@@ -181,7 +176,7 @@ const isHome = pathname === "/";
     max-width: 1400px;
     margin: 48px auto 0;
     padding: 24px clamp(20px, 5vw, 60px);
-    border-top: 1px solid var(--color-border);
+    border-top: none;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -195,13 +190,14 @@ const isHome = pathname === "/";
   }
 
   @media (max-width: 1024px) {
-    .footer-inner {
-      grid-template-columns: 1fr 1fr;
+    .footer-main {
+      /* Reverting alignment to default vertical flow for wrapped column stability */
+      align-items: end;
     }
   }
 
   @media (max-width: 768px) {
-    .footer-inner {
+    .footer-main {
       grid-template-columns: 1fr;
     }
   }

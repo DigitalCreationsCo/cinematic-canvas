@@ -2,7 +2,7 @@
 
 Provides the Python equivalent of the TypeScript ``StoryboardManager``
 (``src/shared/services/storyboard-manager.ts``), using copy-modify-write
-semantics to ensure JSONB fields are properly merged without accidental
+semantics to ensure JSON fields are properly merged without accidental
 property exclusion.
 
 Merge semantics (mirrors the TypeScript implementation):
