@@ -763,18 +763,5 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             }
         });
 
-        // Parallax hero & hero-bg
-        const handleScroll = () => {
-            const scrolled = window.scrollY;
-            const hero = document.getElementById("hero");
-            const heroBg = document.querySelector(".hero-bg") as HTMLElement;
-            if (hero && scrolled < window.innerHeight) {
-                hero.style.transform = `translateY(${scrolled * 0.3}px)`;
-            }
-            if (heroBg) {
-                heroBg.style.transform = `translateY(${scrolled * 0.15}px) translateX(${scrolled * -0.05}px)`;
-            }
-        };
-        window.addEventListener("scroll", handleScroll, { passive: true });
     </script>
 </BaseLayout>
