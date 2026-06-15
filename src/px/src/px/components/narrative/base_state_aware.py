@@ -134,9 +134,8 @@ class BaseStateAwareComponent(CustomComponent):
         return flow_id
 
     def ingest_storyboard_to_database(self, project_id: str, storyboard_payload: dict) -> None:
-        """
-        Provisions the ProjectService to handle database orchestration.
-        """
+        """Provisions the ProjectService to handle database orchestration."""
         from px.services.deps import get_project_service
+
         project_service = get_project_service()
         project_service.ingest_storyboard_payload(project_id, storyboard_payload)

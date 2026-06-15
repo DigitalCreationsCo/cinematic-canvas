@@ -36,20 +36,18 @@ import json
 from pathlib import Path
 from typing import Any
 
-from px.base.prompts.storyboard_initial_context import build_initial_context_prompt
 from pydantic import BaseModel, Field, create_model
-from sqlalchemy.orm.attributes import flag_modified
 from trustcall import create_extractor
 
 from px.base.agents.token_callback import TokenUsageCallbackHandler
 from px.base.models.chat_result import get_chat_result
 from px.base.models.unified_models import get_llm, handle_model_input_update
 from px.base.narrative.audio_analysis import analyze_audio_file
+from px.base.prompts.storyboard_initial_context import build_initial_context_prompt
 from px.base.prompts.storyboard_scene_batch import build_scene_batch_prompt
 from px.base.prompts.storyboard_vision_prompt import build_storyboard_vision_prompt
 from px.components.llm_operations.structured_output import StructuredOutputComponent
 from px.components.narrative.base_state_aware import BaseStateAwareComponent
-from px.components.narrative.storyboard_manager import StoryboardManager
 from px.field_typing.range_spec import RangeSpec
 from px.helpers.base_model import build_model_from_schema
 from px.helpers.llm_json_tolerance import (
@@ -738,7 +736,9 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             key="scenes",
         )
 
-        system_prompt = build_scene_batch_prompt(self.input_value, initial_context, schema=scene_batch_schema, title=title)
+        system_prompt = build_scene_batch_prompt(
+            self.input_value, initial_context, schema=scene_batch_schema, title=title
+        )
 
         # Build user message with continuity signals
         parts: list[str] = [f"Batch {batch_num}/{total_batches}"]
@@ -803,7 +803,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
     #             session.commit()
 
     #         logger.info(f"Storyboard persisted to project '{project_id}' ({len(merged.get('scenes', []))} scenes).")
-    #     except Exception as exc:  # noqa: BLE001
+    #     except Exception as exc:
     #         logger.error(f"Non-fatal: failed to persist storyboard to project '{project_id}': {exc}")
 
     # =========================================================================

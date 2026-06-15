@@ -11,10 +11,9 @@ Phase: EXPAND
 
 from collections.abc import Sequence
 
-from uuid import UUID, uuid4
-from sqlmodel import JSON
 import sqlalchemy as sa
 from alembic import op
+from sqlmodel import JSON
 
 # revision identifiers, used by Alembic.
 revision: str = "0020_add_canvas_tables"
@@ -201,7 +200,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["project_id"], ["folder.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    if 'scenes' not in inspector.get_table_names():
+    if "scenes" not in inspector.get_table_names():
         op.create_table(
             "scenes",
             sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
@@ -376,41 +375,17 @@ def upgrade() -> None:
         sa.Column("data", sa.Text(), nullable=False),
         sa.Column("media_id", sa.Text(), nullable=True),
         sa.Column("type", sa.Text(), nullable=False),
-        sa.Column(
-            "metadata",
-            JSON,
-            nullable=True,
-            server_default=sa.text("'{}'")
-        ),
+        sa.Column("metadata", JSON, nullable=True, server_default=sa.text("'{}'")),
         sa.Column("user_feedback", JSON, nullable=True),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["asset_entry_id"], ["asset_entries.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["media_id"], ["media_objects.data"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "idx_unq_asset_version_seq",
-        "asset_versions",
-        ["asset_entry_id", "version"],
-        unique=True
-    )
-    op.create_index(
-        "idx_asset_history_lookup",
-        "asset_versions",
-        ["asset_entry_id", "version"],
-        unique=False
-    )
-    op.create_index(
-        "idx_entry_version",
-        "asset_versions",
-        ["asset_entry_id", "version"],
-        unique=False
-    )
+    op.create_index("idx_unq_asset_version_seq", "asset_versions", ["asset_entry_id", "version"], unique=True)
+    op.create_index("idx_asset_history_lookup", "asset_versions", ["asset_entry_id", "version"], unique=False)
+    op.create_index("idx_entry_version", "asset_versions", ["asset_entry_id", "version"], unique=False)
 
     op.create_table(
         "blocks",
@@ -434,16 +409,10 @@ def upgrade() -> None:
         ),
         sa.Column("happened_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["project_id"], ["folder.id"], onupdate="CASCADE", ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id")
+        sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("idx_blocks_project_id", "blocks", ["project_id"], unique=False)
-    op.create_index(
-        "idx_blocks_search",
-        "blocks",
-        ["search_vector"],
-        unique=False,
-        postgresql_using="gin"
-    )
+    op.create_index("idx_blocks_search", "blocks", ["search_vector"], unique=False, postgresql_using="gin")
 
     op.create_table(
         "lore",
@@ -458,7 +427,7 @@ def upgrade() -> None:
         ),
         sa.Column("happened_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["project_id"], ["folder.id"], onupdate="CASCADE", ondelete="NO ACTION"),
-        sa.PrimaryKeyConstraint("id")
+        sa.PrimaryKeyConstraint("id"),
     )
 
 

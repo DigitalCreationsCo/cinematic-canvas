@@ -26,9 +26,7 @@ from px.schema.table import EditMode
 
 class StructuredOutputComponent(Component):
     display_name = "Structured Output"
-    description = (
-        "Uses an LLM to generate structured data. Ideal for extraction and consistency."
-    )
+    description = "Uses an LLM to generate structured data. Ideal for extraction and consistency."
     documentation: str = "https://docs.portals.org/structured-output"
     name = "StructuredOutput"
     icon = "braces"
@@ -105,9 +103,7 @@ class StructuredOutputComponent(Component):
                     "display_name": "Type",
                     "type": "str",
                     "edit_mode": EditMode.INLINE,
-                    "description": (
-                        "Indicate the data type of the output field (e.g., str, int, float, bool, dict)."
-                    ),
+                    "description": ("Indicate the data type of the output field (e.g., str, int, float, bool, dict)."),
                     "options": ["str", "int", "float", "bool", "dict"],
                     "default": "str",
                 },
@@ -144,9 +140,7 @@ class StructuredOutputComponent(Component):
         ),
     ]
 
-    def update_build_config(
-        self, build_config: dict, field_value: str, field_name: str | None = None
-    ):
+    def update_build_config(self, build_config: dict, field_value: str, field_name: str | None = None):
         """Dynamically update build config with user-filtered model options."""
         return handle_model_input_update(self, build_config, field_value, field_name)
 
@@ -235,13 +229,9 @@ class StructuredOutputComponent(Component):
             return DataFrame(output)
         return DataFrame()
 
-    def _extract_output_with_trustcall(
-        self, llm, schema: BaseModel, config_dict: dict
-    ) -> list[BaseModel] | None:
+    def _extract_output_with_trustcall(self, llm, schema: BaseModel, config_dict: dict) -> list[BaseModel] | None:
         try:
-            llm_with_structured_output = create_extractor(
-                llm, tools=[schema], tool_choice=schema.__name__
-            )
+            llm_with_structured_output = create_extractor(llm, tools=[schema], tool_choice=schema.__name__)
             result = get_chat_result(
                 runnable=llm_with_structured_output,
                 system_message=self.system_prompt,
@@ -264,9 +254,7 @@ class StructuredOutputComponent(Component):
             return None
         return result
 
-    def _extract_output_with_langchain(
-        self, llm, schema: BaseModel, config_dict: dict
-    ) -> list[BaseModel] | None:
+    def _extract_output_with_langchain(self, llm, schema: BaseModel, config_dict: dict) -> list[BaseModel] | None:
         try:
             llm_with_structured_output = llm.with_structured_output(schema)
             result = get_chat_result(

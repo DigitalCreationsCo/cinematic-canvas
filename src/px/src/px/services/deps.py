@@ -24,8 +24,8 @@ if TYPE_CHECKING:
         CacheServiceProtocol,
         ChatServiceProtocol,
         DatabaseServiceProtocol,
-        ProjectServiceProtocol,
         DeploymentServiceProtocol,
+        ProjectServiceProtocol,
         SettingsServiceProtocol,
         StorageServiceProtocol,
         TracingServiceProtocol,
@@ -81,6 +81,7 @@ def get_db_service() -> DatabaseServiceProtocol:
         return NoopDatabaseService()
     return db_service
 
+
 def get_project_service() -> ProjectServiceProtocol:
     """Retrieves the database service instance.
 
@@ -124,9 +125,7 @@ def get_shared_component_cache_service() -> CacheServiceProtocol | None:
         SharedComponentCacheServiceFactory,
     )
 
-    return get_service(
-        ServiceType.SHARED_COMPONENT_CACHE_SERVICE, SharedComponentCacheServiceFactory()
-    )
+    return get_service(ServiceType.SHARED_COMPONENT_CACHE_SERVICE, SharedComponentCacheServiceFactory())
 
 
 def get_chat_service() -> ChatServiceProtocol | None:
@@ -196,9 +195,7 @@ def get_deployment_adapter(
             # Double-check after acquiring lock to avoid redundant discovery.
             if not registry.is_discovered:
                 registry.discover(config_dir=_resolve_adapter_config_dir())
-    instance = registry.get_instance(
-        adapter_key, factory=lambda adapter_class: adapter_class()
-    )
+    instance = registry.get_instance(adapter_key, factory=lambda adapter_class: adapter_class())
     if instance is None:
         logger.warning(
             f"No deployment adapter found for key='{adapter_key}'. "
@@ -256,9 +253,7 @@ async def session_scope() -> AsyncGenerator[AsyncSession, None]:
             raise
         except Exception as e:
             # Actual application/database errors - log at error level
-            await logger.aexception(
-                "An error occurred during the session scope.", exception=e
-            )
+            await logger.aexception("An error occurred during the session scope.", exception=e)
 
             # Only rollback if session is still in a valid state
             if session.is_active:

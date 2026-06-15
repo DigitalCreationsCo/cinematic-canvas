@@ -1,5 +1,5 @@
 def build_prompt_expansion_prompt() -> str:
-   return """You are a cinematic prompt enhancer.
+    return """You are a cinematic prompt enhancer.
 
    Transform any short input into a concise, vivid narrative prompt for a
    visual scene or sequence.
