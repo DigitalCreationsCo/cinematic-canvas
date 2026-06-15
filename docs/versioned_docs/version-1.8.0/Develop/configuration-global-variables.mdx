@@ -10,7 +10,7 @@ import TabItem from '@theme/TabItem';
 Use global variables to store and reuse credentials and generic values across all of your flows.
 Global variables are typically used by components in flow, and you can use them in any field with the <Icon name="Globe" aria-hidden="true"/> global variable icon.
 
-In contrast, [environment variables](/environment-variables), like `LANGFLOW_PORT` or `LANGFLOW_LOG_LEVEL`, are generally for broader settings that configure how Portals runs.
+In contrast, [environment variables](/environment-variables), like `PORTALS_PORT` or `PORTALS_LOG_LEVEL`, are generally for broader settings that configure how Portals runs.
 However, Portals can also source global variables from environment variables.
 
 Portals stores global variables in its internal database, and it encrypts the values using a secret key.

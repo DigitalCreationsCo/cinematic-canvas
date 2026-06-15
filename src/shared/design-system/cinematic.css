@@ -50,11 +50,17 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   text-align: center;
   overflow: hidden;
   padding: 120px clamp(20px, 5vw, 60px) 80px;
+}
+
+.editor-root .hero-inner {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  text-align: center;
 }
 
 .editor-root .hero-bg {
@@ -147,14 +153,13 @@
   z-index: 1;
   background-image: var(--film-grain);
   background-size: 200px 200px;
-  opacity: 0.6;
+  opacity: 0.5;
   pointer-events: none;
 }
 
 .editor-root .hero-lines {
   position: absolute;
   inset: 0;
-  z-index: 1;
   background-image: linear-gradient(color-mix(in srgb, var(--foreground), transparent 98.5%) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--foreground), transparent 98.5%) 1px, transparent 1px);
   background-size: 80px 80px;
@@ -227,12 +232,14 @@
   line-height: 1.0;
   letter-spacing: -.01em;
   color: var(--foreground);
+  text-transform: uppercase;
   position: relative;
   z-index: 3;
   max-width: 1200px;
   opacity: 0;
   animation: fadeUp .9s .4s cubic-bezier(.23, 1, .32, 1) forwards;
   text-shadow: var(--shadow-glass-drop);
+  @apply tracking-[-.25rem];
 }
 
 .editor-root .hero-title em {
@@ -297,7 +304,7 @@
   text-decoration: none;
   border: none;
   cursor: pointer;
-  transition: background .2s, transform .25s, box-shadow .25s;
+  transition: background .2s, box-shadow .25s;
   box-shadow: 0 0 40px color-mix(in srgb, var(--color-gold), transparent 75%);
 }
 
@@ -318,7 +325,7 @@
   text-decoration: none;
   border: 1px solid color-mix(in srgb, var(--foreground), transparent 85%);
   cursor: pointer;
-  transition: border-color .2s, color .2s, transform .25s;
+  transition: border-color .2s, color .2s, border .2s !important;
 }
 
 .editor-root .btn-ghost:hover {
@@ -393,7 +400,7 @@
 
 /* Stats Section */
 .editor-root .stats-section {
-  padding: var(--section-pad) clamp(20px, 5vw, 60px);
+  padding: 0 clamp(20px, 5vw, 60px);
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -401,7 +408,7 @@
 .editor-root .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  gap: var(--gap-inline);
 }
 
 .editor-root .stat-item {
@@ -427,7 +434,7 @@
 
 .editor-root .stat-label {
   font-size: .9rem;
-  color: color-mix(in srgb, var(--foreground), transparent 65%);
+  color: var(--muted-foreground);
   line-height: 1.5;
   max-width: 180px;
 }
@@ -451,7 +458,7 @@
 
 /* Feature Showcase */
 .editor-root .feature-showcase {
-  padding: var(--section-pad) clamp(20px, 5vw, 60px);
+  padding: 0 clamp(20px, 5vw, 60px) var(--section-pad);
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -473,11 +480,13 @@
   font-family: var(--font-z);
   font-size: var(--size-title);
   font-weight: 500;
+  text-transform: uppercase;
   line-height: 1.1;
   letter-spacing: -.01em;
   color: var(--foreground);
   max-width: 700px;
   margin-bottom: 60px;
+  @apply tracking-[-.15rem];
 }
 
 .editor-root .section-title em {
@@ -488,11 +497,10 @@
 .editor-root .scroll-features {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2px;
+  gap: var(--gap-inline);
 }
 
 .editor-root .scroll-feature-item {
-  background: var(--secondary);
   padding: 52px 48px;
   position: relative;
   overflow: hidden;
@@ -510,7 +518,6 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
   transform: scaleX(var(--hover-scale, 0));
   transform-origin: var(--hover-origin, left);
   transition: transform .5s cubic-bezier(.23, 1, .32, 1);
@@ -534,12 +541,16 @@
   width: 52px;
   height: 52px;
   background: color-mix(in srgb, var(--foreground), transparent 92%);
-  border: 1px solid color-mix(in srgb, var(--foreground), transparent 80%);
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 24px;
+}
+
+@utility feature-icon-wrap-hover {
+  background: color-mix(in srgb, var(--foreground), transparent 92%);
+  /* border: 1px solid color-mix(in srgb, var(--foreground), transparent 80%); */
 }
 
 .editor-root .feature-icon-wrap svg {
@@ -574,7 +585,7 @@
   text-transform: uppercase;
   color: var(--color-gold);
   border: 1px solid color-mix(in srgb, var(--color-gold), transparent 70%);
-  padding: 4px 10px;
+  padding: 4px 0;
 }
 
 /* Demo Section */
@@ -987,7 +998,6 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
 }
 
 .editor-root .workflow-section::after {
@@ -1004,6 +1014,9 @@
   max-width: 1100px;
   height: 80vh;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-content);
 }
 
 .editor-root .workflow-steps {
@@ -1021,7 +1034,7 @@
   left: 10%;
   right: 10%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-gold-dim), var(--color-gold-dim), transparent);
+  background: linear-gradient(90deg, transparent, var(--color-muted-foreground), var(--color-muted-foreground), transparent);
   z-index: 0;
 }
 
@@ -1033,11 +1046,11 @@
 }
 
 .editor-root .step-circle {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--secondary);
-  border: 1px solid var(--elevate-1);
+  width: 60px;
+  height: 60px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-popover), var(--color-card));
+  border: 1px solid transparent;
   margin: 0 auto 20px;
   display: flex;
   align-items: center;
@@ -1046,8 +1059,8 @@
 }
 
 .editor-root .workflow-step:hover .step-circle {
-  background: var(--card) !important;
-  border-color: var(--color-gold) !important;
+  background: color-mix(in srgb, var(--color-card), var(--color-foreground) 10%);
+  /* border-color: var(--color-gold) !important; */
 }
 
 .editor-root .step-circle svg {
@@ -1067,7 +1080,7 @@
 
 .editor-root .step-desc {
   font-size: .8rem;
-  color: color-mix(in srgb, var(--foreground), transparent 65%);
+  color: color-mix(in srgb, var(--foreground), transparent 20%);
   line-height: 1.5;
 }
 
@@ -1227,12 +1240,12 @@
 }
 
 .editor-root .check {
-  color: var(--muted-foreground);
+  color: var(--foreground);
   font-size: 1rem;
 }
 
 .editor-root .cross {
-  color: color-mix(in srgb, var(--foreground), transparent 80%);
+  color: color-mix(in srgb, var(--foreground), transparent 70%);
   font-size: 1rem;
 }
 
@@ -1249,24 +1262,17 @@
   gap: 2px;
   max-width: 960px;
   margin: 60px auto 0;
-  background: var(--border-glass);
 }
 
 .editor-root .pricing-card {
-  background: var(--secondary);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   padding: 44px 36px;
   text-align: left;
   position: relative;
   overflow: hidden;
   transition: background .3s !important;
-}
-
-.editor-root .pricing-card:hover {
-  background: var(--card);
-}
-
-.editor-root .pricing-card.featured {
-  background: var(--card);
 }
 
 .editor-root .pricing-card.featured::before {
@@ -1285,17 +1291,15 @@
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--background);
-  background: var(--color-gold);
+  background: var(--color-foreground);
   padding: 4px 10px;
   display: inline-block;
-  margin-bottom: 20px;
 }
 
 .editor-root .pricing-tier {
   font-family: var(--font-z);
   font-size: 1.4rem;
   font-weight: 400;
-  margin-bottom: 8px;
 }
 
 .editor-root .pricing-price {
@@ -1311,13 +1315,13 @@
 
 .editor-root .pricing-price .period {
   font-size: .82rem;
-  color: color-mix(in srgb, var(--foreground), transparent 65%);
+  color: color-mix(in srgb, var(--foreground), transparent 20%);
   margin-left: 4px;
 }
 
 .editor-root .pricing-desc {
-  font-size: .82rem;
-  color: color-mix(in srgb, var(--foreground), transparent 65%);
+  font-size: .92rem;
+  color: color-mix(in srgb, var(--foreground), transparent 20%);
   margin-bottom: 28px;
   line-height: 1.6;
 }
@@ -1331,17 +1335,16 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: .82rem;
+  font-size: .90rem;
   color: var(--foreground);
-  padding: 6px 0;
+  padding: 7px 0;
   border-bottom: 1px solid var(--border-glass);
 }
 
 .editor-root .pricing-features li::before {
-  content: '◆';
+  content: "✓ ";
   color: var(--foreground);
-  font-size: .5rem;
-  margin-top: 5px;
+  font-size: 1rem;
   flex-shrink: 0;
 }
 
@@ -1394,11 +1397,12 @@
 
 .editor-root .cta-title {
   font-family: var(--font-z);
-  font-size: var(--size-cta);
+  font-size: var(--size-title);
   font-weight: 500;
   line-height: 1.05;
   position: relative;
   z-index: 1;
+  @apply tracking-[-.15rem] uppercase;
 }
 
 .editor-root .cta-title em {
@@ -1629,7 +1633,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 60px;
-  align-items: end;
   position: relative;
 }
 
@@ -1660,6 +1663,7 @@
   font-size: var(--size-title);
   font-weight: 500;
   line-height: 1;
+  @apply tracking-[-.25rem] uppercase;
 }
 
 .editor-root .page-title em {
@@ -2318,6 +2322,14 @@
 }
 
 @media (max-width: 768px) {
+  .editor-root .hero-inner {
+    justify-content: space-between;
+  }
+
+  .editor-root .pricing-grid {
+    margin: 0 auto;
+  }
+
   .editor-root .updates-grid {
     grid-template-columns: 1fr;
   }

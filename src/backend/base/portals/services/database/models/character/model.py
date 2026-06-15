@@ -6,8 +6,12 @@ from sqlmodel import JSON, Column, Field, SQLModel
 
 
 class CharacterBase(SQLModel):
-    created_at: datetime | None = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
-    updated_at: datetime | None = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), nullable=False, sa_column_kwargs={"server_default": None}
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), nullable=False, sa_column_kwargs={"server_default": None}
+    )
     project_id: UUID = Field(foreign_key="folder.id")
     reference_id: str
     name: str = Field(index=True)

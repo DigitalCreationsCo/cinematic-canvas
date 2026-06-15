@@ -175,11 +175,11 @@ You can use `kubectl` and `helm` commands to create and set secrets:
 
 ### Set the log level and other configuration variables
 
-For non-sensitive variables, such as `LANGFLOW_LOG_LEVEL`, you can set the value directly in `values.yaml`:
+For non-sensitive variables, such as `PORTALS_LOG_LEVEL`, you can set the value directly in `values.yaml`:
 
 ```yaml
 env:
-  - name: LANGFLOW_LOG_LEVEL
+  - name: PORTALS_LOG_LEVEL
     value: "INFO"
 ```
 

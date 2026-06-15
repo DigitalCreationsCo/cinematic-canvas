@@ -46,7 +46,10 @@ export const URLs = {
   AGENTIC_CHECK_CONFIG: `agentic/check-config`,
   SUBSCRIPTION: `subscription`,
   PRODUCTS: `products`,
+  CREDIT_PACKAGES: `credit-packages`,
+  CREDIT_COSTS: `credit-costs`,
   CREATE_CHECKOUT: `create-checkout`,
+  CREATE_CREDIT_CHECKOUT: `create-credit-checkout`,
   CREATE_PORTAL: `create-portal`,
 } as const;
 

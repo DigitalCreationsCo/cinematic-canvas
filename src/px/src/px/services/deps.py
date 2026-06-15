@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         CacheServiceProtocol,
         ChatServiceProtocol,
         DatabaseServiceProtocol,
+        ProjectServiceProtocol,
         DeploymentServiceProtocol,
         SettingsServiceProtocol,
         StorageServiceProtocol,
@@ -79,6 +80,21 @@ def get_db_service() -> DatabaseServiceProtocol:
         # This allows px to work in standalone mode without requiring database setup
         return NoopDatabaseService()
     return db_service
+
+def get_project_service() -> ProjectServiceProtocol:
+    """Retrieves the database service instance.
+
+    Returns a Abstract ProjectService if no real service is available -- still troubleshooting and testing px / portals service boundaries
+    """
+    from px.services.project.service import ProjectService
+    from px.services.schema import ServiceType
+
+    project_service = get_service(ServiceType.PROJECT_SERVICE)
+    if project_service is None:
+        # Return noop project service when no real database session is available
+        # This allows px to work in standalone mode without requiring database setup
+        return ProjectService()
+    return project_service
 
 
 def get_storage_service() -> StorageServiceProtocol | None:

@@ -58,7 +58,6 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     description = "Display character details and generate persona-driven LLM responses."
     icon = "user"
     name = "Character"
-    minimized = True
 
     # Bind to the specific relational model and storyboard JSON key
     entity_model = Character

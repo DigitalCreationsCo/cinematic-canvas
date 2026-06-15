@@ -1,5 +1,5 @@
-import { FaDiscord, FaGithub } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
+import { FaDiscord, FaGithub } from "react-icons/fa";
 import { ForwardedIconComponent } from "@/components/common/genericIconComponent";
 import {
   DATASTAX_DOCS_URL,
@@ -98,6 +98,21 @@ export const AccountMenu = () => {
                 id="menu_settings_button"
               >
                 {t("account.settings")}
+              </span>
+            </HeaderMenuItemButton>
+
+            <HeaderMenuItemButton
+              onClick={() => {
+                navigate("/settings/billing");
+              }}
+            >
+              <span
+                data-testid="menu_billing_button"
+                id="menu_billing_button"
+                className="flex items-center gap-2"
+              >
+                <ForwardedIconComponent name="CreditCard" className="h-4 w-4" />
+                Billing
               </span>
             </HeaderMenuItemButton>
 

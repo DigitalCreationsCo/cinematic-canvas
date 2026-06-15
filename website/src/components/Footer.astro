@@ -7,16 +7,24 @@ const isHome = pathname === "/";
 ---
 
 <footer class="footer">
-  <div class="footer-main">
-    <div class="footer-brand w-[280px]">
-      <div class="footer-logo">
-        <span class="footer-logo-text-underlay">
-      {siteConfig.name}
+  <div class="footer-brand w-[280px]">
+    <div class="footer-logo">
+      <span class="footer-logo-text-underlay">
+        {siteConfig.name}
         <span class="text-2xl">&copy;</span>
-    </span>
-      </div>
+      </span>
+    </div>
+  </div>
+
+  <div class="footer-main">
+    <div>
       <p class="footer-tagline">
         {siteConfig.description}
+      </p>
+      <br />
+      <p class="footer-copy">
+        &copy; {currentYear}
+        <span class="lowercase">{siteConfig.name}</span>. All rights reserved.
       </p>
     </div>
 
@@ -50,13 +58,6 @@ const isHome = pathname === "/";
   </div>
 
 
-
-  <div class="footer-bottom">
-    <p class="footer-copy">
-      &copy; {currentYear}
-      <span>{siteConfig.name}</span>. All rights reserved.
-    </p>
-  </div>
 </footer>
 
 <style>
@@ -75,9 +76,8 @@ const isHome = pathname === "/";
     margin: 0 auto;
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: 60px;
-    padding: 0 clamp(20px, 5vw, 60px);
-    align-items: end;
+    gap: 20px 60px;
+    padding: 0 clamp(0px, 5vw, 60px);
   }
 
   .footer-inner {
@@ -102,34 +102,21 @@ const isHome = pathname === "/";
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   }
 
-  .footer-logo-text {
-    font-family: var(--font-display);
-    font-size: 2rem;
-    line-height: 1;
-    font-weight: 500;
-    text-align: center;
-    display: flex;
-    width: min-content;
-    margin-right: auto;
-    margin-left: auto;
-    @apply font-heading tracking-tight;
-  }
-
   .footer-logo-text-underlay {
     position: relative;
     display: flex;
     padding-top: 40px;
     bottom: 0;
     z-index: -1;
-    font-family: var(--font-display);
+    font-family: var(--font-z);
     font-size: var(--size-display);
     line-height: 1;
     font-weight: 500;
     text-align: center;
     width: min-content;
+    padding: 0 clamp(0px, 5vw, 60px);
     margin: 0 auto;
-    @apply font-heading tracking-tight;
-
+    @apply tracking-tight lowercase;
   }
 
   .footer-tagline {
@@ -191,7 +178,7 @@ const isHome = pathname === "/";
   @media (max-width: 1024px) {
     .footer-main {
       /* Reverting alignment to default vertical flow for wrapped column stability */
-      align-items: end;
+      align-items: start;
     }
   }
 

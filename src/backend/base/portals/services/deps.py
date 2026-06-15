@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from portals.services.cache.service import AsyncBaseCacheService, CacheService
     from portals.services.chat.service import ChatService
     from portals.services.database.service import DatabaseService
+    from portals.services.project.service import ProjectService
     from portals.services.session.service import SessionService
     from portals.services.state.service import StateService
     from portals.services.store.service import StoreService
@@ -149,6 +150,18 @@ def get_db_service() -> DatabaseService:
     from portals.services.database.factory import DatabaseServiceFactory
 
     return get_service(ServiceType.DATABASE_SERVICE, DatabaseServiceFactory())
+
+
+def get_project_service() -> ProjectService:
+    """Retrieves the ProjectService instance from the service manager.
+
+    Returns:
+        The ProjectService instance.
+
+    """
+    from portals.services.project.factory import ProjectServiceFactory
+
+    return get_service(ServiceType.PROJECT_SERVICE, ProjectServiceFactory())
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

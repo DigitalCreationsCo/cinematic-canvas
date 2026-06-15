@@ -3,11 +3,12 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 from px.log.logger import logger
-from portals.services.database.models.user.model import User, UserUpdate
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+
+from portals.services.database.models.user.model import User, UserUpdate
 
 
 async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
@@ -38,9 +39,7 @@ async def update_user(user_db: User | None, user: UserUpdate, db: AsyncSession) 
             changed = True
 
     if not changed:
-        raise HTTPException(
-            status_code=status.HTTP_304_NOT_MODIFIED, detail="Nothing to update"
-        )
+        raise HTTPException(status_code=status.HTTP_304_NOT_MODIFIED, detail="Nothing to update")
 
     user_db.updated_at = datetime.now(timezone.utc)
     flag_modified(user_db, "updated_at")
@@ -60,6 +59,14 @@ async def update_user_last_login_at(user_id: UUID, db: AsyncSession):
         return await update_user(user, user_data, db)
     except Exception as e:  # noqa: BLE001
         await logger.aerror(f"Error updating user last login at: {e!s}")
+
+
+async def get_user_by_stripe_subscription_id(
+    db: AsyncSession,
+    subscription_id: str,
+) -> User | None:
+    stmt = select(User).where(User.stripe_subscription_id == subscription_id)
+    return (await db.exec(stmt)).first()
 
 
 async def get_all_superusers(db: AsyncSession) -> list[User]:

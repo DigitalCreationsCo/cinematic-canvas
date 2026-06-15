@@ -47,7 +47,6 @@ from portals.services.deps import (
     get_service,
     get_settings_service,
     get_telemetry_service,
-    session_scope,
 )
 from portals.services.schema import ServiceType
 from portals.services.utils import (
@@ -66,12 +65,8 @@ if TYPE_CHECKING:
 warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
 
 # Suppress ResourceWarning from anyio streams (SSE connections)
-warnings.filterwarnings(
-    "ignore", category=ResourceWarning, message=".*MemoryObjectReceiveStream.*"
-)
-warnings.filterwarnings(
-    "ignore", category=ResourceWarning, message=".*MemoryObjectSendStream.*"
-)
+warnings.filterwarnings("ignore", category=ResourceWarning, message=".*MemoryObjectReceiveStream.*")
+warnings.filterwarnings("ignore", category=ResourceWarning, message=".*MemoryObjectSendStream.*")
 
 _tasks: list[asyncio.Task] = []
 
@@ -91,9 +86,7 @@ class RequestCancelledMiddleware(BaseHTTPMiddleware):
     def __init__(self, app) -> None:
         super().__init__(app)
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         sentinel = object()
 
         async def cancel_handler():
@@ -105,9 +98,7 @@ class RequestCancelledMiddleware(BaseHTTPMiddleware):
         handler_task = asyncio.create_task(call_next(request))
         cancel_task = asyncio.create_task(cancel_handler())
 
-        done, pending = await asyncio.wait(
-            [handler_task, cancel_task], return_when=asyncio.FIRST_COMPLETED
-        )
+        done, pending = await asyncio.wait([handler_task, cancel_task], return_when=asyncio.FIRST_COMPLETED)
 
         for task in pending:
             task.cancel()
@@ -118,9 +109,7 @@ class RequestCancelledMiddleware(BaseHTTPMiddleware):
 
 
 class JavaScriptMIMETypeMiddleware(BaseHTTPMiddleware):
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         try:
             response = await call_next(request)
         except Exception as exc:
@@ -130,9 +119,7 @@ class JavaScriptMIMETypeMiddleware(BaseHTTPMiddleware):
                     "Please share this error on our GitHub repository."
                 )
                 error_messages = json.dumps([message, str(exc)])
-                raise HTTPException(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=error_messages
-                ) from exc
+                raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=error_messages) from exc
             raise
         if (
             "files/" not in request.url.path
@@ -154,9 +141,7 @@ async def load_bundles_with_error_handling():
 def warn_about_future_cors_changes(settings):
     """Warn users about upcoming CORS security changes in version 1.7."""
     # Check if using default (backward compatible) settings
-    using_defaults = (
-        settings.cors_origins == "*" and settings.cors_allow_credentials is True
-    )
+    using_defaults = settings.cors_origins == "*" and settings.cors_allow_credentials is True
 
     if using_defaults:
         logger.warning(
@@ -190,23 +175,31 @@ def get_lifespan(*, fix_migration=False, version=None):
 
             await logger.adebug("Initializing services")
             await initialize_services(fix_migration=fix_migration)
-            await logger.adebug(
-                f"Services initialized in {asyncio.get_event_loop().time() - start_time:.2f}s"
-            )
+            await logger.adebug(f"Services initialized in {asyncio.get_event_loop().time() - start_time:.2f}s")
 
             current_time = asyncio.get_event_loop().time()
             await logger.adebug("Setting up LLM caching")
             setup_llm_caching()
-            await logger.adebug(
-                f"LLM caching setup in {asyncio.get_event_loop().time() - current_time:.2f}s"
-            )
+            await logger.adebug(f"LLM caching setup in {asyncio.get_event_loop().time() - current_time:.2f}s")
+
+            current_time = asyncio.get_event_loop().time()
+            await logger.adebug("Syncing Stripe products to local cache")
+            try:
+                from portals.services.deps import session_scope
+                from portals.services.stripe_service import sync_stripe_products_to_db
+
+                async with session_scope() as session:
+                    await sync_stripe_products_to_db(session)
+            except Exception as e:  # noqa: BLE001
+                await logger.awarning(
+                    f"Failed to sync Stripe products on startup: {e}. Product data will be fetched on demand."
+                )
+            await logger.adebug(f"Stripe products synced in {asyncio.get_event_loop().time() - current_time:.2f}s")
 
             current_time = asyncio.get_event_loop().time()
             await logger.adebug("Copying profile pictures")
             await copy_profile_pictures()
-            await logger.adebug(
-                f"Profile pictures copied in {asyncio.get_event_loop().time() - current_time:.2f}s"
-            )
+            await logger.adebug(f"Profile pictures copied in {asyncio.get_event_loop().time() - current_time:.2f}s")
 
             if get_settings_service().auth_settings.AUTO_LOGIN:
                 current_time = asyncio.get_event_loop().time()
@@ -218,9 +211,7 @@ def get_lifespan(*, fix_migration=False, version=None):
 
             await logger.adebug("Initializing super user")
             await initialize_auto_login_default_superuser()
-            await logger.adebug(
-                f"Super user initialized in {asyncio.get_event_loop().time() - current_time:.2f}s"
-            )
+            await logger.adebug(f"Super user initialized in {asyncio.get_event_loop().time() - current_time:.2f}s")
 
             current_time = asyncio.get_event_loop().time()
             await logger.adebug("Loading bundles")
@@ -228,21 +219,13 @@ def get_lifespan(*, fix_migration=False, version=None):
                 temp_dirs,
                 bundles_components_paths,
             ) = await load_bundles_with_error_handling()
-            get_settings_service().settings.components_path.extend(
-                bundles_components_paths
-            )
-            await logger.adebug(
-                f"Bundles loaded in {asyncio.get_event_loop().time() - current_time:.2f}s"
-            )
+            get_settings_service().settings.components_path.extend(bundles_components_paths)
+            await logger.adebug(f"Bundles loaded in {asyncio.get_event_loop().time() - current_time:.2f}s")
 
             current_time = asyncio.get_event_loop().time()
             await logger.adebug("Caching types")
-            all_types_dict = await get_and_cache_all_types_dict(
-                get_settings_service(), telemetry_service
-            )
-            await logger.adebug(
-                f"Types cached in {asyncio.get_event_loop().time() - current_time:.2f}s"
-            )
+            all_types_dict = await get_and_cache_all_types_dict(get_settings_service(), telemetry_service)
+            await logger.adebug(f"Types cached in {asyncio.get_event_loop().time() - current_time:.2f}s")
 
             # Use file-based lock to prevent multiple workers from creating duplicate starter projects concurrently.
             # Note that it's still possible that one worker may complete this task, release the lock,
@@ -261,9 +244,7 @@ def get_lifespan(*, fix_migration=False, version=None):
                     )
             except TimeoutError:
                 # Another process has the lock
-                await logger.adebug(
-                    "Another worker is creating starter projects, skipping"
-                )
+                await logger.adebug("Another worker is creating starter projects, skipping")
             except Exception as e:  # noqa: BLE001
                 await logger.awarning(
                     f"Failed to acquire lock for starter projects: {e}. Starter projects may not be created or updated."
@@ -284,22 +265,16 @@ def get_lifespan(*, fix_migration=False, version=None):
                         f"Agentic global variables initialized in {asyncio.get_event_loop().time() - current_time:.2f}s"
                     )
                 except Exception as e:  # noqa: BLE001
-                    await logger.awarning(
-                        f"Failed to initialize agentic global variables: {e}"
-                    )
+                    await logger.awarning(f"Failed to initialize agentic global variables: {e}")
 
             current_time = asyncio.get_event_loop().time()
             await logger.adebug("Starting telemetry service")
             telemetry_service.start()
-            await logger.adebug(
-                f"started telemetry service in {asyncio.get_event_loop().time() - current_time:.2f}s"
-            )
+            await logger.adebug(f"started telemetry service in {asyncio.get_event_loop().time() - current_time:.2f}s")
 
             current_time = asyncio.get_event_loop().time()
             await logger.adebug("Starting MCP Composer service")
-            mcp_composer_service = cast(
-                "MCPComposerService", get_service(ServiceType.MCP_COMPOSER_SERVICE)
-            )
+            mcp_composer_service = cast("MCPComposerService", get_service(ServiceType.MCP_COMPOSER_SERVICE))
             await mcp_composer_service.start()
             await logger.adebug(
                 f"started MCP Composer service in {asyncio.get_event_loop().time() - current_time:.2f}s"
@@ -320,9 +295,7 @@ def get_lifespan(*, fix_migration=False, version=None):
                         f"Agentic MCP server configured in {asyncio.get_event_loop().time() - current_time:.2f}s"
                     )
                 except Exception as e:  # noqa: BLE001
-                    await logger.awarning(
-                        f"Failed to configure agentic MCP server: {e}"
-                    )
+                    await logger.awarning(f"Failed to configure agentic MCP server: {e}")
 
             current_time = asyncio.get_event_loop().time()
             await logger.adebug("Loading flows")
@@ -331,28 +304,20 @@ def get_lifespan(*, fix_migration=False, version=None):
             queue_service = get_queue_service()
             if not queue_service.is_started():  # Start if not already started
                 queue_service.start()
-            await logger.adebug(
-                f"Flows loaded in {asyncio.get_event_loop().time() - current_time:.2f}s"
-            )
+            await logger.adebug(f"Flows loaded in {asyncio.get_event_loop().time() - current_time:.2f}s")
 
             total_time = asyncio.get_event_loop().time() - start_time
             await logger.adebug(f"Total initialization time: {total_time:.2f}s")
 
             async def delayed_init_mcp_servers():
-                await asyncio.sleep(
-                    10.0
-                )  # Increased delay to allow starter projects to be created
+                await asyncio.sleep(10.0)  # Increased delay to allow starter projects to be created
                 current_time = asyncio.get_event_loop().time()
                 await logger.adebug("Loading MCP servers for projects")
                 try:
                     await init_mcp_servers()
-                    await logger.adebug(
-                        f"MCP servers loaded in {asyncio.get_event_loop().time() - current_time:.2f}s"
-                    )
+                    await logger.adebug(f"MCP servers loaded in {asyncio.get_event_loop().time() - current_time:.2f}s")
                 except Exception as e:  # noqa: BLE001
-                    await logger.awarning(
-                        f"First MCP server initialization attempt failed: {e}"
-                    )
+                    await logger.awarning(f"First MCP server initialization attempt failed: {e}")
                     await asyncio.sleep(5.0)  # Increased retry delay
                     current_time = asyncio.get_event_loop().time()
                     await logger.adebug("Retrying MCP servers initialization")
@@ -362,9 +327,7 @@ def get_lifespan(*, fix_migration=False, version=None):
                             f"MCP servers loaded on retry in {asyncio.get_event_loop().time() - current_time:.2f}s"
                         )
                     except Exception as e2:  # noqa: BLE001
-                        await logger.aexception(
-                            f"Failed to initialize MCP servers after retry: {e2}"
-                        )
+                        await logger.aexception(f"Failed to initialize MCP servers after retry: {e2}")
 
             # Start the delayed initialization as a background task
             # Allows the server to start first to avoid race conditions with MCP Server startup
@@ -377,7 +340,85 @@ def get_lifespan(*, fix_migration=False, version=None):
             await start_streamable_http_manager()
             await start_project_task_group()
 
+            # ── Periodic background tasks ────────────────────────────────────
+            async def _hourly_credit_expiry() -> None:
+                """Placeholder: called every hour to expire credits.
+
+                Credit expiry is intentionally a **no-op** until we have
+                a concrete policy decision.  Options to consider when
+                designing the policy:
+
+                *   **Fixed TTL** — expire purchased credits after N
+                    months (e.g. 12 months from purchase date).
+                *   **Activity-based** — expire credits only if the user
+                    has been inactive for N months.
+                *   **Tier-based** — allowance credits expire monthly
+                    (renewed each billing cycle), purchased credits
+                    never expire (premium model).
+                *   **First-in-first-out** — always consume the oldest
+                    credits first so any expiry naturally affects the
+                    oldest stock.
+
+                The actual implementation will need to:
+                    1. Query ``credit_transaction`` for expired batches.
+                    2. Insert a zero-credit adjustment transaction
+                       crediting the user and noting the reason.
+                    3. Optionally notify the user via email/in-app.
+
+                See also ``credit_service.expire_credits()``.
+                """
+                while True:
+                    try:
+                        await asyncio.sleep(3600)  # every hour
+                        # TODO: implement credit expiry
+                    except asyncio.CancelledError:
+                        break
+                    except Exception:
+                        # Don't let a single iteration crash the loop
+                        await logger.aexception("Hourly credit expiry failed")
+
+            async def _daily_cleanup_stale_pending_jobs() -> None:
+                """Delete pending_jobs older than 7 days every 24h.
+
+                Runs once at startup (to catch up after any downtime), then
+                every 24 hours thereafter.
+
+                NOTE: Uses its own ``session_scope()`` rather than sharing the
+                HTTP-request session.  This is correct for a fire-and-forget
+                periodic task — it prevents the cleanup from being entangled
+                with any request lifecycle.  The trade-off is that the cleanup
+                IS NOT rolled back if the enclosing request fails (but there is
+                no enclosing request — this runs in a background asyncio task).
+                If we later add transactional background work that needs to be
+                consistent with a request (e.g. deduct credits + send
+                notification in the same client session), share the session
+                instead of opening a new one.
+                """
+                from portals.services.credit_service import expire_stale_pending_jobs
+
+                while True:
+                    try:
+                        async with session_scope() as session:
+                            count = await expire_stale_pending_jobs(session)
+                            if count:
+                                logger.info("Expired %d stale pending jobs", count)
+                    except asyncio.CancelledError:
+                        break
+                    except Exception:
+                        await logger.aexception("Daily pending-job cleanup failed")
+                    await asyncio.sleep(86_400)  # every 24h
+
+            bg_tasks = [
+                asyncio.create_task(_hourly_credit_expiry()),
+                asyncio.create_task(_daily_cleanup_stale_pending_jobs()),
+            ]
+
             yield
+
+            # Cancel background tasks
+            for t in bg_tasks:
+                t.cancel()
+            await asyncio.gather(*bg_tasks, return_exceptions=True)
         except asyncio.CancelledError:
             await logger.adebug("Lifespan received cancellation signal")
         except UnsupportedPostgreSQLVersionError:
@@ -435,9 +476,7 @@ def get_lifespan(*, fix_migration=False, version=None):
                     try:
                         await stop_streamable_http_manager()
                     except Exception as e:  # noqa: BLE001
-                        await logger.aerror(
-                            f"Failed to stop MCP server streamable-http session manager: {e}"
-                        )
+                        await logger.aerror(f"Failed to stop MCP server streamable-http session manager: {e}")
                     # Cancel background tasks
                     tasks_to_cancel = []
                     if sync_flows_from_fs_task:
@@ -448,14 +487,10 @@ def get_lifespan(*, fix_migration=False, version=None):
                         tasks_to_cancel.append(mcp_init_task)
                     if tasks_to_cancel:
                         # Wait for all tasks to complete, capturing exceptions
-                        results = await asyncio.gather(
-                            *tasks_to_cancel, return_exceptions=True
-                        )
+                        results = await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
                         # Log any non-cancellation exceptions
                         for result in results:
-                            if isinstance(result, Exception) and not isinstance(
-                                result, asyncio.CancelledError
-                            ):
+                            if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
                                 await logger.aerror(
                                     f"Error during task cleanup: {result}",
                                     exc_info=result,
@@ -470,17 +505,11 @@ def get_lifespan(*, fix_migration=False, version=None):
 
                 # Step 3: Clearing Temporary Files
                 with shutdown_progress.step(3):
-                    temp_dir_cleanups = [
-                        asyncio.to_thread(temp_dir.cleanup) for temp_dir in temp_dirs
-                    ]
+                    temp_dir_cleanups = [asyncio.to_thread(temp_dir.cleanup) for temp_dir in temp_dirs]
                     try:
-                        await asyncio.wait_for(
-                            asyncio.gather(*temp_dir_cleanups), timeout=10
-                        )
+                        await asyncio.wait_for(asyncio.gather(*temp_dir_cleanups), timeout=10)
                     except asyncio.TimeoutError:
-                        await logger.awarning(
-                            "Temporary file cleanup timed out after 10s."
-                        )
+                        await logger.awarning("Temporary file cleanup timed out after 10s.")
 
                 # Step 4: Finalizing Shutdown
                 with shutdown_progress.step(4):
@@ -491,9 +520,7 @@ def get_lifespan(*, fix_migration=False, version=None):
 
             except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.DBAPIError) as e:
                 # Case where the database connection is closed during shutdown
-                await logger.awarning(
-                    f"Database teardown failed due to closed connection: {e}"
-                )
+                await logger.awarning(f"Database teardown failed due to closed connection: {e}")
             except asyncio.CancelledError:
                 # Swallow this - it's normal during shutdown
                 await logger.adebug("Teardown cancelled during shutdown.")
@@ -549,16 +576,10 @@ def create_app():
         if "/api/v1/files/upload" in request.url.path:
             content_type = request.headers.get("Content-Type")
 
-            if (
-                not content_type
-                or "multipart/form-data" not in content_type
-                or "boundary=" not in content_type
-            ):
+            if not content_type or "multipart/form-data" not in content_type or "boundary=" not in content_type:
                 return JSONResponse(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    content={
-                        "detail": "Content-Type header must be 'multipart/form-data' with a boundary parameter."
-                    },
+                    content={"detail": "Content-Type header must be 'multipart/form-data' with a boundary parameter."},
                 )
 
             boundary = content_type.split("boundary=")[-1].strip()
@@ -577,9 +598,7 @@ def create_app():
             boundary_end = f"--{boundary}--\r\n".encode()
             boundary_end_no_newline = f"--{boundary}--".encode()
 
-            if not body.startswith(boundary_start) or not body.endswith(
-                (boundary_end, boundary_end_no_newline)
-            ):
+            if not body.startswith(boundary_start) or not body.endswith((boundary_end, boundary_end_no_newline)):
                 return JSONResponse(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     content={"detail": "Invalid multipart formatting"},
@@ -605,13 +624,7 @@ def create_app():
             return await call_next(request)
 
         prefix = request.headers.get("X-Forwarded-Prefix", "").rstrip("/")
-        if (
-            prefix
-            and prefix.startswith("/")
-            and "://" not in prefix
-            and "?" not in prefix
-            and "#" not in prefix
-        ):
+        if prefix and prefix.startswith("/") and "://" not in prefix and "?" not in prefix and "#" not in prefix:
             request.scope["root_path"] = prefix
         return await call_next(request)
 
@@ -654,9 +667,7 @@ def create_app():
     load_plugin_routes(app)
 
     @app.exception_handler(DeploymentGuardError)
-    async def deployment_guard_exception_handler(
-        _request: Request, exc: DeploymentGuardError
-    ):
+    async def deployment_guard_exception_handler(_request: Request, exc: DeploymentGuardError):
         return JSONResponse(
             status_code=HTTPStatus.CONFLICT,
             content={"detail": exc.detail},
@@ -738,9 +749,7 @@ def get_static_files_dir():
     return frontend_path / "frontend"
 
 
-def setup_app(
-    static_files_dir: Path | None = None, *, backend_only: bool = False
-) -> FastAPI:
+def setup_app(static_files_dir: Path | None = None, *, backend_only: bool = False) -> FastAPI:
     """Setup the FastAPI app."""
     # get the directory of the current file
     if not static_files_dir:

@@ -6,7 +6,7 @@
             "type": "debugpy",
             "request": "launch",
             "env": {
-                "PX_DEV": "1"
+                "PX_DEV": "narrative"
             },
             "module": "uvicorn",
             "args": [
@@ -23,7 +23,8 @@
                 "asyncio"
             ],
             "jinja": true,
-            "python": "${workspaceFolder}/.venv/bin/python"
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "subProcess": true // Attach to the worker subprocesses
         },
         {
             "name": "Debug Frontend",

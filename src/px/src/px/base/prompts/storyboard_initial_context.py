@@ -4,7 +4,7 @@ from px.base.prompts.storyboard_vision_prompt import build_storyboard_vision_pro
 
 
 def build_initial_context_prompt(
-    self,
+    input_value: str,
     audio_segments: list | None,
     existing_entities: dict[str, list[dict]] | None = None,
     title: str | None = None,
@@ -25,10 +25,10 @@ def build_initial_context_prompt(
     existing_locs = existing_entities.get("locations") or []
     existing_props = existing_entities.get("props") or []
 
-    effective_title = title if title is not None else (self.title or "")
+    effective_title = title if title is not None else (title or "")
     base = build_storyboard_vision_prompt(
         title=effective_title,
-        user_prompt=self.input_value,
+        user_prompt=input_value,
         existing_characters=existing_chars,
         existing_locations=existing_locs,
     )

@@ -111,8 +111,8 @@ This approach means you only have to manage deployment variables in one file, in
     POSTGRES_HOST=postgres
     POSTGRES_PORT=5432
     LANGFLOW_CONFIG_DIR=app/portals
-    LANGFLOW_PORT_1=7860
-    LANGFLOW_PORT_2=7861
+    PORTALS_PORT_1=7860
+    PORTALS_PORT_2=7861
     LANGFLOW_HOST=0.0.0.0
     ```
 
@@ -141,7 +141,7 @@ For example:
         image: portalsai/portals:latest
         pull_policy: always
         ports:
-          - "${LANGFLOW_PORT_1}:7860"
+          - "${PORTALS_PORT_1}:7860"
         depends_on:
           - postgres
         environment:
@@ -156,7 +156,7 @@ For example:
         image: portalsai/portals:latest
         pull_policy: always
         ports:
-          - "${LANGFLOW_PORT_2}:7860"
+          - "${PORTALS_PORT_2}:7860"
         depends_on:
           - postgres
         environment:

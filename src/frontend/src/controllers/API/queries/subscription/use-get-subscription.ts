@@ -9,6 +9,8 @@ export interface SubscriptionResponse {
   status: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean | null;
+  allowance_balance: number;
+  purchased_balance: number;
 }
 
 export const useGetSubscription: useQueryFunctionType<

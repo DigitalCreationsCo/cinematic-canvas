@@ -177,8 +177,8 @@
   --spacing-label: 0.1em;
   --spacing-copy: 0.08em;
 
-  --size-display: clamp(2.2rem, 9vw, 6.5rem);
-  --size-title: clamp(2.4rem, 5vw, 3.5rem);
+  --size-display: clamp(2.2rem, 9vw, 5.5rem);
+  --size-title: clamp(2.4rem, 5vw, 3.8rem);
   --size-cta: clamp(2.8rem, 7vw, 6rem);
   --size-card-title: clamp(1.6rem, 2.5vw, 2.3rem);
   --size-section-label: 0.9rem;
@@ -259,7 +259,7 @@
 
   /* ── Glass border & highlight opacities ────────────────────
      White/black overlays at fixed opacities — theme-invariant by design. */
-  --border-glass: color-mix(in srgb, hsla(220, 10%, 20%, 1), transparent 10%);
+  --border-glass: color-mix(in srgb, hsla(220, 10%, 20%, 1), transparent 50%);
   /* 0.08 opacity */
   --border-glass-hover: color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 85%);
   /* 0.15 opacity */

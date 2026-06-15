@@ -5,6 +5,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/updates", label: "Blog" },
   { href: "/docs", label: "Docs" },
+  { href: "/gallery", label: "Gallery" },
 ];
 ---
 
@@ -128,9 +129,10 @@ const navLinks = [
   }
 
   .logo-text {
-    font-family: var(--font-display);
+    font-family: var(--font-z);
     color: var(--color-warm);
-    @apply font-heading;
+    font-weight: 500;
+    @apply lowercase tracking-tight;
   }
 
   .nav-links {

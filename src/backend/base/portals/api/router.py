@@ -19,6 +19,7 @@ from portals.api.v1 import (
     model_options_router,
     models_router,
     monitor_router,
+    notifications_router,
     openai_responses_router,
     projects_router,
     starter_projects_router,
@@ -70,6 +71,7 @@ router_v1.include_router(login_router)
 router_v1.include_router(variables_router)
 router_v1.include_router(files_router)
 router_v1.include_router(monitor_router)
+router_v1.include_router(notifications_router)
 router_v1.include_router(traces_router)
 router_v1.include_router(teams_router)
 router_v1.include_router(folders_router)

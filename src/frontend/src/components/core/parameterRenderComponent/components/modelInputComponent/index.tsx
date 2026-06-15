@@ -4,6 +4,7 @@ import LoadingTextComponent from "@/components/common/loadingTextComponent";
 import { useGetEnabledModels } from "@/controllers/API/queries/models/use-get-enabled-models";
 import { useGetModelProviders } from "@/controllers/API/queries/models/use-get-model-providers";
 import { usePostTemplateValue } from "@/controllers/API/queries/nodes/use-post-template-value";
+import { useGetCreditCosts } from "@/controllers/API/queries/subscription/use-get-credit-costs";
 import { useRefreshModelInputs } from "@/hooks/use-refresh-model-inputs";
 import ModelProviderModal from "@/modals/modelProviderModal";
 import useAlertStore from "@/stores/alertStore";
@@ -127,8 +128,22 @@ export default function ModelInputComponent({
     isLoading: isLoadingEnabledModels,
     isFetching: isFetchingEnabledModels,
   } = useGetEnabledModels();
+  const { data: creditCosts } = useGetCreditCosts();
 
   const isLoading = isLoadingProviders || isLoadingEnabledModels;
+
+  // Map model-catalog modelType to FeatureGate feature names for credit cost lookup.
+  // The FeatureGate table uses "language" (not "llm"), and "language" covers embeddings too.
+  const featureGateName: Record<string, string> = {
+    llm: "language",
+    embeddings: "language",
+    image_generation: "image_generation",
+    video_generation: "video_generation",
+  };
+  const rawCost =
+    creditCosts?.model_credit_costs?.[featureGateName[modelType] ?? modelType];
+  // Show tooltip only when cost is positive (hide zero-cost features like free LLM access)
+  const creditCost = rawCost && rawCost > 0 ? rawCost : undefined;
 
   // Groups models by their provider name for sectioned display in dropdown.
   // Filters out models from disabled providers AND disabled models, then
@@ -495,6 +510,7 @@ export default function ModelInputComponent({
           id={id}
           refButton={refButton}
           showEmptyState={showEmptyState}
+          creditCost={creditCost}
         />
         {renderPopoverContent()}
       </Popover>
@@ -503,7 +519,11 @@ export default function ModelInputComponent({
         <ModelProviderModal
           open={openManageProvidersDialog}
           onClose={handleManageProvidersDialogClose}
-          modelType={modelType || "llm"}
+          modelType={
+            modelType === "llm" || modelType === "embeddings"
+              ? modelType
+              : "llm"
+          }
         />
       )}
     </>

@@ -4,7 +4,7 @@ from px.base.prompts.storyboard_enrichment_prompt import build_storyboard_enrich
 
 
 def build_scene_batch_prompt(
-    self,
+    input_value: str,
     initial_context: dict,
     schema: dict,
     title: str | None = None,
@@ -32,22 +32,14 @@ def build_scene_batch_prompt(
     -------
     The enrichment system-prompt string.
     """
-    # Build the SceneBatch schema for the prompt (mirrors
-    # ``getModelCompatibleSchema(SceneBatch)`` in the TS version).
-    scene_batch_schema = self._build_wrapped_schema(
-        schema_rows=schema,
-        model_name="SceneBatch",
-        doc="A batch of enriched storyboard scenes.",
-        key="scenes",
-    )
-    schema_json: str = json.dumps(scene_batch_schema.model_json_schema(), indent=2)
+    schema_json: str = json.dumps(schema.model_json_schema(), indent=2)
 
     # The narrative to enrich: use the user's creative prompt.
     # In the TS version this is the ``enhancedPrompt`` from prompt
     # expansion; here we use ``self.input_value`` directly since
     # expansion is handled by a separate component.
-    effective_title = title if title is not None else (self.title or "")
-    narrative = f"{effective_title}\n\n{self.input_value}" if effective_title else self.input_value
+    effective_title = title if title is not None else (title or "")
+    narrative = f"{effective_title}\n\n{input_value}" if effective_title else input_value
 
     return build_storyboard_enrichment_prompt(
         enhanced_prompt=narrative,

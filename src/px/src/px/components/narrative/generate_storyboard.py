@@ -36,6 +36,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from px.base.prompts.storyboard_initial_context import build_initial_context_prompt
 from pydantic import BaseModel, Field, create_model
 from sqlalchemy.orm.attributes import flag_modified
 from trustcall import create_extractor
@@ -51,6 +52,11 @@ from px.components.narrative.base_state_aware import BaseStateAwareComponent
 from px.components.narrative.storyboard_manager import StoryboardManager
 from px.field_typing.range_spec import RangeSpec
 from px.helpers.base_model import build_model_from_schema
+from px.helpers.llm_json_tolerance import (
+    coerce_json_string,
+    make_json_tolerant,
+    tolerant_list_field,
+)
 from px.inputs.inputs import BoolInput
 from px.io import (
     FileInput,
@@ -201,20 +207,6 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
     icon = "sparkles"
     documentation: str = "https://docs.portals.org/components-models"
     category = "models"
-
-    outputs = [
-        Output(
-            display_name="Storyboard",
-            name="storyboard",
-            method="build_storyboard",
-            types=["Data"],
-        ),
-        Output(
-            display_name="Structured Output",
-            name="structured_output",
-            method="build_structured_output",
-        ),
-    ]
 
     # Preserved as None; actual value computed at runtime by build_system_prompt().
     system_prompt: str | None = None
@@ -384,6 +376,20 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         ),
     ]
 
+    outputs = [
+        Output(
+            display_name="Storyboard",
+            name="storyboard",
+            method="build_storyboard",
+            types=["Data"],
+        ),
+        Output(
+            display_name="Structured Output",
+            name="structured_output",
+            method="build_structured_output",
+        ),
+    ]
+
     # =========================================================================
     # CONFIG UPDATE
     # =========================================================================
@@ -468,17 +474,24 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         The *key* defaults to ``"objects"`` (for ``build_structured_output_base``
         compatibility) but can be set to ``"scenes"`` or any other field name so
         that ``_unwrap_objects`` can consistently handle the result.
+
+        Both the inner model's ``list``/``dict``-typed fields (e.g.
+        ``characters``, ``locations``, ``metadata``) and the wrapper's *key*
+        field itself are made tolerant of a JSON-encoded string standing in
+        for the expected list/dict — some models (observed with Gemini)
+        stringify one or the other inconsistently. See
+        ``px.helpers.llm_json_tolerance`` for details.
         """
         if not schema_rows:
             msg = f"Schema rows for '{model_name}' cannot be empty."
             raise ValueError(msg)
-        inner = build_model_from_schema(schema_rows)
+        inner = make_json_tolerant(build_model_from_schema(schema_rows))
         return create_model(
             model_name,
             __doc__=doc,
             **{  # type: ignore[arg-type]
                 key: (
-                    list[inner],
+                    tolerant_list_field(inner),
                     Field(description=doc, min_length=1),
                 )
             },
@@ -506,8 +519,13 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
                 input_value=user_prompt,
                 config=config_dict,
             )
-            if result:
+            if result and result.get("responses"):
                 return result
+            logger.warning(
+                f"Trustcall returned no validated '{schema.__name__}' "
+                f"after {result.get('attempts', '?') if result else '?'} attempt(s); "
+                "falling back to Langchain."
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 f"Trustcall extraction failed ({exc!r}); falling back to Langchain. "
@@ -532,35 +550,49 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
 
     @staticmethod
     def _unwrap_objects(raw: Any, key: str = "objects") -> list[dict]:
-        """Normalise an extraction result into a plain ``list[dict]``.
-
-        Handles:
-          * Trustcall envelope  {"responses": [<BaseModel|dict>, ...]}
-          * Wrapper dict        {"<key>": [...]}
-          * Bare BaseModel
-          * Bare list
-
-        The *key* defaults to ``"objects"`` (``_build_wrapped_schema`` default).
-        Pass ``"scenes"`` when unwrapping a SceneBatch result.
-        """
+        """Normalise an extraction result into a plain ``list[dict]``."""
         if raw is None:
             return []
+
         # Trustcall envelope
         if isinstance(raw, dict) and "responses" in raw:
-            responses = raw["responses"]
-            if responses:
-                first = responses[0]
-                raw = first.model_dump()
+            responses = raw.get("responses") or []
+            if not responses:
+                # Validation never produced a usable result (e.g. the model's
+                # output couldn't be coerced even with make_json_tolerant).
+                # Don't fall through to the "wrap raw in a list" branch below —
+                # that would treat trustcall's internal envelope
+                # (messages/responses/response_metadata/attempts) as if it
+                # were a single unwrapped context/scene dict.
+                logger.warning(
+                    f"Trustcall envelope had no validated responses "
+                    f"(attempts={raw.get('attempts')}) — returning no items."
+                )
+                return []
+            first = responses[0]
+            # Protect against 'first' already being a dict
+            raw = first.model_dump() if isinstance(first, BaseModel) else first
+
         # Wrapper dict (from _build_wrapped_schema)
         if isinstance(raw, dict):
             raw = raw.get(key, raw.get("objects", raw))
+
         # Single BaseModel (langchain fallback)
         if isinstance(raw, BaseModel):
             raw = raw.model_dump()
             raw = raw.get(key, raw.get("objects", raw))
+
         # Normalise list elements
         if isinstance(raw, list):
             return [item.model_dump() if isinstance(item, BaseModel) else item for item in raw]
+
+        # If the LLM returned a single unwrapped dictionary (e.g. the
+        # wrapper's `key` field was itself absent and `raw` is already the
+        # single context/scene object), wrap it in a list so items[0]
+        # resolves safely instead of being swallowed.
+        if isinstance(raw, dict):
+            return [raw]
+
         return []
 
     # =========================================================================
@@ -643,7 +675,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         """
         schema_rows = getattr(self, "initial_context_schema", None) or _DEFAULT_INITIAL_CONTEXT_SCHEMA
         schema = self._build_wrapped_schema(schema_rows, "InitialContextModel", "Initial storyboard context.")
-        system_prompt = self._build_initial_context_prompt(audio_segments, existing_entities, title=title)
+        system_prompt = build_initial_context_prompt(self.input_value, audio_segments, existing_entities, title=title)
 
         if audio_segments:
             last = audio_segments[-1]
@@ -706,7 +738,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             key="scenes",
         )
 
-        system_prompt = build_scene_batch_prompt(initial_context, schema=scene_schema_rows, title=title)
+        system_prompt = build_scene_batch_prompt(self.input_value, initial_context, schema=scene_batch_schema, title=title)
 
         # Build user message with continuity signals
         parts: list[str] = [f"Batch {batch_num}/{total_batches}"]
@@ -724,55 +756,55 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
     # PROJECT DATABASE PERSISTENCE
     # =========================================================================
 
-    def _save_storyboard_to_project(self, project: Any, storyboard: dict) -> None:
-        """Merge *storyboard* into ``project.storyboard`` and persist to DB.
+    # def _save_storyboard_to_project(self, project: Any, storyboard: dict) -> None:
+    #     """Merge *storyboard* into ``project.storyboard`` and persist to DB.
 
-        Uses ``StoryboardManager.merge_into_project`` to ensure no properties
-        are accidentally excluded during the merge.  Non-fatal: logs errors
-        without re-raising so the component output is still returned even if
-        persistence fails.
+    #     Uses ``StoryboardManager.merge_into_project`` to ensure no properties
+    #     are accidentally excluded during the merge.  Non-fatal: logs errors
+    #     without re-raising so the component output is still returned even if
+    #     persistence fails.
 
-        Opens a fresh session, re-queries the ``Folder`` to get a session-
-        attached instance, applies the merge, and commits via the
-        ``flag_modified`` pattern (required for SQLAlchemy JSONB dirty-tracking).
-        """
-        if project is None:
-            logger.debug("No project object available — skipping DB persistence.")
-            return
+    #     Opens a fresh session, re-queries the ``Folder`` to get a session-
+    #     attached instance, applies the merge, and commits via the
+    #     ``flag_modified`` pattern (required for SQLAlchemy JSONB dirty-tracking).
+    #     """
+    #     if project is None:
+    #         logger.debug("No project object available — skipping DB persistence.")
+    #         return
 
-        project_id = str(project.id)
-        logger.info(f"Persisting storyboard to project '{project_id}'…")
+    #     project_id = str(project.id)
+    #     logger.info(f"Persisting storyboard to project '{project_id}'…")
 
-        try:
-            from sqlmodel import select
+    #     try:
+    #         from sqlmodel import select
 
-            from px.services.database.models.folder.model import Folder
-            from px.services.deps import get_db_service
+    #         from portals.services.database.models.folder.model import Folder
+    #         from px.services.deps import get_db_service
 
-            db_service = get_db_service()
-            with db_service.with_session() as session:
-                statement = select(Folder).where(Folder.id == project_id)
-                folder = session.exec(statement).first()
-                if not folder:
-                    logger.warning(f"Project folder '{project_id}' not found — cannot persist storyboard.")
-                    return
+    #         db_service = get_db_service()
+    #         with db_service.with_session() as session:
+    #             statement = select(Folder).where(Folder.id == project_id)
+    #             folder = session.exec(statement).first()
+    #             if not folder:
+    #                 logger.warning(f"Project folder '{project_id}' not found — cannot persist storyboard.")
+    #                 return
 
-                # Merge the generated storyboard into the existing one
-                merged = StoryboardManager.merge_into_project(
-                    current_storyboard=folder.storyboard or {},
-                    generated=storyboard,
-                )
+    #             # Merge the generated storyboard into the existing one
+    #             merged = StoryboardManager.merge_into_project(
+    #                 current_storyboard=folder.storyboard or {},
+    #                 generated=storyboard,
+    #             )
 
-                folder.storyboard = merged
-                # SQLAlchemy does not detect in-place mutations of JSONB columns;
-                # ``flag_modified`` forces a write on commit.
-                flag_modified(folder, "storyboard")
-                session.add(folder)
-                session.commit()
+    #             folder.storyboard = merged
+    #             # SQLAlchemy does not detect in-place mutations of JSONB columns;
+    #             # ``flag_modified`` forces a write on commit.
+    #             flag_modified(folder, "storyboard")
+    #             session.add(folder)
+    #             session.commit()
 
-            logger.info(f"Storyboard persisted to project '{project_id}' ({len(merged.get('scenes', []))} scenes).")
-        except Exception as exc:  # noqa: BLE001
-            logger.error(f"Non-fatal: failed to persist storyboard to project '{project_id}': {exc}")
+    #         logger.info(f"Storyboard persisted to project '{project_id}' ({len(merged.get('scenes', []))} scenes).")
+    #     except Exception as exc:  # noqa: BLE001
+    #         logger.error(f"Non-fatal: failed to persist storyboard to project '{project_id}': {exc}")
 
     # =========================================================================
     # OUTPUT — MULTI-PASS STORYBOARD
@@ -936,8 +968,13 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         self._token_usage = token_handler.get_usage()
         logger.info(f"Multi-pass generation complete — scenes={len(all_scenes)}, token_usage={self._token_usage}")
 
-        # Persist merged storyboard to project DB (non-fatal)
-        self._save_storyboard_to_project(project, storyboard)
+        # Execute batched database persistence
+        if project:
+            try:
+                self.ingest_storyboard_to_database(project_id_db, storyboard)
+            except Exception as exc:
+                # Log non-fatal error to ensure component still yields data to the canvas
+                logger.error(f"Non-fatal: Database ingestion failed for project '{project_id_db}'. Root cause: {exc}")
 
         return Data(data=storyboard)
 
@@ -964,12 +1001,12 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             msg = "Output schema cannot be empty"
             raise ValueError(msg)
 
-        output_model_ = build_model_from_schema(self.output_schema)
+        output_model_ = make_json_tolerant(build_model_from_schema(self.output_schema))
         output_model = create_model(
             schema_name,
             __doc__=f"A list of {schema_name}.",
             objects=(
-                list[output_model_],
+                tolerant_list_field(output_model_),
                 Field(
                     description=f"A list of {schema_name}.",  # type: ignore[valid-type]
                     min_length=1,  # help ensure non-empty output
@@ -987,7 +1024,8 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         # Generate structured output using Trustcall first, then fallback to Langchain if it fails
         result = self._extract_output_with_trustcall(llm, output_model, config_dict)
         if result is None:
-            result = self._extract_output_with_langchain(llm, output_model, config_dict)
+            raw_result = self._extract_output_with_langchain(llm, output_model, config_dict)
+            result = self.sanitize_llm_output(raw_result)
         self._token_usage = token_handler.get_usage()
 
         # OPTIMIZATION NOTE: Simplified processing based on trustcall response structure
@@ -1036,7 +1074,14 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
                 "Falling back is normal in such cases.)"
             )
             return None
-        return result or None
+        if not result or not result.get("responses"):
+            logger.warning(
+                f"Trustcall returned no validated '{schema.__name__}' "
+                f"after {result.get('attempts', '?') if result else '?'} attempt(s); "
+                "falling back to Langchain."
+            )
+            return None
+        return result
 
     def _extract_output_with_langchain(self, llm, schema: BaseModel, config_dict: dict) -> list[BaseModel] | None:
         _system_prompt = self.build_system_prompt()
@@ -1059,3 +1104,29 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             raise ValueError(msg) from fallback_error
 
         return result or None
+
+    def sanitize_llm_output(self, data):
+        """Recursively look for stringified lists/dicts and parse them into
+        native Python types.
+
+        Defense-in-depth alongside ``make_json_tolerant`` (used to build the
+        schemas passed to trustcall/``with_structured_output``): that helper
+        fixes validation up front so the *first* attempt succeeds, but this
+        remains useful for the Langchain ``with_structured_output`` fallback
+        path, whose returned dict may not have gone through the same
+        validated model. Reuses ``coerce_json_string`` so the "does this
+        string look like JSON, and does it parse" logic lives in one place.
+        """
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, str):
+                    decoded = coerce_json_string(value)
+                    if decoded is not value:
+                        data[key] = decoded
+                        self.sanitize_llm_output(decoded)
+                elif isinstance(value, (dict, list)):
+                    self.sanitize_llm_output(value)
+        elif isinstance(data, list):
+            for item in data:
+                self.sanitize_llm_output(item)
+        return data

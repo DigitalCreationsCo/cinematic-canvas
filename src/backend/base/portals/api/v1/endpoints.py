@@ -94,6 +94,8 @@ from portals.utils.compression import compress_response
 from portals.utils.version import get_version_info
 
 if TYPE_CHECKING:
+    from sqlmodel.ext.asyncio.session import AsyncSession
+
     from portals.events.event_manager import EventManager
 
 router = APIRouter(tags=["Base"])
@@ -134,9 +136,7 @@ async def get_all():
     from portals.interface.components import get_and_cache_all_types_dict
 
     try:
-        all_types = await get_and_cache_all_types_dict(
-            settings_service=get_settings_service()
-        )
+        all_types = await get_and_cache_all_types_dict(settings_service=get_settings_service())
         # Return compressed response using our utility function
         return compress_response(all_types)
 
@@ -195,9 +195,7 @@ async def simple_run_flow(
             msg = f"Flow {flow_id_str} has no data"
             raise ValueError(msg)
         graph_data = flow.data.copy()
-        graph_data = process_tweaks(
-            graph_data, input_request.tweaks or {}, stream=stream
-        )
+        graph_data = process_tweaks(graph_data, input_request.tweaks or {}, stream=stream)
         graph = Graph.from_payload(
             graph_data,
             flow_id=flow_id_str,
@@ -226,10 +224,7 @@ async def simple_run_flow(
                 if input_request.output_type == "debug"
                 or (
                     vertex.is_output
-                    and (
-                        input_request.output_type == "any"
-                        or input_request.output_type in vertex.id.lower()
-                    )  # type: ignore[operator]
+                    and (input_request.output_type == "any" or input_request.output_type in vertex.id.lower())  # type: ignore[operator]
                 )
             ]
         task_result, session_id = await run_graph_internal(
@@ -311,9 +306,7 @@ async def simple_run_flow_task(
         )
 
         if should_emit and flow_id is not None:
-            await webhook_event_manager.emit(
-                flow_id, "end", {"run_id": run_id, "success": True}
-            )
+            await webhook_event_manager.emit(flow_id, "end", {"run_id": run_id, "success": True})
 
         if telemetry_service and start_time is not None:
             await telemetry_service.log_package_run(
@@ -331,9 +324,7 @@ async def simple_run_flow_task(
         await logger.aexception(f"Error running flow {flow.id} task")
 
         if should_emit and flow_id is not None:
-            await webhook_event_manager.emit(
-                flow_id, "end", {"run_id": run_id, "success": False, "error": str(exc)}
-            )
+            await webhook_event_manager.emit(flow_id, "end", {"run_id": run_id, "success": False, "error": str(exc)})
 
         if telemetry_service and start_time is not None:
             await telemetry_service.log_package_run(
@@ -348,9 +339,7 @@ async def simple_run_flow_task(
         return None
 
 
-async def consume_and_yield(
-    queue: asyncio.Queue, client_consumed_queue: asyncio.Queue
-) -> AsyncGenerator:
+async def consume_and_yield(queue: asyncio.Queue, client_consumed_queue: asyncio.Queue) -> AsyncGenerator:
     """Consumes events from a queue and yields them to the client while tracking timing metrics.
 
     This coroutine continuously pulls events from the input queue and yields them to the client.
@@ -483,6 +472,88 @@ async def get_flow_for_current_user(
     return await get_flow_by_id_or_endpoint_name(flow_id_or_name, current_user.id)
 
 
+async def _check_feature_access(
+    flow: FlowRead | Flow,  # Both FlowRead and Flow share FlowBase's .data + .id
+    user: User | UserRead,
+    db: AsyncSession,
+) -> None:
+    """Verify all model types in the flow are allowed for the user's tier.
+
+    Raises HTTP 403 if any node uses a model type the user's subscription
+    tier does not have access to.
+    """
+    from portals.services.feature_authorizer import check_flow_feature_access
+
+    tier = user.subscription_tier or "free"
+    flow_data = flow.data if flow else None
+    if not flow_data:
+        return
+
+    denied = await check_flow_feature_access(flow_data, tier, db)
+    if denied:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Your subscription tier does not include: {', '.join(denied)}",
+        )
+
+
+async def _check_credits_and_deduct(
+    flow: FlowRead | Flow,  # Both FlowRead and Flow share FlowBase's .data + .id
+    user: User | UserRead,
+    db: AsyncSession,
+) -> int | None:
+    """Check and deduct credits before running a flow.
+
+    Inspects the flow graph for generative vertices (image/video generation),
+    computes the total credit cost for the user's tier, and atomically deducts
+    from their balance.  If credits are insufficient, queues a pending job and
+    raises HTTP 402.
+
+    Returns the number of credits deducted (0 if the flow is free), or raises
+    on insufficient credits.
+    """
+    from portals.services import credit_service, notification_service
+
+    # First check that the user's tier allows all features in this flow
+    await _check_feature_access(flow, user, db)
+
+    tier = user.subscription_tier or "free"
+    flow_data = flow.data if flow else None
+    if not flow_data:
+        return 0
+
+    required = await credit_service.compute_required_credits(flow_data, tier, db)
+    if required <= 0:
+        return 0
+
+    user_id = str(user.id)
+    flow_id_str = str(flow.id) if flow.id else ""
+
+    # Deduct atomically — returns False if insufficient balance
+    ok = await credit_service.deduct(user_id, required, db, reference_type="flow_run", reference_id=flow_id_str)
+    if not ok:
+        await credit_service.queue_job_on_insufficient_credits(
+            user_id,
+            flow_id_str,
+            required,
+            db,
+        )
+        await notification_service.create_notification(
+            str(user.id),
+            "credit_insufficient",
+            "Insufficient credits",
+            f"This flow requires {required} credits. Top up your account to run it.",
+            db,
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Insufficient credits. Required: {required}",
+        )
+
+    return required
+
+
 async def _run_flow_internal(
     *,
     background_tasks: BackgroundTasks,
@@ -492,6 +563,7 @@ async def _run_flow_internal(
     api_key_user: User | UserRead,
     context: dict | None,
     http_request: Request,
+    session: AsyncSession | None = None,
 ) -> StreamingResponse | RunResponse:
     """Internal function containing the core business logic for running a flow.
 
@@ -505,6 +577,7 @@ async def _run_flow_internal(
         api_key_user (User | UserRead): Authenticated user (either from session or API key)
         context (dict | None): Optional context to pass to the flow
         http_request (Request): The incoming HTTP request for extracting global variables
+        session (AsyncSession | None): Optional DB session for credit pre-flight check
 
     Returns:
         Union[StreamingResponse, RunResponse]: Either a streaming response for real-time results
@@ -516,6 +589,11 @@ async def _run_flow_internal(
     """
     await check_flow_user_permission(flow=flow, api_key_user=api_key_user)
 
+    # ── Credit pre-flight check ────────────────────────────────────
+    deducted_credits = 0
+    if session and flow is not None and api_key_user is not None:
+        deducted_credits = await _check_credits_and_deduct(flow, api_key_user, session) or 0
+
     telemetry_service = get_telemetry_service()
 
     # If input_request is None, manually parse the request body
@@ -524,9 +602,7 @@ async def _run_flow_internal(
         input_request = await parse_input_request_from_body(http_request)
 
     if flow is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Flow not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Flow not found")
 
     # Extract request-level variables from headers with prefix X-PORTALS-GLOBAL-VAR-*
     request_variables = extract_global_variables_from_headers(http_request.headers)
@@ -600,25 +676,26 @@ async def _run_flow_internal(
             ),
         )
         if "badly formed hexadecimal UUID string" in str(exc):
-            # This means the Flow ID is not a valid UUID which means it can't find the flow
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         if isinstance(exc, CustomComponentValidationError):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         if "not found" in str(exc):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-            ) from exc
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, exception=exc, flow=flow
-        ) from exc
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        # System error — refund credits if we deducted any
+        if deducted_credits > 0 and session:
+            from portals.services import credit_service
+
+            await credit_service.refund(
+                str(api_key_user.id),
+                deducted_credits,
+                session,
+                reference_type="flow_run_refund",
+                reference_id=str(flow.id),
+            )
+            await session.commit()
+        raise APIException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, exception=exc, flow=flow) from exc
     except InvalidChatInputError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except Exception as exc:
         background_tasks.add_task(
             telemetry_service.log_package_run,
@@ -630,16 +707,24 @@ async def _run_flow_internal(
                 run_id=run_id,
             ),
         )
-        raise APIException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, exception=exc, flow=flow
-        ) from exc
+        # System error — refund credits if we deducted any
+        if deducted_credits > 0 and session:
+            from portals.services import credit_service
+
+            await credit_service.refund(
+                str(api_key_user.id),
+                deducted_credits,
+                session,
+                reference_type="flow_run_refund",
+                reference_id=str(flow.id),
+            )
+            await session.commit()
+        raise APIException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, exception=exc, flow=flow) from exc
 
     return result
 
 
-@router.post(
-    "/run/{flow_id_or_name}", response_model=None, response_model_exclude_none=True
-)
+@router.post("/run/{flow_id_or_name}", response_model=None, response_model_exclude_none=True)
 async def simplified_run_flow(
     *,
     background_tasks: BackgroundTasks,
@@ -649,6 +734,7 @@ async def simplified_run_flow(
     api_key_user: Annotated[UserRead, Depends(api_key_security)],
     context: dict | None = None,
     http_request: Request,
+    session: DbSession,
 ):
     """Executes a specified flow by ID with support for streaming and telemetry (API key auth).
 
@@ -694,6 +780,7 @@ async def simplified_run_flow(
         api_key_user=api_key_user,
         context=context,
         http_request=http_request,
+        session=session,
     )
 
 
@@ -712,6 +799,7 @@ async def simplified_run_flow_session(
     api_key_user: CurrentActiveUser,
     context: dict | None = None,
     http_request: Request,
+    session: DbSession,
 ):
     """Executes a specified flow by ID with support for streaming and telemetry (session auth).
 
@@ -765,6 +853,7 @@ async def simplified_run_flow_session(
         api_key_user=api_key_user,
         context=context,
         http_request=http_request,
+        session=session,
     )
 
 
@@ -804,9 +893,7 @@ async def webhook_events_stream(
                     break
 
                 try:
-                    event = await asyncio.wait_for(
-                        queue.get(), timeout=SSE_HEARTBEAT_TIMEOUT_SECONDS
-                    )
+                    event = await asyncio.wait_for(queue.get(), timeout=SSE_HEARTBEAT_TIMEOUT_SECONDS)
                     event_type = event["event"]
                     event_data = json.dumps(event["data"])
                     yield f"event: {event_type}\ndata: {event_data}\n\n"
@@ -829,9 +916,7 @@ async def webhook_events_stream(
     )
 
 
-@router.post(
-    "/webhook/{flow_id_or_name}", response_model=dict, status_code=HTTPStatus.ACCEPTED
-)  # noqa: RUF100, FAST003
+@router.post("/webhook/{flow_id_or_name}", response_model=dict, status_code=HTTPStatus.ACCEPTED)  # noqa: RUF100, FAST003
 async def webhook_run_flow(
     flow_id_or_name: str,
     flow: Annotated[Flow, Depends(get_flow_by_id_or_endpoint_name)],
@@ -874,9 +959,7 @@ async def webhook_run_flow(
         tweaks = {}
 
         for component in webhook_components:
-            tweaks[component["id"]] = {
-                "data": data.decode() if isinstance(data, bytes) else data
-            }
+            tweaks[component["id"]] = {"data": data.decode() if isinstance(data, bytes) else data}
         input_request = SimplifiedAPIRequest(
             input_value="",
             input_type="chat",
@@ -906,9 +989,7 @@ async def webhook_run_flow(
             )
         )
         # Fire-and-forget: log exceptions but don't block
-        background_task.add_done_callback(
-            lambda t: t.exception() if not t.cancelled() else None
-        )
+        background_task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
     except Exception as exc:
         error_msg = str(exc)
         raise HTTPException(status_code=500, detail=error_msg) from exc
@@ -990,13 +1071,9 @@ async def experimental_run_flow(
 
     if session_id:
         try:
-            session_data = await session_service.load_session(
-                session_id, flow_id=flow_id_str
-            )
+            session_data = await session_service.load_session(session_id, flow_id=flow_id_str)
         except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
         graph, _artifacts = session_data or (None, None)
         if graph is None:
             msg = f"Session {session_id} not found"
@@ -1005,27 +1082,17 @@ async def experimental_run_flow(
         try:
             # Get the flow that matches the flow_id and belongs to the user
             # flow = session.query(Flow).filter(Flow.id == flow_id).filter(Flow.user_id == api_key_user.id).first()
-            stmt = (
-                select(Flow)
-                .where(Flow.id == flow.id)
-                .where(Flow.user_id == api_key_user.id)
-            )
+            stmt = select(Flow).where(Flow.id == flow.id).where(Flow.user_id == api_key_user.id)
             flow = (await session.exec(stmt)).first()
         except sa.exc.StatementError as exc:
             # StatementError('(builtins.ValueError) badly formed hexadecimal UUID string')
             if "badly formed hexadecimal UUID string" in str(exc):
                 await logger.aerror(f"Flow ID {flow_id_str} is not a valid UUID")
                 # This means the Flow ID is not a valid UUID which means it can't find the flow
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-                ) from exc
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-            ) from exc
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
         except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
         if flow is None:
             msg = f"Flow {flow_id_str} not found"
@@ -1039,13 +1106,14 @@ async def experimental_run_flow(
             graph_data = process_tweaks(graph_data, tweaks or {})
             graph = Graph.from_payload(graph_data, flow_id=flow_id_str)
         except CustomComponentValidationError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+    # ── Credit pre-flight check (after graph/session validation) ──
+    deducted_exp_credits = 0
+    if flow is not None:
+        deducted_exp_credits = await _check_credits_and_deduct(flow, api_key_user, session) or 0
 
     try:
         task_result, session_id = await run_graph_internal(
@@ -1057,9 +1125,18 @@ async def experimental_run_flow(
             stream=stream,
         )
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        ) from exc
+        if deducted_exp_credits > 0:
+            from portals.services import credit_service
+
+            await credit_service.refund(
+                str(api_key_user.id),
+                deducted_exp_credits,
+                session,
+                reference_type="flow_run_refund",
+                reference_id=flow_id_str,
+            )
+            await session.commit()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
     return RunResponse(outputs=task_result, session_id=session_id)
 
@@ -1131,9 +1208,7 @@ async def create_upload_file(
 
     try:
         flow_id_str = str(flow.id)
-        file_path = await asyncio.to_thread(
-            save_uploaded_file, file, folder_name=flow_id_str
-        )
+        file_path = await asyncio.to_thread(save_uploaded_file, file, folder_name=flow_id_str)
 
         return UploadFileResponse(
             flow_id=flow_id_str,
@@ -1176,13 +1251,9 @@ async def custom_component(
 
     component = Component(_code=raw_code.code)
 
-    built_frontend_node, component_instance = build_custom_component_template(
-        component, user_id=user.id
-    )
+    built_frontend_node, component_instance = build_custom_component_template(component, user_id=user.id)
     if raw_code.frontend_node is not None:
-        built_frontend_node = await component_instance.update_frontend_node(
-            built_frontend_node, raw_code.frontend_node
-        )
+        built_frontend_node = await component_instance.update_frontend_node(built_frontend_node, raw_code.frontend_node)
 
     tool_mode: bool = built_frontend_node.get("tool_mode", False)
     if isinstance(component_instance, Component):
@@ -1195,9 +1266,7 @@ async def custom_component(
     return CustomComponentResponse(data=built_frontend_node, type=type_)
 
 
-@router.post(
-    "/custom_component/update", status_code=HTTPStatus.OK, include_in_schema=False
-)
+@router.post("/custom_component/update", status_code=HTTPStatus.OK, include_in_schema=False)
 async def custom_component_update(
     code_request: UpdateCustomComponentRequest,
     user: CurrentActiveUser,
@@ -1249,9 +1318,7 @@ async def custom_component_update(
             load_from_db_fields = [
                 field_name
                 for field_name, field_dict in template.items()
-                if isinstance(field_dict, dict)
-                and field_dict.get("load_from_db")
-                and field_dict.get("value")
+                if isinstance(field_dict, dict) and field_dict.get("load_from_db") and field_dict.get("value")
             ]
             if isinstance(cc_instance, Component):
                 # ``fallback_to_env_vars=True`` so a missing variable (e.g. an
@@ -1277,12 +1344,8 @@ async def custom_component_update(
             field_value=code_request.field_value,
             field_name=code_request.field,
         )
-        if "code" not in updated_build_config or not updated_build_config.get(
-            "code", {}
-        ).get("value"):
-            updated_build_config = add_code_field_to_build_config(
-                updated_build_config, code_request.code
-            )
+        if "code" not in updated_build_config or not updated_build_config.get("code", {}).get("value"):
+            updated_build_config = add_code_field_to_build_config(updated_build_config, code_request.code)
         component_node["template"] = updated_build_config
 
         if isinstance(cc_instance, Component):
@@ -1326,9 +1389,7 @@ async def get_config(
         if user is None:
             return PublicConfigResponse.from_settings(settings_service.settings)
 
-        return ConfigResponse.from_settings(
-            settings_service.settings, settings_service.auth_settings
-        )
+        return ConfigResponse.from_settings(settings_service.settings, settings_service.auth_settings)
 
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

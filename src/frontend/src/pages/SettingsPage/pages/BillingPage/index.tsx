@@ -1,9 +1,14 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import {
+  useGetCreditPackages,
   useGetProducts,
   useGetSubscription,
   usePostCreateCheckout,
+  usePostCreateCreditCheckout,
   usePostCreatePortal,
 } from "@/controllers/API/queries/subscription";
 import useAlertStore from "@/stores/alertStore";
@@ -11,32 +16,88 @@ import useAlertStore from "@/stores/alertStore";
 const TIER_ICONS: Record<string, string> = {
   free: "Gift",
   pro: "Zap",
-  enterprise: "Building2",
+  studio: "Building2",
 };
 
 const TIER_COLORS: Record<string, string> = {
   free: "bg-muted text-muted-foreground",
   pro: "bg-amber-100 text-amber-700 border-amber-200",
-  enterprise: "bg-purple-100 text-purple-700 border-purple-200",
+  studio: "bg-purple-100 text-purple-700 border-purple-200",
 };
 
 const CHECKOUT_BUTTON_COLORS: Record<string, string> = {
   free: "",
   pro: "bg-amber-600 hover:bg-amber-700 text-white",
-  enterprise: "bg-purple-600 hover:bg-purple-700 text-white",
+  studio: "bg-purple-600 hover:bg-purple-700 text-white",
 };
 
 const BillingPage = () => {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const setSuccessData = useAlertStore((state) => state.setSuccessData);
   const setErrorData = useAlertStore((state) => state.setErrorData);
 
   const { data: subscription, isLoading: subLoading } = useGetSubscription();
   const { data: products, isLoading: productsLoading } = useGetProducts();
+  const {
+    data: creditPackages,
+    isLoading: creditPkgLoading,
+    isError: creditPkgError,
+  } = useGetCreditPackages();
   const { mutate: createCheckout, isPending: checkoutLoading } =
     usePostCreateCheckout();
   const { mutate: createPortal, isPending: portalLoading } =
     usePostCreatePortal();
+  const { mutate: createCreditCheckout, isPending: creditCheckoutLoading } =
+    usePostCreateCreditCheckout();
+
+  // Handle Stripe redirect query params
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const creditSuccess = searchParams.get("credit_success");
+    const canceled = searchParams.get("canceled");
+    let changed = false;
+
+    if (success != null) {
+      if (success === "true") {
+        setSuccessData({ title: "Subscription Updated" });
+      }
+      searchParams.delete("success");
+      changed = true;
+    }
+
+    if (creditSuccess != null) {
+      if (creditSuccess === "true") {
+        setSuccessData({ title: "Credits Purchased" });
+        queryClient.invalidateQueries({ queryKey: ["useGetSubscription"] });
+        queryClient.invalidateQueries({ queryKey: ["useGetCreditCosts"] });
+      }
+      searchParams.delete("credit_success");
+      changed = true;
+    }
+
+    if (canceled != null) {
+      if (canceled === "true") {
+        setErrorData({
+          title: "Checkout Canceled",
+          list: ["The checkout was canceled. No changes were made."],
+        });
+      }
+      searchParams.delete("canceled");
+      changed = true;
+    }
+
+    if (changed) {
+      setSearchParams(searchParams, { replace: true });
+    }
+    // intentionally run only when searchParams keys change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    searchParams.get("success"),
+    searchParams.get("credit_success"),
+    searchParams.get("canceled"),
+  ]);
 
   const handleUpgrade = (tierId: string) => {
     createCheckout(
@@ -51,6 +112,26 @@ const BillingPage = () => {
             list: [
               error?.response?.data?.detail ||
                 "Failed to create checkout session",
+            ],
+          });
+        },
+      },
+    );
+  };
+
+  const handleBuyCredits = (packageId: number) => {
+    createCreditCheckout(
+      { package_id: packageId },
+      {
+        onSuccess: (data) => {
+          window.location.href = data.url;
+        },
+        onError: (error) => {
+          setErrorData({
+            title: "Checkout Error",
+            list: [
+              error?.response?.data?.detail ||
+                "Failed to create credit checkout session",
             ],
           });
         },
@@ -143,6 +224,78 @@ const BillingPage = () => {
                 {portalLoading ? "Loading..." : "Manage Billing"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Credit Balance & Buy Credits Card */}
+      {subscription && (
+        <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Credit Balance</p>
+              <div className="mt-1 flex items-baseline gap-3">
+                <p className="text-lg font-bold">
+                  {(subscription.allowance_balance || 0) +
+                    (subscription.purchased_balance || 0)}
+                </p>
+                <span className="text-xs text-muted-foreground">
+                  ({subscription.allowance_balance || 0} monthly +{" "}
+                  {subscription.purchased_balance || 0} purchased)
+                </span>
+              </div>
+            </div>
+            <ForwardedIconComponent
+              name="Coins"
+              className="h-8 w-8 text-amber-500"
+            />
+          </div>
+
+          {/* Buy Credits — available packages */}
+          <div className="mt-4 border-t pt-4">
+            <p className="mb-3 text-sm font-medium">Buy Credits</p>
+            {creditPkgLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ForwardedIconComponent
+                  name="Loader2"
+                  className="h-4 w-4 animate-spin"
+                />
+                Loading packages...
+              </div>
+            ) : creditPkgError ? (
+              <p className="text-sm text-red-500">
+                Failed to load credit packages.
+              </p>
+            ) : creditPackages && creditPackages.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {creditPackages.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    onClick={() => handleBuyCredits(pkg.id)}
+                    disabled={creditCheckoutLoading}
+                    className="inline-flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+                  >
+                    <ForwardedIconComponent
+                      name="Coins"
+                      className="h-3.5 w-3.5 text-amber-500"
+                    />
+                    {pkg.credits.toLocaleString()} credits
+                    {pkg.price_cents != null &&
+                      ` — $${(pkg.price_cents / 100).toFixed(0)}`}
+                  </button>
+                ))}
+                {creditCheckoutLoading && (
+                  <ForwardedIconComponent
+                    name="Loader2"
+                    className="h-4 w-4 animate-spin self-center text-muted-foreground"
+                  />
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No packages available.
+              </p>
+            )}
           </div>
         </div>
       )}

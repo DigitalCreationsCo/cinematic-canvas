@@ -9,6 +9,7 @@ from px.base.models.unified_models import (
 )
 from px.custom.custom_component.component import Component
 from px.helpers.base_model import build_model_from_schema
+from px.helpers.llm_json_tolerance import make_json_tolerant, tolerant_list_field
 from px.io import (
     MessageTextInput,
     ModelInput,
@@ -161,12 +162,12 @@ class StructuredOutputComponent(Component):
             msg = "Output schema cannot be empty"
             raise ValueError(msg)
 
-        output_model_ = build_model_from_schema(self.output_schema)
+        output_model_ = make_json_tolerant(build_model_from_schema(self.output_schema))
         output_model = create_model(
             schema_name,
             __doc__=f"A list of {schema_name}.",
             objects=(
-                list[output_model_],
+                tolerant_list_field(output_model_),
                 Field(
                     description=f"A list of {schema_name}.",  # type: ignore[valid-type]
                     min_length=1,  # help ensure non-empty output
@@ -254,9 +255,14 @@ class StructuredOutputComponent(Component):
                 "Falling back is normal in such cases.)"
             )
             return None
-        return (
-            result or None
-        )  # langchain fallback is used if error occurs or the result is empty
+        if not result or not result.get("responses"):
+            logger.warning(
+                f"Trustcall returned no validated '{schema.__name__}' "
+                f"after {result.get('attempts', '?') if result else '?'} attempt(s); "
+                "falling back to Langchain."
+            )
+            return None
+        return result
 
     def _extract_output_with_langchain(
         self, llm, schema: BaseModel, config_dict: dict

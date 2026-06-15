@@ -123,13 +123,11 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("reference_id", sa.Text(), nullable=False),
@@ -138,7 +136,6 @@ def upgrade() -> None:
             "aliases",
             sa.String(),
             nullable=False,
-            server_default=sa.text(""),
         ),
         sa.Column("physical_traits", JSON, nullable=False),
         sa.Column("state", JSON, nullable=False),
@@ -156,13 +153,11 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
         sa.Column("reference_id", sa.Text(), nullable=False),
@@ -197,77 +192,71 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.ForeignKeyConstraint(["project_id"], ["folder.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-
-    op.create_table(
-        "scenes",
-        sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-        sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
-        sa.Column("scene_index", sa.Integer(), nullable=False),
-        sa.Column("name", sa.Text(), nullable=False),
-        sa.Column("start_time", sa.Float(), nullable=False),
-        sa.Column("end_time", sa.Float(), nullable=False),
-        sa.Column("duration", sa.Float(), nullable=False),
-        sa.Column("type", sa.Text(), nullable=False),
-        sa.Column("lyrics", sa.Text(), nullable=True),
-        sa.Column("musical_description", sa.Text(), nullable=True),
-        sa.Column("music_change", sa.Text(), nullable=True),
-        sa.Column("intensity", sa.Text(), nullable=True),
-        sa.Column("mood", sa.Text(), nullable=False),
-        sa.Column("tempo", sa.Text(), nullable=False),
-        sa.Column("audio_evidence", sa.Text(), nullable=False),
-        sa.Column("transient_impact", sa.Text(), nullable=False),
-        sa.Column("audio_sync", sa.Text(), nullable=False),
-        sa.Column("transition_type", sa.Text(), nullable=False),
-        sa.Column("shot_type", sa.Text(), nullable=False),
-        sa.Column("camera_angle", sa.Text(), nullable=False),
-        sa.Column("camera_movement", sa.Text(), nullable=False),
-        sa.Column("composition", JSON(), nullable=False),
-        sa.Column("lighting", JSON(), nullable=False),
-        sa.Column(
-            "continuity_notes",
-            sa.String(),
-            nullable=False,
-            server_default=sa.text(""),
-        ),
-        sa.Column(
-            "character_reference_ids",
-            sa.String(),
-            nullable=False,
-            server_default=sa.text(""),
-        ),
-        sa.Column("location_reference_id", sa.Text(), nullable=False),
-        sa.Column("location_id", sa.Uuid(as_uuid=True), nullable=False),
-        sa.Column("status", sa.Text(), nullable=False, server_default=sa.text("'pending'")),
-        sa.Column("progress_message", sa.Text(), nullable=True),
-        sa.Column("guidance_level", sa.Integer(), nullable=True),
-        sa.ForeignKeyConstraint(["project_id"], ["folder.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["location_id"], ["locations.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index("scenes_guidance_idx", "scenes", ["guidance_level"], unique=False)
+    if 'scenes' not in inspector.get_table_names():
+        op.create_table(
+            "scenes",
+            sa.Column("id", sa.Uuid(as_uuid=True), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                nullable=False,
+            ),
+            sa.Column("project_id", sa.Uuid(as_uuid=True), nullable=False),
+            sa.Column("scene_index", sa.Integer(), nullable=False),
+            sa.Column("name", sa.Text(), nullable=False),
+            sa.Column("start_time", sa.Float(), nullable=False),
+            sa.Column("end_time", sa.Float(), nullable=False),
+            sa.Column("duration", sa.Float(), nullable=False),
+            sa.Column("type", sa.Text(), nullable=False),
+            sa.Column("lyrics", sa.Text(), nullable=True),
+            sa.Column("musical_description", sa.Text(), nullable=True),
+            sa.Column("music_change", sa.Text(), nullable=True),
+            sa.Column("intensity", sa.Text(), nullable=True),
+            sa.Column("mood", sa.Text(), nullable=False),
+            sa.Column("tempo", sa.Text(), nullable=False),
+            sa.Column("audio_evidence", sa.Text(), nullable=False),
+            sa.Column("transient_impact", sa.Text(), nullable=False),
+            sa.Column("audio_sync", sa.Text(), nullable=False),
+            sa.Column("transition_type", sa.Text(), nullable=False),
+            sa.Column("shot_type", sa.Text(), nullable=False),
+            sa.Column("camera_angle", sa.Text(), nullable=False),
+            sa.Column("camera_movement", sa.Text(), nullable=False),
+            sa.Column("composition", JSON(), nullable=False),
+            sa.Column("lighting", JSON(), nullable=False),
+            sa.Column(
+                "continuity_notes",
+                sa.String(),
+                nullable=False,
+            ),
+            sa.Column(
+                "character_reference_ids",
+                sa.String(),
+                nullable=False,
+            ),
+            sa.Column("location_reference_id", sa.Text(), nullable=False),
+            sa.Column("location_id", sa.Uuid(as_uuid=True), nullable=False),
+            sa.Column("status", sa.Text(), nullable=False, server_default=sa.text("'pending'")),
+            sa.Column("progress_message", sa.Text(), nullable=True),
+            sa.Column("guidance_level", sa.Integer(), nullable=True),
+            sa.ForeignKeyConstraint(["project_id"], ["folder.id"], ondelete="CASCADE"),
+            sa.ForeignKeyConstraint(["location_id"], ["locations.id"], ondelete="CASCADE"),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        op.create_index("scenes_guidance_idx", "scenes", ["guidance_level"], unique=False)
 
     op.create_table(
         "scenes_to_characters",
@@ -311,13 +300,11 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.Column(
             "last_referenced_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.PrimaryKeyConstraint("data"),
     )
@@ -344,13 +331,11 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.text("now()"),
         ),
         sa.ForeignKeyConstraint(["project_id"], ["folder.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["scene_id"], ["scenes.id"], ondelete="NO ACTION"),
@@ -395,15 +380,14 @@ def upgrade() -> None:
             "metadata",
             JSON,
             nullable=True,
-            server_default=sa.text("'{}'::jsonb"),
+            server_default=sa.text("'{}'")
         ),
         sa.Column("user_feedback", JSON, nullable=True),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.text("now()"),
+            nullable=False
         ),
         sa.ForeignKeyConstraint(["asset_entry_id"], ["asset_entries.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["media_id"], ["media_objects.data"], ondelete="RESTRICT"),
@@ -413,19 +397,19 @@ def upgrade() -> None:
         "idx_unq_asset_version_seq",
         "asset_versions",
         ["asset_entry_id", "version"],
-        unique=True,
+        unique=True
     )
     op.create_index(
         "idx_asset_history_lookup",
         "asset_versions",
         ["asset_entry_id", "version"],
-        unique=False,
+        unique=False
     )
     op.create_index(
         "idx_entry_version",
         "asset_versions",
         ["asset_entry_id", "version"],
-        unique=False,
+        unique=False
     )
 
     op.create_table(
@@ -447,11 +431,10 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            server_default=sa.text("now()"),
         ),
         sa.Column("happened_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["project_id"], ["folder.id"], onupdate="CASCADE", ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id")
     )
     op.create_index("idx_blocks_project_id", "blocks", ["project_id"], unique=False)
     op.create_index(
@@ -459,7 +442,7 @@ def upgrade() -> None:
         "blocks",
         ["search_vector"],
         unique=False,
-        postgresql_using="gin",
+        postgresql_using="gin"
     )
 
     op.create_table(
@@ -472,11 +455,10 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             nullable=True,
-            server_default=sa.text("now()"),
         ),
         sa.Column("happened_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["project_id"], ["folder.id"], onupdate="CASCADE", ondelete="NO ACTION"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id")
     )
 
 

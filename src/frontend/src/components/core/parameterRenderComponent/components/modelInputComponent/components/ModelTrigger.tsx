@@ -3,6 +3,11 @@ import { useTranslation } from "react-i18next";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import { Button } from "@/components/ui/button";
 import { PopoverTrigger } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/utils/utils";
 import { ModelOption, SelectedModel } from "../types";
 
@@ -17,6 +22,8 @@ interface ModelTriggerProps {
   id: string;
   refButton: RefObject<HTMLButtonElement | null>;
   showEmptyState?: boolean;
+  /** Credit cost per operation for the model type, shown as a tooltip */
+  creditCost?: number;
 }
 
 const ModelTrigger = ({
@@ -30,6 +37,7 @@ const ModelTrigger = ({
   id,
   refButton,
   showEmptyState = false,
+  creditCost,
 }: ModelTriggerProps) => {
   const { t } = useTranslation();
   const renderSelectedIcon = () => {
@@ -48,22 +56,43 @@ const ModelTrigger = ({
   // Check if we're in empty state mode (showEmptyState=true and no options)
   const isEmptyStateMode = showEmptyState && options.length === 0;
 
+  const triggerButton = (
+    <Button
+      variant="outline"
+      size="xs"
+      className="dropdown-component-false-outline w-full justify-start gap-2 py-2 font-normal"
+      onClick={onOpenManageProviders}
+    >
+      <ForwardedIconComponent
+        name="Brain"
+        className="h-4 w-4 flex-shrink-0 text-muted-foreground"
+      />
+      <div className="text-[13px] text-muted-foreground">{placeholder}</div>
+    </Button>
+  );
+
   if (!hasEnabledProviders && !showEmptyState && options.length === 0) {
-    return (
-      <Button
-        variant="outline"
-        size="xs"
-        className="dropdown-component-false-outline w-full justify-start gap-2 py-2 font-normal"
-        onClick={onOpenManageProviders}
-      >
-        <ForwardedIconComponent
-          name="Brain"
-          className="h-4 w-4 flex-shrink-0 text-muted-foreground"
-        />
-        <div className="text-[13px] text-muted-foreground">{placeholder}</div>
-      </Button>
-    );
+    return triggerButton;
   }
+
+  const modelNameEl = (
+    <span className="truncate">
+      {disabled ? (
+        t("component.receivingInput")
+      ) : isEmptyStateMode ? (
+        <div className="truncate text-muted-foreground">No models enabled</div>
+      ) : (
+        <div
+          className={cn(
+            "truncate",
+            !selectedModel?.name && "text-muted-foreground",
+          )}
+        >
+          {selectedModel?.name || "Select a model"}
+        </div>
+      )}
+    </span>
+  );
 
   return (
     <div className="flex w-full flex-col">
@@ -86,24 +115,22 @@ const ModelTrigger = ({
             data-testid={`value-dropdown-${id}`}
           >
             {renderSelectedIcon()}
-            <span className="truncate">
-              {disabled ? (
-                t("component.receivingInput")
-              ) : isEmptyStateMode ? (
-                <div className="truncate text-muted-foreground">
-                  No models enabled
-                </div>
-              ) : (
-                <div
-                  className={cn(
-                    "truncate",
-                    !selectedModel?.name && "text-muted-foreground",
-                  )}
-                >
-                  {selectedModel?.name || "Select a model"}
-                </div>
-              )}
-            </span>
+            {creditCost != null && selectedModel?.name ? (
+              <Tooltip>
+                <TooltipTrigger asChild>{modelNameEl}</TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="text-xs">
+                    This model costs{" "}
+                    <span className="font-semibold">
+                      {creditCost} credit{creditCost !== 1 ? "s" : ""}
+                    </span>{" "}
+                    per operation.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              modelNameEl
+            )}
           </span>
           <ForwardedIconComponent
             name={disabled ? "Lock" : "ChevronsUpDown"}
