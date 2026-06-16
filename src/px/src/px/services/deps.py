@@ -83,19 +83,37 @@ def get_db_service() -> DatabaseServiceProtocol:
 
 
 def get_project_service() -> ProjectServiceProtocol:
-    """Retrieves the database service instance.
+    """Retrieve a database-backed ``ProjectService`` when possible.
 
-    Returns a Abstract ProjectService if no real service is available -- still troubleshooting and testing px / portals service boundaries
+    Resolution order
+    ----------------
+    1. px service manager (when a ``PROJECT_SERVICE`` factory is registered).
+    2. ``portals.services.deps.get_project_service()`` — the backend factory
+       that creates the real ``ProjectService`` wired to the database.
+     3. px ``ProjectService`` no-op fallback (standalone px without database).
+
+    This ensures narrative components can always call ``ingest_storyboard_payload``
+    without raising, while silently skipping persistence when no DB is available.
     """
-    from px.services.project.service import ProjectService
     from px.services.schema import ServiceType
 
+    # 1. Already registered in px manager?
     project_service = get_service(ServiceType.PROJECT_SERVICE)
-    if project_service is None:
-        # Return noop project service when no real database session is available
-        # This allows px to work in standalone mode without requiring database setup
-        return ProjectService()
-    return project_service
+    if project_service is not None:
+        return project_service
+
+    # 2. Try the portals backend factory (database-backed).
+    try:
+        from portals.services.deps import get_project_service as portal_get
+
+        return portal_get()
+    except Exception:  # noqa: BLE001, S110
+        pass
+
+    # 3. Ultimate fallback — no-op that logs a warning.
+    from px.services.project.service import ProjectService
+
+    return ProjectService()
 
 
 def get_storage_service() -> StorageServiceProtocol | None:

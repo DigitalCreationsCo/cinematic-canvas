@@ -88,30 +88,20 @@ class DatabaseServiceProtocol(Protocol):
 
 
 class ProjectServiceProtocol(Protocol):
-    """Protocol for project service."""
+    """Protocol for project service.
+
+    Only the public ``ingest_storyboard_payload`` method is part of the
+    contract.  Private methods (``_batch_upsert_entities``,
+    ``_merge_project_storyboard``, ``_deduplicate_entities``) are
+    implementation details of each concrete subclass.
+    """
 
     @abstractmethod
     def ingest_storyboard_payload(self, project_id: str, storyboard_payload: dict[str, Any]) -> None:
         """Master method to orchestrate deduplication, batch ingestion, and storyboard updates.
+
         Must be implemented to manage the execution lifecycle and session transactions.
         """
-
-    @abstractmethod
-    def _batch_upsert_entities(self, project_id: str, model_class: type, entities: list[dict[str, Any]]) -> None:
-        """Defines how a batch of model entities (Characters, Locations, Props) are synced or updated."""
-
-    @abstractmethod
-    def _merge_project_storyboard(self, project_id: str, generated_payload: dict[str, Any]) -> None:
-        """Defines how the storyboard JSON state is merged into the project's root record."""
-
-    def _deduplicate_entities(self, entities: list[dict[str, Any]], unique_key: str = "name") -> list[dict[str, Any]]:
-        """Deduplicates a list of dictionaries based on a unique key, favoring the last occurrence.
-        Provided as a default utility but can be overridden if custom matching logic is required.
-        """
-        if not entities:
-            return []
-        deduplicated_map = {entity.get(unique_key): entity for entity in entities if entity.get(unique_key)}
-        return list(deduplicated_map.values())
 
 
 class StorageServiceProtocol(Protocol):

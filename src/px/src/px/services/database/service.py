@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 
 
 class NoopDatabaseService:
@@ -22,4 +22,18 @@ class NoopDatabaseService:
         from px.services.session import NoopSession
 
         async with NoopSession() as session:
+            yield session
+
+    @contextmanager
+    def with_session(self):
+        """Synchronous context manager that yields a ``SyncNoopSession``.
+
+        Provides a session with sync methods (``exec``, ``commit``, etc.)
+        so that sync-only callers such as ``ProjectService``,
+        ``BaseStateAwareComponent``, and ``BaseEntityReadPatchComponent``
+        do not receive unawaited coroutines from the async ``NoopSession``.
+        """
+        from px.services.session import SyncNoopSession
+
+        with SyncNoopSession() as session:
             yield session

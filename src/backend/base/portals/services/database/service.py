@@ -5,7 +5,7 @@ import re
 import sqlite3
 import sys
 import time
-from contextlib import asynccontextmanager, nullcontext
+from contextlib import asynccontextmanager, contextmanager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -14,6 +14,17 @@ import anyio
 import sqlalchemy as sa
 from alembic import command, util
 from alembic.config import Config
+from px.log.logger import logger
+from px.services.deps import session_scope
+from sqlalchemy import event, inspect
+from sqlalchemy.dialects import sqlite as dialect_sqlite
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
+from sqlmodel import SQLModel, select, text
+from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
+from tenacity import retry, stop_after_attempt, wait_fixed
+
 from portals.helpers.windows_postgres_helper import (
     configure_windows_postgres_event_loop,
 )
@@ -29,16 +40,6 @@ from portals.services.database.session import NoopSession
 from portals.services.database.utils import Result, TableResults
 from portals.services.deps import get_settings_service
 from portals.services.utils import teardown_superuser
-from px.log.logger import logger
-from px.services.deps import session_scope
-from sqlalchemy import event, inspect
-from sqlalchemy.dialects import sqlite as dialect_sqlite
-from sqlalchemy.engine import Engine
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel, select, text
-from sqlmodel.ext.asyncio.session import AsyncSession as SQLModelAsyncSession
-from tenacity import retry, stop_after_attempt, wait_fixed
 
 if TYPE_CHECKING:
     from px.services.settings.service import SettingsService
@@ -48,9 +49,7 @@ class UnsupportedPostgreSQLVersionError(Exception):
     """Raised when the PostgreSQL version is below the minimum required."""
 
 
-_PG_VERSION_QUERY = sa.text(
-    "SELECT current_setting('server_version_num'), current_setting('server_version')"
-)
+_PG_VERSION_QUERY = sa.text("SELECT current_setting('server_version_num'), current_setting('server_version')")
 
 
 def _check_version_row(version_num_str: str, version_str: str) -> None:
@@ -131,9 +130,7 @@ class DatabaseService(Service):
         # Check if Alembic should log to stdout or a file.
         # If file, check if the provided path is absolute, cross-platform.
         alembic_log_file = self.settings_service.settings.alembic_log_file
-        self.alembic_log_to_stdout = (
-            self.settings_service.settings.alembic_log_to_stdout
-        )
+        self.alembic_log_to_stdout = self.settings_service.settings.alembic_log_to_stdout
         if self.alembic_log_to_stdout:
             self.alembic_log_path = None
         elif Path(alembic_log_file).is_absolute():
@@ -145,9 +142,7 @@ class DatabaseService(Service):
         if self.alembic_log_to_stdout:
             return
         # Ensure the directory and file for the alembic log file exists
-        await anyio.Path(self.alembic_log_path.parent).mkdir(
-            parents=True, exist_ok=True
-        )
+        await anyio.Path(self.alembic_log_path.parent).mkdir(parents=True, exist_ok=True)
         await anyio.Path(self.alembic_log_path).touch(exist_ok=True)
 
     def reload_engine(self) -> None:
@@ -194,14 +189,10 @@ class DatabaseService(Service):
 
         # Override individual settings if explicitly set
         if "pool_size" in settings.model_fields_set:
-            logger.warning(
-                "pool_size is deprecated. Use db_connection_settings['pool_size'] instead."
-            )
+            logger.warning("pool_size is deprecated. Use db_connection_settings['pool_size'] instead.")
             connection_kwargs["pool_size"] = settings.pool_size
         if "max_overflow" in settings.model_fields_set:
-            logger.warning(
-                "max_overflow is deprecated. Use db_connection_settings['max_overflow'] instead."
-            )
+            logger.warning("max_overflow is deprecated. Use db_connection_settings['max_overflow'] instead.")
             connection_kwargs["max_overflow"] = settings.max_overflow
 
         return connection_kwargs
@@ -218,9 +209,7 @@ class DatabaseService(Service):
                 logger.debug(f"Using poolclass: {poolclass_key}.")
                 kwargs["poolclass"] = pool_class
             else:
-                logger.error(
-                    f"Invalid poolclass '{poolclass_key}' specified. Using default pool class."
-                )
+                logger.error(f"Invalid poolclass '{poolclass_key}' specified. Using default pool class.")
                 kwargs.pop("poolclass", None)
 
         return create_async_engine(
@@ -246,17 +235,14 @@ class DatabaseService(Service):
                 "timeout": settings.db_connect_timeout,
             }
         # For PostgreSQL, set the timezone to UTC
-        if settings.database_url and settings.database_url.startswith(
-            ("postgresql", "postgres")
-        ):
+        if settings.database_url and settings.database_url.startswith(("postgresql", "postgres")):
             return {"options": "-c timezone=utc"}
         return {}
 
     def on_connection(self, dbapi_connection, _connection_record) -> None:
         if isinstance(
             dbapi_connection,
-            sqlite3.Connection
-            | dialect_sqlite.aiosqlite.AsyncAdapt_aiosqlite_connection,
+            sqlite3.Connection | dialect_sqlite.aiosqlite.AsyncAdapt_aiosqlite_connection,
         ):
             pragmas: dict = self.settings_service.settings.sqlite_pragmas or {}
             pragmas_list = []
@@ -292,6 +278,35 @@ class DatabaseService(Service):
             # Provides efficient session creation and proper connection pooling
             async with self.async_session_maker() as session:
                 yield session
+
+    @contextmanager
+    def with_session(self):
+        """Synchronous context manager that yields a database session.
+
+        Provides a sync session for callers that cannot use ``async with``
+        (e.g. ``ProjectService``, ``BaseStateAwareComponent``,
+        ``BaseEntityReadPatchComponent``).
+
+        * When ``use_noop_database`` is set, yields a ``NoopSession``.
+        * Otherwise creates a real ``sqlmodel.Session`` bound to
+          ``self.engine.sync_engine``.
+
+        The caller is responsible for committing or rolling back.
+        The session is closed when the ``with`` block exits.
+        """
+        if self.settings_service.settings.use_noop_database:
+            from px.services.session import SyncNoopSession
+
+            with SyncNoopSession() as session:
+                yield session
+        else:
+            from sqlmodel import Session
+
+            session = Session(self.engine.sync_engine)
+            try:
+                yield session
+            finally:
+                session.close()
 
     async def ensure_postgresql_version(self) -> None:
         """If the database is PostgreSQL, ensure it is version 15 or higher.
@@ -345,13 +360,7 @@ class DatabaseService(Service):
 
             # Get existing flow names for the superuser
             existing_names: set[str] = set(
-                (
-                    await session.exec(
-                        select(models.Flow.name).where(
-                            models.Flow.user_id == superuser.id
-                        )
-                    )
-                ).all()
+                (await session.exec(select(models.Flow.name).where(models.Flow.user_id == superuser.id))).all()
             )
 
             # Process orphaned flows
@@ -363,9 +372,7 @@ class DatabaseService(Service):
 
             # Commit changes
             await session.commit()
-            await logger.adebug(
-                "Successfully assigned orphaned flows to the default superuser"
-            )
+            await logger.adebug("Successfully assigned orphaned flows to the default superuser")
 
     @staticmethod
     def _generate_unique_flow_name(original_name: str, existing_names: set[str]) -> str:
@@ -412,9 +419,7 @@ class DatabaseService(Service):
             expected_columns = list(model.model_fields.keys())
 
             try:
-                available_columns = [
-                    col["name"] for col in inspector.get_columns(table)
-                ]
+                available_columns = [col["name"] for col in inspector.get_columns(table)]
             except sa.exc.NoSuchTableError:
                 logger.debug(f"Missing table: {table}")
                 return False
@@ -452,17 +457,13 @@ class DatabaseService(Service):
         # I don't want to output anything
         # subprocess.DEVNULL is an int
         buffer_context = (
-            nullcontext(sys.stdout)
-            if self.alembic_log_to_stdout
-            else self.alembic_log_path.open("w", encoding="utf-8")  # type: ignore[union-attr]
+            nullcontext(sys.stdout) if self.alembic_log_to_stdout else self.alembic_log_path.open("w", encoding="utf-8")  # type: ignore[union-attr]
         )
         with buffer_context as buffer:
             alembic_cfg = Config(stdout=buffer)
             # alembic_cfg.attributes["connection"] = session
             alembic_cfg.set_main_option("script_location", str(self.script_location))
-            alembic_cfg.set_main_option(
-                "sqlalchemy.url", self.database_url.replace("%", "%%")
-            )
+            alembic_cfg.set_main_option("sqlalchemy.url", self.database_url.replace("%", "%%"))
 
             if should_initialize_alembic:
                 try:
@@ -475,22 +476,16 @@ class DatabaseService(Service):
                 logger.debug("Alembic initialized")
 
             try:
-                buffer.write(
-                    f"{datetime.now(tz=timezone.utc).astimezone().isoformat()}: Checking migrations\n"
-                )
+                buffer.write(f"{datetime.now(tz=timezone.utc).astimezone().isoformat()}: Checking migrations\n")
                 command.check(alembic_cfg)
             except Exception as exc:  # noqa: BLE001
                 logger.debug(f"Error checking migrations: {exc}")
-                if isinstance(
-                    exc, util.exc.CommandError | util.exc.AutogenerateDiffsDetected
-                ):
+                if isinstance(exc, util.exc.CommandError | util.exc.AutogenerateDiffsDetected):
                     command.upgrade(alembic_cfg, "head")
                     time.sleep(3)
 
             try:
-                buffer.write(
-                    f"{datetime.now(tz=timezone.utc).astimezone()}: Checking migrations\n"
-                )
+                buffer.write(f"{datetime.now(tz=timezone.utc).astimezone()}: Checking migrations\n")
                 command.check(alembic_cfg)
             except util.exc.AutogenerateDiffsDetected as exc:
                 logger.exception("Error checking migrations")
@@ -535,9 +530,7 @@ class DatabaseService(Service):
         # and that the database is up to date with all columns
         # get all models that are subclasses of SQLModel
         sql_models = [
-            model
-            for model in models.__dict__.values()
-            if isinstance(model, type) and issubclass(model, SQLModel)
+            model for model in models.__dict__.values() if isinstance(model, type) and issubclass(model, SQLModel)
         ]
         # Use engine.begin() for proper async connection management with NullPool
         async with self.engine.begin() as conn:
@@ -557,9 +550,7 @@ class DatabaseService(Service):
         expected_columns = list(model.__fields__.keys())
         available_columns = []
         try:
-            available_columns = [
-                col["name"] for col in inspector.get_columns(table_name)
-            ]
+            available_columns = [col["name"] for col in inspector.get_columns(table_name)]
             results.append(Result(name=table_name, type="table", success=True))
         except sa.exc.NoSuchTableError:
             logger.exception(f"Missing table: {table_name}")
@@ -601,9 +592,7 @@ class DatabaseService(Service):
             try:
                 table.create(connection, checkfirst=True)
             except OperationalError as oe:
-                logger.warning(
-                    f"Table {table} already exists, skipping. Exception: {oe}"
-                )
+                logger.warning(f"Table {table} already exists, skipping. Exception: {oe}")
             except Exception as exc:
                 msg = f"Error creating table {table}"
                 logger.exception(msg)

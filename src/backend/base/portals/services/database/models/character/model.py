@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import Index, String
+from sqlalchemy import Index
 from sqlmodel import JSON, Column, Field, SQLModel
 
 
@@ -19,7 +19,7 @@ class CharacterBase(SQLModel):
         default_factory=list,
         sa_column=Column(
             "aliases",
-            String,
+            JSON,
             nullable=False,
         ),
     )

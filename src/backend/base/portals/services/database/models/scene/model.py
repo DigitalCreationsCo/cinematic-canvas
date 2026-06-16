@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import Float, Index, String, text
+from sqlalchemy import Float, Index
 from sqlmodel import JSON, Column, Field, SQLModel
 
 
@@ -34,18 +34,16 @@ class SceneBase(SQLModel):
         default_factory=list,
         sa_column=Column(
             "continuity_notes",
-            String,
+            JSON,
             nullable=False,
-            server_default=text(""),
         ),
     )
     character_reference_ids: list[str] = Field(
         default_factory=list,
         sa_column=Column(
             "character_reference_ids",
-            String,
+            JSON,
             nullable=False,
-            server_default=text(""),
         ),
     )
     location_reference_id: str

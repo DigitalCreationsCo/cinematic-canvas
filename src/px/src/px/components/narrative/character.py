@@ -14,6 +14,7 @@ from px.field_typing.constants import (
 from px.field_typing.range_spec import RangeSpec
 from px.io import (
     BoolInput,
+    DictInput,
     DropdownInput,
     MessageInput,
     MessageTextInput,
@@ -21,6 +22,7 @@ from px.io import (
     Output,
     SecretStrInput,
     SliderInput,
+    StrInput,
 )
 from px.log.logger import logger
 from px.schema.message import (
@@ -31,6 +33,34 @@ from px.utils.constants import (
     MESSAGE_SENDER_NAME_USER,
     MESSAGE_SENDER_USER,
 )
+
+# ── Field name constants ─────────────────────────────────────────────
+
+_SELECTED_ENTITY = "selected_entity"
+_UPDATE_DB = "update_database"
+_CHARACTER_NAME = "character_name"
+_ALIASES = "aliases"
+_PHYSICAL_TRAITS = "physical_traits"
+_STATE = "state"
+_GUIDANCE_LEVEL = "guidance_level"
+
+# Profile fields that can be edited and patched.
+_PROFILE_FIELDS = (
+    _CHARACTER_NAME,
+    _ALIASES,
+    _PHYSICAL_TRAITS,
+    _STATE,
+    _GUIDANCE_LEVEL,
+)
+
+# Map from input name → entity model field name.
+_INPUT_TO_MODEL_FIELD = {
+    _CHARACTER_NAME: "name",
+    _ALIASES: "aliases",
+    _PHYSICAL_TRAITS: "physical_traits",
+    _STATE: "state",
+    _GUIDANCE_LEVEL: "guidance_level",
+}
 
 
 class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
@@ -70,23 +100,77 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
 
     def build_config(self):
         return {
-            "selected_entity": {
+            _SELECTED_ENTITY: {
                 "display_name": "Select Character",
                 "options": self.get_entity_options,
                 "refresh_button": True,
             },
-            "update_database": {
+            _UPDATE_DB: {
                 "display_name": "Patch Database?",
                 "info": "If true, the character's record will be updated with the traits/state below.",
                 "advanced": False,
+            },
+            _CHARACTER_NAME: {
+                "display_name": "Name",
+                "info": "Character's display name.",
+            },
+            _ALIASES: {
+                "display_name": "Aliases",
+                "info": "Alternative names this character goes by.",
+            },
+            _PHYSICAL_TRAITS: {
+                "display_name": "Physical Traits",
+                "info": 'Physical description as a JSON object (e.g. {"hair": "brown", "eyes": "blue"}).',
+            },
+            _STATE: {
+                "display_name": "State",
+                "info": "Current narrative state as a JSON object.",
+            },
+            _GUIDANCE_LEVEL: {
+                "display_name": "Guidance Level",
+                "info": "Controls how closely the model should follow the character profile.",
             },
         }
 
     # ── Input ports ──────────────────────────────────────────────────────
 
+    # Profile editing fields.
+    _profile_inputs = [
+        StrInput(
+            name=_CHARACTER_NAME,
+            display_name="Name",
+            info="Character's display name.",
+            value="",
+        ),
+        MessageTextInput(
+            name=_ALIASES,
+            display_name="Aliases",
+            info="Alternative names this character goes by (comma-separated).",
+            value="",
+        ),
+        DictInput(
+            name=_PHYSICAL_TRAITS,
+            display_name="Physical Traits",
+            info='Physical description as a JSON object (e.g. {"hair": "brown", "eyes": "blue"}).',
+        ),
+        DictInput(
+            name=_STATE,
+            display_name="State",
+            info="Current narrative state as a JSON object.",
+        ),
+        SliderInput(
+            name=_GUIDANCE_LEVEL,
+            display_name="Guidance Level",
+            info="Controls how closely the model should follow the character profile.",
+            value=5,
+            range_spec=RangeSpec(min=0, max=10, step=1),
+            advanced=True,
+        ),
+    ]
+
     inputs = [
-        DropdownInput(name="selected_entity", display_name="Select Character"),
-        BoolInput(name="update_database", display_name="Patch Database?", value=False),
+        DropdownInput(name=_SELECTED_ENTITY, display_name="Select Character"),
+        BoolInput(name=_UPDATE_DB, display_name="Patch Database?", value=False),
         ModelInput(
             name="model",
             display_name="Language Model",
@@ -166,6 +250,7 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             real_time_refresh=True,
             advanced=True,
         ),
+        *_profile_inputs,
     ]
 
     # ── Output ports ─────────────────────────────────────────────────────
@@ -186,20 +271,54 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
         ``character_response()`` within the same execution avoids a redundant
         database round-trip.
 
-        When ``update_database`` is ``True`` the cache entry for the entity is
-        evicted before reading, ensuring the next read fetches fresh data.
-        """
-        # Evict cache when the caller signals a database mutation.
-        if update_database:
-            self._character_cache.pop(selected_entity, None)
-            logger.debug(f"Cache evicted for character '{selected_entity}' after patch.")
+        When ``update_database`` is ``True``:
+        - The entity's profile fields (name, aliases, physical_traits, state,
+          guidance_level, character_image) are patched to the database.
+        - The cache entry is evicted before reading, ensuring the next read
+          fetches fresh data.
 
+        Any profile-field values provided via inputs are merged on top of the
+        database record so that downstream consumers always receive the most
+        current view.
+        """
+        # 1. Collect any profile-field overrides supplied via inputs.
+        updated_data = self._collect_profile_overrides()
+
+        # 2. When the caller signals a database mutation, perform the patch
+        #    and evict the cached entry so the subsequent read is fresh.
+        if update_database:
+            # Map input names → model field names (with type conversion).
+            model_updates = self._to_model_patch(updated_data)
+
+            # Execute the patch via the shared base-entity logic.
+            if model_updates:
+                self._character_cache.pop(selected_entity, None)
+                logger.debug(f"Patching character '{selected_entity}' with {model_updates}")
+                patch_result = self._execute_read_patch_logic(
+                    selected_entity,
+                    update_database=True,
+                    updated_data=model_updates,
+                )
+                if (
+                    isinstance(patch_result, Data)
+                    and isinstance(patch_result.data, dict)
+                    and "error" in patch_result.data
+                ):
+                    logger.error(f"Patch failed for character '{selected_entity}': {patch_result.data['error']}")
+                    return patch_result
+
+        # 3. Read from DB (fresh or cached).
         try:
             character_dict = self._fetch_character_data(selected_entity)
-            return Data(data=character_dict)
         except ValueError as exc:
             logger.error(f"Failed to fetch character '{selected_entity}': {exc}")
             return Data(data={"error": str(exc)})
+
+        # 4. Overlay any input-driven overrides so the output reflects the
+        #    user's edits even when the DB has not been patched yet.
+        character_dict.update(self._to_model_patch(updated_data))
+
+        return Data(data=character_dict)
 
     async def character_response(self) -> Message:
         """Generate a persona-driven LLM response as the selected character.
@@ -209,10 +328,10 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
         1. Validates that a character is selected.
         2. Fetches character data from the database (served from cache when
            ``build()`` already ran for the same entity).
-        3. Constructs a system prompt from the character's profile — name,
-           aliases, physical traits, and narrative state.
-        4. Invokes the connected language model with the user's input message.
-        5. Returns the model's response as a ``Message``.
+        3. Overlays any profile-field input values on top of the DB record.
+        4. Constructs a system prompt from the merged character profile.
+        5. Invokes the connected language model with the user's input message.
+        6. Returns the model's response as a ``Message``.
 
         Raises:
         ------
@@ -220,7 +339,7 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             If no character is selected, the character is not found in the
             database, or no language model is connected.
         """
-        entity_name = getattr(self, "selected_entity", None)
+        entity_name = getattr(self, _SELECTED_ENTITY, None)
         _validate_selected_entity(entity_name)
 
         # 1. Fetch character data (from cache or DB).
@@ -230,22 +349,26 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             logger.error(f"Character '{entity_name}' not found for response generation: {exc}")
             raise
 
+        # 2. Overlay input-driven profile edits on top of the DB record.
+        updated_data = self._collect_profile_overrides()
+        character_dict.update(self._to_model_patch(updated_data))
+
         logger.debug(
             "Generating character response for '%s' with %d field(s).",
             entity_name,
             len(character_dict),
         )
 
-        # 2. Build persona system prompt.
+        # 3. Build persona system prompt.
         system_prompt = self._build_character_system_prompt(character_dict)
 
-        # 3. Validate model input.
+        # 4. Validate model input.
         model = getattr(self, "model", None)
         if not model:
             msg = "A Language Model must be connected to generate character responses."
             raise ValueError(msg)
 
-        # 4. Build and invoke the LLM.
+        # 5. Build and invoke the LLM.
         runnable = self.build_model()
         input_value = getattr(self, "input_value", None) or ""
         stream: bool = getattr(self, "stream", False)
@@ -280,6 +403,42 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ═══════════════════════════════════════════════════════════════════════
     # INTERNAL HELPERS
     # ═══════════════════════════════════════════════════════════════════════
+
+    def _collect_profile_overrides(self) -> dict[str, object]:
+        """Gather non-empty profile-field values from the component's input ports.
+
+        Returns a dict keyed by **input name** (not model field).
+        """
+        overrides: dict[str, object] = {}
+        for field_name in _PROFILE_FIELDS:
+            value = getattr(self, field_name, None)
+            if value is not None and value != "":
+                overrides[field_name] = value
+        return overrides
+
+    @staticmethod
+    def _to_model_patch(input_overrides: dict[str, object]) -> dict[str, object]:
+        """Translate input-name keys to model-field keys.
+
+        Only known mappings are included; unknown keys are silently dropped.
+        Fields that arrive as a comma-separated string (e.g. ``aliases``)
+        are automatically converted to ``list[str]``.
+        """
+        # Fields that come from ``MessageTextInput`` but must be stored as
+        # ``list[str]`` in the model.
+        _string_to_list = frozenset({"aliases"})
+
+        patch: dict[str, object] = {}
+        for input_name, value in input_overrides.items():
+            model_field = _INPUT_TO_MODEL_FIELD.get(input_name)
+            if not model_field:
+                continue
+
+            if model_field in _string_to_list and isinstance(value, str):
+                patch[model_field] = [s.strip() for s in value.split(",") if s.strip()]
+            else:
+                patch[model_field] = value
+        return patch
 
     def _fetch_character_data(self, entity_name: str) -> dict:
         """Fetch character data from the database with instance-level caching.
