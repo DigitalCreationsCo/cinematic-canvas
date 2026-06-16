@@ -127,6 +127,12 @@ class DatabaseService(Service):
             expire_on_commit=False,
         )
 
+        # Separate sync engine for ``with_session()``.
+        # We cannot reuse ``self.engine.sync_engine`` because the underlying
+        # async driver (aiosqlite / asyncpg) refuses sync access outside a
+        # greenlet context (raises ``MissingGreenlet``).
+        self.sync_engine = self._create_sync_engine()
+
         # Check if Alembic should log to stdout or a file.
         # If file, check if the provided path is absolute, cross-platform.
         alembic_log_file = self.settings_service.settings.alembic_log_file
@@ -157,6 +163,8 @@ class DatabaseService(Service):
             class_=SQLModelAsyncSession,
             expire_on_commit=False,
         )
+
+        self.sync_engine = self._create_sync_engine()
 
     def _sanitize_database_url(self):
         """Create the engine for the database."""
@@ -222,6 +230,20 @@ class DatabaseService(Service):
     def _create_engine_with_retry(self) -> AsyncEngine:
         """Create the engine for the database with retry logic."""
         return self._create_engine()
+
+    def _create_sync_engine(self) -> Engine:
+        """Create a synchronous ``Engine`` for use by ``with_session()``.
+
+        Async drivers (``aiosqlite``, ``asyncpg``, ``psycopg``) cannot be
+        used outside a greenlet context, so we build a separate engine
+        with the synchronous equivalent.
+        """
+        from sqlalchemy import create_engine
+
+        sync_url = self.database_url
+        for async_driver in ("+aiosqlite", "+asyncpg", "+psycopg"):
+            sync_url = sync_url.replace(async_driver, "")
+        return create_engine(sync_url, connect_args=self._get_connect_args())
 
     def _get_connect_args(self):
         settings = self.settings_service.settings
@@ -289,7 +311,7 @@ class DatabaseService(Service):
 
         * When ``use_noop_database`` is set, yields a ``NoopSession``.
         * Otherwise creates a real ``sqlmodel.Session`` bound to
-          ``self.engine.sync_engine``.
+          ``self.sync_engine`` (a separate synchronous ``Engine``).
 
         The caller is responsible for committing or rolling back.
         The session is closed when the ``with`` block exits.
@@ -302,7 +324,7 @@ class DatabaseService(Service):
         else:
             from sqlmodel import Session
 
-            session = Session(self.engine.sync_engine)
+            session = Session(self.sync_engine)
             try:
                 yield session
             finally:
@@ -629,3 +651,4 @@ class DatabaseService(Service):
         except Exception:  # noqa: BLE001
             await logger.aexception("Error tearing down database")
         await self.engine.dispose()
+        self.sync_engine.dispose()
