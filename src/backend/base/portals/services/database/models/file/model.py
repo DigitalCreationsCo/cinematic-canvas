@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -6,7 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlmodel import Column, Field, Relationship, SQLModel, UniqueConstraint
 
-from portals.schema.serialize import UUIDstr
+from portals.schema.serialize import UUIDstr  # noqa: TC001  # needed at runtime by SQLModel for column type resolution
 
 if TYPE_CHECKING:
     from portals.services.database.models.folder.model import Folder
@@ -16,12 +18,12 @@ if TYPE_CHECKING:
 class File(SQLModel, table=True):  # type: ignore[call-arg]
     id: UUIDstr = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(sa_column=Column(sa.Uuid(), ForeignKey("user.id", ondelete="CASCADE"), nullable=False))
-    user: "User" = Relationship(back_populates="files")
+    user: User = Relationship(back_populates="files")
     folder_id: UUID | None = Field(
         default=None,
         sa_column=Column(sa.Uuid(), ForeignKey("folder.id", ondelete="CASCADE"), nullable=True, index=True),
     )
-    folder: "Folder | None" = Relationship(back_populates="files")
+    folder: Folder | None = Relationship(back_populates="files")
     name: str = Field(nullable=False)
     path: str = Field(nullable=False)
     size: int = Field(nullable=False)

@@ -1,24 +1,26 @@
-# noqa: INP001
-import asyncio
 import hashlib
 import os
 from logging.config import fileConfig
-from typing import Any
-
+from pathlib import Path
 
 from alembic import context
-from sqlalchemy import pool, text
-from sqlalchemy.event import listen
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy import engine_from_config, pool, text
 
-from px.log.logger import logger
 
-from portals.services.database.service import SQLModel
+def _build_database_url() -> str:
+    portals_database_url = os.getenv("PORTALS_DATABASE_URL")
+    if portals_database_url:
+        return portals_database_url
+    db_dir = Path(os.getenv("PORTALS_DB_DIR", str(Path.home() / ".portals"))).expanduser().resolve()
+    db_dir.mkdir(parents=True, exist_ok=True)
+    db_name = os.getenv("PORTALS_DB_NAME", "portals.db")
+    return f"sqlite:///{db_dir.as_posix()}/{db_name}"
 
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+config.set_main_option("sqlalchemy.url", _build_database_url())
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -32,127 +34,45 @@ NAMING_CONVENTION = {
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
     "pk": "pk_%(table_name)s",
 }
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = SQLModel.metadata
-target_metadata.naming_convention = NAMING_CONVENTION
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+target_metadata = None
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
     url = config.get_main_option("sqlalchemy.url")
-    configure_kwargs = {
-        "url": url,
-        "target_metadata": target_metadata,
-        "literal_binds": True,
-        "dialect_opts": {"paramstyle": "named"},
-        "render_as_batch": True,
-    }
-
-    # Only add prepare_threshold for PostgreSQL
-    if url and "postgresql" in url:
-        configure_kwargs["prepare_threshold"] = None
-
-    context.configure(**configure_kwargs)
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-def _sqlite_do_connect(
-    dbapi_connection,
-    connection_record,  # noqa: ARG001
-):
-    # disable pysqlite's emitting of the BEGIN statement entirely.
-    # also stops it from emitting COMMIT before any DDL.
-    dbapi_connection.isolation_level = None
-
-
-def _sqlite_do_begin(conn):
-    # emit our own BEGIN
-    conn.exec_driver_sql("PRAGMA busy_timeout = 60000")
-    conn.exec_driver_sql("BEGIN EXCLUSIVE")
-
-
-def _do_run_migrations(connection):
-    configure_kwargs = {
-        "connection": connection,
-        "target_metadata": target_metadata,
-        "render_as_batch": True,
-    }
-
-    # Only add prepare_threshold for PostgreSQL
-    if connection.dialect.name == "postgresql":
-        configure_kwargs["prepare_threshold"] = None
-
-    context.configure(**configure_kwargs)
-    with context.begin_transaction():
-        if connection.dialect.name == "postgresql":
-            # Use namespace from environment variable if provided, otherwise use default static key
-            namespace = os.getenv("PORTALS_MIGRATION_LOCK_NAMESPACE")
-            if namespace:
-                lock_key = int(hashlib.sha256(namespace.encode()).hexdigest()[:16], 16) % (2**63 - 1)
-                logger.info(f"Using migration lock namespace: {namespace}, lock_key: {lock_key}")
-            else:
-                lock_key = 11223344
-                logger.info(f"Using default migration lock_key: {lock_key}")
-
-            connection.execute(text("SET LOCAL lock_timeout = '180s';"))
-            connection.execute(text(f"SELECT pg_advisory_xact_lock({lock_key});"))
-        context.run_migrations()
-
-async def _run_async_migrations() -> None:
-    # Disable prepared statements for PostgreSQL (required for PgBouncer compatibility)
-    # SQLite doesn't support this parameter, so only add it for PostgreSQL
-    config_section = config.get_section(config.config_ini_section, {})
-    db_url = config_section.get("sqlalchemy.url", "")
-
-    connect_args: dict[str, Any] = {}
-    if db_url and "postgresql" in db_url:
-        connect_args["prepare_threshold"] = None
-
-    connectable = async_engine_from_config(
-        config_section,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-        connect_args=connect_args,
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
     )
-
-    if connectable.dialect.name == "sqlite":
-        # See https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#serializable-isolation-savepoints-transactional-ddl
-        listen(connectable.sync_engine, "connect", _sqlite_do_connect)
-        listen(connectable.sync_engine, "begin", _sqlite_do_begin)
-
-    async with connectable.connect() as connection:
-        await connection.run_sync(_do_run_migrations)
-
-    await connectable.dispose()
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-    asyncio.run(_run_async_migrations())
+    config_section = config.get_section(config.config_ini_section, {})
+    connectable = engine_from_config(
+        config_section,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=True,
+        )
+        with context.begin_transaction():
+            if connection.dialect.name == "postgresql":
+                namespace = os.getenv("PORTALS_MIGRATION_LOCK_NAMESPACE")
+                if namespace:
+                    lock_key = int(hashlib.sha256(namespace.encode()).hexdigest()[:16], 16) % (2**63 - 1)
+                else:
+                    lock_key = 11223344
+                connection.execute(text("SET LOCAL lock_timeout = '180s';"))
+                connection.execute(text(f"SELECT pg_advisory_xact_lock({lock_key});"))
+            context.run_migrations()
 
 
 if context.is_offline_mode():

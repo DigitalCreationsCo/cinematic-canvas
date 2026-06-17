@@ -3,13 +3,12 @@ import contextlib
 import json
 import os
 from pathlib import Path
-from shutil import copy2
 from typing import Any, Literal
 
 import aiofiles
 import orjson
 import yaml
-from pydantic import Field, field_validator
+from pydantic import Field, computed_field, field_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
@@ -26,7 +25,6 @@ from px.services.settings.constants import (
     AGENTIC_VARIABLES,
     VARIABLES_TO_GET_FROM_ENVIRONMENT,
 )
-from px.utils.util_strings import is_valid_database_url, sanitize_database_url
 
 
 def is_list_of_any(field: FieldInfo) -> bool:
@@ -41,9 +39,7 @@ def is_list_of_any(field: FieldInfo) -> bool:
     if field.annotation is None:
         return False
     try:
-        union_args = (
-            field.annotation.__args__ if hasattr(field.annotation, "__args__") else []
-        )
+        union_args = field.annotation.__args__ if hasattr(field.annotation, "__args__") else []
 
         return field.annotation.__origin__ is list or any(
             arg.__origin__ is list for arg in union_args if hasattr(arg, "__origin__")
@@ -54,9 +50,7 @@ def is_list_of_any(field: FieldInfo) -> bool:
 
 class CustomSource(EnvSettingsSource):
     @override
-    def prepare_field_value(
-        self, field_name: str, field: FieldInfo, value: Any, value_is_complex: bool
-    ) -> Any:  # type: ignore[misc]
+    def prepare_field_value(self, field_name: str, field: FieldInfo, value: Any, value_is_complex: bool) -> Any:  # type: ignore[misc]
         # allow comma-separated list parsing
 
         # fieldInfo contains the annotation of the field
@@ -83,11 +77,10 @@ class Settings(BaseSettings):
 
     dev: bool = False
     """If True, Portals will run in development mode."""
-    database_url: str | None = None
-    """Database URL for Portals. If not provided, Portals will use a SQLite database.
-    The driver shall be an async one like `sqlite+aiosqlite` (`sqlite` and `postgresql`
-    will be automatically converted to the async drivers `sqlite+aiosqlite` and
-    `postgresql+psycopg` respectively)."""
+    db_dir: str = Field(default=str(Path.home() / ".portals"))
+    """Directory where the SQLite database file is stored. Can be overridden via PORTALS_DB_DIR."""
+    db_name: str = Field(default="portals.db")
+    """Name of the SQLite database file. Can be overridden via PORTALS_DB_NAME."""
     database_connection_retry: bool = False
     """If True, Portals will retry to connect to the database if it fails."""
     pool_size: int = 20
@@ -241,12 +234,8 @@ class Settings(BaseSettings):
 
     store: bool | None = True
     store_url: str | None = "https://api.portals.store"
-    download_webhook_url: str | None = (
-        "https://api.portals.store/flows/trigger/ec611a61-8460-4438-b187-a4f65e5559d4"
-    )
-    like_webhook_url: str | None = (
-        "https://api.portals.store/flows/trigger/64275852-ec00-45c1-984e-3bff814732da"
-    )
+    download_webhook_url: str | None = "https://api.portals.store/flows/trigger/ec611a61-8460-4438-b187-a4f65e5559d4"
+    like_webhook_url: str | None = "https://api.portals.store/flows/trigger/64275852-ec00-45c1-984e-3bff814732da"
 
     storage_type: str = "local"
     """Storage type for file storage. Defaults to 'local'. Supports 'local' and 's3'."""
@@ -485,9 +474,7 @@ class Settings(BaseSettings):
     @classmethod
     def set_use_noop_database(cls, value):
         if value:
-            logger.info(
-                "Running with NOOP database session. All DB operations are disabled."
-            )
+            logger.info("Running with NOOP database session. All DB operations are disabled.")
         return value
 
     @field_validator("event_delivery", mode="before")
@@ -497,9 +484,7 @@ class Settings(BaseSettings):
         # because polling and streaming are not supported
         # in multi-worker environments
         if info.data.get("workers", 1) > 1:
-            logger.warning(
-                "Multi-worker environment detected, using direct event delivery"
-            )
+            logger.warning("Multi-worker environment detected, using direct event delivery")
             return "direct"
         return value
 
@@ -592,84 +577,16 @@ class Settings(BaseSettings):
 
         return str(value)
 
-    @field_validator("database_url", mode="before")
-    @classmethod
-    def set_database_url(cls, value, info):
-        if value and not is_valid_database_url(value):
-            sanitized = sanitize_database_url(value)
-            msg = f"Invalid database_url provided: '{sanitized}'"
-            raise ValueError(msg)
-
-        if portals_database_url := os.getenv("PORTALS_DATABASE_URL"):
-            value = portals_database_url
-            logger.debug("Using PORTALS_DATABASE_URL env variable")
-        else:
-            # Originally, we used sqlite:///./portals.db
-            # so we need to migrate to the new format
-            # if there is a database in that location
-            if not info.data["config_dir"]:
-                msg = "config_dir not set, please set it or provide a database_url"
-                raise ValueError(msg)
-
-            from px.utils.version import get_version_info
-            from px.utils.version import is_pre_release as portals_is_pre_release
-
-            version = get_version_info()["version"]
-            is_pre_release = portals_is_pre_release(version)
-
-            if info.data["save_db_in_config_dir"]:
-                database_dir = info.data["config_dir"]
-            else:
-                # Use portals package path, not px, for backwards compatibility
-                try:
-                    import portals
-
-                    database_dir = Path(portals.__file__).parent.resolve()
-                except ImportError:
-                    database_dir = Path(__file__).parent.parent.parent.resolve()
-
-            pre_db_file_name = "portals-pre.db"
-            db_file_name = "portals.db"
-            new_pre_path = f"{database_dir}/{pre_db_file_name}"
-            new_path = f"{database_dir}/{db_file_name}"
-            final_path = None
-            if is_pre_release:
-                if Path(new_pre_path).exists():
-                    final_path = new_pre_path
-                elif Path(new_path).exists() and info.data["save_db_in_config_dir"]:
-                    # We need to copy the current db to the new location
-                    logger.debug("Copying existing database to new location")
-                    copy2(new_path, new_pre_path)
-                    logger.debug(f"Copied existing database to {new_pre_path}")
-                elif (
-                    Path(f"./{db_file_name}").exists()
-                    and info.data["save_db_in_config_dir"]
-                ):
-                    logger.debug("Copying existing database to new location")
-                    copy2(f"./{db_file_name}", new_pre_path)
-                    logger.debug(f"Copied existing database to {new_pre_path}")
-                else:
-                    logger.debug(f"Creating new database at {new_pre_path}")
-                    final_path = new_pre_path
-            elif Path(new_path).exists():
-                final_path = new_path
-            elif Path(f"./{db_file_name}").exists():
-                try:
-                    logger.debug("Copying existing database to new location")
-                    copy2(f"./{db_file_name}", new_path)
-                    logger.debug(f"Copied existing database to {new_path}")
-                except OSError:
-                    logger.exception("Failed to copy database, using default path")
-                    new_path = f"./{db_file_name}"
-            else:
-                final_path = new_path
-
-            if final_path is None:
-                final_path = new_pre_path if is_pre_release else new_path
-
-            value = f"sqlite:///{final_path}"
-
-        return value
+    @computed_field
+    @property
+    def database_url(self) -> str:
+        portals_database_url = os.getenv("PORTALS_DATABASE_URL")
+        if portals_database_url:
+            return portals_database_url
+        db_dir = Path(self.db_dir).expanduser().resolve()
+        db_dir.mkdir(parents=True, exist_ok=True)
+        db_file_path = db_dir / self.db_name
+        return f"sqlite+aiosqlite:////{db_file_path.as_posix()}"
 
     @field_validator("components_path", mode="before")
     @classmethod
@@ -683,22 +600,15 @@ class Settings(BaseSettings):
         if os.getenv("PORTALS_COMPONENTS_PATH"):
             logger.debug("Adding PORTALS_COMPONENTS_PATH to components_path")
             portals_component_path = os.getenv("PORTALS_COMPONENTS_PATH")
-            if (
-                Path(portals_component_path).exists()
-                and portals_component_path not in value
-            ):
+            if Path(portals_component_path).exists() and portals_component_path not in value:
                 if isinstance(portals_component_path, list):
                     for path in portals_component_path:
                         if path not in value:
                             value.append(path)
-                    logger.debug(
-                        f"Extending {portals_component_path} to components_path"
-                    )
+                    logger.debug(f"Extending {portals_component_path} to components_path")
                 elif portals_component_path not in value:
                     value.append(portals_component_path)
-                    logger.debug(
-                        f"Appending {portals_component_path} to components_path"
-                    )
+                    logger.debug(f"Appending {portals_component_path} to components_path")
 
         if not value:
             value = [BASE_COMPONENTS_PATH]
@@ -708,9 +618,7 @@ class Settings(BaseSettings):
             value = [str(p) if isinstance(p, Path) else p for p in value]
         return value
 
-    model_config = SettingsConfigDict(
-        validate_assignment=True, extra="ignore", env_prefix="PORTALS_"
-    )
+    model_config = SettingsConfigDict(validate_assignment=True, extra="ignore", env_prefix="PORTALS_")
 
     async def update_from_yaml(self, file_path: str, *, dev: bool = False) -> None:
         new_settings = await load_settings_from_yaml(file_path)
@@ -772,7 +680,7 @@ async def load_settings_from_yaml(file_path: str) -> Settings:
     # Check if a string is a valid path or a file name
     if "/" not in file_path:
         # Get current path
-        current_path = Path(__file__).resolve().parent
+        current_path = Path(__file__).resolve().parent  # noqa: ASYNC240
         file_path_ = Path(current_path) / file_path
     else:
         file_path_ = Path(file_path)
@@ -786,8 +694,6 @@ async def load_settings_from_yaml(file_path: str) -> Settings:
             if key not in Settings.model_fields:
                 msg = f"Key {key} not found in settings"
                 raise KeyError(msg)
-            await logger.adebug(
-                f"Loading {len(settings_dict[key])} {key} from {file_path}"
-            )
+            await logger.adebug(f"Loading {len(settings_dict[key])} {key} from {file_path}")
 
     return await asyncio.to_thread(Settings, **settings_dict)
