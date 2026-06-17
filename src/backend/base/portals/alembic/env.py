@@ -5,6 +5,9 @@ from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool, text
+from sqlmodel import SQLModel
+
+import portals.services.database.models  # noqa: F401  registers all tables with SQLModel.metadata
 
 
 def _build_database_url() -> str:
@@ -34,7 +37,8 @@ NAMING_CONVENTION = {
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
     "pk": "pk_%(table_name)s",
 }
-target_metadata = None
+target_metadata = SQLModel.metadata
+target_metadata.naming_convention = NAMING_CONVENTION
 
 
 def run_migrations_offline() -> None:
