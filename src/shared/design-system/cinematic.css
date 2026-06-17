@@ -201,8 +201,8 @@
 /* Hero Content */
 .editor-root .hero-eyebrow {
   font-family: var(--font-mono);
-  font-size: .72rem;
-  letter-spacing: .2em;
+  font-size: 1rem;
+  letter-spacing: .15em;
   text-transform: uppercase;
   color: var(--color-muted-foreground);
   opacity: 0;
@@ -2299,6 +2299,10 @@
 
 /* Updates Responsive */
 @media (max-width: 1024px) {
+  .editor-root .hero-eyebrow {
+    font-size: .72rem;
+  }
+
   .editor-root .hero-update {
     grid-template-columns: 1fr;
   }
@@ -2322,6 +2326,8 @@
 }
 
 @media (max-width: 768px) {
+
+
   .editor-root .hero-inner {
     justify-content: space-between;
   }
