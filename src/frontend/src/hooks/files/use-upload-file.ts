@@ -10,10 +10,12 @@ const useUploadFile = ({
   types,
   multiple,
   webkitdirectory,
+  folderId,
 }: {
   types?: string[];
   multiple?: boolean;
   webkitdirectory?: boolean;
+  folderId?: string;
 }) => {
   const { mutateAsync: uploadFileMutation } = customPostUploadFileV2();
   const { validateFileSize } = useFileSizeValidator();
@@ -74,6 +76,7 @@ const useUploadFile = ({
 
         const res = await uploadFileMutation({
           file,
+          folderId,
         });
 
         if (!webkitdirectory && res?.path) {

@@ -34,6 +34,7 @@ interface FilesTabProps {
   quantitySelected: number;
   setQuantitySelected: (quantity: number) => void;
   isShiftPressed: boolean;
+  folderId?: string;
 }
 
 const FilesTab = ({
@@ -44,9 +45,13 @@ const FilesTab = ({
   quantitySelected,
   setQuantitySelected,
   isShiftPressed,
+  folderId,
 }: FilesTabProps) => {
   const tableRef = useRef<AgGridReact<any>>(null);
-  const { data: files } = useGetFilesV2();
+  const { data: files } = useGetFilesV2(
+    folderId ? { folderId } : undefined,
+    folderId ? { enabled: !!folderId } : undefined,
+  );
   const setErrorData = useAlertStore((state) => state.setErrorData);
   const setSuccessData = useAlertStore((state) => state.setSuccessData);
 
@@ -56,6 +61,7 @@ const FilesTab = ({
     rename({
       id: params.data.id,
       name: params.newValue,
+      folderId,
     });
   };
 
@@ -68,7 +74,7 @@ const FilesTab = ({
     }
   };
 
-  const uploadFile = useUploadFile({ multiple: true });
+  const uploadFile = useUploadFile({ multiple: true, folderId });
 
   const handleUpload = async (files?: File[]) => {
     try {
@@ -159,7 +165,7 @@ const FilesTab = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (params.data.file) {
-                      uploadFileDirect({ file: params.data.file });
+                      uploadFileDirect({ file: params.data.file, folderId });
                     }
                   }}
                 >
@@ -247,6 +253,7 @@ const FilesTab = ({
     deleteFiles(
       {
         ids: selectedFiles.map((file) => file.id),
+        folderId,
       },
       {
         onSuccess: (data) => {

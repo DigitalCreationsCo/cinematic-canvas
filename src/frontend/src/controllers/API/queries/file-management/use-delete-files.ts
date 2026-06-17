@@ -6,6 +6,7 @@ import { UseRequestProcessor } from "../../services/request-processor";
 
 interface IDeleteFiles {
   ids: string[];
+  folderId?: string;
 }
 
 export const useDeleteFilesV2: useMutationFunctionType<
@@ -31,7 +32,7 @@ export const useDeleteFilesV2: useMutationFunctionType<
     {
       onSettled: (data, error, variables, context) => {
         queryClient.invalidateQueries({
-          queryKey: ["useGetFilesV2"],
+          queryKey: ["useGetFilesV2", variables?.folderId ?? "all"],
         });
         options?.onSettled?.(data, error, variables, context);
       },

@@ -33,12 +33,14 @@ export default function FilesContextMenuComponent({
 
   const { mutate: deleteFile } = useDeleteFileV2({
     id: file.id,
+    folderId: file.folder_id,
   });
 
   const { mutate: duplicateFile } = useDuplicateFileV2({
     id: file.id,
     filename: file.name,
     type: file.path.split(".").pop() || "",
+    folderId: file.folder_id,
   });
 
   const handleSelectOptionsChange = (option: string) => {

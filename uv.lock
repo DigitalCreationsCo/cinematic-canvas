@@ -6264,6 +6264,16 @@ wheels = [
 ]
 
 [[package]]
+name = "narrativeengine"
+version = "0.1.23"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4f/e0/b0a68ae1680198ac8d27049f37bf16106318950466366715e323664cd97b/narrativeengine-0.1.23-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0096452edbae18982fad110793c52a61fd539ef3e74e99235b96002e041497af", size = 380390, upload-time = "2026-06-16T22:44:09.957Z" },
+    { url = "https://files.pythonhosted.org/packages/84/21/0bdda464f66ee9fcc2fa63a939efaaee8717a4c574ff24e9e316a10acedb/narrativeengine-0.1.23-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:d35a70a4ba16431f3bdb97c1f0e64d7e3265cbf87dc3a1df837d747a9782f576", size = 439710, upload-time = "2026-06-16T22:44:11.246Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/f9/aa30c3058c063513ed14399a48f0b95304ff512f7fc806c45f5f245569ff/narrativeengine-0.1.23-cp313-cp313-win_amd64.whl", hash = "sha256:a2bf90893303dfdc48aed651d319bcf7392ef17fcd0fcc8bd38cd4ad9d9b2bf4", size = 286957, upload-time = "2026-06-16T22:44:12.244Z" },
+]
+
+[[package]]
 name = "needle-python"
 version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -8045,6 +8055,7 @@ name = "portals"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "narrativeengine" },
     { name = "portals-base", extra = ["complete"] },
 ]
 
@@ -8077,6 +8088,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "narrativeengine" },
     { name = "portals-base", extras = ["complete"], editable = "src/backend/base" },
     { name = "sqlalchemy", extras = ["postgresql-psycopg"], marker = "extra == 'postgresql'", specifier = ">=2.0.38,<3.0.0" },
     { name = "sqlalchemy", extras = ["postgresql-psycopg2binary"], marker = "extra == 'postgresql'", specifier = ">=2.0.38,<3.0.0" },

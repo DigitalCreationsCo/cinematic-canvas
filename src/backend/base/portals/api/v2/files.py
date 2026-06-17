@@ -17,6 +17,7 @@ from sqlmodel import col, select
 from portals.api.schemas import UploadFileResponse
 from portals.api.utils import CurrentActiveUser, DbSession
 from portals.services.database.models.file.model import File as UserFile
+from portals.services.database.models.folder.model import Folder
 from portals.services.deps import get_settings_service, get_storage_service
 from portals.services.settings.service import SettingsService
 from portals.services.storage.service import StorageService
@@ -26,6 +27,18 @@ router = APIRouter(tags=["Files"], prefix="/files")
 # Set the static name of the MCP servers file
 MCP_SERVERS_FILE = "_mcp_servers"
 SAMPLE_DATA_DIR = Path(__file__).parent / "sample_data"
+
+
+def get_storage_namespace(user_id: uuid.UUID, folder_id: uuid.UUID | None = None) -> str:
+    """Compute the storage namespace for a file.
+
+    Files within a project/folder are stored under ``{user_id}/{folder_id}``
+    to guarantee isolation between projects.  Legacy files without a
+    ``folder_id`` remain at the top-level ``{user_id}`` namespace.
+    """
+    if folder_id is not None:
+        return f"{user_id}/{folder_id}"
+    return str(user_id)
 
 
 def is_permanent_storage_failure(error: Exception) -> bool:
@@ -86,6 +99,21 @@ async def byte_stream_generator(file_input, chunk_size: int = 8192) -> AsyncGene
             yield chunk
 
 
+async def validate_project_access(
+    folder_id: uuid.UUID | None,
+    current_user: CurrentActiveUser,
+    session: DbSession,
+) -> uuid.UUID | None:
+    if folder_id is None:
+        return None
+
+    project = await session.get(Folder, folder_id)
+    if not project or project.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    return folder_id
+
+
 async def fetch_file_object(file_id: uuid.UUID, current_user: CurrentActiveUser, session: DbSession):
     # Fetch the file from the DB
     stmt = select(UserFile).where(UserFile.id == file_id)
@@ -112,6 +140,7 @@ async def save_file_routine(
     file_name=None,
     *,
     append: bool = False,
+    folder_id: uuid.UUID | None = None,
 ):
     """Routine to save the file content to the storage service."""
     file_id = uuid.uuid4()
@@ -122,7 +151,9 @@ async def save_file_routine(
         file_name = file.filename
 
     # Save the file using the storage service.
-    await storage_service.save_file(flow_id=str(current_user.id), file_name=file_name, data=file_content, append=append)
+    # Namespace by folder_id to prevent storage collisions across projects.
+    flow_id = get_storage_namespace(current_user.id, folder_id)
+    await storage_service.save_file(flow_id=flow_id, file_name=file_name, data=file_content, append=append)
 
     return file_id, file_name
 
@@ -138,6 +169,7 @@ async def upload_user_file(
     *,
     append: bool = False,
     ephemeral: bool = False,
+    folder_id: uuid.UUID | None = None,
 ) -> UploadFileResponse:
     """Upload a file for the current user and track it in the database."""
     # Get the max allowed file size from settings (in MB)
@@ -159,6 +191,8 @@ async def upload_user_file(
 
     # Create a new database record for the uploaded file.
     try:
+        project_id = await validate_project_access(folder_id, current_user, session)
+
         # SECURITY FIX: Validate and sanitize multipart upload filename to prevent path traversal attacks
         # First, validate the original filename to reject obvious malicious attempts
         if not file.filename:
@@ -250,7 +284,7 @@ async def upload_user_file(
             unique_filename = new_filename
         elif append:
             # In append mode, check if file exists and reuse the same filename
-            existing_file = await get_file_by_name(root_filename, current_user, session)
+            existing_file = await get_file_by_name(root_filename, current_user, session, project_id)
             if existing_file:
                 # File exists, append to it by reusing the same filename
                 # Extract the filename from the path
@@ -261,7 +295,9 @@ async def upload_user_file(
         else:
             # For normal files, ensure unique name by appending a count if necessary
             stmt = select(UserFile).where(
-                col(UserFile.name).like(f"{root_filename}%"), UserFile.user_id == current_user.id
+                col(UserFile.name).like(f"{root_filename}%"),
+                UserFile.user_id == current_user.id,
+                UserFile.folder_id == project_id,
             )
             existing_files = await session.exec(stmt)
             files = existing_files.all()  # Fetch all matching records
@@ -282,12 +318,13 @@ async def upload_user_file(
             unique_filename = f"{root_filename}.{file_extension}" if file_extension else root_filename
 
         # Read file content, save with unique filename, and compute file size in one routine
+        storage_flow_id = get_storage_namespace(current_user.id, project_id)
         try:
             file_id, stored_file_name = await save_file_routine(
-                file, storage_service, current_user, file_name=unique_filename, append=append
+                file, storage_service, current_user, file_name=unique_filename, append=append, folder_id=project_id
             )
             file_size = await storage_service.get_file_size(
-                flow_id=str(current_user.id),
+                flow_id=storage_flow_id,
                 file_name=stored_file_name,
             )
         except FileNotFoundError as e:
@@ -303,7 +340,7 @@ async def upload_user_file(
         if ephemeral:
             # Ephemeral uploads: file is saved to storage (servable for chat history)
             # but no UserFile record is created (won't appear in "My Files")
-            file_path = f"{current_user.id}/{stored_file_name}"
+            file_path = f"{storage_flow_id}/{stored_file_name}"
             return UploadFileResponse(id=file_id, name=root_filename, path=file_path, size=file_size)
 
         if append and existing_file:
@@ -317,8 +354,9 @@ async def upload_user_file(
             new_file = UserFile(
                 id=file_id,
                 user_id=current_user.id,
+                folder_id=project_id,
                 name=root_filename,
-                path=f"{current_user.id}/{stored_file_name}",
+                path=f"{storage_flow_id}/{stored_file_name}",
                 size=file_size,
             )
 
@@ -329,7 +367,7 @@ async def upload_user_file(
         except Exception as db_err:
             # Database insert failed - clean up the uploaded file to avoid orphaned files
             try:
-                await storage_service.delete_file(flow_id=str(current_user.id), file_name=stored_file_name)
+                await storage_service.delete_file(flow_id=storage_flow_id, file_name=stored_file_name)
             except OSError as e:
                 #  If delete fails, just log the error
                 await logger.aerror(f"Failed to clean up uploaded file {stored_file_name}: {e}")
@@ -351,11 +389,17 @@ async def get_file_by_name(
     file_name: str,  # The name of the file to search for
     current_user: CurrentActiveUser,
     session: DbSession,
+    folder_id: uuid.UUID | None = None,
 ) -> UserFile | None:
     """Get the file associated with a given file name for the current user."""
     try:
         # Fetch from the UserFile table
-        stmt = select(UserFile).where(UserFile.user_id == current_user.id).where(UserFile.name == file_name)
+        stmt = (
+            select(UserFile)
+            .where(UserFile.user_id == current_user.id)
+            .where(UserFile.name == file_name)
+            .where(UserFile.folder_id == folder_id)
+        )
         result = await session.exec(stmt)
 
         return result.first() or None
@@ -411,6 +455,7 @@ async def load_sample_files(current_user: CurrentActiveUser, session: DbSession,
 async def list_files(
     current_user: CurrentActiveUser,
     session: DbSession,
+    folder_id: uuid.UUID | None = None,
     # storage_service: Annotated[StorageService, Depends(get_storage_service)],
 ) -> list[UserFile]:
     """List the files available to the current user."""
@@ -418,8 +463,12 @@ async def list_files(
         # Load sample files if they don't exist
         # TODO: Pending further testing
         # await load_sample_files(current_user, session, get_storage_service())
+        project_id = await validate_project_access(folder_id, current_user, session)
+
         # Fetch from the UserFile table
         stmt = select(UserFile).where(UserFile.user_id == current_user.id)
+        if project_id is not None:
+            stmt = stmt.where(UserFile.folder_id == project_id)
         results = await session.exec(stmt)
 
         full_list = list(results)
@@ -456,12 +505,13 @@ async def delete_files_batch(
 
         # Delete all files from the storage service
         for file in files:
-            # Extract just the filename from the path (strip user_id prefix)
+            # Extract just the filename from the path
             file_name = Path(file.path).name
+            storage_flow_id = get_storage_namespace(current_user.id, file.folder_id)
             storage_deleted = False
 
             try:
-                await storage_service.delete_file(flow_id=str(current_user.id), file_name=file_name)
+                await storage_service.delete_file(flow_id=storage_flow_id, file_name=file_name)
                 storage_deleted = True
             except OSError as err:
                 # Check if this is a "permanent" failure where file/storage is gone
@@ -552,10 +602,9 @@ async def download_files_batch(
         # Create a ZIP file
         with zipfile.ZipFile(zip_stream, "w") as zip_file:
             for file in files:
-                # Get the file content from storage
-                file_content = await storage_service.get_file(
-                    flow_id=str(current_user.id), file_name=Path(file.path).name
-                )
+                # Get the file content from storage (use file's folder_id for namespace)
+                storage_flow_id = get_storage_namespace(current_user.id, file.folder_id)
+                file_content = await storage_service.get_file(flow_id=storage_flow_id, file_name=Path(file.path).name)
 
                 # Get the file extension from the original filename
                 file_extension = Path(file.path).suffix
@@ -628,6 +677,7 @@ async def download_file(
     storage_service: Annotated[StorageService, Depends(get_storage_service)],
     *,
     return_content: bool = False,
+    folder_id: uuid.UUID | None = None,
 ):
     """Download a file by its ID or return its content as a string/bytes.
 
@@ -637,6 +687,7 @@ async def download_file(
         session: Database session.
         storage_service: File storage service.
         return_content: If True, return raw content (str) instead of StreamingResponse.
+        folder_id: Optional folder/project to validate access.
 
     Returns:
         StreamingResponse for client downloads or str for internal use.
@@ -647,13 +698,20 @@ async def download_file(
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
 
+        # Optional project-scoping: if folder_id is provided, validate the file belongs to that project
+        if folder_id is not None and file.folder_id != folder_id:
+            raise HTTPException(status_code=404, detail="File not found")
+
         # Get the basename of the file path
         file_name = Path(file.path).name
+
+        # Use the file's folder_id for storage namespace (legacy files with NULL folder_id use user-only namespace)
+        storage_flow_id = get_storage_namespace(current_user.id, file.folder_id)
 
         # If return_content is True, read the file content and return it
         if return_content:
             # For content return, get the full file
-            file_content = await storage_service.get_file(flow_id=str(current_user.id), file_name=file_name)
+            file_content = await storage_service.get_file(flow_id=storage_flow_id, file_name=file_name)
             if file_content is None:
                 raise HTTPException(status_code=404, detail="File not found")
             return await read_file_content(file_content, decode=True)
@@ -661,12 +719,12 @@ async def download_file(
         # Check file exists before streaming (to catch errors before response headers are sent)
         # This is important because once StreamingResponse starts, we can't change the status code
         try:
-            await storage_service.get_file_size(flow_id=str(current_user.id), file_name=file_name)
+            await storage_service.get_file_size(flow_id=storage_flow_id, file_name=file_name)
         except FileNotFoundError as e:
             raise HTTPException(status_code=404, detail=f"File not found: {e}") from e
 
         # Wrap the async generator in byte_stream_generator to ensure proper iteration
-        file_stream = storage_service.get_file_stream(flow_id=str(current_user.id), file_name=file_name)
+        file_stream = storage_service.get_file_stream(flow_id=storage_flow_id, file_name=file_name)
         byte_stream = byte_stream_generator(file_stream)
 
         # Create the filename with extension
@@ -694,15 +752,30 @@ async def edit_file_name(
     name: str,
     current_user: CurrentActiveUser,
     session: DbSession,
+    folder_id: uuid.UUID | None = None,
 ) -> UploadFileResponse:
-    """Edit the name of a file by its ID."""
+    """Edit the name of a file by its ID.
+
+    Args:
+        file_id: UUID of the file.
+        name: New name for the file (without extension).
+        current_user: Authenticated user.
+        session: Database session.
+        folder_id: Optional folder/project to validate access.
+    """
     try:
         # Fetch the file from the DB
         file = await fetch_file_object(file_id, current_user, session)
 
+        # Optional project-scoping: if folder_id is provided, validate the file belongs to that project
+        if folder_id is not None and file.folder_id != folder_id:
+            raise HTTPException(status_code=404, detail="File not found")
+
         # Update the file name
         file.name = name
         session.add(file)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error editing file: {e}") from e
 
@@ -715,21 +788,37 @@ async def delete_file(
     current_user: CurrentActiveUser,
     session: DbSession,
     storage_service: Annotated[StorageService, Depends(get_storage_service)],
+    folder_id: uuid.UUID | None = None,
 ):
-    """Delete a file by its ID."""
+    """Delete a file by its ID.
+
+    Args:
+        file_id: UUID of the file.
+        current_user: Authenticated user.
+        session: Database session.
+        storage_service: File storage service.
+        folder_id: Optional folder/project to validate access.
+    """
     try:
         # Fetch the file object
         file_to_delete = await fetch_file_object(file_id, current_user, session)
         if not file_to_delete:
             raise HTTPException(status_code=404, detail="File not found")
 
-        # Extract just the filename from the path (strip user_id prefix)
+        # Optional project-scoping: if folder_id is provided, validate the file belongs to that project
+        if folder_id is not None and file_to_delete.folder_id != folder_id:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Extract just the filename from the path
         file_name = Path(file_to_delete.path).name
+
+        # Use the file's folder_id for storage namespace
+        storage_flow_id = get_storage_namespace(current_user.id, file_to_delete.folder_id)
 
         # Delete the file from the storage service first
         storage_deleted = False
         try:
-            await storage_service.delete_file(flow_id=str(current_user.id), file_name=file_name)
+            await storage_service.delete_file(flow_id=storage_flow_id, file_name=file_name)
             storage_deleted = True
         except Exception as err:
             # Check if this is a "permanent" failure where file/storage is gone
@@ -784,11 +873,16 @@ async def delete_all_files(
     current_user: CurrentActiveUser,
     session: DbSession,
     storage_service: Annotated[StorageService, Depends(get_storage_service)],
+    folder_id: uuid.UUID | None = None,
 ):
     """Delete all files for the current user."""
     try:
+        project_id = await validate_project_access(folder_id, current_user, session)
+
         # Fetch all files from the DB
         stmt = select(UserFile).where(UserFile.user_id == current_user.id)
+        if project_id is not None:
+            stmt = stmt.where(UserFile.folder_id == project_id)
         results = await session.exec(stmt)
         files = results.all()
 
@@ -797,12 +891,13 @@ async def delete_all_files(
 
         # Delete all files from the storage service
         for file in files:
-            # Extract just the filename from the path (strip user_id prefix)
+            # Extract just the filename from the path
             file_name = Path(file.path).name
+            storage_flow_id = get_storage_namespace(current_user.id, file.folder_id)
             storage_deleted = False
 
             try:
-                await storage_service.delete_file(flow_id=str(current_user.id), file_name=file_name)
+                await storage_service.delete_file(flow_id=storage_flow_id, file_name=file_name)
                 storage_deleted = True
             except OSError as err:
                 # Check if this is a "permanent" failure where file/storage is gone

@@ -16,7 +16,6 @@ import { CustomNavigate } from "./customization/components/custom-navigate";
 import { BASENAME } from "./customization/config-constants";
 import {
   ENABLE_CUSTOM_PARAM,
-  ENABLE_FILE_MANAGEMENT,
   ENABLE_KNOWLEDGE_BASES,
 } from "./customization/feature-flags";
 import { CustomRoutesStore } from "./customization/utils/custom-routes-store";
@@ -26,7 +25,6 @@ import { AppInitPage } from "./pages/AppInitPage";
 import { AppWrapperPage } from "./pages/AppWrapperPage";
 import FlowPage from "./pages/FlowPage";
 import LoginPage from "./pages/LoginPage";
-import FilesPage from "./pages/MainPage/pages/filesPage";
 import HomePage from "./pages/MainPage/pages/homePage";
 import KnowledgePage from "./pages/MainPage/pages/knowledgePage";
 import SourceChunksPage from "./pages/MainPage/pages/knowledgePage/sourceChunksPage/SourceChunksPage";
@@ -90,25 +88,22 @@ const router = createBrowserRouter(
                     index
                     element={<CustomNavigate replace to={"flows"} />}
                   />
-                  {ENABLE_FILE_MANAGEMENT && (
+                  {ENABLE_KNOWLEDGE_BASES && (
                     <Route path="assets">
                       <Route
                         index
-                        element={<CustomNavigate replace to="files" />}
+                        element={
+                          <CustomNavigate replace to="knowledge-bases" />
+                        }
                       />
-                      <Route path="files" element={<FilesPage />} />
-                      {ENABLE_KNOWLEDGE_BASES && (
-                        <>
-                          <Route
-                            path="knowledge-bases"
-                            element={<KnowledgePage />}
-                          />
-                          <Route
-                            path="knowledge-bases/:sourceId/chunks"
-                            element={<SourceChunksPage />}
-                          />
-                        </>
-                      )}
+                      <Route
+                        path="knowledge-bases"
+                        element={<KnowledgePage />}
+                      />
+                      <Route
+                        path="knowledge-bases/:sourceId/chunks"
+                        element={<SourceChunksPage />}
+                      />
                     </Route>
                   )}
                   <Route

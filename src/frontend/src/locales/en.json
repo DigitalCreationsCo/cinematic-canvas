@@ -373,6 +373,8 @@
   "sidebar.nav.search": "Search",
   "sidebar.nav.components": "Components",
   "sidebar.nav.mcp": "MCP",
+  "sidebar.nav.files": "Files",
+  "sidebar.nav.projectFiles": "Project files",
   "sidebar.nav.bundles": "Bundles",
   "sidebar.nav.stickyNotes": "Sticky Notes",
   "sidebar.nav.addStickyNotes": "Add Sticky Notes",

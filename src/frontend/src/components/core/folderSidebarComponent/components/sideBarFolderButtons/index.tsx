@@ -1,5 +1,6 @@
 import { useIsFetching, useIsMutating } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useParams } from "react-router-dom";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import {
@@ -13,7 +14,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useTranslation } from "react-i18next";
 import { useUpdateUser } from "@/controllers/API/queries/auth";
 import {
   usePatchFolders,
@@ -25,7 +25,6 @@ import { CustomStoreButton } from "@/customization/components/custom-store-butto
 import {
   ENABLE_CUSTOM_PARAM,
   ENABLE_DATASTAX_PORTALS,
-  ENABLE_FILE_MANAGEMENT,
   ENABLE_KNOWLEDGE_BASES,
   ENABLE_MCP_NOTICE,
 } from "@/customization/feature-flags";
@@ -53,12 +52,10 @@ import { SelectOptions } from "./components/select-options";
 type SideBarFoldersButtonsComponentProps = {
   handleChangeFolder?: (id: string) => void;
   handleDeleteFolder?: (item: FolderType) => void;
-  handleFilesClick?: () => void;
 };
 const SideBarFoldersButtonsComponent = ({
   handleChangeFolder,
   handleDeleteFolder,
-  handleFilesClick,
 }: SideBarFoldersButtonsComponentProps) => {
   const location = useLocation();
   const pathname = location.pathname;
@@ -368,10 +365,6 @@ const SideBarFoldersButtonsComponent = ({
     });
   };
 
-  const handleFilesNavigation = () => {
-    _navigate("/assets/files");
-  };
-
   const handleKnowledgeNavigation = () => {
     _navigate("/assets/knowledge-bases");
   };
@@ -492,7 +485,7 @@ const SideBarFoldersButtonsComponent = ({
           </div>
         )}
       </SidebarContent>
-      {ENABLE_FILE_MANAGEMENT && (
+      {(ENABLE_DATASTAX_PORTALS || ENABLE_KNOWLEDGE_BASES) && (
         <SidebarFooter className="border-t">
           <div className="grid w-full items-center gap-2 p-2">
             {/* TODO: Remove this on cleanup */}
@@ -507,14 +500,6 @@ const SideBarFoldersButtonsComponent = ({
                 {t("sidebar.knowledge")}
               </SidebarMenuButton>
             )}
-            <SidebarMenuButton
-              onClick={handleFilesNavigation}
-              size="md"
-              className="text-sm"
-            >
-              <ForwardedIconComponent name="File" className="h-4 w-4" />
-              {t("sidebar.myFiles")}
-            </SidebarMenuButton>
           </div>
         </SidebarFooter>
       )}

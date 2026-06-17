@@ -384,31 +384,50 @@ describe("SidebarSegmentedNav", () => {
   });
 
   it("exports NAV_ITEMS correctly", () => {
-    expect(NAV_ITEMS).toHaveLength(6);
-    expect(NAV_ITEMS[0]).toEqual({
-      id: "search",
-      icon: "search",
-      label: "sidebar.nav.search",
-      tooltip: "sidebar.nav.search",
-    });
-    expect(NAV_ITEMS[3]).toEqual({
-      id: "bundles",
-      icon: "blocks",
-      label: "sidebar.nav.bundles",
-      tooltip: "sidebar.nav.bundles",
-    });
-    expect(NAV_ITEMS[4]).toEqual({
-      id: "versions",
-      icon: "History",
-      label: "sidebar.nav.versions",
-      tooltip: "sidebar.nav.versionHistory",
-    });
-    expect(NAV_ITEMS[5]).toEqual({
-      id: "traces",
-      icon: "Activity",
-      label: "sidebar.nav.traces",
-      tooltip: "sidebar.nav.traces",
-    });
+    expect(NAV_ITEMS).toEqual([
+      {
+        id: "versions",
+        icon: "IconRotate",
+        label: "sidebar.nav.versions",
+        tooltip: "sidebar.nav.versionHistory",
+      },
+      {
+        id: "search",
+        icon: "search",
+        label: "sidebar.nav.search",
+        tooltip: "sidebar.nav.search",
+      },
+      {
+        id: "components",
+        icon: "component",
+        label: "sidebar.nav.components",
+        tooltip: "sidebar.nav.components",
+      },
+      {
+        id: "mcp",
+        icon: "Mcp",
+        label: "sidebar.nav.mcp",
+        tooltip: "sidebar.nav.mcp",
+      },
+      {
+        id: "files",
+        icon: "File",
+        label: "sidebar.nav.files",
+        tooltip: "sidebar.nav.projectFiles",
+      },
+      {
+        id: "bundles",
+        icon: "blocks",
+        label: "sidebar.nav.bundles",
+        tooltip: "sidebar.nav.bundles",
+      },
+      {
+        id: "traces",
+        icon: "History",
+        label: "sidebar.nav.traces",
+        tooltip: "sidebar.nav.traces",
+      },
+    ]);
   });
 
   it("sets active section to traces when clicking traces", () => {

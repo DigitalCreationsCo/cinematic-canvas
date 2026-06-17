@@ -9,6 +9,7 @@ interface DuplicateFileQueryParams {
   id: string;
   filename: string;
   type: string;
+  folderId?: string | null;
 }
 
 export const useDuplicateFileV2: useMutationFunctionType<
@@ -42,6 +43,9 @@ export const useDuplicateFileV2: useMutationFunctionType<
     const uploadResponse = await api.post<any>(
       `${getURL("FILE_MANAGEMENT", {}, true)}/`,
       formData,
+      {
+        params: params.folderId ? { folder_id: params.folderId } : undefined,
+      },
     );
 
     return uploadResponse.data;
@@ -53,7 +57,7 @@ export const useDuplicateFileV2: useMutationFunctionType<
     {
       onSettled: (data, error, variables, context) => {
         queryClient.invalidateQueries({
-          queryKey: ["useGetFilesV2"],
+          queryKey: ["useGetFilesV2", params.folderId ?? "all"],
         });
         options?.onSettled?.(data, error, variables, context);
       },

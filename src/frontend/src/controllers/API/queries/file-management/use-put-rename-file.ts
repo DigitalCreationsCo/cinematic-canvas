@@ -7,6 +7,7 @@ import { UseRequestProcessor } from "../../services/request-processor";
 interface IPostRenameFile {
   id: string;
   name: string;
+  folderId?: string | null;
 }
 
 export const usePostRenameFileV2: useMutationFunctionType<
@@ -33,7 +34,7 @@ export const usePostRenameFileV2: useMutationFunctionType<
       {
         onSettled: (data, error, variables, context) => {
           queryClient.invalidateQueries({
-            queryKey: ["useGetFilesV2"],
+            queryKey: ["useGetFilesV2", variables?.folderId ?? "all"],
           });
           options?.onSettled?.(data, error, variables, context);
         },

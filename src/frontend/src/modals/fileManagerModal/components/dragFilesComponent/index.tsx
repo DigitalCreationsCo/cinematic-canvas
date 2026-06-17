@@ -23,12 +23,14 @@ export default function DragFilesComponent({
   isList,
   allowFolderSelection = false,
   existingFiles,
+  folderId,
 }: {
   onUpload: (filesPaths: string[]) => void;
   types: string[];
   isList: boolean;
   allowFolderSelection?: boolean;
   existingFiles?: FileType[];
+  folderId?: string;
 }) {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -49,11 +51,13 @@ export default function DragFilesComponent({
     types,
     multiple: isList,
     webkitdirectory: false,
+    folderId,
   });
   const uploadFolder = useUploadFile({
     types,
     multiple: true,
     webkitdirectory: true,
+    folderId,
   });
   const maxFileSizeUpload = useUtilityStore((state) => state.maxFileSizeUpload);
   const setErrorData = useAlertStore((state) => state.setErrorData);

@@ -8,6 +8,7 @@ import { getUniqueFilename } from "./upload-name-utils";
 
 interface IPostUploadFile {
   file: File;
+  folderId?: string;
 }
 
 export const usePostUploadFileV2: useMutationFunctionType<
@@ -18,11 +19,12 @@ export const usePostUploadFileV2: useMutationFunctionType<
 
   const postUploadFileFn = async (payload: IPostUploadFile): Promise<any> => {
     const formData = new FormData();
+    const filesQueryKey = ["useGetFilesV2", payload.folderId ?? "all"];
 
     // Build set of existing paths (server-side path is typically full filename)
     // Use the existing queryClient from the hook; do not call hooks here.
     const existingFiles: FileType[] =
-      (queryClient.getQueryData(["useGetFilesV2"]) as FileType[]) ?? [];
+      (queryClient.getQueryData(filesQueryKey) as FileType[]) ?? [];
     const existingNames = new Set<string>(
       Array.isArray(existingFiles) ? existingFiles.map((f) => f.path) : [],
     );
@@ -66,8 +68,9 @@ export const usePostUploadFileV2: useMutationFunctionType<
       updated_at: data,
       created_at: data,
       progress: 0,
+      folder_id: payload.folderId ?? null,
     };
-    queryClient.setQueryData(["useGetFilesV2"], (old: FileType[]) => {
+    queryClient.setQueryData(filesQueryKey, (old: FileType[]) => {
       if (!Array.isArray(old)) return [newFile];
       return [...old.filter((file) => file.id !== "temp"), newFile];
     });
@@ -77,9 +80,12 @@ export const usePostUploadFileV2: useMutationFunctionType<
         `${getURL("FILE_MANAGEMENT", {}, true)}`,
         formData,
         {
+          params: payload.folderId
+            ? { folder_id: payload.folderId }
+            : undefined,
           onUploadProgress: (progressEvent) => {
             if (progressEvent.progress) {
-              queryClient.setQueryData(["useGetFilesV2"], (old: any) => {
+              queryClient.setQueryData(filesQueryKey, (old: any) => {
                 if (!Array.isArray(old)) return [];
                 return old.map((file: any) => {
                   if (file?.id === "temp") {
@@ -99,16 +105,19 @@ export const usePostUploadFileV2: useMutationFunctionType<
       // a race window where the optimistic path (just the filename) differs
       // from the server path (user_id/filename), causing checkboxes to
       // appear unchecked until the background refetch completes.
-      queryClient.setQueryData(["useGetFilesV2"], (old: any) => {
-        if (!Array.isArray(old)) return [response.data];
+      queryClient.setQueryData(filesQueryKey, (old: any) => {
+        if (!Array.isArray(old))
+          return [{ ...response.data, folder_id: payload.folderId ?? null }];
         return old.map((file: any) =>
-          file?.id === "temp" ? { ...response.data } : file,
+          file?.id === "temp"
+            ? { ...response.data, folder_id: payload.folderId ?? null }
+            : file,
         );
       });
 
       return response.data;
     } catch (e) {
-      queryClient.setQueryData(["useGetFilesV2"], (old: FileType[]) => {
+      queryClient.setQueryData(filesQueryKey, (old: FileType[]) => {
         if (!Array.isArray(old)) return [];
         return old.map((file: any) => {
           if (file?.id === "temp") {
@@ -132,7 +141,7 @@ export const usePostUploadFileV2: useMutationFunctionType<
         onSettled: (data, error, variables, context) => {
           if (!error) {
             queryClient.invalidateQueries({
-              queryKey: ["useGetFilesV2"],
+              queryKey: ["useGetFilesV2", variables?.folderId ?? "all"],
             });
           }
           options?.onSettled?.(data, error, variables, context);

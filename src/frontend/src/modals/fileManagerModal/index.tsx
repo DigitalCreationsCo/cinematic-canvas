@@ -16,6 +16,7 @@ export default function FileManagerModal({
   types,
   isList,
   allowFolderSelection = false,
+  folderId,
 }: {
   children?: ReactNode;
   selectedFiles?: string[];
@@ -27,6 +28,7 @@ export default function FileManagerModal({
   types: string[];
   isList?: boolean;
   allowFolderSelection?: boolean;
+  folderId?: string;
 }): JSX.Element {
   const [internalOpen, internalSetOpen] = useState(false);
 
@@ -36,9 +38,9 @@ export default function FileManagerModal({
 
   useEffect(() => {
     queryClient.refetchQueries({
-      queryKey: ["useGetFilesV2"],
+      queryKey: ["useGetFilesV2", folderId ?? "all"],
     });
-  }, [internalOpen]);
+  }, [internalOpen, folderId, queryClient]);
 
   const [internalSelectedFiles, setInternalSelectedFiles] = useState<string[]>(
     selectedFiles || [],
@@ -79,7 +81,7 @@ export default function FileManagerModal({
             <div className="rounded-md bg-muted p-1.5">
               <ForwardedIconComponent name="File" className="h-5 w-5" />
             </div>
-            My Files
+            Project Files
           </span>
         </BaseModal.Header>
         <BaseModal.Content overflowHidden>
@@ -91,6 +93,7 @@ export default function FileManagerModal({
                 isList={isList ?? false}
                 allowFolderSelection={allowFolderSelection}
                 existingFiles={files}
+                folderId={folderId}
               />
             </div>
             <div className="flex flex-1 flex-col overflow-hidden">

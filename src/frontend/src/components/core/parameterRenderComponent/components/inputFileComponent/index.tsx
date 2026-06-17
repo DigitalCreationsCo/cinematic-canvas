@@ -10,6 +10,7 @@ import FilesRendererComponent from "@/modals/fileManagerModal/components/filesRe
 import useFileSizeValidator from "@/shared/hooks/use-file-size-validator";
 import { cn } from "@/utils/utils";
 import useAlertStore from "../../../../../stores/alertStore";
+import useFlowStore from "../../../../../stores/flowStore";
 import useFlowsManagerStore from "../../../../../stores/flowsManagerStore";
 import IconComponent, {
   ForwardedIconComponent,
@@ -34,6 +35,9 @@ export default function InputFileComponent({
 }): JSX.Element {
   const { t } = useTranslation();
   const currentFlowId = useFlowsManagerStore((state) => state.currentFlowId);
+  const currentFlowFolderId = useFlowStore(
+    (state) => state.currentFlow?.folder_id,
+  );
   const setErrorData = useAlertStore((state) => state.setErrorData);
   const { validateFileSize } = useFileSizeValidator();
 
@@ -156,9 +160,12 @@ export default function InputFileComponent({
 
   const isDisabled = disabled || isPending;
 
-  const { data: files } = useGetFilesV2({
-    enabled: !!ENABLE_FILE_MANAGEMENT,
-  });
+  const { data: files } = useGetFilesV2(
+    currentFlowFolderId ? { folderId: currentFlowFolderId } : undefined,
+    {
+      enabled: !!ENABLE_FILE_MANAGEMENT && !!currentFlowFolderId,
+    },
+  );
 
   const selectedFiles = (
     isList
@@ -263,6 +270,7 @@ export default function InputFileComponent({
                   types={fileTypes}
                   isList={isList}
                   allowFolderSelection={allowFolderSelection}
+                  folderId={currentFlowFolderId}
                 >
                   {(selectedFiles.length === 0 || isList) && (
                     <div data-testid="input-file-component" className="w-full">

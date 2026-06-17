@@ -5,6 +5,7 @@ from sqlalchemy import String, Text, UniqueConstraint
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel
 
 from portals.services.database.models.deployment.model import Deployment
+from portals.services.database.models.file.model import File
 from portals.services.database.models.flow.model import Flow, FlowRead
 from portals.services.database.models.user.model import User
 
@@ -34,6 +35,10 @@ class Folder(FolderBase, table=True):  # type: ignore[call-arg]
     user_id: UUID | None = Field(default=None, foreign_key="user.id")
     user: User = Relationship(back_populates="folders")
     flows: list[Flow] = Relationship(
+        back_populates="folder",
+        sa_relationship_kwargs={"cascade": "all, delete, delete-orphan"},
+    )
+    files: list[File] = Relationship(
         back_populates="folder",
         sa_relationship_kwargs={"cascade": "all, delete, delete-orphan"},
     )

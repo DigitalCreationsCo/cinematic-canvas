@@ -47,6 +47,12 @@ export const NAV_ITEMS: NavItem[] = [
     tooltip: "sidebar.nav.mcp",
   },
   {
+    id: "files",
+    icon: "File",
+    label: "sidebar.nav.files",
+    tooltip: "sidebar.nav.projectFiles",
+  },
+  {
     id: "bundles",
     icon: "blocks",
     label: "sidebar.nav.bundles",

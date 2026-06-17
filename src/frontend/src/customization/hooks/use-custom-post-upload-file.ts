@@ -3,6 +3,7 @@ import type { useMutationFunctionType } from "@/types/api";
 
 interface IPostUploadFile {
   file: File;
+  folderId?: string;
 }
 
 export const customPostUploadFileV2: useMutationFunctionType<

@@ -51,6 +51,7 @@ import { CategoryGroup } from "./components/categoryGroup";
 import NoResultsMessage from "./components/emptySearchComponent";
 import FlowVersionSidebarContent from "./components/FlowVersionSidebarContent";
 import McpSidebarGroup from "./components/McpSidebarGroup";
+import ProjectFilesSidebarContent from "./components/ProjectFilesSidebarContent";
 import { ProjectFlowsGroup } from "./components/projectFlowsGroup";
 import MemoizedSidebarGroup from "./components/sidebarBundles";
 import SidebarMenuButtons from "./components/sidebarFooterButtons";
@@ -674,6 +675,7 @@ export function FlowSidebarComponent({
     });
   const showVersions =
     ENABLE_NEW_SIDEBAR && activeSection === "versions" && sidebarOpen;
+  const showFiles = ENABLE_NEW_SIDEBAR && activeSection === "files";
 
   const currentFlowForVersions = useFlowStore((state) => state.currentFlow);
 
@@ -788,7 +790,9 @@ export function FlowSidebarComponent({
               "opacity-0 -translate-x-1 pointer-events-none",
           )}
         >
-          {showVersions && currentFlowForVersions?.id ? (
+          {showFiles ? (
+            <ProjectFilesSidebarContent folderId={folderId} />
+          ) : showVersions && currentFlowForVersions?.id ? (
             <>
               {/* ── Project flows ── always visible in normal (non-version) mode */}
               {folderId && showVersions && (
