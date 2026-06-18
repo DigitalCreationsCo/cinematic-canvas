@@ -41,10 +41,10 @@ export const NAV_ITEMS: NavItem[] = [
     tooltip: "sidebar.nav.components",
   },
   {
-    id: "mcp",
-    icon: "Mcp",
-    label: "sidebar.nav.mcp",
-    tooltip: "sidebar.nav.mcp",
+    id: "bundles",
+    icon: "blocks",
+    label: "sidebar.nav.bundles",
+    tooltip: "sidebar.nav.bundles",
   },
   {
     id: "files",
@@ -53,10 +53,10 @@ export const NAV_ITEMS: NavItem[] = [
     tooltip: "sidebar.nav.projectFiles",
   },
   {
-    id: "bundles",
-    icon: "blocks",
-    label: "sidebar.nav.bundles",
-    tooltip: "sidebar.nav.bundles",
+    id: "mcp",
+    icon: "Mcp",
+    label: "sidebar.nav.mcp",
+    tooltip: "sidebar.nav.mcp",
   },
   {
     id: "traces",

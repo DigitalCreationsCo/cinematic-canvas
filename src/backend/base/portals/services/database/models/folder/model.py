@@ -4,10 +4,12 @@ from uuid import UUID, uuid4
 from sqlalchemy import String, Text, UniqueConstraint
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel
 
+from portals.services.database.models.flow.model import FlowRead
+
 if TYPE_CHECKING:
     from portals.services.database.models.deployment.model import Deployment
     from portals.services.database.models.file.model import File
-    from portals.services.database.models.flow.model import Flow, FlowRead
+    from portals.services.database.models.flow.model import Flow
     from portals.services.database.models.user.model import User
 
 
@@ -112,7 +114,7 @@ class FolderRead(FolderBase):
 class FolderReadWithFlows(FolderBase):
     id: UUID
     parent_id: UUID | None = Field()
-    flows: list["FlowRead"] = Field(default=[])
+    flows: list[FlowRead] = Field(default=[])
 
 
 class FolderUpdate(SQLModel):

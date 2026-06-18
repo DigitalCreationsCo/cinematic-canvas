@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import ShadTooltip from "@/components/common/shadTooltipComponent";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,8 @@ export default function ProjectFilesSidebarContent({
   const setErrorData = useAlertStore((state) => state.setErrorData);
   const setSuccessData = useAlertStore((state) => state.setSuccessData);
 
+  const { t } = useTranslation();
+
   const { data: files, isLoading } = useGetFilesV2(
     folderId ? { folderId } : undefined,
     { enabled: !!folderId },
@@ -64,10 +67,13 @@ export default function ProjectFilesSidebarContent({
       setSuccessData({
         title: `File${uploadedFiles.length > 1 ? "s" : ""} uploaded successfully`,
       });
-    } catch (error: any) {
+    } catch (error) {
       setErrorData({
         title: "Error uploading file",
-        list: [error.message || "An error occurred while uploading the file"],
+        list: [
+          (error as Error).message ||
+            "An error occurred while uploading the file",
+        ],
       });
     }
   };
@@ -225,16 +231,15 @@ export default function ProjectFilesSidebarContent({
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-sm text-muted-foreground">
-            <ForwardedIconComponent name="File" className="h-8 w-8" />
             <div>
               <div className="font-medium text-foreground">
-                No project files
+                {t("sidebar.noProjectFiles")}
               </div>
-              <div>Upload files or drop them here.</div>
+              <div>{t("input.upload")}</div>
             </div>
             <Button size="sm" onClick={() => void handleUpload()}>
               <ForwardedIconComponent name="Plus" className="h-4 w-4" />
-              Upload files
+              {t("input.uploadFilesTitle")}
             </Button>
           </div>
         )}
