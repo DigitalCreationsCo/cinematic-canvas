@@ -6264,6 +6264,16 @@ wheels = [
 ]
 
 [[package]]
+name = "nap-sdk"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/dd/ad0bd63c27dfac3553d49c0df617ecfce4014cb5dc979dedcf084299d598/nap_sdk-0.2.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:df03656d2539615612baabb6c645be04b6f50df2f3b23b73f3aa7eac76b0ac5c", size = 608155, upload-time = "2026-06-17T23:23:50.325Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/f9/a1a91f88291ce8a66019218cee281b08f04aa582be2fcf764b75bc302245/nap_sdk-0.2.2-cp313-cp313-manylinux_2_39_x86_64.whl", hash = "sha256:5fc7a402c5dab371b30622712b43ca8072a9accf1618a81b811a35741de682bc", size = 814377, upload-time = "2026-06-17T23:23:51.623Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/c8/c96876c74ec6d6a6d9792b976ce0d8046c14c8bea004acbfd9742d25e692/nap_sdk-0.2.2-cp313-cp313-win_amd64.whl", hash = "sha256:8de8d62b6cc7a897ec8ebcc660e9cd0fda5f77e10bd7e7ad10c195fd704f2eed", size = 534390, upload-time = "2026-06-17T23:23:52.961Z" },
+]
+
+[[package]]
 name = "narrativeengine"
 version = "0.1.23"
 source = { registry = "https://pypi.org/simple" }
@@ -8055,6 +8065,7 @@ name = "portals"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "nap-sdk" },
     { name = "narrativeengine" },
     { name = "portals-base", extra = ["complete"] },
 ]
@@ -8088,6 +8099,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "nap-sdk", specifier = ">=0.2.2" },
     { name = "narrativeengine" },
     { name = "portals-base", extras = ["complete"], editable = "src/backend/base" },
     { name = "sqlalchemy", extras = ["postgresql-psycopg"], marker = "extra == 'postgresql'", specifier = ">=2.0.38,<3.0.0" },
