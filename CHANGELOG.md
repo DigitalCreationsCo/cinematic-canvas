@@ -1,6 +1,18 @@
 # Changelog
 
+## June 18, 2026: SQLModel Relationship Type Resolution & Mapping Registry Fixes
+
+This week resolved critical backend startup failures caused by SQLModel `Relationship()` type resolution and SQLAlchemy registry mapping issues.
+
+**Key Deliverables**:
+- **SQLModel Relationship Positional Arguments Fix**: Removed invalid positional arguments from `Relationship()` declarations in `file/model.py` and `folder/model.py`. Target model classes are now correctly inferred by SQLModel directly from type annotations.
+- **PEP 563 Postponed Evaluation (annotations future import) Removal**: Removed `from __future__ import annotations` from model files. This prevents Python's runtime from stringifying type annotations into nested forms (e.g. `"list['Deployment']"`), which caused SQLAlchemy to fail to resolve forward references and crash with `KeyError`.
+- **Stringified Type Hint Forward References**: Updated relationship type hints under `TYPE_CHECKING` to use explicit string quoting (e.g. `list["Deployment"]`, `Optional["Folder"]`, `list["FlowRead"]`) to allow SQLAlchemy to properly resolve relationships during mapper initialization.
+
+---
+
 ## May 8, 2026: Test Infrastructure Overhaul, Canvas Collision Detection & Entity Validation
+
 
 This week fortified the testing foundation, introduced physics-aware canvas interactions, and deepened the chat assistant's narrative awareness.
 
