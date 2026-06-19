@@ -13,7 +13,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <div class="hero-bg-gradient-3"></div>
       </div>
 
-      <div class="hero-grain"></div>
+      <div class="hero-grain hero-bg content-center clip-overflow">
+        <video src="/videos/ive-come-for-you-bodalia/01.mp4" class="hero-video h-full w-full aspect-video m-auto" autoplay loop muted playsinline></video>
+      </div>
+
       <div class="hero-inner">
         <div class="flex flex-col items-center">
           <p class="hero-eyebrow">The AI Production Workspace</p>
@@ -46,7 +49,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       </h2>
 
       <div class="scroll-features">
-        <div class="scroll-feature-item group card-cinematic-glass reveal">
+        <div class="scroll-feature-item group card-cinematic-glass reveal clip-overflow">
+          <video src="/videos/ive-come-for-you-bodalia/02.mp4" class="hero-grain bg-video-cover" autoplay loop muted playsinline></video>
+
+          <div class="foreground-layer">
           <div class="feature-icon-wrap group-hover:feature-icon-wrap-hover">
             <svg viewBox="0 0 24 24"
             ><path
@@ -62,10 +68,32 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             genre conventions.
           </p>
         </div>
+        </div>
 
-        <div
-          class="scroll-feature-item card-cinematic-glass reveal reveal-delay-1"
-        >
+        <div class="scroll-feature-item card-cinematic-glass reveal reveal-delay-2 clip-overflow">
+          <video src="/videos/ive-come-for-you-bodalia/02.mp4" class="hero-grain bg-video-cover" autoplay loop muted playsinline></video>
+
+          <div class="foreground-layer">
+            <div class="feature-icon-wrap">
+              <svg viewBox="0 0 24 24"
+                ><rect x="3" y="3" width="18" height="18" rx="2"></rect><path
+                  d="M3 9h18M9 21V9"></path></svg
+              >
+            </div>
+            <span class="feature-card-tag">Contextual</span>
+            <h3 class="feature-card-title">Visual Storyboard</h3>
+            <p class="feature-card-desc">
+              Auto-generate shot-by-shot storyboard frames from your screenplay.
+              Adjust camera angles, lighting mood, and composition with natural
+              language.
+            </p>
+          </div>
+        </div>
+
+        <div class="scroll-feature-item card-cinematic-glass reveal reveal-delay-1 clip-overflow">
+          <video src="/videos/ive-come-for-you-bodalia/02.mp4" class="hero-grain bg-video-cover" autoplay loop muted playsinline></video>
+
+          <div class="foreground-layer">
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24"
               ><circle cx="12" cy="8" r="3"></circle><path
@@ -81,28 +109,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             your entire narrative.
           </p>
         </div>
-
-        <div
-          class="scroll-feature-item card-cinematic-glass reveal reveal-delay-2"
-        >
-          <div class="feature-icon-wrap">
-            <svg viewBox="0 0 24 24"
-              ><rect x="3" y="3" width="18" height="18" rx="2"></rect><path
-                d="M3 9h18M9 21V9"></path></svg
-            >
-          </div>
-          <span class="feature-card-tag">Contextual</span>
-          <h3 class="feature-card-title">Visual Storyboard</h3>
-          <p class="feature-card-desc">
-            Auto-generate shot-by-shot storyboard frames from your screenplay.
-            Adjust camera angles, lighting mood, and composition with natural
-            language.
-          </p>
         </div>
 
-        <div
-          class="scroll-feature-item card-cinematic-glass reveal reveal-delay-3"
-        >
+        <div class="scroll-feature-item card-cinematic-glass reveal reveal-delay-3 clip-overflow">
+          <video src="/videos/ive-come-for-you-bodalia/02.mp4" class="hero-grain bg-video-cover" autoplay loop muted playsinline></video>
+
+          <div class="foreground-layer">
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24"
               ><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
@@ -116,6 +128,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             geography, history, culture, and rules. Never contradict yourself
             across episodes or volumes.
           </p>
+        </div>
         </div>
 
         <!-- <div class="scroll-feature-item card-cinematic-glass reveal">
@@ -701,5 +714,113 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         (item as HTMLElement).style.setProperty("--hover-scale", "0");
       });
     });
+
+    // Hero video sizing: align top to the H1 top and fill area to bottom target.
+    function resizeHeroVideo() {
+      const hero = document.getElementById('hero');
+      if (!hero) return;
+      const vid = hero.querySelector('.hero-video');
+      const h1 = hero.querySelector('.hero-title');
+      const heroInner = hero.querySelector('.hero-inner');
+      const cta = hero.querySelector('.hero-actions');
+      if (!vid || !h1 || !heroInner) return;
+
+      // Ensure the hero section is positioned for absolute children
+      if (getComputedStyle(hero).position === 'static') hero.style.position = 'relative';
+      heroInner.style.position = heroInner.style.position || 'relative';
+      heroInner.style.zIndex = 10;
+
+      const heroRect = hero.getBoundingClientRect();
+      const h1Rect = h1.getBoundingClientRect();
+      const heroInnerRect = heroInner.getBoundingClientRect();
+
+      const topOffset = Math.max(0, h1Rect.top - heroRect.top);
+
+      let bottomOffset;
+      // Desktop: use bottom of heroInner. Mobile: use bottom of CTA if present.
+      if (window.matchMedia('(min-width:1024px)').matches) {
+        bottomOffset = heroInnerRect.bottom - heroRect.top;
+      } else {
+        if (cta) bottomOffset = Math.max(heroInnerRect.bottom - heroRect.top, cta.getBoundingClientRect().bottom - heroRect.top);
+        else bottomOffset = heroInnerRect.bottom - heroRect.top;
+      }
+
+      const height = Math.max(0, bottomOffset - topOffset);
+
+      Object.assign(vid.style, {
+        position: 'absolute',
+        left: '0',
+        top: `${topOffset}px`,
+        width: '100vw',
+        height: `${height}px`,
+        objectFit: 'cover',
+        zIndex: '0',
+        pointerEvents: 'none',
+      });
+
+      // Ensure the video horizontally fills the viewport without shifting layout
+      // and that content remains above it.
+      vid.style.maxWidth = 'none';
+    }
+
+    window.addEventListener('resize', resizeHeroVideo);
+    window.addEventListener('orientationchange', resizeHeroVideo);
+    // Run after load and with a short delay to catch fonts/layout.
+    document.addEventListener('DOMContentLoaded', () => { resizeHeroVideo(); setTimeout(resizeHeroVideo, 150); });
+
+    // IntersectionObserver for all videos: show & play the first intersecting video
+    // in document order; hide & pause others. Keeps layout stable (uses
+    // visibility/opacity), and updates as the user scrolls.
+    (function manageVideosByIntersection() {
+      const videos = Array.from(document.querySelectorAll('video'));
+      if (!videos.length) return;
+
+      // Initialize styles without affecting layout
+      videos.forEach((v) => {
+        v.style.transition = v.style.transition || 'opacity 200ms linear';
+        // Start hidden until observer updates visibility to avoid flash
+        if (!v.hasAttribute('data-observer-initialized')) {
+          v.style.opacity = '0';
+          v.style.visibility = 'hidden';
+          v.setAttribute('data-observer-initialized', '1');
+        }
+      });
+
+      const intersecting = new Map();
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          intersecting.set(entry.target, entry.isIntersecting && entry.intersectionRatio > 0);
+        });
+
+        // Choose the first video (document order) that is intersecting
+        const firstVisible = videos.find((v) => intersecting.get(v));
+
+        videos.forEach((v) => {
+          if (v === firstVisible) {
+            // show and play
+            v.style.visibility = 'visible';
+            v.style.opacity = '1';
+            if (v.paused) {
+              const p = v.play();
+              if (p && p.catch) p.catch(() => {});
+            }
+          } else {
+            // hide and pause (do not remove from layout)
+            v.style.opacity = '0';
+            v.style.visibility = 'hidden';
+            if (!v.paused) {
+              try { v.pause(); } catch (e) {}
+            }
+          }
+        });
+      }, { threshold: 0.35 });
+
+      videos.forEach((v) => observer.observe(v));
+
+      // Re-evaluate on resize/orientation changes since layout shifts can change intersection
+      window.addEventListener('resize', () => observer.takeRecords() && observer);
+      window.addEventListener('orientationchange', () => observer.takeRecords() && observer);
+    })();
   </script>
 </BaseLayout>
