@@ -1,4 +1,5 @@
 ---
+import PortalsCanvas from "../components/PortalsCanvas";
 import siteConfig from "../../site.json";
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
@@ -257,149 +258,45 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       </div>
 
 
-      <!-- Workspace demo -->
-      <!-- <div class="workflow-inner">
-        <div class="demo-header reveal" style={{ marginTop: "4rem" }}>
+      <!-- Workspace demo — Live React Flow canvas -->
+      <div class="workflow-inner" style="padding-top: 2rem;">
+        <div class="demo-header reveal">
           <div>
             <p class="section-label reveal">See It Live</p>
-            <h2 class="section-title reveal" style={{ marginBottom: "0" }}>
+            <h2 class="section-title reveal" style="margin-bottom: 0;">
               The workspace,<br /><em>in action</em>
             </h2>
           </div>
-          <a href="/docs" class="btn-ghost reveal">Try the Demo</a>
+          <a href="/docs" class="btn-ghost reveal">Explore the Docs</a>
         </div>
 
-        <div class="workspace-preview reveal">
-          <div class="workspace-titlebar">
-            <div class="ws-dot"></div><div class="ws-dot"></div><div
-              class="ws-dot"
-            >
-            </div>
-            <span class="ws-title"
-              >Neon Requiem · Act II</span
-            >
-          </div>
-          <div class="workspace-body">
-            <div class="ws-sidebar">
-              <div class="ws-sidebar-label">Scenes</div>
-              <div class="ws-scene-item">
-                <div class="ws-scene-thumb"></div>
-                <span class="ws-scene-label">INT. Precinct — Night</span>
-              </div>
-              <div class="ws-scene-item active">
-                <div class="ws-scene-thumb"></div>
-                <span class="ws-scene-label">EXT. Rooftop — Dusk</span>
-              </div>
-              <div class="ws-scene-item">
-                <div class="ws-scene-thumb"></div>
-                <span class="ws-scene-label">INT. Safehouse — Dawn</span>
-              </div>
-              <div class="ws-sidebar-label">Characters</div>
-              <div class="ws-scene-item">
-                <div
-                  class="ws-char-avatar"
-                  style={{
-                    width: "28px",
-                    height: "18px",
-                    borderRadius: "2px",
-                  }}
-                >
-                  M
-                </div>
-                <span class="ws-scene-label">Maya (Protagonist)</span>
-              </div>
-            </div>
-
-            <div class="ws-main">
-              <div class="ws-canvas-area">
-                <div class="ws-canvas-bg"></div>
-                <div class="ws-beam"></div>
-                <div class="ws-frame">
-                  <div class="ws-frame-content">
-                    <div class="ws-frame-figure">
-                      <div class="ws-silhouette"></div>
-                    </div>
-                    <div class="ws-scene-overlay-text">
-                      <p class="ws-scene-location">
-                        EXT. ROOFTOP — DUSK — SCENE 14
-                      </p>
-                      <p class="ws-scene-dialogue">
-                        "The city remembers everyone it swallows."
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="ws-timeline">
-                <div style="display:flex;gap:8px;align-items:center">
-                  <span class="ws-timeline-label">VISUAL</span>
-                  <div
-                    class="ws-timeline-track"
-                    style="flex:1;position:relative;height:16px;"
-                  >
-                    <div
-                      class="ws-clip"
-                      style="left:0%;width:18%;background:rgba(139,32,32,0.35);border:1px solid rgba(139,32,32,0.5)"
-                    >
-                      <span>Ext. Establish</span>
-                    </div>
-                    <div
-                      class="ws-clip"
-                      style="left:19%;width:32%;background:rgba(26,58,92,0.35);border:1px solid rgba(26,58,92,0.5)"
-                    >
-                      <span>Rooftop Chase</span>
-                    </div>
-                    <div
-                      class="ws-clip"
-                      style="left:52%;width:28%;background:rgba(201,165,90,0.2);border:1px solid rgba(201,165,90,0.4)"
-                    >
-                      <span>Confrontation</span>
-                    </div>
-                    <div
-                      class="ws-clip"
-                      style="left:81%;width:18%;background:rgba(139,32,32,0.35);border:1px solid rgba(139,32,32,0.5)"
-                    >
-                      <span>Cutaway</span>
-                    </div>
-                  </div>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                  <span class="ws-timeline-label">AUDIO</span>
-                  <div
-                    class="ws-timeline-track"
-                    style="flex:1;position:relative;height:16px;"
-                  >
-                    <div
-                      class="ws-clip"
-                      style="left:0%;width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)"
-                    >
-                      <span>Ambient City / Score Layer</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="ws-panel">
-              <div class="ws-panel-section">
-                <div class="ws-panel-title">AI Co-writer</div>
-                <div class="ws-ai-prompt">
-                  <div class="prompt-label">▸ Scene Prompt</div>
-                  Maya confronts Echo on the rooftop. Tension, subtext about betrayal,
-                  cinematic.
-                </div>
-                <div class="ws-ai-output" style={{ marginTop: "8px" }}>
-                  Maya steps onto the gravel. Echo doesn't turn around. Below
-                  them, the city hums its indifference.<br /><br />
-                  <strong style={{ color: "var(--color-warm)" }}>MAYA</strong
-                  ><br />
-                  You knew the whole time.<span class="cursor-blink"></span>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div
+          class="reveal"
+          style="
+            margin-top: 2.5rem;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid var(--border-glass, rgba(255,255,255,0.08));
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+            min-height: 520px;
+          "
+        >
+          <PortalsCanvas client:load />
         </div>
-      </div> -->
+
+        <p
+          class="reveal"
+          style="
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--color-muted-foreground, rgba(255,255,255,0.4));
+          "
+        >
+          Drag to pan · Scroll to zoom · Nodes are read-only
+        </p>
+      </div>
     </section>
 
     <!-- Stats Section -->

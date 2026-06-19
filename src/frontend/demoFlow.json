@@ -1,0 +1,514 @@
+{
+  "data": {
+    "nodes": [
+      {
+        "id": "ChatInput-b6UCc",
+        "type": "genericNode",
+        "position": { "x": 100, "y": 250 },
+        "data": {
+          "id": "ChatInput-b6UCc",
+          "type": "ChatInput",
+          "showNode": true,
+          "selected_output": "message",
+          "node": {
+            "display_name": "Chat Input",
+            "description": "Get chat inputs from the Playground.",
+            "icon": "MessagesSquare",
+            "documentation": "",
+            "beta": false,
+            "legacy": false,
+            "frozen": false,
+            "edited": false,
+            "tool_mode": false,
+            "output_types": [],
+            "outputs": [
+              {
+                "display_name": "Chat Message",
+                "name": "message",
+                "types": ["Message"],
+                "selected": "Message",
+                "tool_mode": true,
+                "cache": true,
+                "group_outputs": false,
+                "method": "message_response",
+                "allows_loop": false,
+                "value": "__UNDEFINED__"
+              }
+            ],
+            "template": {
+              "_type": "Component",
+              "input_value": {
+                "type": "str",
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "input_value",
+                "display_name": "Input Text",
+                "value": "Hello",
+                "multiline": true,
+                "info": "Message to be passed as input.",
+                "advanced": false,
+                "dynamic": false,
+                "list": false
+              },
+              "should_store_message": {
+                "type": "bool",
+                "required": false,
+                "show": true,
+                "name": "should_store_message",
+                "display_name": "Store Messages",
+                "value": true,
+                "info": "Store the message in the history.",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              },
+              "sender": {
+                "type": "str",
+                "required": false,
+                "show": true,
+                "name": "sender",
+                "display_name": "Sender Type",
+                "value": "User",
+                "options": ["Machine", "User"],
+                "info": "Type of sender.",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              },
+              "sender_name": {
+                "type": "str",
+                "required": false,
+                "show": true,
+                "name": "sender_name",
+                "display_name": "Sender Name",
+                "value": "User",
+                "info": "Name of the sender.",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              },
+              "session_id": {
+                "type": "str",
+                "required": false,
+                "show": true,
+                "name": "session_id",
+                "display_name": "Session ID",
+                "value": "",
+                "info": "The session ID of the chat.",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "Prompt-t2oaK",
+        "type": "genericNode",
+        "position": { "x": 500, "y": 250 },
+        "data": {
+          "id": "Prompt-t2oaK",
+          "type": "Prompt",
+          "showNode": true,
+          "selected_output": "prompt",
+          "node": {
+            "display_name": "Prompt Template",
+            "description": "Create a prompt template with dynamic variables.",
+            "icon": "braces",
+            "documentation": "",
+            "beta": false,
+            "legacy": false,
+            "frozen": false,
+            "edited": false,
+            "tool_mode": false,
+            "output_types": [],
+            "outputs": [
+              {
+                "display_name": "Prompt",
+                "name": "prompt",
+                "types": ["Message"],
+                "selected": "Message",
+                "tool_mode": true,
+                "cache": true,
+                "group_outputs": false,
+                "method": "build_prompt",
+                "allows_loop": false,
+                "value": "__UNDEFINED__"
+              }
+            ],
+            "template": {
+              "_type": "Component",
+              "template": {
+                "type": "prompt",
+                "required": false,
+                "show": true,
+                "name": "template",
+                "display_name": "Template",
+                "value": "Answer the user as if you were a GenAI expert, enthusiastic about helping them get started building something fresh.",
+                "multiline": true,
+                "info": "",
+                "advanced": false,
+                "dynamic": false,
+                "list": false
+              },
+              "use_double_brackets": {
+                "type": "bool",
+                "required": false,
+                "show": true,
+                "name": "use_double_brackets",
+                "display_name": "Use Double Brackets",
+                "value": false,
+                "info": "Use {{variable}} syntax instead of {variable}.",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "LanguageModelComponent-FLeYF",
+        "type": "genericNode",
+        "position": { "x": 900, "y": 250 },
+        "data": {
+          "id": "LanguageModelComponent-FLeYF",
+          "type": "LanguageModelComponent",
+          "showNode": true,
+          "selected_output": "text_output",
+          "node": {
+            "display_name": "Language Model",
+            "description": "Runs a language model given a specified provider.",
+            "icon": "brain-circuit",
+            "documentation": "https://docs.portals.org/components-models",
+            "beta": false,
+            "legacy": false,
+            "frozen": false,
+            "edited": false,
+            "tool_mode": false,
+            "output_types": [],
+            "outputs": [
+              {
+                "display_name": "Model Response",
+                "name": "text_output",
+                "types": ["Message"],
+                "selected": "Message",
+                "tool_mode": true,
+                "cache": true,
+                "group_outputs": false,
+                "method": "text_response",
+                "allows_loop": false,
+                "value": "__UNDEFINED__"
+              },
+              {
+                "display_name": "Language Model",
+                "name": "model_output",
+                "types": ["LanguageModel"],
+                "selected": "LanguageModel",
+                "tool_mode": true,
+                "cache": true,
+                "group_outputs": false,
+                "method": "build_model",
+                "allows_loop": false,
+                "value": "__UNDEFINED__"
+              }
+            ],
+            "template": {
+              "_type": "Component",
+              "model": {
+                "type": "model",
+                "required": true,
+                "show": true,
+                "name": "model",
+                "display_name": "Language Model",
+                "value": "",
+                "placeholder": "Setup Provider",
+                "info": "Select your model provider",
+                "advanced": false,
+                "dynamic": false,
+                "list": false,
+                "refresh_button": true,
+                "input_types": ["LanguageModel"]
+              },
+              "input_value": {
+                "type": "str",
+                "required": false,
+                "show": true,
+                "name": "input_value",
+                "display_name": "Input",
+                "value": "",
+                "info": "The input text to send to the model",
+                "advanced": false,
+                "dynamic": false,
+                "list": false,
+                "input_types": ["Message"]
+              },
+              "system_message": {
+                "type": "str",
+                "required": false,
+                "show": true,
+                "name": "system_message",
+                "display_name": "System Message",
+                "value": "",
+                "multiline": true,
+                "info": "A system message that helps set the behavior of the assistant",
+                "advanced": false,
+                "dynamic": false,
+                "list": false,
+                "input_types": ["Message"]
+              },
+              "temperature": {
+                "type": "slider",
+                "required": false,
+                "show": true,
+                "name": "temperature",
+                "display_name": "Temperature",
+                "value": 0.1,
+                "info": "Controls randomness in responses",
+                "advanced": true,
+                "dynamic": false,
+                "list": false,
+                "range_spec": {
+                  "min": 0,
+                  "max": 1,
+                  "step": 0.01,
+                  "step_type": "float"
+                }
+              },
+              "stream": {
+                "type": "bool",
+                "required": false,
+                "show": true,
+                "name": "stream",
+                "display_name": "Stream",
+                "value": false,
+                "info": "Whether to stream the response",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              },
+              "api_key": {
+                "type": "str",
+                "required": false,
+                "show": true,
+                "name": "api_key",
+                "display_name": "API Key",
+                "value": "",
+                "password": true,
+                "info": "Model Provider API key",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "ChatOutput-yK0AU",
+        "type": "genericNode",
+        "position": { "x": 1300, "y": 250 },
+        "data": {
+          "id": "ChatOutput-yK0AU",
+          "type": "ChatOutput",
+          "showNode": true,
+          "selected_output": "message",
+          "node": {
+            "display_name": "Chat Output",
+            "description": "Display a chat message in the Playground.",
+            "icon": "MessagesSquare",
+            "documentation": "",
+            "beta": false,
+            "legacy": false,
+            "frozen": false,
+            "edited": false,
+            "tool_mode": false,
+            "output_types": [],
+            "outputs": [
+              {
+                "display_name": "Output Message",
+                "name": "message",
+                "types": ["Message"],
+                "selected": "Message",
+                "tool_mode": true,
+                "cache": true,
+                "group_outputs": false,
+                "method": "message_response",
+                "allows_loop": false,
+                "value": "__UNDEFINED__"
+              }
+            ],
+            "template": {
+              "_type": "Component",
+              "input_value": {
+                "type": "str",
+                "required": true,
+                "show": true,
+                "name": "input_value",
+                "display_name": "Inputs",
+                "value": "",
+                "info": "Message to be passed as output.",
+                "advanced": false,
+                "dynamic": false,
+                "list": false,
+                "input_types": ["Data", "JSON", "DataFrame", "Table", "Message"]
+              },
+              "should_store_message": {
+                "type": "bool",
+                "required": false,
+                "show": true,
+                "name": "should_store_message",
+                "display_name": "Store Messages",
+                "value": true,
+                "info": "Store the message in the history.",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              },
+              "sender": {
+                "type": "str",
+                "required": false,
+                "show": true,
+                "name": "sender",
+                "display_name": "Sender Type",
+                "value": "Machine",
+                "options": ["Machine", "User"],
+                "info": "Type of sender.",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              },
+              "sender_name": {
+                "type": "str",
+                "required": false,
+                "show": true,
+                "name": "sender_name",
+                "display_name": "Sender Name",
+                "value": "AI",
+                "info": "Name of the sender.",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              },
+              "data_template": {
+                "type": "str",
+                "required": false,
+                "show": true,
+                "name": "data_template",
+                "display_name": "Data Template",
+                "value": "{text}",
+                "info": "Template to convert Data to Text.",
+                "advanced": true,
+                "dynamic": false,
+                "list": false
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "README-Ua7t1",
+        "type": "noteNode",
+        "position": { "x": 500, "y": 20 },
+        "data": {
+          "id": "README-Ua7t1",
+          "type": "note",
+          "node": {
+            "display_name": "",
+            "description": "### Basic Prompting Flow\n\nThis template demonstrates a standard chat flow with additional instructions provided by a prompt.\n\n**Quick start:** Configure your Model Provider with API credentials, then open the Playground.",
+            "documentation": "",
+            "template": { "backgroundColor": "neutral" }
+          }
+        },
+        "style": { "height": 200, "width": 324 }
+      },
+      {
+        "id": "note-Px1sq",
+        "type": "noteNode",
+        "position": { "x": 900, "y": 20 },
+        "data": {
+          "id": "note-Px1sq",
+          "type": "note",
+          "node": {
+            "display_name": "",
+            "description": "### Configure your Model Provider\n\nSelect a provider and enter your API key.",
+            "documentation": "",
+            "template": { "backgroundColor": "transparent" }
+          }
+        },
+        "style": { "height": 200, "width": 324 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-chatinput-prompt",
+        "source": "ChatInput-b6UCc",
+        "sourceHandle": "{\"dataType\":\"ChatInput\",\"id\":\"ChatInput-b6UCc\",\"name\":\"message\",\"output_types\":[\"Message\"]}",
+        "target": "LanguageModelComponent-FLeYF",
+        "targetHandle": "{\"fieldName\":\"input_value\",\"id\":\"LanguageModelComponent-FLeYF\",\"inputTypes\":[\"Message\"],\"type\":\"str\"}",
+        "data": {
+          "sourceHandle": {
+            "dataType": "ChatInput",
+            "id": "ChatInput-b6UCc",
+            "name": "message",
+            "output_types": ["Message"]
+          },
+          "targetHandle": {
+            "fieldName": "input_value",
+            "id": "LanguageModelComponent-FLeYF",
+            "inputTypes": ["Message"],
+            "type": "str"
+          }
+        }
+      },
+      {
+        "id": "edge-prompt-model",
+        "source": "Prompt-t2oaK",
+        "sourceHandle": "{\"dataType\":\"Prompt\",\"id\":\"Prompt-t2oaK\",\"name\":\"prompt\",\"output_types\":[\"Message\"]}",
+        "target": "LanguageModelComponent-FLeYF",
+        "targetHandle": "{\"fieldName\":\"system_message\",\"id\":\"LanguageModelComponent-FLeYF\",\"inputTypes\":[\"Message\"],\"type\":\"str\"}",
+        "data": {
+          "sourceHandle": {
+            "dataType": "Prompt",
+            "id": "Prompt-t2oaK",
+            "name": "prompt",
+            "output_types": ["Message"]
+          },
+          "targetHandle": {
+            "fieldName": "system_message",
+            "id": "LanguageModelComponent-FLeYF",
+            "inputTypes": ["Message"],
+            "type": "str"
+          }
+        }
+      },
+      {
+        "id": "edge-model-chatoutput",
+        "source": "LanguageModelComponent-FLeYF",
+        "sourceHandle": "{\"dataType\":\"LanguageModelComponent\",\"id\":\"LanguageModelComponent-FLeYF\",\"name\":\"text_output\",\"output_types\":[\"Message\"]}",
+        "target": "ChatOutput-yK0AU",
+        "targetHandle": "{\"fieldName\":\"input_value\",\"id\":\"ChatOutput-yK0AU\",\"inputTypes\":[\"Data\",\"JSON\",\"DataFrame\",\"Table\",\"Message\"],\"type\":\"str\"}",
+        "data": {
+          "sourceHandle": {
+            "dataType": "LanguageModelComponent",
+            "id": "LanguageModelComponent-FLeYF",
+            "name": "text_output",
+            "output_types": ["Message"]
+          },
+          "targetHandle": {
+            "fieldName": "input_value",
+            "id": "ChatOutput-yK0AU",
+            "inputTypes": ["Data", "JSON", "DataFrame", "Table", "Message"],
+            "type": "str"
+          }
+        }
+      }
+    ],
+    "viewport": { "x": 0, "y": 0, "zoom": 0.85 }
+  },
+  "is_component": false,
+  "name": "Basic Prompting",
+  "description": "A simple prompt-response flow with chat input, prompt template, language model, and chat output."
+}
