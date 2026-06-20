@@ -21,6 +21,9 @@ Stop and check, in order. If any answer is "yes," do not create a new component.
    - Tools → `LCToolComponent` (see `tools/calculator.py`)
    - Vector stores → `LCVectorStoreComponent` + `@check_cached_vector_store` (see `vectorstores/local_db.py`)
    - Chat IO → `ChatComponent` (see `input_output/chat.py`)
+   - **Narrative read/patch** → `BaseEntityReadPatchComponent` (see `narrative/character.py`). Declare `entity_model` + `storyboard_key`, get entity dropdown + dual-write for free. See [NARRATIVE.md](./NARRATIVE.md#baseentityreadpatchcomponent).
+   - **State-aware narrative** → `BaseStateAwareComponent` (see `narrative/generate_storyboard.py`). Provides `get_fresh_project_state()`, `get_existing_*()` entity queries. See [NARRATIVE.md](./NARRATIVE.md#basestateawarecomponent).
+   - **Group/collection** → do NOT inherit either of the above. Inherit `CustomComponent` directly (or `BaseStateAwareComponent` + `LCModelComponent` if you need project state + LLM). The Group pattern (see `narrative/group.py`) is an ephemeral piece collection, not a DB-backed CRUD entity. See [NARRATIVE.md](./NARRATIVE.md#group-component).
 
 ## Scope rules (one component, one job)
 
@@ -136,3 +139,9 @@ When in doubt, read these files before starting:
 - Chat input with `minimized`: `src/px/src/px/components/input_output/chat.py`
 - Component with searchable metadata: `src/px/src/px/components/data_source/sql_executor.py`
 - Legacy + replacement pattern: `src/px/src/px/components/flow_controls/sub_flow.py`
+- Narrative read/patch (DB + storyboard JSON): `src/px/src/px/components/narrative/character.py`
+- Narrative state-aware base: `src/px/src/px/components/narrative/base_state_aware.py`
+- Group (ephemeral piece collection with image gen + asset persistence): `src/px/src/px/components/narrative/group.py`
+- Multi-pass storyboard generation (audio + prompt modes): `src/px/src/px/components/narrative/generate_storyboard.py`
+- NAP protocol + service layer: `src/backend/base/portals/services/nap/protocol.py`
+- NAP API routes: `src/backend/base/portals/api/v1/nap.py`
