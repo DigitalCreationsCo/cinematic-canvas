@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from px.components.narrative.generate_characters import GenerateCharacters
     from px.components.narrative.generate_storyboard import GenerateStoryboardComponent
     from px.components.narrative.get_project_component import GetProjectComponent
+    from px.components.narrative.group import GroupComponent
     from px.components.narrative.location import LocationComponent
     from px.components.narrative.prop import PropComponent
     from px.components.narrative.scene import SceneComponent
@@ -20,6 +21,7 @@ _dynamic_imports = {
     "GenerateCharacters": "generate_characters",
     "GenerateStoryboardComponent": "generate_storyboard",
     "GetProjectComponent": "get_project_component",
+    "GroupComponent": "group",
     "LocationComponent": "location",
     "SceneComponent": "scene",
     "PropComponent": "prop",
@@ -31,6 +33,7 @@ __all__ = [
     "GenerateCharacters",
     "GenerateStoryboardComponent",
     "GetProjectComponent",
+    "GroupComponent",
     "LocationComponent",
     "PropComponent",
     "SceneComponent",

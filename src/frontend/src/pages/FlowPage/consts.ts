@@ -1,5 +1,6 @@
 import { DefaultEdge } from "@/CustomEdges";
 import GenericNode from "@/CustomNodes/GenericNode";
+import ImageNode from "@/CustomNodes/ImageNode";
 import NoteNode from "@/CustomNodes/NoteNode";
 
 /**
@@ -8,6 +9,7 @@ import NoteNode from "@/CustomNodes/NoteNode";
  */
 export const nodeTypes = {
   genericNode: GenericNode,
+  imageNode: ImageNode,
   noteNode: NoteNode,
 };
 

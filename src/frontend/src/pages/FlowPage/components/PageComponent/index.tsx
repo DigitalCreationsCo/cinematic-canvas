@@ -18,11 +18,13 @@ import {
   useState,
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import FlowToolbar from "@/components/core/flowToolbarComponent";
 import {
   COLOR_OPTIONS,
+  DRAG_EVENTS_CUSTOM_TYPESS,
   NOTE_NODE_MIN_HEIGHT,
   NOTE_NODE_MIN_WIDTH,
 } from "@/constants/constants";
@@ -33,14 +35,15 @@ import CustomLoader from "@/customization/components/custom-loader";
 import { track } from "@/customization/utils/analytics";
 import useApplyFlowToCanvas from "@/hooks/flows/use-apply-flow-to-canvas";
 import useAutoSaveFlow from "@/hooks/flows/use-autosave-flow";
-
 import { useFlowEvents } from "@/hooks/flows/use-flow-events";
 import useUploadFlow from "@/hooks/flows/use-upload-flow";
 import { useAddComponent } from "@/hooks/use-add-component";
+import { customPostUploadFileV2 } from "@/customization/hooks/use-custom-post-upload-file";
+import useFileSizeValidator from "@/shared/hooks/use-file-size-validator";
 import InspectionPanel from "@/pages/FlowPage/components/InspectionPanel";
+import { isImageFile } from "@/components/core/playgroundComponent/chat-view/utils/file-utils";
 import { nodeColorsName } from "@/utils/styleUtils";
 import { isSupportedNodeTypes } from "@/utils/utils";
-import { useTranslation } from "react-i18next";
 import ExportModal from "../../../../modals/exportModal";
 import useAlertStore from "../../../../stores/alertStore";
 import useFlowStore from "../../../../stores/flowStore";
@@ -53,6 +56,8 @@ import type {
   AllNodeType,
   EdgeType,
   FlowType,
+  ImageNodeDataType,
+  ImageNodeType,
   NoteNodeType,
 } from "../../../../types/flow";
 import {
@@ -123,6 +128,9 @@ export default function Page({
   const undo = useFlowsManagerStore((state) => state.undo);
   const redo = useFlowsManagerStore((state) => state.redo);
   const takeSnapshot = useFlowsManagerStore((state) => state.takeSnapshot);
+  const folderId = useFlowStore((state) => state.currentFlow?.folder_id);
+  const { mutateAsync: uploadFileMutation } = customPostUploadFileV2();
+  const { validateFileSize } = useFileSizeValidator();
   const paste = useFlowStore((state) => state.paste);
   const lastCopiedSelection = useFlowStore(
     (state) => state.lastCopiedSelection,
@@ -653,6 +661,74 @@ export default function Page({
       if (grabbingElement.length > 0) {
         document.body.removeChild(grabbingElement[0]);
       }
+      // Image file dropped from the sidebar → create/focus an image node.
+      // Each image file can only have a single node; re-dropping focuses it.
+      const imageKey = event.dataTransfer.types.find(
+        (type) => type === DRAG_EVENTS_CUSTOM_TYPESS.imagenode,
+      );
+      if (imageKey && reactFlowInstance) {
+        takeSnapshot();
+        const imageData = JSON.parse(event.dataTransfer.getData(imageKey)) as {
+          fileId: string;
+          filePath: string;
+          fileName: string;
+        };
+
+        // Duplicate detection: focus & select an existing node for this file.
+        const existing = nodes.find(
+          (n) =>
+            n.type === "imageNode" &&
+            (n.data as ImageNodeDataType)?.node?.file_id === imageData.fileId,
+        ) as ImageNodeType | undefined;
+
+        if (existing) {
+          setNodes((nds) =>
+            nds.map((n) => ({ ...n, selected: n.id === existing.id })),
+          );
+          reactFlowInstance.setCenter(
+            existing.position.x,
+            existing.position.y,
+            {
+              duration: 400,
+              zoom: 1.2,
+            },
+          );
+        } else {
+          const position = reactFlowInstance.screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
+          });
+          const id = getNodeId("imageNode");
+          const newNode: ImageNodeType = {
+            id,
+            type: "imageNode",
+            position,
+            data: {
+              type: "imageNode",
+              id,
+              node: {
+                file_id: imageData.fileId,
+                file_path: imageData.filePath,
+                file_name: imageData.fileName,
+              },
+            },
+          };
+          // Add the new image node and then select & center it
+          setNodes((nds) => nds.concat(newNode));
+          // Ensure the newly created node is selected and centered after ReactFlow updates
+          requestAnimationFrame(() => {
+            setNodes((nds) =>
+              nds.map((n) => ({ ...n, selected: n.id === id })),
+            );
+            reactFlowInstance.setCenter(position.x, position.y, {
+              duration: 400,
+              zoom: 1.2,
+            });
+          });
+        }
+        return;
+      }
+
       if (event.dataTransfer.types.some((type) => isSupportedNodeTypes(type))) {
         takeSnapshot();
 
@@ -671,19 +747,96 @@ export default function Page({
         });
       } else if (event.dataTransfer.types.some((types) => types === "Files")) {
         takeSnapshot();
-        const position = {
+        // Screen coordinates for uploadFlow → paste() (it handles conversion internally)
+        const screenPosition = {
           x: event.clientX,
           y: event.clientY,
         };
-        uploadFlow({
-          files: Array.from(event.dataTransfer.files!),
-          position: position,
-        }).catch((error) => {
-          setErrorData({
-            title: t("errors.upload"),
-            list: [(error as Error).message],
+        // Flow coordinates for direct ImageNode creation
+        const flowPosition = reactFlowInstance
+          ? reactFlowInstance.screenToFlowPosition(screenPosition)
+          : screenPosition;
+        const droppedFiles = Array.from(event.dataTransfer.files!);
+        const imageFiles = droppedFiles.filter((f) => isImageFile(f));
+        const otherFiles = droppedFiles.filter((f) => !isImageFile(f));
+
+        // Handle image file drops: upload and create ImageNode(s)
+        if (imageFiles.length > 0) {
+          (async () => {
+            try {
+              // Upload each file individually via the mutation to get the
+              // server-assigned file ID (used for duplicate detection).
+              const uploaded: { id: string; path: string; name: string }[] =
+                [];
+              for (const file of imageFiles) {
+                validateFileSize(file);
+                const fileInfo = await uploadFileMutation({
+                  file,
+                  folderId,
+                });
+                uploaded.push({
+                  id: fileInfo.id,
+                  path: fileInfo.path,
+                  name: file.name,
+                });
+              }
+              // Build all new nodes first, then batch-add them in a single setNodes call
+              const newNodes: ImageNodeType[] = uploaded.map(
+                (fileInfo, index): ImageNodeType => {
+                  const id = getNodeId("imageNode");
+                  return {
+                    id,
+                    type: "imageNode",
+                    position: {
+                      x: flowPosition.x + index * 50,
+                      y: flowPosition.y + index * 50,
+                    },
+                    data: {
+                      type: "imageNode",
+                      id,
+                      node: {
+                        file_id: fileInfo.id,
+                        file_path: fileInfo.path,
+                        file_name: fileInfo.name,
+                      },
+                    },
+                  };
+                },
+              );
+              setNodes((nds) => nds.concat(newNodes));
+              // Select and center the last dropped node for immediate interaction
+              const lastId = newNodes[newNodes.length - 1].id;
+              requestAnimationFrame(() => {
+                setNodes((nds) =>
+                  nds.map((n) => ({ ...n, selected: n.id === lastId })),
+                );
+                reactFlowInstance?.setCenter(
+                  newNodes[newNodes.length - 1].position.x,
+                  newNodes[newNodes.length - 1].position.y,
+                  { duration: 400, zoom: 1.2 },
+                );
+              });
+            } catch (error) {
+              setErrorData({
+                title: t("errors.upload"),
+                list: [(error as Error).message],
+              });
+            }
+          })();
+        }
+
+        // Handle non-image files (JSON flows) with existing uploadFlow
+        if (otherFiles.length > 0) {
+          uploadFlow({
+            files: otherFiles,
+            position: screenPosition,
+          }).catch((error) => {
+            setErrorData({
+              title: t("errors.upload"),
+              list: [(error as Error).message],
+            });
           });
-        });
+        }
       } else {
         setErrorData({
           title: t("errors.wrongFileType"),
@@ -691,7 +844,17 @@ export default function Page({
         });
       }
     },
-    [takeSnapshot, addComponent],
+    [
+      takeSnapshot,
+      addComponent,
+      nodes,
+      reactFlowInstance,
+      setNodes,
+      uploadFileMutation,
+      validateFileSize,
+      setErrorData,
+      folderId,
+    ],
   );
 
   const onEdgeUpdateStart = useCallback(() => {

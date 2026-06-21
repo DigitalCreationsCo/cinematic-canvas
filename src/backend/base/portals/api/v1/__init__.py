@@ -14,6 +14,7 @@ from portals.api.v1.mcp_projects import router as mcp_projects_router
 from portals.api.v1.model_options import router as model_options_router
 from portals.api.v1.models import router as models_router
 from portals.api.v1.monitor import router as monitor_router
+from portals.api.v1.nap import router as nap_router
 from portals.api.v1.notifications import router as notifications_router
 from portals.api.v1.openai_responses import router as openai_responses_router
 from portals.api.v1.projects import router as projects_router
@@ -45,6 +46,7 @@ __all__ = [
     "model_options_router",
     "models_router",
     "monitor_router",
+    "nap_router",
     "notifications_router",
     "openai_responses_router",
     "projects_router",

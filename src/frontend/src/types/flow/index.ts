@@ -1,6 +1,9 @@
 import type { Edge, Node, ReactFlowJsonObject } from "@xyflow/react";
 import type { BuildStatus } from "../../constants/enums";
 import type { APIClassType, OutputFieldType } from "../api/index";
+import type { ImageNodeDataType } from "./imageNode";
+
+export type { ImageNodeDataType } from "./imageNode";
 
 export type PaginatedFlowsType = {
   items: FlowType[];
@@ -38,10 +41,15 @@ export type FlowType = {
 
 export type GenericNodeType = Node<NodeDataType, "genericNode">;
 export type NoteNodeType = Node<NoteDataType, "noteNode">;
+export type ImageNodeType = Node<ImageNodeDataType, "imageNode">;
 
-export type AllNodeType = GenericNodeType | NoteNodeType;
-export type SetNodeType<T = "genericNode" | "noteNode"> =
-  T extends "genericNode" ? GenericNodeType : NoteNodeType;
+export type AllNodeType = GenericNodeType | NoteNodeType | ImageNodeType;
+export type SetNodeType<T = "genericNode" | "noteNode" | "imageNode"> =
+  T extends "genericNode"
+    ? GenericNodeType
+    : T extends "noteNode"
+      ? NoteNodeType
+      : ImageNodeType;
 
 export type noteClassType = Pick<
   APIClassType,
@@ -71,6 +79,11 @@ export type NodeDataType = {
   selected_output?: string;
   /** Transient flag: true while "Connect other models" mode is active */
   _connectionMode?: boolean;
+  /** NAP (Narrative Addressing Protocol) entity URI, if this node
+   * represents a narrative entity (character, location, prop, scene). */
+  nap_uri?: string | null;
+  /** The commit hash of the latest published revision for this entity. */
+  nap_commit_hash?: string | null;
 };
 
 export type EdgeType = Edge<EdgeDataType, "default">;

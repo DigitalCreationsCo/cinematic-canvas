@@ -52,6 +52,10 @@ class SceneBase(SQLModel):
     progress_message: str | None = None
     guidance_level: int | None = None
 
+    # NAP (Narrative Addressing Protocol) columns — temporary migration scaffolding.
+    nap_uri: str | None = Field(default=None, nullable=True)
+    nap_commit_hash: str | None = Field(default=None, nullable=True)
+
 
 class Scene(SceneBase, table=True):  # type: ignore[call-arg]
     __tablename__ = "scenes"

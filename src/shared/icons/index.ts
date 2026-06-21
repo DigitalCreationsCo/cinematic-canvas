@@ -1,1 +1,0 @@
-export * from './scene-infinite.js';

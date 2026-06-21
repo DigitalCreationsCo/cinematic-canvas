@@ -27,6 +27,13 @@ class CharacterBase(SQLModel):
     state: dict = Field(sa_column=Column(JSON, nullable=False))
     guidance_level: int | None = None
 
+    # NAP (Narrative Addressing Protocol) columns — temporary migration
+    # scaffolding.  These are thin pointers so the existing SQL-based
+    # read paths can resolve URIs during the migration period.  Full
+    # removal is deferred to a later PR.
+    nap_uri: str | None = Field(default=None, nullable=True)
+    nap_commit_hash: str | None = Field(default=None, nullable=True)
+
 
 class Character(CharacterBase, table=True):  # type: ignore[call-arg]
     __tablename__ = "characters"

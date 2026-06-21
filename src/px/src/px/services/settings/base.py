@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     knowledge_bases_dir: str | None = "~/.portals/knowledge_bases"
     """The directory to store knowledge bases."""
 
+    nap_storage_dir: str = Field(default=str(Path.home() / ".portals" / "nap"))
+    """Directory where nap-core repository data is stored (manifests,
+    commits, content-addressed assets).  Can be overridden via the
+    PORTALS_NAP_STORAGE_DIR environment variable."""
+
     dev: bool = False
     """If True, Portals will run in development mode."""
     db_dir: str = Field(default=str(Path.home() / ".portals"))

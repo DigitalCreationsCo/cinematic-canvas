@@ -8,6 +8,7 @@ import type {
 } from "../types/zustand/flowsManager";
 import useAssistantManagerStore from "./assistantManagerStore";
 import useFlowStore from "./flowStore";
+import useNapStore from "./napStore";
 
 const defaultOptions: UseUndoRedoOptions = {
   maxHistorySize: 100,
@@ -63,9 +64,11 @@ const useFlowsManagerStore = create<FlowsManagerStoreType>((set, get) => ({
     const currentFlowId = get().currentFlowId;
     // push the current graph to the past state
     const flowStore = useFlowStore.getState();
+    const napStore = useNapStore.getState();
     const newState = {
       nodes: cloneDeep(flowStore.nodes),
       edges: cloneDeep(flowStore.edges),
+      draftData: cloneDeep(napStore.draftManifest),
     };
     const pastLength = past[currentFlowId]?.length ?? 0;
     if (
@@ -89,6 +92,7 @@ const useFlowsManagerStore = create<FlowsManagerStoreType>((set, get) => ({
   },
   undo: () => {
     const newState = useFlowStore.getState();
+    const napState = useNapStore.getState();
     const currentFlowId = get().currentFlowId;
     const pastLength = past[currentFlowId]?.length ?? 0;
     const pastState = past[currentFlowId]?.[pastLength - 1] ?? null;
@@ -100,14 +104,19 @@ const useFlowsManagerStore = create<FlowsManagerStoreType>((set, get) => ({
       future[currentFlowId].push({
         nodes: newState.nodes,
         edges: newState.edges,
+        draftData: cloneDeep(napState.draftManifest),
       });
 
       newState.setNodes(pastState.nodes);
       newState.setEdges(pastState.edges);
+      if ("draftData" in pastState) {
+        napState.setDraftManifest(pastState.draftData);
+      }
     }
   },
   redo: () => {
     const newState = useFlowStore.getState();
+    const napState = useNapStore.getState();
     const currentFlowId = get().currentFlowId;
     const futureLength = future[currentFlowId]?.length ?? 0;
     const futureState = future[currentFlowId]?.[futureLength - 1] ?? null;
@@ -119,10 +128,14 @@ const useFlowsManagerStore = create<FlowsManagerStoreType>((set, get) => ({
       past[currentFlowId].push({
         nodes: newState.nodes,
         edges: newState.edges,
+        draftData: cloneDeep(napState.draftManifest),
       });
 
       newState.setNodes(futureState.nodes);
       newState.setEdges(futureState.edges);
+      if ("draftData" in futureState) {
+        napState.setDraftManifest(futureState.draftData);
+      }
     }
   },
   searchFlowsComponents: "",

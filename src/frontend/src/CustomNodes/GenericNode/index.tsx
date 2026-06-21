@@ -16,13 +16,13 @@ import NodeToolbarComponent from "../../pages/FlowPage/components/nodeToolbarCom
 import { useChangeOnUnfocus } from "../../shared/hooks/use-change-on-unfocus";
 import useAlertStore from "../../stores/alertStore";
 import useFlowStore, {
-  registerNodeUpdate,
   completeNodeUpdate,
+  registerNodeUpdate,
 } from "../../stores/flowStore";
 import useFlowsManagerStore from "../../stores/flowsManagerStore";
-import { useUtilityStore } from "../../stores/utilityStore";
 import { useShortcutsStore } from "../../stores/shortcuts";
 import { useTypesStore } from "../../stores/typesStore";
+import { useUtilityStore } from "../../stores/utilityStore";
 import type { OutputFieldType, VertexBuildTypeAPI } from "../../types/api";
 import type { NodeDataType } from "../../types/flow";
 import { scapedJSONStringfy } from "../../utils/reactflowUtils";
@@ -632,6 +632,12 @@ function GenericNode({
               isBreakingChange={hasBreakingChange}
               getValidationStatus={getValidationStatus}
             />
+            {data.nap_uri && (
+              <span
+                className="ml-1 inline-flex h-2 w-2 rounded-full bg-emerald-500"
+                title="NAP-backed narrative entity"
+              />
+            )}
           </div>
           {showNode && (hasDescription || editNameDescription) && (
             <div className="px-4 pb-3">

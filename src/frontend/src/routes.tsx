@@ -23,6 +23,7 @@ import { CustomRoutesStorePages } from "./customization/utils/custom-routes-stor
 import { AppAuthenticatedPage } from "./pages/AppAuthenticatedPage";
 import { AppInitPage } from "./pages/AppInitPage";
 import { AppWrapperPage } from "./pages/AppWrapperPage";
+import DemoWorkspace from "./pages/DemoWorkspace";
 import FlowPage from "./pages/FlowPage";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/MainPage/pages/homePage";
@@ -63,6 +64,7 @@ const router = createBrowserRouter(
         }
       />
     </Route>,
+    <Route path="/demo" element={<DemoWorkspace />} />,
     <Route
       path={ENABLE_CUSTOM_PARAM ? "/:customParam?" : "/"}
       element={

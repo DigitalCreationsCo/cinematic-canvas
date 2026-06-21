@@ -48,6 +48,11 @@ from portals.services.deps import (
     get_settings_service,
     get_telemetry_service,
 )
+from portals.services.nap import (
+    MockNapRepository,
+    NapService,
+    initialize_nap_service,
+)
 from portals.services.schema import ServiceType
 from portals.services.utils import (
     initialize_services,
@@ -278,6 +283,17 @@ def get_lifespan(*, fix_migration=False, version=None):
             await mcp_composer_service.start()
             await logger.adebug(
                 f"started MCP Composer service in {asyncio.get_event_loop().time() - current_time:.2f}s"
+            )
+
+            # ── Nap Service Initialization ─────────────────────────────
+            current_time = asyncio.get_event_loop().time()
+            storage_path = anyio.Path(get_settings_service().settings.nap_storage_dir)
+            nap_storage = await storage_path.expanduser()
+            await nap_storage.mkdir(parents=True, exist_ok=True)
+            nap_repo = MockNapRepository(assets_dir=nap_storage)
+            initialize_nap_service(NapService(repo=nap_repo))
+            await logger.adebug(
+                f"NAP service initialized (dir={nap_storage}) in {asyncio.get_event_loop().time() - current_time:.2f}s"
             )
 
             # Auto-configure Agentic MCP server if enabled (after variables are initialized)
@@ -718,6 +734,18 @@ def setup_static_files(app: FastAPI, static_files_dir: Path) -> None:
         app (FastAPI): FastAPI app.
         static_files_dir (str): Path to the static files directory.
     """
+    # Mount the nap-core content-addressed asset store BEFORE the SPA
+    # catch-all so /api/assets/{hash} requests are handled here rather
+    # than falling through to index.html.
+    nap_storage = get_settings_service().settings.nap_storage_dir
+    nap_assets_dir = Path(nap_storage).expanduser() / ".nap-assets"
+    if nap_assets_dir.exists():
+        app.mount(
+            "/api/assets",
+            StaticFiles(directory=str(nap_assets_dir)),
+            name="nap-assets",
+        )
+
     app.mount(
         "/",
         StaticFiles(directory=static_files_dir, html=True),

@@ -13,6 +13,10 @@ class PropBase(SQLModel):
     created_at: datetime | None = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
     updated_at: datetime | None = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
 
+    # NAP (Narrative Addressing Protocol) columns — temporary migration scaffolding.
+    nap_uri: str | None = Field(default=None, nullable=True)
+    nap_commit_hash: str | None = Field(default=None, nullable=True)
+
 
 class Prop(PropBase, table=True):  # type: ignore[call-arg]
     __tablename__ = "props"

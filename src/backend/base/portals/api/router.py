@@ -19,6 +19,7 @@ from portals.api.v1 import (
     model_options_router,
     models_router,
     monitor_router,
+    nap_router,
     notifications_router,
     openai_responses_router,
     projects_router,
@@ -84,6 +85,7 @@ router_v1.include_router(mcp_projects_router)
 router_v1.include_router(openai_responses_router)
 router_v1.include_router(models_router)
 router_v1.include_router(model_options_router)
+router_v1.include_router(nap_router)
 include_deployment_router(router_v1)
 
 

@@ -2,9 +2,11 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import ShadTooltip from "@/components/common/shadTooltipComponent";
+import { isImageFile } from "@/components/core/playgroundComponent/chat-view/utils/file-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Loading from "@/components/ui/loading";
+import { DRAG_EVENTS_CUSTOM_TYPESS } from "@/constants/constants";
 import { useGetFilesV2 } from "@/controllers/API/queries/file-management";
 import { usePostRenameFileV2 } from "@/controllers/API/queries/file-management/use-put-rename-file";
 import useUploadFile from "@/hooks/files/use-upload-file";
@@ -168,10 +170,55 @@ export default function ProjectFilesSidebarContent({
               const iconColor = FILE_ICONS[extension]?.color ?? undefined;
               const isEditing = editingFileId === file.id;
 
+              const isImage = isImageFile(file);
+              const handleDragStart = (e: React.DragEvent) => {
+                // Create a clone for the drag image similar to other sidebar draggables
+                try {
+                  const crt = (e.currentTarget as HTMLElement).cloneNode(
+                    true,
+                  ) as HTMLElement;
+                  crt.style.position = "absolute";
+                  crt.style.width = "215px";
+                  crt.style.top = "-500px";
+                  crt.style.right = "-500px";
+                  crt.classList.add("cursor-grabbing");
+                  document.body.appendChild(crt);
+                  e.dataTransfer.setDragImage(crt, 0, 0);
+                } catch (err) {
+                  // ignore clone failures
+                }
+
+                e.dataTransfer.setData(
+                  DRAG_EVENTS_CUSTOM_TYPESS.imagenode,
+                  JSON.stringify({
+                    fileId: file.id,
+                    filePath: file.path,
+                    fileName: getDisplayName(file),
+                  }),
+                );
+                e.dataTransfer.effectAllowed = "move";
+              };
+
+              const handleDragEnd = () => {
+                if (
+                  document.getElementsByClassName("cursor-grabbing").length > 0
+                ) {
+                  document.body.removeChild(
+                    document.getElementsByClassName("cursor-grabbing")[0],
+                  );
+                }
+              };
+
               return (
                 <div
                   key={file.id}
-                  className="group flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+                  className={cn(
+                    "group flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent",
+                    isImage && "cursor-grab active:cursor-grabbing",
+                  )}
+                  draggable={isImage}
+                  onDragStart={isImage ? handleDragStart : undefined}
+                  onDragEnd={isImage ? handleDragEnd : undefined}
                 >
                   <ForwardedIconComponent
                     name={icon}

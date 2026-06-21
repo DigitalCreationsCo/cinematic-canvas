@@ -763,11 +763,23 @@ export function removeDuplicatesBasedOnAttribute<T>(
   return filteredChatHistory;
 }
 export function isSupportedNodeTypes(type: string) {
-  return Object.keys(DRAG_EVENTS_CUSTOM_TYPESS).some((key) => key === type);
+  // Accept either the canonical key (e.g. 'imagenode') or the mapped value
+  // (e.g. 'imageNode') since different parts of the app may set either.
+  return Object.keys(DRAG_EVENTS_CUSTOM_TYPESS).some(
+    (key) => key === type || DRAG_EVENTS_CUSTOM_TYPESS[key] === type,
+  );
 }
 
 export function getNodeRenderType(MIMEtype: string) {
-  return DRAG_EVENTS_CUSTOM_TYPESS[MIMEtype];
+  // Support passing either the key (e.g. 'genericnode') or the value
+  // (e.g. 'genericNode'). Return the renderer value (e.g. 'genericNode').
+  if (DRAG_EVENTS_CUSTOM_TYPESS[MIMEtype])
+    return DRAG_EVENTS_CUSTOM_TYPESS[MIMEtype];
+
+  const foundKey = Object.keys(DRAG_EVENTS_CUSTOM_TYPESS).find(
+    (k) => DRAG_EVENTS_CUSTOM_TYPESS[k] === MIMEtype,
+  );
+  return foundKey ? DRAG_EVENTS_CUSTOM_TYPESS[foundKey] : undefined;
 }
 
 export const formatPlaceholderName = (name) => {
