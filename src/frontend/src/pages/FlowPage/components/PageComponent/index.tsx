@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import FlowToolbar from "@/components/core/flowToolbarComponent";
+import { isImageFile } from "@/components/core/playgroundComponent/chat-view/utils/file-utils";
 import {
   COLOR_OPTIONS,
   DRAG_EVENTS_CUSTOM_TYPESS,
@@ -32,16 +33,15 @@ import { api } from "@/controllers/API/api";
 import { getURL } from "@/controllers/API/helpers/constants";
 import { useGetBuildsQuery } from "@/controllers/API/queries/_builds";
 import CustomLoader from "@/customization/components/custom-loader";
+import { customPostUploadFileV2 } from "@/customization/hooks/use-custom-post-upload-file";
 import { track } from "@/customization/utils/analytics";
 import useApplyFlowToCanvas from "@/hooks/flows/use-apply-flow-to-canvas";
 import useAutoSaveFlow from "@/hooks/flows/use-autosave-flow";
 import { useFlowEvents } from "@/hooks/flows/use-flow-events";
 import useUploadFlow from "@/hooks/flows/use-upload-flow";
 import { useAddComponent } from "@/hooks/use-add-component";
-import { customPostUploadFileV2 } from "@/customization/hooks/use-custom-post-upload-file";
-import useFileSizeValidator from "@/shared/hooks/use-file-size-validator";
 import InspectionPanel from "@/pages/FlowPage/components/InspectionPanel";
-import { isImageFile } from "@/components/core/playgroundComponent/chat-view/utils/file-utils";
+import useFileSizeValidator from "@/shared/hooks/use-file-size-validator";
 import { nodeColorsName } from "@/utils/styleUtils";
 import { isSupportedNodeTypes } from "@/utils/utils";
 import ExportModal from "../../../../modals/exportModal";
@@ -766,8 +766,7 @@ export default function Page({
             try {
               // Upload each file individually via the mutation to get the
               // server-assigned file ID (used for duplicate detection).
-              const uploaded: { id: string; path: string; name: string }[] =
-                [];
+              const uploaded: { id: string; path: string; name: string }[] = [];
               for (const file of imageFiles) {
                 validateFileSize(file);
                 const fileInfo = await uploadFileMutation({
