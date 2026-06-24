@@ -30,7 +30,7 @@ class NoopDatabaseService:
 
         Provides a session with sync methods (``exec``, ``commit``, etc.)
         so that sync-only callers such as ``ProjectService``,
-        ``BaseStateAwareComponent``, and ``BaseEntityReadPatchComponent``
+        ``BaseStateAwareComponent``
         do not receive unawaited coroutines from the async ``NoopSession``.
         """
         from px.services.session import SyncNoopSession

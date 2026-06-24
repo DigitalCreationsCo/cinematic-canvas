@@ -51,7 +51,7 @@ def component():
 
     # NOTE: ``graph`` and ``flow_id`` are read-only ``@property`` attributes on
     # CustomComponent — do not attempt to set them here.  Tests that exercise
-    # ``build_storyboard`` patch ``get_fresh_project_state`` before calling.
+    # ``build_storyboard`` patch ``get_folder`` before calling.
 
     return comp
 
@@ -65,7 +65,7 @@ def _make_mock_model_selection() -> list[dict]:
             "metadata": {
                 "model_class": "ChatOpenAI",
                 "model_name_param": "model",
-                "api_key_param": "api_key",
+                "api_key_param": "api_key",  # pragma: allowlist secret
                 "max_tokens_field_name": "max_tokens",
             },
         }
@@ -299,8 +299,8 @@ class TestBuildStoryboard:
 
     @patch.object(GenerateStoryboardComponent, "_extract_structured")
     @patch.object(GenerateStoryboardComponent, "_setup_llm_and_config")
-    @patch.object(GenerateStoryboardComponent, "get_fresh_project_state")
-    @patch.object(GenerateStoryboardComponent, "get_all_existing_entities")
+    @patch.object(GenerateStoryboardComponent, "get_folder")
+    @patch.object(GenerateStoryboardComponent, "get_entities")
     def test_build_storyboard_prompt_only_mode(
         self,
         mock_get_entities,
@@ -319,11 +319,7 @@ class TestBuildStoryboard:
         folder = MagicMock()
         folder.id = "proj-1"
         mock_get_project.return_value = folder
-        mock_get_entities.return_value = {
-            "characters": [],
-            "locations": [],
-            "props": [],
-        }
+        mock_get_entities.return_value = []
 
         # Structured extraction returns mock data via unwrap
         def extract_side_effect(llm, schema, system_prompt, user_prompt, config_dict):
@@ -389,8 +385,8 @@ class TestBuildStoryboard:
     @patch.object(GenerateStoryboardComponent, "_extract_structured")
     @patch.object(GenerateStoryboardComponent, "_setup_llm_and_config")
     @patch.object(GenerateStoryboardComponent, "_analyze_audio_if_provided")
-    @patch.object(GenerateStoryboardComponent, "get_fresh_project_state")
-    @patch.object(GenerateStoryboardComponent, "get_all_existing_entities")
+    @patch.object(GenerateStoryboardComponent, "get_folder")
+    @patch.object(GenerateStoryboardComponent, "get_entities")
     def test_build_storyboard_audio_guided_mode(
         self,
         mock_get_entities,
@@ -410,7 +406,7 @@ class TestBuildStoryboard:
         folder = MagicMock()
         folder.id = "proj-2"
         mock_get_project.return_value = folder
-        mock_get_entities.return_value = {"characters": [], "locations": [], "props": []}
+        mock_get_entities.return_value = []
 
         # Audio analysis returns 2 segments
         mock_audio.return_value = [
@@ -488,7 +484,7 @@ class TestBuildStoryboard:
         assert data["metadata"]["totalScenes"] == 1  # 2 segments → 2 batches, each returns 1 scene
         assert call_count["ctx"] == 1  # Pass 1 called exactly once
 
-    @patch.object(GenerateStoryboardComponent, "get_fresh_project_state")
+    @patch.object(GenerateStoryboardComponent, "get_folder")
     def test_build_storyboard_handles_db_failure_gracefully(
         self,
         mock_get_project,
@@ -523,8 +519,8 @@ class TestBuildStoryboard:
 
     @patch.object(GenerateStoryboardComponent, "_extract_structured")
     @patch.object(GenerateStoryboardComponent, "_setup_llm_and_config")
-    @patch.object(GenerateStoryboardComponent, "get_fresh_project_state")
-    @patch.object(GenerateStoryboardComponent, "get_all_existing_entities")
+    @patch.object(GenerateStoryboardComponent, "get_folder")
+    @patch.object(GenerateStoryboardComponent, "get_entities")
     def test_build_storyboard_resolves_title_from_db(
         self,
         mock_get_entities,
@@ -543,7 +539,7 @@ class TestBuildStoryboard:
         folder.id = "proj-db-title"
         folder.metadata_ = {"title": "DB-Backed Title", "genre": "action"}
         mock_get_project.return_value = folder
-        mock_get_entities.return_value = {"characters": [], "locations": [], "props": []}
+        mock_get_entities.return_value = []
 
         # Note: component.title is "Neon Chase" from fixture, but we expect
         # "DB-Backed Title" to win because it's from the project DB.

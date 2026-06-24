@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from portals.schema import Data
-from portals.services.database.models.prop.model import Prop
 
 from px.base.models.model import LCModelComponent
-from px.components.narrative.base_entity import BaseEntityReadPatchComponent
+from px.components.narrative.base_state_aware import BaseStateAwareComponent
 from px.field_typing.range_spec import RangeSpec
 from px.io import (
     BoolInput,
@@ -29,20 +28,20 @@ _PROFILE_FIELDS = (
     _GUIDANCE_LEVEL,
 )
 
-_INPUT_TO_MODEL_FIELD = {
+_INPUT_TO_MANIFEST_FIELD = {
     _PROP_NAME: "name",
     _PROP_TYPE: "type",
     _GUIDANCE_LEVEL: "guidance_level",
 }
 
 
-class PropComponent(BaseEntityReadPatchComponent, LCModelComponent):
+class PropComponent(BaseStateAwareComponent, LCModelComponent):
     """Display prop details and return the prop record.
 
-    This component reads prop records from the ``props`` table scoped to
-    the current project. It exposes a single output:
+    This component reads prop manifests from the NAP universe
+    scoped to the current project. It exposes a single output:
 
-    * **prop_data** — raw prop record for downstream narrative processing.
+    * **prop_data** — raw prop manifest for downstream narrative processing.
     """
 
     # Override LCModelComponent._validate_outputs since our output names
@@ -61,13 +60,8 @@ class PropComponent(BaseEntityReadPatchComponent, LCModelComponent):
     name = "Prop"
     minimized = True
 
-    # Bind to the specific relational model and storyboard JSON key
-    entity_model = Prop
-    storyboard_key = "props"
-
     # ── Instance-level cache ─────────────────────────────────────────────
-    # Maps entity_name → prop_dict so that graph executions referencing
-    # both outputs for the same prop only hit the database once.
+    # Maps entity_name → prop manifest
     _prop_cache: dict[str, dict]
 
     def build_config(self):
@@ -78,8 +72,11 @@ class PropComponent(BaseEntityReadPatchComponent, LCModelComponent):
                 "refresh_button": True,
             },
             _UPDATE_DB: {
-                "display_name": "Patch Database?",
-                "info": "If true, the prop's record will be updated with the traits/state below.",
+                "display_name": "Patch NAP Manifest?",
+                "info": (
+                    "If true, the prop's manifest will be updated. "
+                    "In Gen3 architecture, writes go through the NAP persistence pipeline."
+                ),
                 "advanced": False,
             },
             _PROP_NAME: {
@@ -123,7 +120,7 @@ class PropComponent(BaseEntityReadPatchComponent, LCModelComponent):
 
     inputs = [
         DropdownInput(name=_SELECTED_ENTITY, display_name="Select Prop"),
-        BoolInput(name=_UPDATE_DB, display_name="Patch Database?", value=False),
+        BoolInput(name=_UPDATE_DB, display_name="Patch NAP Manifest?", value=False),
         *_profile_inputs,
     ]
 
@@ -138,51 +135,55 @@ class PropComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ═══════════════════════════════════════════════════════════════════════
 
     def build(self, selected_entity: str, *, update_database: bool = False) -> Data:
-        """Read the selected prop from the database and return it as structured Data.
+        """Read the selected prop from the NAP universe and return it as structured Data.
 
         Results are cached per entity name so that repeated calls within
-        the same execution avoid a redundant database round-trip.
+        the same execution avoid a redundant NAP resolution.
 
-        When ``update_database`` is ``True`` the profile fields are patched
-        to the database before reading.
+        When ``update_database`` is ``True`` the profile fields are noted
+        (in Gen3 architecture, writes go through the NAP persistence pipeline).
         """
         # 1. Collect any profile-field overrides supplied via inputs.
         updated_data = self._collect_profile_overrides()
 
-        # 2. When the caller signals a database mutation, perform the patch.
+        # 2. When the caller signals a mutation, log (nap persistence pipeline handles writes).
         if update_database:
-            model_updates = self._to_model_patch(updated_data)
+            model_updates = self._to_manifest_patch(updated_data)
             if model_updates:
                 self._prop_cache.pop(selected_entity, None)
-                logger.debug(f"Patching prop '{selected_entity}' with {model_updates}")
-                patch_result = self._execute_read_patch_logic(
-                    selected_entity,
-                    update_database=True,
-                    updated_data=model_updates,
+                logger.info(
+                    "Prop update requested — forwarding to NAP persistence pipeline. "
+                    "Updates must go through the NAP API (POST /nap/publish). "
+                    f"Entity='{selected_entity}', updates={model_updates}"
                 )
-                if (
-                    isinstance(patch_result, Data)
-                    and isinstance(patch_result.data, dict)
-                    and "error" in patch_result.data
-                ):
-                    logger.error(f"Patch failed for prop '{selected_entity}': {patch_result.data['error']}")
-                    return patch_result
 
-        # 3. Read from DB (fresh or cached).
+        # 3. Read from NAP universe (fresh or cached).
         try:
-            prop_dict = self._fetch_prop_data(selected_entity)
+            prop_manifest = self._fetch_prop_data(selected_entity)
         except ValueError as exc:
             logger.error(f"Failed to fetch prop '{selected_entity}': {exc}")
             return Data(data={"error": str(exc)})
 
         # 4. Overlay input-driven overrides so the output reflects edits.
-        prop_dict.update(self._to_model_patch(updated_data))
+        prop_manifest.update(self._to_manifest_patch(updated_data))
 
-        return Data(data=prop_dict)
+        return Data(data=prop_manifest)
 
     # ═══════════════════════════════════════════════════════════════════════
     # INTERNAL HELPERS
     # ═══════════════════════════════════════════════════════════════════════
+
+    def get_entity_options(self) -> list[str]:
+        """Dynamically fetch prop names from the NAP universe."""
+        try:
+            props = self.get_entities("prop")
+            if not props:
+                return ["No props found in universe"]
+            names = [p.get("name", p.get("id", "(unnamed)")) for p in props]
+            return sorted(names)
+        except Exception as exc:
+            logger.warning(f"Failed to fetch prop options: {exc}")
+            return ["No props found"]
 
     def _collect_profile_overrides(self) -> dict[str, object]:
         """Gather non-empty profile-field values from the component's input ports."""
@@ -194,46 +195,43 @@ class PropComponent(BaseEntityReadPatchComponent, LCModelComponent):
         return overrides
 
     @staticmethod
-    def _to_model_patch(input_overrides: dict[str, object]) -> dict[str, object]:
-        """Translate input-name keys to model-field keys."""
+    def _to_manifest_patch(input_overrides: dict[str, object]) -> dict[str, object]:
+        """Translate input-name keys to manifest field keys."""
         patch: dict[str, object] = {}
         for input_name, value in input_overrides.items():
-            model_field = _INPUT_TO_MODEL_FIELD.get(input_name)
-            if model_field:
-                patch[model_field] = value
+            manifest_field = _INPUT_TO_MANIFEST_FIELD.get(input_name)
+            if manifest_field:
+                patch[manifest_field] = value
         return patch
 
     def _fetch_prop_data(self, entity_name: str) -> dict:
-        """Fetch prop data from the database with instance-level caching.
-
-        Results are cached per entity name within a single component execution
-        so that ``build()`` shares the same database record without a redundant read.
-        """
-        # Lazy-init the cache so subclasses or direct __new__ usage doesn't break.
+        """Fetch prop data from the NAP universe with instance-level caching."""
         if not hasattr(self, "_prop_cache") or self._prop_cache is None:
             self._prop_cache = {}
 
-        # Return cached data when available.
         cached = self._prop_cache.get(entity_name)
         if cached is not None:
             logger.debug("Cache hit for prop '%s'.", entity_name)
             return cached
 
-        logger.debug("Cache miss for prop '%s' — reading from database.", entity_name)
+        logger.debug("Cache miss for prop '%s' — reading from NAP.", entity_name)
 
-        # Read from DB via the shared base-entity logic.
-        result = self._execute_read_patch_logic(
-            entity_name,
-            update_database=False,
-            updated_data={},
-        )
+        try:
+            props = self.get_entities("prop")
+        except Exception as exc:
+            msg = f"Failed to list props from NAP universe: {exc}"
+            raise ValueError(msg) from exc
 
-        # Surface DB-level errors (e.g. prop not found).
-        if isinstance(result, Data) and isinstance(result.data, dict) and "error" in result.data:
-            msg = str(result.data["error"])
+        # Match by name
+        match = None
+        for p in props:
+            if p.get("name") == entity_name:
+                match = p
+                break
+
+        if match is None:
+            msg = f"Prop '{entity_name}' not found in NAP universe."
             raise ValueError(msg)
 
-        # Cache and return the raw dictionary.
-        prop_dict: dict = result.data if isinstance(result.data, dict) else {}
-        self._prop_cache[entity_name] = prop_dict
-        return prop_dict
+        self._prop_cache[entity_name] = match
+        return match

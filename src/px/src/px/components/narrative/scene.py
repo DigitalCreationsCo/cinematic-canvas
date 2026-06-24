@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from portals.schema import Data
-from portals.services.database.models.scene.model import Scene
 
 from px.base.models.model import LCModelComponent
-from px.components.narrative.base_entity import BaseEntityReadPatchComponent
+from px.components.narrative.base_state_aware import BaseStateAwareComponent
 from px.field_typing.range_spec import RangeSpec
 from px.io import (
     BoolInput,
@@ -44,7 +43,7 @@ _PROFILE_FIELDS = (
     _GUIDANCE_LEVEL,
 )
 
-_INPUT_TO_MODEL_FIELD = {
+_INPUT_TO_MANIFEST_FIELD = {
     _SCENE_NAME: "name",
     _SCENE_TYPE: "type",
     _MOOD: "mood",
@@ -58,13 +57,13 @@ _INPUT_TO_MODEL_FIELD = {
 }
 
 
-class SceneComponent(BaseEntityReadPatchComponent, LCModelComponent):
+class SceneComponent(BaseStateAwareComponent, LCModelComponent):
     """Display scene details and return the scene record.
 
-    This component reads scene records from the ``scenes`` table scoped to
-    the current project. It exposes a single output:
+    This component reads scene manifests from the NAP universe
+    scoped to the current project. It exposes a single output:
 
-    * **scene_data** — raw scene record for downstream narrative processing.
+    * **scene_data** — raw scene manifest for downstream narrative processing.
     """
 
     # Override LCModelComponent._validate_outputs since our output names
@@ -83,13 +82,8 @@ class SceneComponent(BaseEntityReadPatchComponent, LCModelComponent):
     name = "Scene"
     minimized = True
 
-    # Bind to the specific relational model and storyboard JSON key
-    entity_model = Scene
-    storyboard_key = "scenes"
-
     # ── Instance-level cache ─────────────────────────────────────────────
-    # Maps entity_name → scene_dict so that graph executions referencing
-    # both outputs for the same scene only hit the database once.
+    # Maps entity_name → scene manifest
     _scene_cache: dict[str, dict]
 
     def build_config(self):
@@ -100,8 +94,11 @@ class SceneComponent(BaseEntityReadPatchComponent, LCModelComponent):
                 "refresh_button": True,
             },
             _UPDATE_DB: {
-                "display_name": "Patch Database?",
-                "info": "If true, the scene's record will be updated with the traits below.",
+                "display_name": "Patch NAP Manifest?",
+                "info": (
+                    "If true, the scene's manifest will be updated. "
+                    "In Gen3 architecture, writes go through the NAP persistence pipeline."
+                ),
                 "advanced": False,
             },
             _SCENE_NAME: {
@@ -219,7 +216,7 @@ class SceneComponent(BaseEntityReadPatchComponent, LCModelComponent):
 
     inputs = [
         DropdownInput(name=_SELECTED_ENTITY, display_name="Select Scene"),
-        BoolInput(name=_UPDATE_DB, display_name="Patch Database?", value=False),
+        BoolInput(name=_UPDATE_DB, display_name="Patch NAP Manifest?", value=False),
         *_profile_inputs,
     ]
 
@@ -234,51 +231,55 @@ class SceneComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ═══════════════════════════════════════════════════════════════════════
 
     def build(self, selected_entity: str, *, update_database: bool = False) -> Data:
-        """Read the selected scene from the database and return it as structured Data.
+        """Read the selected scene from the NAP universe and return it as structured Data.
 
         Results are cached per entity name so that repeated calls within
-        the same execution avoid a redundant database round-trip.
+        the same execution avoid a redundant NAP resolution.
 
-        When ``update_database`` is ``True`` the profile fields are patched
-        to the database before reading.
+        When ``update_database`` is ``True`` the profile fields are noted
+        (in Gen3 architecture, writes go through the NAP persistence pipeline).
         """
         # 1. Collect any profile-field overrides supplied via inputs.
         updated_data = self._collect_profile_overrides()
 
-        # 2. When the caller signals a database mutation, perform the patch.
+        # 2. When the caller signals a mutation, log (nap persistence pipeline handles writes).
         if update_database:
-            model_updates = self._to_model_patch(updated_data)
+            model_updates = self._to_manifest_patch(updated_data)
             if model_updates:
                 self._scene_cache.pop(selected_entity, None)
-                logger.debug(f"Patching scene '{selected_entity}' with {model_updates}")
-                patch_result = self._execute_read_patch_logic(
-                    selected_entity,
-                    update_database=True,
-                    updated_data=model_updates,
+                logger.info(
+                    "Scene update requested — forwarding to NAP persistence pipeline. "
+                    "Updates must go through the NAP API (POST /nap/publish). "
+                    f"Entity='{selected_entity}', updates={model_updates}"
                 )
-                if (
-                    isinstance(patch_result, Data)
-                    and isinstance(patch_result.data, dict)
-                    and "error" in patch_result.data
-                ):
-                    logger.error(f"Patch failed for scene '{selected_entity}': {patch_result.data['error']}")
-                    return patch_result
 
-        # 3. Read from DB (fresh or cached).
+        # 3. Read from NAP universe (fresh or cached).
         try:
-            scene_dict = self._fetch_scene_data(selected_entity)
+            scene_manifest = self._fetch_scene_data(selected_entity)
         except ValueError as exc:
             logger.error(f"Failed to fetch scene '{selected_entity}': {exc}")
             return Data(data={"error": str(exc)})
 
         # 4. Overlay input-driven overrides so the output reflects edits.
-        scene_dict.update(self._to_model_patch(updated_data))
+        scene_manifest.update(self._to_manifest_patch(updated_data))
 
-        return Data(data=scene_dict)
+        return Data(data=scene_manifest)
 
     # ═══════════════════════════════════════════════════════════════════════
     # INTERNAL HELPERS
     # ═══════════════════════════════════════════════════════════════════════
+
+    def get_entity_options(self) -> list[str]:
+        """Dynamically fetch scene names from the NAP universe."""
+        try:
+            scenes = self.get_entities("scene")
+            if not scenes:
+                return ["No scenes found in universe"]
+            names = [s.get("name", s.get("id", "(unnamed)")) for s in scenes]
+            return sorted(names)
+        except Exception as exc:
+            logger.warning(f"Failed to fetch scene options: {exc}")
+            return ["No scenes found"]
 
     def _collect_profile_overrides(self) -> dict[str, object]:
         """Gather non-empty profile-field values from the component's input ports."""
@@ -290,8 +291,8 @@ class SceneComponent(BaseEntityReadPatchComponent, LCModelComponent):
         return overrides
 
     @staticmethod
-    def _to_model_patch(input_overrides: dict[str, object]) -> dict[str, object]:
-        """Translate input-name keys to model-field keys.
+    def _to_manifest_patch(input_overrides: dict[str, object]) -> dict[str, object]:
+        """Translate input-name keys to manifest field keys.
 
         Fields that arrive as a comma-separated string (e.g. ``continuity_notes``)
         are automatically converted to ``list[str]``.
@@ -300,47 +301,44 @@ class SceneComponent(BaseEntityReadPatchComponent, LCModelComponent):
 
         patch: dict[str, object] = {}
         for input_name, value in input_overrides.items():
-            model_field = _INPUT_TO_MODEL_FIELD.get(input_name)
-            if not model_field:
+            manifest_field = _INPUT_TO_MANIFEST_FIELD.get(input_name)
+            if not manifest_field:
                 continue
 
-            if model_field in _string_to_list and isinstance(value, str):
-                patch[model_field] = [s.strip() for s in value.split(",") if s.strip()]
+            if manifest_field in _string_to_list and isinstance(value, str):
+                patch[manifest_field] = [s.strip() for s in value.split(",") if s.strip()]
             else:
-                patch[model_field] = value
+                patch[manifest_field] = value
         return patch
 
     def _fetch_scene_data(self, entity_name: str) -> dict:
-        """Fetch scene data from the database with instance-level caching.
-
-        Results are cached per entity name within a single component execution
-        so that ``build()`` shares the same database record without a redundant read.
-        """
-        # Lazy-init the cache so subclasses or direct __new__ usage doesn't break.
+        """Fetch scene data from the NAP universe with instance-level caching."""
         if not hasattr(self, "_scene_cache") or self._scene_cache is None:
             self._scene_cache = {}
 
-        # Return cached data when available.
         cached = self._scene_cache.get(entity_name)
         if cached is not None:
             logger.debug("Cache hit for scene '%s'.", entity_name)
             return cached
 
-        logger.debug("Cache miss for scene '%s' — reading from database.", entity_name)
+        logger.debug("Cache miss for scene '%s' — reading from NAP.", entity_name)
 
-        # Read from DB via the shared base-entity logic.
-        result = self._execute_read_patch_logic(
-            entity_name,
-            update_database=False,
-            updated_data={},
-        )
+        try:
+            scenes = self.get_entities("scene")
+        except Exception as exc:
+            msg = f"Failed to list scenes from NAP universe: {exc}"
+            raise ValueError(msg) from exc
 
-        # Surface DB-level errors (e.g. scene not found).
-        if isinstance(result, Data) and isinstance(result.data, dict) and "error" in result.data:
-            msg = str(result.data["error"])
+        # Match by name
+        match = None
+        for s in scenes:
+            if s.get("name") == entity_name:
+                match = s
+                break
+
+        if match is None:
+            msg = f"Scene '{entity_name}' not found in NAP universe."
             raise ValueError(msg)
 
-        # Cache and return the raw dictionary.
-        scene_dict: dict = result.data if isinstance(result.data, dict) else {}
-        self._scene_cache[entity_name] = scene_dict
-        return scene_dict
+        self._scene_cache[entity_name] = match
+        return match

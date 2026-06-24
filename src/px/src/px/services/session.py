@@ -94,7 +94,7 @@ class SyncNoopSession:
     """Synchronous no-op session for use with ``with_session()``.
 
     All methods are plain sync defs so that sync callers (``ProjectService``,
-    ``BaseStateAwareComponent``, ``BaseEntityReadPatchComponent``) can call
+    ``BaseStateAwareComponent``) can call
     ``session.exec(stmt).first()`` etc. without getting unawaited coroutines.
 
     Guards the sync-only code path when no real database is available.

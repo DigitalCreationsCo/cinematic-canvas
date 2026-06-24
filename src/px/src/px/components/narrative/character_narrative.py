@@ -3,17 +3,17 @@ from __future__ import annotations
 import json
 
 from portals.schema import Data
-from portals.services.database.models.character.model import Character
 
 from px.base.models.model import LCModelComponent
 from px.base.models.unified_models import get_llm
-from px.components.narrative.base_entity import BaseEntityReadPatchComponent
+from px.components.narrative.base_state_aware import BaseStateAwareComponent
 from px.field_typing.constants import (
-    LanguageModel,  # noqa: TC001 — needed at runtime; eval prepend neutralizes `from __future__ import annotations`
+    LanguageModel,  # noqa: TC001 — needed at runtime
 )
 from px.field_typing.range_spec import RangeSpec
 from px.io import (
     BoolInput,
+    DictInput,
     DropdownInput,
     MessageInput,
     MessageTextInput,
@@ -21,10 +21,11 @@ from px.io import (
     Output,
     SecretStrInput,
     SliderInput,
+    StrInput,
 )
 from px.log.logger import logger
 from px.schema.message import (
-    Message,  # noqa: TC001 — needed at runtime; eval prepend neutralizes `from __future__ import annotations`
+    Message,  # noqa: TC001 — needed at runtime
 )
 from px.utils.constants import (
     MESSAGE_SENDER_AI,
@@ -32,14 +33,42 @@ from px.utils.constants import (
     MESSAGE_SENDER_USER,
 )
 
+# ── Field name constants ─────────────────────────────────────────────
 
-class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
+_SELECTED_ENTITY = "selected_entity"
+_UPDATE_DB = "update_database"
+_CHARACTER_NAME = "character_name"
+_ALIASES = "aliases"
+_PHYSICAL_TRAITS = "physical_traits"
+_STATE = "state"
+_GUIDANCE_LEVEL = "guidance_level"
+
+# Profile fields that can be edited.
+_PROFILE_FIELDS = (
+    _CHARACTER_NAME,
+    _ALIASES,
+    _PHYSICAL_TRAITS,
+    _STATE,
+    _GUIDANCE_LEVEL,
+)
+
+# Map from input name → manifest field name.
+_INPUT_TO_MANIFEST_FIELD = {
+    _CHARACTER_NAME: "name",
+    _ALIASES: "aliases",
+    _PHYSICAL_TRAITS: "physical_traits",
+    _STATE: "state",
+    _GUIDANCE_LEVEL: "guidance_level",
+}
+
+
+class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
     """Display character details and generate persona-driven LLM responses.
 
-    This component reads character records from the ``characters`` table scoped to
+    This component reads character manifests from the NAP universe scoped to
     the current project. It exposes two outputs:
 
-    * **character_data** — raw character record for downstream narrative processing.
+    * **character_data** — raw character manifest for downstream narrative processing.
     * **character_response** — an LLM-generated reply delivered in the selected
       character's persona.
     """
@@ -58,36 +87,87 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     description = "Display character details and generate persona-driven LLM responses."
     icon = "user"
     name = "Character"
-    minimized = True
-
-    # Bind to the specific relational model and storyboard JSON key
-    entity_model = Character
-    storyboard_key = "characters"
 
     # ── Instance-level cache ─────────────────────────────────────────────
-    # Maps entity_name → character_dict so that graph executions referencing
-    # both outputs for the same character only hit the database once.
+    # Maps entity_name → character manifest
     _character_cache: dict[str, dict]
 
     def build_config(self):
         return {
-            "selected_entity": {
+            _SELECTED_ENTITY: {
                 "display_name": "Select Character",
                 "options": self.get_entity_options,
                 "refresh_button": True,
             },
-            "update_database": {
-                "display_name": "Patch Database?",
-                "info": "If true, the character's record will be updated with the traits/state below.",
+            _UPDATE_DB: {
+                "display_name": "Patch NAP Manifest?",
+                "info": (
+                    "If true, the character's manifest will be updated. "
+                    "In Gen3 architecture, writes go through the NAP persistence pipeline."
+                ),
                 "advanced": False,
+            },
+            _CHARACTER_NAME: {
+                "display_name": "Name",
+                "info": "Character's display name.",
+            },
+            _ALIASES: {
+                "display_name": "Aliases",
+                "info": "Alternative names this character goes by.",
+            },
+            _PHYSICAL_TRAITS: {
+                "display_name": "Physical Traits",
+                "info": 'Physical description as a JSON object (e.g. {"hair": "brown", "eyes": "blue"}).',
+            },
+            _STATE: {
+                "display_name": "State",
+                "info": "Current narrative state as a JSON object.",
+            },
+            _GUIDANCE_LEVEL: {
+                "display_name": "Guidance Level",
+                "info": "Controls how closely the model should follow the character profile.",
             },
         }
 
     # ── Input ports ──────────────────────────────────────────────────────
 
+    # Profile editing fields.
+    _profile_inputs = [
+        StrInput(
+            name=_CHARACTER_NAME,
+            display_name="Name",
+            info="Character's display name.",
+            value="",
+        ),
+        MessageTextInput(
+            name=_ALIASES,
+            display_name="Aliases",
+            info="Alternative names this character goes by (comma-separated).",
+            value="",
+        ),
+        DictInput(
+            name=_PHYSICAL_TRAITS,
+            display_name="Physical Traits",
+            info='Physical description as a JSON object (e.g. {"hair": "brown", "eyes": "blue"}).',
+        ),
+        DictInput(
+            name=_STATE,
+            display_name="State",
+            info="Current narrative state as a JSON object.",
+        ),
+        SliderInput(
+            name=_GUIDANCE_LEVEL,
+            display_name="Guidance Level",
+            info="Controls how closely the model should follow the character profile.",
+            value=5,
+            range_spec=RangeSpec(min=0, max=10, step=1),
+            advanced=True,
+        ),
+    ]
+
     inputs = [
-        DropdownInput(name="selected_entity", display_name="Select Character"),
-        BoolInput(name="update_database", display_name="Patch Database?", value=False),
+        DropdownInput(name=_SELECTED_ENTITY, display_name="Select Character"),
+        BoolInput(name=_UPDATE_DB, display_name="Patch NAP Manifest?", value=False),
         ModelInput(
             name="model",
             display_name="Language Model",
@@ -167,6 +247,7 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             real_time_refresh=True,
             advanced=True,
         ),
+        *_profile_inputs,
     ]
 
     # ── Output ports ─────────────────────────────────────────────────────
@@ -181,26 +262,47 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # ═══════════════════════════════════════════════════════════════════════
 
     def build(self, selected_entity: str, *, update_database: bool = False) -> Data:
-        """Read the selected character from the database and return it as structured Data.
+        """Read the selected character from the NAP universe and return it as structured Data.
 
         Results are cached per entity name so that a subsequent call to
         ``character_response()`` within the same execution avoids a redundant
-        database round-trip.
+        NAP resolution.
 
-        When ``update_database`` is ``True`` the cache entry for the entity is
-        evicted before reading, ensuring the next read fetches fresh data.
+        When ``update_database`` is ``True``:
+        - The manifest profile fields are logged for NAP persistence pipeline
+        - The cache entry is evicted before reading
+
+        Any profile-field values provided via inputs are merged on top of the
+        manifest record so that downstream consumers always receive the most
+        current view.
         """
-        # Evict cache when the caller signals a database mutation.
-        if update_database:
-            self._character_cache.pop(selected_entity, None)
-            logger.debug(f"Cache evicted for character '{selected_entity}' after patch.")
+        # 1. Collect any profile-field overrides supplied via inputs.
+        updated_data = self._collect_profile_overrides()
 
+        # 2. When the caller signals a mutation, log (nap persistence pipeline handles writes).
+        if update_database:
+            model_updates = self._to_manifest_patch(updated_data)
+
+            if model_updates:
+                self._character_cache.pop(selected_entity, None)
+                logger.info(
+                    "Character update requested — forwarding to NAP persistence pipeline. "
+                    "Updates must go through the NAP API (POST /nap/publish). "
+                    f"Entity='{selected_entity}', updates={model_updates}"
+                )
+
+        # 3. Read from NAP universe (fresh or cached).
         try:
-            character_dict = self._fetch_character_data(selected_entity)
-            return Data(data=character_dict)
+            character_manifest = self._fetch_character_data(selected_entity)
         except ValueError as exc:
             logger.error(f"Failed to fetch character '{selected_entity}': {exc}")
             return Data(data={"error": str(exc)})
+
+        # 4. Overlay any input-driven overrides so the output reflects the
+        #    user's edits even when the manifest has not been patched yet.
+        character_manifest.update(self._to_manifest_patch(updated_data))
+
+        return Data(data=character_manifest)
 
     async def character_response(self) -> Message:
         """Generate a persona-driven LLM response as the selected character.
@@ -208,45 +310,49 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
         Execution flow
         --------------
         1. Validates that a character is selected.
-        2. Fetches character data from the database (served from cache when
+        2. Fetches character data from the NAP universe (served from cache when
            ``build()`` already ran for the same entity).
-        3. Constructs a system prompt from the character's profile — name,
-           aliases, physical traits, and narrative state.
-        4. Invokes the connected language model with the user's input message.
-        5. Returns the model's response as a ``Message``.
+        3. Overlays any profile-field input values on top of the manifest record.
+        4. Constructs a system prompt from the merged character profile.
+        5. Invokes the connected language model with the user's input message.
+        6. Returns the model's response as a ``Message``.
 
         Raises:
         ------
         ValueError
             If no character is selected, the character is not found in the
-            database, or no language model is connected.
+            NAP universe, or no language model is connected.
         """
-        entity_name = getattr(self, "selected_entity", None)
+        entity_name = getattr(self, _SELECTED_ENTITY, None)
         _validate_selected_entity(entity_name)
 
-        # 1. Fetch character data (from cache or DB).
+        # 1. Fetch character data (from cache or NAP).
         try:
-            character_dict = self._fetch_character_data(entity_name)
+            character_manifest = self._fetch_character_data(entity_name)
         except ValueError as exc:
             logger.error(f"Character '{entity_name}' not found for response generation: {exc}")
             raise
 
+        # 2. Overlay input-driven profile edits on top of the manifest record.
+        updated_data = self._collect_profile_overrides()
+        character_manifest.update(self._to_manifest_patch(updated_data))
+
         logger.debug(
             "Generating character response for '%s' with %d field(s).",
             entity_name,
-            len(character_dict),
+            len(character_manifest),
         )
 
-        # 2. Build persona system prompt.
-        system_prompt = self._build_character_system_prompt(character_dict)
+        # 3. Build persona system prompt.
+        system_prompt = self._build_character_system_prompt(character_manifest)
 
-        # 3. Validate model input.
+        # 4. Validate model input.
         model = getattr(self, "model", None)
         if not model:
             msg = "A Language Model must be connected to generate character responses."
             raise ValueError(msg)
 
-        # 4. Build and invoke the LLM.
+        # 5. Build and invoke the LLM.
         runnable = self.build_model()
         input_value = getattr(self, "input_value", None) or ""
         stream: bool = getattr(self, "stream", False)
@@ -282,50 +388,97 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
     # INTERNAL HELPERS
     # ═══════════════════════════════════════════════════════════════════════
 
+    def get_entity_options(self) -> list[str]:
+        """Dynamically fetch character names from the NAP universe."""
+        try:
+            characters = self.get_entities("character")
+            if not characters:
+                return ["No characters found in universe"]
+            names = [c.get("name", c.get("id", "(unnamed)")) for c in characters]
+            return sorted(names)
+        except Exception as exc:
+            logger.warning(f"Failed to fetch character options: {exc}")
+            return ["No characters found"]
+
+    def _collect_profile_overrides(self) -> dict[str, object]:
+        """Gather non-empty profile-field values from the component's input ports.
+
+        Returns a dict keyed by **input name** (not manifest field).
+        """
+        overrides: dict[str, object] = {}
+        for field_name in _PROFILE_FIELDS:
+            value = getattr(self, field_name, None)
+            if value is not None and value != "":
+                overrides[field_name] = value
+        return overrides
+
+    @staticmethod
+    def _to_manifest_patch(input_overrides: dict[str, object]) -> dict[str, object]:
+        """Translate input-name keys to manifest field keys.
+
+        Only known mappings are included; unknown keys are silently dropped.
+        Fields that arrive as a comma-separated string (e.g. ``aliases``)
+        are automatically converted to ``list[str]``.
+        """
+        _string_to_list = frozenset({"aliases"})
+
+        patch: dict[str, object] = {}
+        for input_name, value in input_overrides.items():
+            manifest_field = _INPUT_TO_MANIFEST_FIELD.get(input_name)
+            if not manifest_field:
+                continue
+
+            if manifest_field in _string_to_list and isinstance(value, str):
+                patch[manifest_field] = [s.strip() for s in value.split(",") if s.strip()]
+            else:
+                patch[manifest_field] = value
+        return patch
+
     def _fetch_character_data(self, entity_name: str) -> dict:
-        """Fetch character data from the database with instance-level caching.
+        """Fetch character data from the NAP universe with instance-level caching.
 
         Results are cached per entity name within a single component execution
         so that both ``build()`` and ``character_response()`` can share the
-        same database record without a redundant read.
+        same manifest record without a redundant NAP resolution.
         """
-        # Lazy-init the cache so subclasses or direct __new__ usage doesn't break.
         if not hasattr(self, "_character_cache") or self._character_cache is None:
             self._character_cache = {}
 
-        # Return cached data when available.
         cached = self._character_cache.get(entity_name)
         if cached is not None:
             logger.debug("Cache hit for character '%s'.", entity_name)
             return cached
 
-        logger.debug("Cache miss for character '%s' — reading from database.", entity_name)
+        logger.debug("Cache miss for character '%s' — reading from NAP.", entity_name)
 
-        # Read from DB via the shared base-entity logic.
-        result = self._execute_read_patch_logic(
-            entity_name,
-            update_database=False,
-            updated_data={},
-        )
+        try:
+            characters = self.get_entities("character")
+        except Exception as exc:
+            msg = f"Failed to list characters from NAP universe: {exc}"
+            raise ValueError(msg) from exc
 
-        # Surface DB-level errors (e.g. character not found).
-        if isinstance(result, Data) and isinstance(result.data, dict) and "error" in result.data:
-            msg = str(result.data["error"])
+        # Match by name
+        match = None
+        for c in characters:
+            if c.get("name") == entity_name:
+                match = c
+                break
+
+        if match is None:
+            msg = f"Character '{entity_name}' not found in NAP universe."
             raise ValueError(msg)
 
-        # Cache and return the raw dictionary.
-        character_dict: dict = result.data if isinstance(result.data, dict) else {}
-        self._character_cache[entity_name] = character_dict
-        return character_dict
+        self._character_cache[entity_name] = match
+        return match
 
     @staticmethod
-    def _build_character_system_prompt(character_dict: dict) -> str:
-        """Construct a persona-driven system prompt from character data.
+    def _build_character_system_prompt(character_manifest: dict) -> str:
+        """Construct a persona-driven system prompt from character manifest data.
 
         Parameters
         ----------
-        character_dict : dict
-            A dictionary with keys from the ``Character`` model, typically
+        character_manifest : dict
+            A dictionary with keys from the character manifest, typically
             ``name``, ``aliases``, ``physical_traits``, ``state``, and
             optionally ``guidance_level``.
 
@@ -335,11 +488,11 @@ class CharacterComponent(BaseEntityReadPatchComponent, LCModelComponent):
             A system-prompt string that instructs the LLM to roleplay as the
             character.
         """
-        name: str = character_dict.get("name", "Unknown Character") or "Unknown Character"
-        aliases: list[str] = character_dict.get("aliases") or []
-        physical_traits: dict | None = character_dict.get("physical_traits")
-        state: dict | None = character_dict.get("state")
-        guidance_level: int | None = character_dict.get("guidance_level")
+        name: str = character_manifest.get("name", "Unknown Character") or "Unknown Character"
+        aliases: list[str] = character_manifest.get("aliases") or []
+        physical_traits: dict | None = character_manifest.get("physical_traits")
+        state: dict | None = character_manifest.get("state")
+        guidance_level: int | None = character_manifest.get("guidance_level")
 
         parts: list[str] = [
             f"You are roleplaying as {name}. Respond as this character would, "
@@ -388,6 +541,8 @@ def _validate_selected_entity(entity_name: str | None) -> None:
             "No entities found",
             "No active flow context",
             "No project found",
+            "No characters found",
+            "No characters found in universe",
         }
     )
     if entity_name in placeholder_messages:

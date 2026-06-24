@@ -48,16 +48,53 @@ def test_normalize_pieces_and_precedence():
     # inline custom_description wins
     pieces[0]["custom_description"] = "A green hat"
     resolved = comp._normalize_pieces(pieces, overrides={})
-    assert any(p["name"] == "hat" and p["description"] == "A green hat" for p in resolved)
+    hat = next(p for p in resolved if p["name"] == "hat")
+    assert hat["description"] == "A green hat"
+    assert hat["caption"] == "A green hat"
 
     # override wins when inline not present
     pieces[0].pop("custom_description")
     resolved = comp._normalize_pieces(pieces, overrides={"hat": "Blue hat"})
-    assert any(p["name"] == "hat" and p["description"] == "Blue hat" for p in resolved)
+    hat = next(p for p in resolved if p["name"] == "hat")
+    assert hat["description"] == "Blue hat"
+    assert hat["caption"] == "Blue hat"
 
     # inherited used when neither present
     resolved = comp._normalize_pieces(pieces, overrides={})
-    assert any(p["name"] == "hat" and p["description"] == "A red hat" for p in resolved)
+    hat = next(p for p in resolved if p["name"] == "hat")
+    assert hat["description"] == "A red hat"
+    assert hat["caption"] == "A red hat"
+
+
+def test_normalize_pieces_max_six():
+    """At most MAX_GROUP_PIECES (6) pieces should be returned."""
+    comp = GroupComponent()
+    # Create 10 pieces (more than the max)
+    pieces = [
+        {"type": "image", "name": f"piece_{i}", "description": f"Desc {i}"}
+        for i in range(10)
+    ]
+    resolved = comp._normalize_pieces(pieces, overrides={})
+    assert len(resolved) == 6, f"Expected 6 pieces, got {len(resolved)}"
+    # The first 6 should be kept
+    assert resolved[0]["name"] == "piece_0"
+    assert resolved[5]["name"] == "piece_5"
+
+
+def test_normalize_pieces_caption_field():
+    """Each resolved piece should have a 'caption' field matching description."""
+    comp = GroupComponent()
+    pieces = [
+        {"type": "image", "name": "hat", "description": "A red hat", "image": "http://x"},
+    ]
+    resolved = comp._normalize_pieces(pieces, overrides={})
+    assert "caption" in resolved[0]
+    assert resolved[0]["caption"] == resolved[0]["description"] == "A red hat"
+
+    # Override should set caption
+    resolved = comp._normalize_pieces(pieces, overrides={"hat": "A blue hat"})
+    assert resolved[0]["caption"] == "A blue hat"
+    assert resolved[0]["description"] == "A blue hat"
 
 
 def test_coerce_piece_with_data_like():
@@ -81,9 +118,13 @@ def test_to_storable_and_prompt_builder():
 
     # prompt builder
     pieces = [
-        {"type": "image", "name": "hat", "description": "A red hat"},
-        {"type": "prop", "name": "sword", "description": "A sharp sword"},
+        {"type": "image", "name": "hat", "description": "A red hat", "caption": "A red hat", "image": "http://x"},
+        {"type": "prop", "name": "sword", "description": "A sharp sword", "caption": "A sharp sword", "image": None},
     ]
     prompt = comp._build_prompt("Outfits", "Collection of wearable items", pieces)
     assert "Group: Outfits" in prompt
-    assert "- hat: A red hat" in prompt
+    assert "[1] hat (image)" in prompt
+    assert "Caption: A red hat" in prompt
+    assert "attached reference" in prompt
+    assert "[2] sword (prop)" in prompt
+    assert "Image: none" in prompt

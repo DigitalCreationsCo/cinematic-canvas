@@ -6,6 +6,7 @@ from px.components._importing import import_mod
 
 if TYPE_CHECKING:
     from px.components.narrative.character import CharacterComponent
+    from px.components.narrative.character_narrative import NarrativeCharacterComponent
     from px.components.narrative.expand_creative import ExpandCreativePromptComponent
     from px.components.narrative.generate_characters import GenerateCharacters
     from px.components.narrative.generate_storyboard import GenerateStoryboardComponent
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 _dynamic_imports = {
     "ExpandCreativePromptComponent": "expand_creative",
     "CharacterComponent": "character",
+    "NarrativeCharacterComponent": "character_narrative",
     "GenerateCharacters": "generate_characters",
     "GenerateStoryboardComponent": "generate_storyboard",
     "GetProjectComponent": "get_project_component",
@@ -35,6 +37,7 @@ __all__ = [
     "GetProjectComponent",
     "GroupComponent",
     "LocationComponent",
+    "NarrativeCharacterComponent",
     "PropComponent",
     "SceneComponent",
 ]

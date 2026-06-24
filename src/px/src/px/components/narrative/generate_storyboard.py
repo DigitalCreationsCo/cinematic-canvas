@@ -2,12 +2,18 @@
 
 Multi-pass storyboard generation with optional audio analysis support.
 Project-aware: fetches existing characters, locations, and props from the
-database to inform storyboard generation.
+NAP universe to inform storyboard generation.
+
+Gen3 Architecture
+-----------------
+Narrative state comes from NAP manifests (via ``NapService``/``BaseStateAwareComponent``).
+Project metadata (title, settings) comes from Folder, which remains Portals-owned.
+All SQL/ORM access for narrative entities has been removed.
 
 Execution flow (build_storyboard)
----------------------------------
+----------------------------------
   Pass 1  - Generate initial context: characters, locations, props, metadata.
-            Existing DB entities are injected into the prompt so the LLM
+            Existing NAP entities are injected into the prompt so the LLM
             extends (rather than duplicates) what was previously authored.
   Pass 2+ - Generate scenes in batches:
                * Audio-guided mode: each audio segment is a scene anchor.
@@ -15,19 +21,14 @@ Execution flow (build_storyboard)
                  determine the scene count from the narrative.
 
 Key changes vs earlier versions
--------------------------------
-  * Removed ``audio_segments_json`` input; replaced with ``audio_file``
-    (``FileInput``). When present the component calls a multimodal LLM
-    to generate analysis segments automatically.
-  * Inherits ``BaseStateAwareComponent`` for live DB project context.
-  * Passes pre-existing characters / locations / props from the relational
-    database into the generation prompt so the storyboard builds on
-    previously authored content.
-  * Project title is resolved from ``project.metadata_`` (DB) with fallback
+--------------------------------
+  * Inherits ``BaseStateAwareComponent`` for both project and NAP context.
+  * Passes pre-existing characters / locations / props from NAP manifests
+    into the generation prompt.
+  * Project title is resolved from ``folder.metadata.title`` with fallback
     to the component ``title`` input for backward compatibility.
-  * Uses ``StoryboardManager`` (copy-modify-write merge) to persist the
-    generated storyboard into ``folder.storyboard``, ensuring no properties
-    are accidentally excluded during JSONB column updates.
+  * Uses ``StoryboardManager`` (copy-modify-write merge) to merge the
+    generated storyboard, ensuring no properties are accidentally excluded.
 """
 
 from __future__ import annotations
@@ -48,6 +49,7 @@ from px.base.prompts.storyboard_scene_batch import build_scene_batch_prompt
 from px.base.prompts.storyboard_vision_prompt import build_storyboard_vision_prompt
 from px.components.llm_operations.structured_output import StructuredOutputComponent
 from px.components.narrative.base_state_aware import BaseStateAwareComponent
+from px.components.narrative.storyboard_manager import StoryboardManager
 from px.field_typing.range_spec import RangeSpec
 from px.helpers.base_model import build_model_from_schema
 from px.helpers.llm_json_tolerance import (
@@ -78,9 +80,6 @@ from px.schema.table import EditMode
 _SCENE_BATCH_SIZE_DEFAULT: int = 10
 
 # Audio file types supported by the FileInput.
-# Defined inline (rather than imported from px.base.data.utils) to avoid
-# triggering the px.base.data import chain which attempts to load the
-# `portals` backend package (not available in standalone px test environments).
 _AUDIO_FILE_TYPES: list[str] = ["mp3", "wav"]
 
 # Reusable table-column definition shared by the three schema TableInputs.
@@ -200,7 +199,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         "Pass 1 builds initial context (characters, locations, props, metadata). "
         "Pass 2+ generates scenes in batches, optionally guided by audio-analysis segments. "
         "Single-pass structured output retained for backward compatibility. "
-        "Project-aware: fetches existing characters, locations, and props from the database."
+        "Project-aware: fetches existing characters, locations, and props from the NAP universe."
     )
     icon = "sparkles"
     documentation: str = "https://docs.portals.org/components-models"
@@ -237,7 +236,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             display_name="Title",
             info="Title of the project.",
         ),
-        # ── Audio File (replaces the old audio_segments_json) ────────────────
+        # ── Audio File ────────────────────────────────────────────────────────
         FileInput(
             name="audio_file",
             display_name="Audio File",
@@ -255,7 +254,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             display_name="Project ID",
             info=(
                 "Optional. When set, the assembled storyboard is also persisted "
-                "to the project database via project_repository (if available on the component)."
+                "to the project database via project_repository."
             ),
             required=False,
             advanced=True,
@@ -400,7 +399,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
     # SHARED INTERNAL HELPERS
     # =========================================================================
 
-    def _analyze_audio_if_provided(self, llm: Any, config_dict: dict) -> list | None:  # noqa: ARG002
+    def _analyze_audio_if_provided(self, llm: Any, config_dict: dict) -> list | None:
         """If ``audio_file`` is set, run multimodal analysis and return segments.
 
         The caller's configured ``llm`` is passed through to
@@ -477,8 +476,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         ``characters``, ``locations``, ``metadata``) and the wrapper's *key*
         field itself are made tolerant of a JSON-encoded string standing in
         for the expected list/dict — some models (observed with Gemini)
-        stringify one or the other inconsistently. See
-        ``px.helpers.llm_json_tolerance`` for details.
+        stringify one or the other inconsistently.
         """
         if not schema_rows:
             msg = f"Schema rows for '{model_name}' cannot be empty."
@@ -556,12 +554,6 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         if isinstance(raw, dict) and "responses" in raw:
             responses = raw.get("responses") or []
             if not responses:
-                # Validation never produced a usable result (e.g. the model's
-                # output couldn't be coerced even with make_json_tolerant).
-                # Don't fall through to the "wrap raw in a list" branch below —
-                # that would treat trustcall's internal envelope
-                # (messages/responses/response_metadata/attempts) as if it
-                # were a single unwrapped context/scene dict.
                 logger.warning(
                     f"Trustcall envelope had no validated responses "
                     f"(attempts={raw.get('attempts')}) — returning no items."
@@ -584,10 +576,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         if isinstance(raw, list):
             return [item.model_dump() if isinstance(item, BaseModel) else item for item in raw]
 
-        # If the LLM returned a single unwrapped dictionary (e.g. the
-        # wrapper's `key` field was itself absent and `raw` is already the
-        # single context/scene object), wrap it in a list so items[0]
-        # resolves safely instead of being swallowed.
+        # If the LLM returned a single unwrapped dictionary, wrap it
         if isinstance(raw, dict):
             return [raw]
 
@@ -613,8 +602,6 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
 
         Non-fatal: all mismatches are logged as warnings so they are
         discoverable during debugging without aborting generation.
-
-        Mirrors ``validateTimingPreservation`` in ``compositional-agent.ts``.
         """
         original_count = len(original_segments)
         enriched_count = len(enriched_scenes)
@@ -660,7 +647,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         """Call the LLM to produce storyboard metadata, characters, locations, and props.
 
         Audio segments are included in the prompt when present to ground the context
-        in the audio narrative. Existing DB entities are included so the LLM extends
+        in the audio narrative. Existing NAP entities are included so the LLM extends
         rather than duplicates previously authored content.
 
         Parameters
@@ -753,60 +740,6 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         return self._unwrap_objects(raw, key="scenes")
 
     # =========================================================================
-    # PROJECT DATABASE PERSISTENCE
-    # =========================================================================
-
-    # def _save_storyboard_to_project(self, project: Any, storyboard: dict) -> None:
-    #     """Merge *storyboard* into ``project.storyboard`` and persist to DB.
-
-    #     Uses ``StoryboardManager.merge_into_project`` to ensure no properties
-    #     are accidentally excluded during the merge.  Non-fatal: logs errors
-    #     without re-raising so the component output is still returned even if
-    #     persistence fails.
-
-    #     Opens a fresh session, re-queries the ``Folder`` to get a session-
-    #     attached instance, applies the merge, and commits via the
-    #     ``flag_modified`` pattern (required for SQLAlchemy JSONB dirty-tracking).
-    #     """
-    #     if project is None:
-    #         logger.debug("No project object available — skipping DB persistence.")
-    #         return
-
-    #     project_id = str(project.id)
-    #     logger.info(f"Persisting storyboard to project '{project_id}'…")
-
-    #     try:
-    #         from sqlmodel import select
-
-    #         from portals.services.database.models.folder.model import Folder
-    #         from px.services.deps import get_db_service
-
-    #         db_service = get_db_service()
-    #         with db_service.with_session() as session:
-    #             statement = select(Folder).where(Folder.id == project_id)
-    #             folder = session.exec(statement).first()
-    #             if not folder:
-    #                 logger.warning(f"Project folder '{project_id}' not found — cannot persist storyboard.")
-    #                 return
-
-    #             # Merge the generated storyboard into the existing one
-    #             merged = StoryboardManager.merge_into_project(
-    #                 current_storyboard=folder.storyboard or {},
-    #                 generated=storyboard,
-    #             )
-
-    #             folder.storyboard = merged
-    #             # SQLAlchemy does not detect in-place mutations of JSONB columns;
-    #             # ``flag_modified`` forces a write on commit.
-    #             flag_modified(folder, "storyboard")
-    #             session.add(folder)
-    #             session.commit()
-
-    #         logger.info(f"Storyboard persisted to project '{project_id}' ({len(merged.get('scenes', []))} scenes).")
-    #     except Exception as exc:
-    #         logger.error(f"Non-fatal: failed to persist storyboard to project '{project_id}': {exc}")
-
-    # =========================================================================
     # OUTPUT — MULTI-PASS STORYBOARD
     # =========================================================================
 
@@ -814,14 +747,13 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         """Multi-pass storyboard generation output.
 
         Flow:
-          1. Fetch project state from DB (existing characters, locations, props).
-          2. Resolve project title from DB metadata (falls back to the
-             component ``title`` input for backward compatibility).
+          1. Get project title from Folder metadata (falls back to component
+             ``title`` input for backward compatibility).
+          2. Fetch existing entities from the NAP universe.
           3. If ``audio_file`` is provided, analyse it via multimodal LLM.
           4. Pass 1  — Generate initial context (characters, locations, props, metadata).
           5. Pass 2+ — Generate scenes in batches.
-          6. Merge generated storyboard into the project DB record via
-             ``StoryboardManager`` (ensures no accidental property exclusion).
+          6. Merge generated storyboard into the project Folder storyboard field.
           7. Assemble & return final storyboard.
 
         Returns:
@@ -829,30 +761,41 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         """
         llm, config_dict, token_handler = self._setup_llm_and_config()
 
-        # ── Fetch existing entities and project title from database ────────
+        # ── Resolve project title and existing entities ────────────────
         project: Any | None = None
-        existing_entities: dict[str, list[dict]] | None = None
         project_id_db: str | None = None
         effective_title: str = ""
+        existing_entities: dict[str, list[dict]] | None = None
+
         try:
-            project = self.get_fresh_project_state()
-            if project is None:
+            folder = self.get_folder()
+            if folder is None:
                 logger.warning("No project state available. Proceeding without project context.")
                 effective_title = getattr(self, "title", "") or ""
             else:
-                project_id_db = str(project.id)
-                existing_entities = self.get_all_existing_entities(project_id_db)
+                project_id_db = str(folder.id)
+                project = folder  # Keep for backward compat in persistence step
 
-                # Extract title from project metadata (the authoritative source).
-                # Falls back to the component ``title`` input for backward compat.
-                raw_meta = getattr(project, "metadata_", None) or {}
+                # Extract title from project metadata (authoritative source).
+                raw_meta = getattr(folder, "metadata_", None) or {}
                 project_metadata = raw_meta if isinstance(raw_meta, dict) else {}
                 project_title = project_metadata.get("title", "") or ""
                 manual_title = getattr(self, "title", "") or ""
                 effective_title = project_title or manual_title
 
+                # Load existing entities from NAP universe (not SQL)
+                try:
+                    existing_entities = {
+                        "characters": self.get_entities("character"),
+                        "locations": self.get_entities("location"),
+                        "props": self.get_entities("prop"),
+                    }
+                except Exception as exc:
+                    logger.warning(f"Could not load entities from NAP universe ({exc!r}). Proceeding without context.")
+                    existing_entities = {"characters": [], "locations": [], "props": []}
+
                 logger.info(
-                    "Loaded project state | "
+                    "Loaded project state from NAP universe | "
                     f"project='{project_id_db}', "
                     f"title='{effective_title}', "
                     f"characters={len(existing_entities.get('characters', []))}, "
@@ -863,7 +806,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             logger.warning(f"Could not load project state ({exc!r}). Proceeding without project context.")
             effective_title = getattr(self, "title", "") or ""
 
-        # ── Analyse audio if provided ──────────────────────────────────────
+        # ── Analyse audio if provided ──────────────────────────────────
         audio_segments = self._analyze_audio_if_provided(llm, config_dict)
         batch_size: int = getattr(self, "scene_batch_size", _SCENE_BATCH_SIZE_DEFAULT)
 
@@ -874,7 +817,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             f"batch_size={batch_size}"
         )
 
-        # ── Pass 1: Initial Context ───────────────────────────────────────────
+        # ── Pass 1: Initial Context ──────────────────────────────────────
         logger.info("Pass 1: generating initial context (characters, locations, props, metadata)…")
         initial_context = self._generate_initial_context(
             llm,
@@ -890,7 +833,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             f"props={len(initial_context.get('props', []))}"
         )
 
-        # ── Pass 2+: Scene Generation ─────────────────────────────────────────
+        # ── Pass 2+: Scene Generation ─────────────────────────────────────
         if audio_segments:
             # Audio-guided: every audio segment becomes a scene anchor.
             scenes_source = audio_segments
@@ -943,14 +886,11 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
             if isinstance(scene, dict):
                 scene["sceneIndex"] = i
 
-        # ── Audio timing preservation check ─────────────────────────────────
-        # When audio-guided, validate that enriched scenes preserve the
-        # original segment timings.  Non-fatal: logs warnings so the issue
-        # is discoverable without aborting generation.
+        # ── Audio timing preservation check ─────────────────────────────
         if audio_segments:
             self._validate_audio_timing(audio_segments, all_scenes)
 
-        # ── Assemble final storyboard ─────────────────────────────────────────
+        # ── Assemble final storyboard ────────────────────────────────────
         last_scene = all_scenes[-1] if all_scenes else {}
         storyboard = {
             **initial_context,
@@ -968,12 +908,12 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         self._token_usage = token_handler.get_usage()
         logger.info(f"Multi-pass generation complete — scenes={len(all_scenes)}, token_usage={self._token_usage}")
 
-        # Execute batched database persistence
+        # Persist to project folder (via ProjectService, not SQL entity tables)
         if project:
             try:
                 self.ingest_storyboard_to_database(project_id_db, storyboard)
             except Exception as exc:
-                # Log non-fatal error to ensure component still yields data to the canvas
+                # Log non-fatal error to ensure component still yields data
                 logger.error(f"Non-fatal: Database ingestion failed for project '{project_id_db}'. Root cause: {exc}")
 
         return Data(data=storyboard)
@@ -1009,7 +949,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
                 tolerant_list_field(output_model_),
                 Field(
                     description=f"A list of {schema_name}.",  # type: ignore[valid-type]
-                    min_length=1,  # help ensure non-empty output
+                    min_length=1,
                 ),
             ),
         )
@@ -1042,7 +982,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         structured_data = first_response
         if isinstance(first_response, BaseModel):
             structured_data = first_response.model_dump()
-        # Extract the objects array (guaranteed to exist due to our Pydantic model structure)
+        # Extract the objects array
         return structured_data.get("objects", structured_data)
 
     def build_structured_output(self) -> Data:
@@ -1113,9 +1053,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         schemas passed to trustcall/``with_structured_output``): that helper
         fixes validation up front so the *first* attempt succeeds, but this
         remains useful for the Langchain ``with_structured_output`` fallback
-        path, whose returned dict may not have gone through the same
-        validated model. Reuses ``coerce_json_string`` so the "does this
-        string look like JSON, and does it parse" logic lives in one place.
+        path.
         """
         if isinstance(data, dict):
             for key, value in data.items():

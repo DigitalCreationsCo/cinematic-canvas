@@ -81,6 +81,10 @@ _PERSIST_ASSET = "persist_asset"
 
 _ASSET_KEY_PREFIX = "group"
 
+# Maximum number of pieces included in a single group output. When more than
+# this many pieces are provided, only the first MAX_GROUP_PIECES are used.
+MAX_GROUP_PIECES = 6
+
 
 def _slugify(value: str) -> str:
     """Normalize a group name into a stable asset-key suffix."""
@@ -157,7 +161,6 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
     )
     icon = "box-select"
     name = "Group"
-    minimized = True
 
     # ── Inputs ──────────────────────────────────────────────────────────
 
@@ -185,11 +188,8 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         ),
         DictInput(
             name=_PIECE_OVERRIDES,
-            display_name="Piece Description Overrides",
-            info=(
-                "Optional map of {piece_name: custom_description}. "
-                "Used to override the inherited description for specific pieces."
-            ),
+            display_name="Piece Captions",
+            info="Captions applied to the attached pieces in the prompt. Each piece shows its image preview and an editable caption field. The caption is inherited from the piece filename; edit it to customize the reference description.",
             advanced=True,
         ),
         ModelInput(
@@ -236,7 +236,6 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
     ]
 
     # ── Outputs ─────────────────────────────────────────────────────────
-
     outputs = [
         Output(
             display_name="Group Data",
@@ -272,19 +271,8 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         )
 
     # ── Output method ───────────────────────────────────────────────────
-
     async def build(
         self,
-        group_name: str,
-        group_description: str,
-        pieces: Any,
-        piece_overrides: dict | None,
-        image_model: Any,
-        aspect_ratio: str | None = None,
-        negative_prompt: str | None = None,
-        guidance: float | None = None,
-        seed: int | None = None,
-        persist_asset: bool = True,
     ) -> Data:
         """Assemble the group, generate the reference image, and persist it.
 
@@ -292,13 +280,13 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         image, and the resolved list of pieces. Pieces always remain tracked
         in the returned payload.
         """
-        if not group_name or not str(group_name).strip():
+        if not self.group_name or not str(self.group_name).strip():
             return Data(data={"error": "Group name is required."})
 
-        overrides = piece_overrides or {}
+        overrides = self.piece_overrides or {}
 
         # 1. Normalize pieces and resolve each piece's final description.
-        resolved_pieces = self._normalize_pieces(pieces, overrides)
+        resolved_pieces = self._normalize_pieces(self.pieces, overrides)
         if not resolved_pieces:
             return Data(data={"error": "Group has no pieces to assemble."})
 
@@ -306,17 +294,17 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         project_id, namespace = self._resolve_project_context()
 
         # 3. Build the combined prompt from the group + pieces.
-        prompt = self._build_prompt(group_name, group_description, resolved_pieces)
+        prompt = self._build_prompt(self.group_name, self.group_description, resolved_pieces)
 
         # 4. Resolve the image model and generate.
         image_bytes, image_data = await self._generate_image(
-            image_model=image_model,
+            image_model=self.image_model,
             prompt=prompt,
             resolved_pieces=resolved_pieces,
-            aspect_ratio=aspect_ratio,
-            negative_prompt=negative_prompt,
-            guidance=guidance,
-            seed=seed,
+            aspect_ratio=self.aspect_ratio,
+            negative_prompt=self.negative_prompt,
+            guidance=self.guidance,
+            seed=self.seed,
         )
 
         if not image_bytes and not image_data:
@@ -327,30 +315,45 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             generated = await self._persist_generated_image(
                 image_bytes=image_bytes,
                 image_data=image_data,
-                group_name=group_name,
+                group_name=self.group_name,
                 project_id=project_id,
                 namespace=namespace,
-                persist_asset=persist_asset,
+                persist_asset=self.persist_asset,
             )
 
-        # 6. Return the assembled group payload — pieces always remain tracked.
+        # 6. Persist group data to NAP (best-effort, never blocks output).
+        nap_info = await self._persist_group_to_nap(
+            group_name=self.group_name,
+            group_description=self.group_description,
+            resolved_pieces=resolved_pieces,
+            generated_image=generated,
+            project_id=project_id,
+        )
+
+        # 7. Return the assembled group payload — pieces always remain tracked.
         return Data(
             data={
-                "name": group_name,
-                "description": group_description,
+                "name": self.group_name,
+                "description": self.group_description,
                 "generated_image": generated,
                 "pieces": resolved_pieces,
                 "project_id": str(project_id) if project_id else None,
+                "nap_uri": nap_info.get("nap_uri") if nap_info else None,
+                "nap_commit_hash": nap_info.get("nap_commit_hash") if nap_info else None,
             },
         )
 
     # ── Helpers ─────────────────────────────────────────────────────────
-
     def _normalize_pieces(self, pieces: Any, overrides: dict) -> list[dict]:
         """Coerce the raw pieces input into a list of resolved piece dicts.
 
-        Resolution order for each piece's final description:
+        Resolution order for each piece's final description (used as the
+        ``caption``)::
+
             inline ``custom_description`` → overrides[name] → inherited description
+
+        At most *MAX_GROUP_PIECES* (6) pieces are returned. Any additional
+        pieces are silently truncated and a warning is logged.
         """
         if not pieces:
             return []
@@ -360,6 +363,16 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             raw_pieces = list(pieces)
         else:
             raw_pieces = [pieces]
+
+        # Cap at MAX_GROUP_PIECES.
+        if len(raw_pieces) > MAX_GROUP_PIECES:
+            logger.warning(
+                "Group received %d pieces; truncating to %d (first %d used).",
+                len(raw_pieces),
+                MAX_GROUP_PIECES,
+                MAX_GROUP_PIECES,
+            )
+            raw_pieces = raw_pieces[:MAX_GROUP_PIECES]
 
         resolved: list[dict] = []
         for raw in raw_pieces:
@@ -371,19 +384,50 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             inherited = piece.get("description") or ""
             custom_inline = piece.get("custom_description")
             override = overrides.get(name)
+            
+            # Attempt to recover file_id from graph if missing
+            file_id = piece.get("file_id")
+            if not file_id:
+                file_id = self._find_file_id_in_graph(name)
 
             final_description = custom_inline or (override if override is not None else inherited)
+            caption = final_description  # the resolved caption
 
             resolved.append(
                 {
                     "type": piece.get("type") or "image",
                     "name": name,
                     "description": final_description,
+                    "caption": caption,
                     "inherited_description": inherited,
                     "image": piece.get("image"),
+                    "file_id": file_id,
                 }
             )
         return resolved
+
+    def _find_file_id_in_graph(self, piece_name: str) -> str | None:
+        """Attempt to find file_id for a piece in the graph."""
+        if not self.graph or not hasattr(self.graph, "nodes"):
+            return None
+        
+        for node in self.graph.nodes:
+            # Check for display_name in node.data or node.data.node
+            node_data = node.data
+            if not node_data:
+                continue
+            
+            # The node data structure can be complex, check both locations
+            display_name = node_data.get("display_name")
+            if not display_name and "node" in node_data:
+                display_name = node_data["node"].get("display_name")
+            
+            if display_name == piece_name:
+                template = node_data.get("node", {}).get("template", {})
+                if "file_id" in template:
+                    return template["file_id"].get("value")
+        return None
+
 
     @staticmethod
     def _coerce_piece(raw: Any) -> dict | None:
@@ -412,19 +456,37 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         group_description: str,
         resolved_pieces: list[dict],
     ) -> str:
-        """Compose a text prompt describing the group and its pieces."""
+        """Compose a text prompt describing the group and its pieces.
+
+        Pieces are formatted as a structured grid where each entry includes the
+        piece name, its caption (resolved description), type, and an image
+        reference. This gives the model clear per-piece context alongside the
+        reference images passed as multimodal content.
+        """
         lines: list[str] = [f"Group: {group_name}"]
         if group_description:
             lines.append(group_description)
         lines.append("")
-        lines.append("Pieces:")
-        for piece in resolved_pieces:
+        lines.append("Pieces (grid):")
+        for i, piece in enumerate(resolved_pieces, 1):
             name = piece.get("name") or "(unnamed)"
-            description = piece.get("description") or ""
-            entry = f"- {name}"
-            if description:
-                entry += f": {description}"
-            lines.append(entry)
+            caption = piece.get("caption") or piece.get("description") or ""
+            piece_type = piece.get("type") or "image"
+            has_image = bool(piece.get("image"))
+
+            # Grid cell header
+            lines.append(f"  [{i}] {name} ({piece_type})")
+
+            # Caption — the piece description override becomes the visible caption
+            if caption:
+                lines.append(f"      Caption: {caption}")
+
+            # Image indicator
+            if has_image:
+                lines.append(f"      Image: attached reference — {name}")
+            else:
+                lines.append(f"      Image: none")
+
         return "\n".join(lines)
 
     def _resolve_project_context(self) -> tuple[Any, str | None]:
@@ -435,7 +497,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         skipped.
         """
         try:
-            folder = self.get_fresh_project_state()
+            folder = self.get_folder()
         except Exception as e:  # pragma: no cover - defensive
             logger.warning(f"Could not resolve project state for group: {e}")
             return None, None
@@ -500,19 +562,37 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
     def _build_reference_message(self, prompt: str, resolved_pieces: list[dict]):
         """Build a multimodal HumanMessage carrying the prompt + piece images.
 
-        Falls back to the plain prompt string when image references can't be
-        resolved (so the caller can still attempt generation without refs).
+        Each piece's caption text is placed *immediately before* its image in
+        the content parts array so the model can associate each reference image
+        with its caption.  Falls back to the plain prompt string when image
+        references can't be resolved (so the caller can still attempt
+        generation without refs).
         """
-        content_parts: list[dict] = [{"type": "text", "text": prompt}]
+        content_parts: list[dict] = []
 
+        # 1. Main group prompt
+        if prompt:
+            content_parts.append({"type": "text", "text": prompt})
+
+        # 2. Per-piece reference — caption text then image, interleaved
         for piece in resolved_pieces:
+            name = piece.get("name", "unnamed")
+            caption = piece.get("caption") or ""
+
+            # Caption text immediately before the image
+            if caption:
+                content_parts.append({
+                    "type": "text",
+                    "text": f"Reference — {name}: {caption}",
+                })
+
+            # Image reference
             image_ref = piece.get("image")
-            if not image_ref:
-                continue
-            try:
-                content_parts.append(self._image_ref_to_content(image_ref))
-            except Exception as e:
-                logger.debug(f"Skipping piece image '{piece.get('name')}': {e}")
+            if image_ref:
+                try:
+                    content_parts.append(self._image_ref_to_content(image_ref))
+                except Exception as e:
+                    logger.debug(f"Skipping piece image '{name}': {e}")
 
         if len(content_parts) <= 1:
             # No usable reference images — just use the text prompt.
@@ -545,6 +625,87 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         from px.utils.image import create_image_content_dict
 
         return create_image_content_dict(image_ref)
+
+    async def _persist_group_to_nap(
+        self,
+        *,
+        group_name: str,
+        group_description: str,
+        resolved_pieces: list[dict],
+        generated_image: dict | None,
+        project_id: Any,
+    ) -> dict | None:
+        """Persist the entire group as a **narrative entity** via NAP.
+
+        Stores the group name, description, resolved pieces (with captions),
+        and generated image reference as a versioned NAP manifest.  The
+        resulting ``nap_uri`` is returned in the group output so downstream
+        narrative components (Characters, Locations, …) can reference it.
+
+        Persistence is best-effort — on any failure the build still succeeds
+        and the group is returned with ``nap_uri`` set to ``None``.
+        """
+        project_id_str = str(project_id) if project_id else None
+        if not project_id_str:
+            logger.debug("No project context — skipping NAP persistence.")
+            return None
+
+        try:
+            from portals.services.nap import get_nap_service
+
+            nap_service = get_nap_service()
+            if nap_service is None:
+                logger.warning("NAP service not available — skipping NAP persistence.")
+                return None
+        except Exception as e:
+            logger.warning(f"NAP service unavailable: {e}")
+            return None
+
+        # Build the group manifest — mirrors the output payload schema.
+        pieces_data: list[dict] = []
+        for p in resolved_pieces:
+            pieces_data.append({
+                "name": p.get("name"),
+                "type": p.get("type"),
+                "caption": p.get("caption"),
+                "inherited_description": p.get("inherited_description"),
+                "image": p.get("image"),
+                "file_id": p.get("file_id"),
+            })
+
+        manifest: dict[str, Any] = {
+            "name": group_name,
+            "description": group_description or "",
+            "pieces": pieces_data,
+        }
+
+        if generated_image and generated_image.get("url"):
+            manifest["generated_image"] = {
+                "url": generated_image["url"],
+                "data": generated_image.get("data"),
+                "asset_key": generated_image.get("asset_key"),
+                "persisted": generated_image.get("persisted", False),
+            }
+
+        try:
+            result = await nap_service.create_entity(
+                entity_type="group",
+                project_id=project_id_str,
+                initial_data=manifest,
+            )
+            logger.info(
+                "Persisted group '%s' to NAP: uri=%s commit=%s",
+                group_name,
+                result.uri,
+                result.commit_hash,
+            )
+            return {
+                "nap_uri": result.uri,
+                "nap_commit_hash": result.commit_hash,
+            }
+        except Exception as e:
+            logger.warning(f"Failed to persist group to NAP: {e}")
+            return None
 
     async def _persist_generated_image(
         self,
