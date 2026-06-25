@@ -74,7 +74,7 @@ They share two reusable bases.
 
 **File:** `src/px/src/px/components/narrative/base_state_aware.py`
 
-An invisible engine that fetches live project state from the database. Components that need to read existing narrative entities during flow execution (storyboard generation, scene expansion) inherit this base.
+An invisible engine that fetches live project state from the database, and narrative context from nap. Components that need to read existing narrative entities during flow execution (storyboard generation, character generation) inherit this base.
 
 ```python
 class BaseStateAwareComponent(CustomComponent):

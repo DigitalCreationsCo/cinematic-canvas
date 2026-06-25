@@ -49,7 +49,6 @@ from px.base.prompts.storyboard_scene_batch import build_scene_batch_prompt
 from px.base.prompts.storyboard_vision_prompt import build_storyboard_vision_prompt
 from px.components.llm_operations.structured_output import StructuredOutputComponent
 from px.components.narrative.base_state_aware import BaseStateAwareComponent
-from px.components.narrative.storyboard_manager import StoryboardManager
 from px.field_typing.range_spec import RangeSpec
 from px.helpers.base_model import build_model_from_schema
 from px.helpers.llm_json_tolerance import (

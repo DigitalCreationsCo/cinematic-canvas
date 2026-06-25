@@ -1,3 +1,4 @@
+import { BASE_URL_API_V2 } from "@/customization/config-constants";
 import { getBaseUrl } from "@/customization/utils/urls";
 
 /**
@@ -112,11 +113,17 @@ export function formatFileName(
 
 /**
  * Get preview URL for a file (handles both File objects and server paths)
+ *
+ * Uses the v2 image-serving endpoint by file_id when available (preferred, since
+ * v2-uploaded files have multi-segment paths incompatible with the v1 endpoint).
+ * Falls back to the v1 path-based endpoint for backward compatibility with
+ * legacy file paths (2-segment {flow_id}/{file_name} format).
+ *
  * @param file - Can be a File object or server file path object
  * @returns Preview URL or null if not an image
  */
 export function getFilePreviewUrl(
-  file: File | { path: string; type?: string } | string,
+  file: File | { path: string; type?: string; file_id?: string } | string,
 ): string | null {
   if (!isImageFile(file)) {
     return null;
@@ -126,6 +133,9 @@ export function getFilePreviewUrl(
     const normalized = value.trim().replace(/\\/g, "/");
     return normalized.length > 0 ? normalized : null;
   };
+
+  const baseUrl = getBaseUrl();
+  const baseUrlWithSlash = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
 
   if (file instanceof File) {
     // Browser File object - create object URL
@@ -143,10 +153,16 @@ export function getFilePreviewUrl(
       .map((segment) => encodeURIComponent(segment))
       .join("/");
     // Explicitly use /api/v1/files/images/ prefix for server file paths
-    const baseUrl = getBaseUrl();
-    const baseUrlWithSlash = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
     return `${baseUrlWithSlash}files/images/${encodedPath}`;
   } else if ("path" in file) {
+    // If file_id is provided, use the v2 image-serving endpoint
+    if ("file_id" in file && file.file_id) {
+      const v2BaseUrl = BASE_URL_API_V2.endsWith("/")
+        ? BASE_URL_API_V2
+        : `${BASE_URL_API_V2}/`;
+      return `${v2BaseUrl}files/images/${file.file_id}`;
+    }
+
     const normalizedPath = normalizePath(file.path);
     if (!normalizedPath) return null;
 
@@ -158,11 +174,8 @@ export function getFilePreviewUrl(
       .split("/")
       .map((segment) => encodeURIComponent(segment))
       .join("/");
-    // Explicitly use /api/v1/files/images/ prefix for server file paths
-    const baseUrl = getBaseUrl();
-    const baseUrlWithSlash = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-    const url = `${baseUrlWithSlash}files/images/${encodedPath}`;
-    return url;
+    // Fallback to v1 path-based image endpoint for legacy 2-segment paths
+    return `${baseUrlWithSlash}files/images/${encodedPath}`;
   }
 
   return null;

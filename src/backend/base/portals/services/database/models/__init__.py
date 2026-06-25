@@ -30,6 +30,7 @@ from .transactions import TransactionTable
 from .user import User
 from .user_credit import UserCredit
 from .variable import Variable
+from .vertex_builds import VertexBuildTable
 
 __all__ = [
     "ApiKey",

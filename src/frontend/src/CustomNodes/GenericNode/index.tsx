@@ -5,9 +5,15 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
+import ImagePreviewField from "@/components/core/parameterRenderComponent/components/imagePreviewComponent";
+import {
+  getFilePreviewUrl,
+  isAbsoluteUrl,
+} from "@/components/core/playgroundComponent/chat-view/utils/file-utils";
 import { usePostValidateComponentCode } from "@/controllers/API/queries/nodes/use-post-validate-component-code";
 import { CustomNodeStatus } from "@/customization/components/custom-NodeStatus";
 import UpdateComponentModal from "@/modals/updateComponentModal";
+import { IMAGE_NODE_OUTPUTS } from "@/pages/FlowPage/consts";
 import { useAlternate } from "@/shared/hooks/use-alternate";
 import type { FlowStoreType } from "@/types/zustand/flow";
 import { Button } from "../../components/ui/button";
@@ -44,6 +50,98 @@ const MemoizedNodeName = memo(NodeName);
 const MemoizedNodeStatus = memo(CustomNodeStatus);
 const MemoizedNodeDescription = memo(NodeDescription);
 const MemoizedNodeOutputs = memo(NodeOutputs);
+
+const PiecePreview = memo(({ nodeId }: { nodeId: string }) => {
+  const flowPool = useFlowStore((state) => state.flowPool);
+  const edges = useFlowStore((state) => state.edges);
+  const nodes = useFlowStore((state) => state.nodes);
+  const flowPoolNode = useMemo(
+    () => (flowPool[nodeId] ?? [])[flowPool[nodeId]?.length - 1],
+    [flowPool, nodeId],
+  );
+
+  // Extract file_ids from connected source node templates for use in preview URL
+  const fileIdByPieceName = useMemo(() => {
+    const map: Record<string, string | undefined> = {};
+    for (const edge of edges) {
+      if (edge.target !== nodeId) continue;
+      const sourceNode = nodes.find((n) => n.id === edge.source);
+      if (sourceNode?.type !== "genericNode") continue;
+      const template = (sourceNode.data?.node as any)?.template ?? {};
+      const fileId = template["file_id"]?.value;
+      const displayName = (sourceNode.data?.node as any)?.display_name;
+      if (displayName && fileId) {
+        map[displayName] = fileId;
+      }
+    }
+    return map;
+  }, [edges, nodes, nodeId]);
+
+  // Get the node's class data (needed by ImagePreviewField for file_id resolution)
+  const nodeClass = useMemo(
+    () => nodes.find((n) => n.id === nodeId)?.data?.node,
+    [nodes, nodeId],
+  );
+
+  // Robust access to group_data output
+  const rawOutput = flowPoolNode?.data?.outputs?.["group_data"];
+  const messages = Array.isArray(rawOutput) ? rawOutput : [rawOutput];
+  const message = messages[0]?.message;
+  const pieces = message?.pieces ?? [];
+  const generatedImage = message?.generated_image;
+
+  // Generated image URL (storage path or absolute URL)
+  const generatedImageUrl: string | null =
+    generatedImage?.url || generatedImage?.data || null;
+
+  if (
+    (!pieces || !Array.isArray(pieces) || pieces.length === 0) &&
+    !generatedImageUrl
+  ) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-2 px-4 pb-3">
+      {/* Generated image — rendered via ImagePreviewField */}
+      {generatedImageUrl && (
+        <ImagePreviewField value={generatedImageUrl} nodeClass={nodeClass} />
+      )}
+
+      {/* Pieces image grid (up to 6 thumbnails) */}
+      {pieces.length > 0 && (
+        <div className="grid grid-cols-3 gap-1">
+          {pieces.slice(0, 6).map((piece: any) => {
+            let imgUrl = null;
+            if (piece.image) {
+              imgUrl = isAbsoluteUrl(piece.image)
+                ? piece.image
+                : getFilePreviewUrl({
+                    path: piece.image,
+                    file_id: fileIdByPieceName[piece.name],
+                    type: "image",
+                  });
+            }
+            return (
+              <div
+                key={piece.name}
+                className="aspect-square overflow-hidden rounded bg-muted/40"
+              >
+                {imgUrl && (
+                  <img
+                    src={imgUrl}
+                    alt={piece.name}
+                    className="h-full w-full object-cover"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+});
 
 const _HiddenOutputsButton = memo(
   ({
@@ -160,6 +258,35 @@ function GenericNode({
   useEffect(() => {
     updateNodeInternals(data.id);
   }, [data.node.template]);
+
+  useEffect(() => {
+    if (
+      data.node?.template?.image_path &&
+      (!data.node.outputs ||
+        data.node.outputs.length === 0 ||
+        data.node.outputs.some((output) =>
+          ["image", "filename"].includes(output.name),
+        ))
+    ) {
+      setNode(data.id, (old) => ({
+        ...old,
+        data: {
+          ...old.data,
+          node: {
+            ...old.data.node!,
+            outputs: IMAGE_NODE_OUTPUTS,
+          },
+        },
+      }));
+      updateNodeInternals(data.id);
+    }
+  }, [
+    data.id,
+    data.node?.outputs,
+    data.node?.template?.image_path,
+    setNode,
+    updateNodeInternals,
+  ]);
 
   if (!data.node!.template) {
     setErrorData({
@@ -703,6 +830,9 @@ function GenericNode({
                 selectedOutput={selectedOutput}
                 handleSelectOutput={handleSelectOutput}
               />
+              {data.node?.display_name === "Group" && (
+                <PiecePreview nodeId={data.id} />
+              )}
             </>
           </div>
         )}

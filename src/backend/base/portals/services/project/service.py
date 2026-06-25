@@ -8,7 +8,7 @@ from typing import Any
 
 from px.components.narrative.storyboard_manager import StoryboardManager
 from px.log.logger import logger
-from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.orm.attributes import flag_dirty
 from sqlmodel import select
 
 from portals.services.base import Service
@@ -145,26 +145,26 @@ class ProjectService(Service):
     def _merge_project_storyboard(
         self,
         session: Any,
-        project_id: str,
+        storyboard_id: str,
         generated_payload: dict[str, Any],
     ) -> None:
-        """Merge the generated storyboard JSON into ``Folder.storyboard``."""
-        from portals.services.database.models.folder.model import Folder
+        """Merge the generated storyboard JSON into ``Storyboard``."""
+        from portals.services.database.models.storyboard.model import Storyboard
 
-        stmt = select(Folder).where(Folder.id == project_id)
-        folder = session.exec(stmt).first()
-        if not folder:
-            msg = f"Project folder '{project_id}' not found in database."
+        stmt = select(Storyboard).where(Storyboard.id == storyboard_id)
+        sb = session.exec(stmt).first()
+        if not sb:
+            msg = f"Project Storyboard '{storyboard_id}' not found in database."
             raise ValueError(msg)
 
         merged = StoryboardManager.merge_into_project(
-            current_storyboard=folder.storyboard or {},
+            current_storyboard=sb or {},
             generated=generated_payload,
         )
-        folder.storyboard = merged
-        flag_modified(folder, "storyboard")
-        session.add(folder)
-        logger.info("Storyboard merged for project '%s'.", project_id)
+        sb = merged
+        flag_dirty(sb)
+        session.add(sb)
+        logger.info("Storyboard merged for project '%s'.", storyboard_id)
 
     # ── Field normalisation ────────────────────────────────────────────
 

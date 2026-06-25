@@ -35,7 +35,6 @@ from __future__ import annotations
 from typing import Any
 
 from px.custom.custom_component.custom_component import CustomComponent
-from px.log.logger import logger
 
 # ---------------------------------------------------------------------------
 # NapService accessor (lazy import to keep standalone px importable)
@@ -368,5 +367,3 @@ class BaseStateAwareComponent(CustomComponent):
                 "Ensure this component is running inside a Langflow flow."
             )
         return flow_id
-
-

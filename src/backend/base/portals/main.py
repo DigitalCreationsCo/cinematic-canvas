@@ -292,6 +292,7 @@ def get_lifespan(*, fix_migration=False, version=None):
             await nap_storage.mkdir(parents=True, exist_ok=True)
             nap_repo = MockNapRepository(assets_dir=nap_storage)
             initialize_nap_service(NapService(repo=nap_repo))
+
             await logger.adebug(
                 f"NAP service initialized (dir={nap_storage}) in {asyncio.get_event_loop().time() - current_time:.2f}s"
             )

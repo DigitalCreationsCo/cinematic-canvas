@@ -105,6 +105,9 @@ export type InputFieldType = {
   text?: string;
   temp_file?: boolean;
   separator?: string;
+  file_id?: string;
+  file_path?: string;
+  file_name?: string;
 };
 
 export type OutputFieldProxyType = {

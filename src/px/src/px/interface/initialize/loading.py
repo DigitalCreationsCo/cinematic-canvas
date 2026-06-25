@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import inspect
 import os
 import warnings
@@ -25,6 +26,64 @@ if TYPE_CHECKING:
         pass
 
 
+# Component categories to search when dynamically resolving a missing "code" field.
+# Ordered by likelihood for performance.
+_COMPONENT_CATEGORIES = [
+    "narrative",
+    "models_and_agents",
+    "files_and_knowledge",
+    "tools",
+]
+
+
+def _resolve_component_class_dynamic(vertex: Vertex) -> type | None:
+    """Attempt to dynamically import the component class when 'code' is missing.
+
+    Tries known component categories and naming conventions. Returns ``None``
+    when the class cannot be resolved (caller should then raise).
+    """
+    vertex_type = vertex.vertex_type  # e.g. "Group"
+
+    # Common naming patterns: <Name>Component, <Name>Model, <Name>Tool, etc.
+    class_name_candidates: list[str] = [
+        f"{vertex_type}Component",
+        f"{vertex_type.replace(' ', '')}Component",
+        f"{vertex_type}Model",
+        f"{vertex_type.replace(' ', '')}Model",
+        f"{vertex_type}Tool",
+        f"{vertex_type.replace(' ', '')}Tool",
+    ]
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    class_names: list[str] = []
+    for cn in class_name_candidates:
+        if cn not in seen:
+            seen.add(cn)
+            class_names.append(cn)
+
+    module_name_suffix = vertex_type.lower().replace(" ", "_")
+
+    for category in _COMPONENT_CATEGORIES:
+        module_name = f"px.components.{category}.{module_name_suffix}"
+        try:
+            module = importlib.import_module(module_name)
+        except (ImportError, ModuleNotFoundError):
+            continue
+
+        for class_name in class_names:
+            cls = getattr(module, class_name, None)
+            if cls is not None:
+                logger.debug(
+                    "Dynamically resolved component class for %s: %s.%s",
+                    vertex.display_name,
+                    module_name,
+                    class_name,
+                )
+                return cls
+
+    return None
+
+
 def instantiate_class(
     vertex: Vertex,
     user_id=None,
@@ -40,8 +99,22 @@ def instantiate_class(
         raise ValueError(msg)
 
     custom_params = get_params(vertex.params)
-    code = custom_params.pop("code")
-    class_object: type[CustomComponent | Component] = eval_custom_component_code(code)
+    code = custom_params.pop("code", None)
+
+    if code is not None:
+        class_object: type[CustomComponent | Component] = eval_custom_component_code(code)
+    else:
+        # 'code' was missing from params — try to dynamically resolve the class.
+        class_object = _resolve_component_class_dynamic(vertex)
+        if class_object is None:
+            msg = (
+                f"Cannot instantiate component '{vertex.display_name}' "
+                f"(id={vertex.id}, vertex_type={vertex_type}, base_type={base_type}): "
+                f"no 'code' field in params and unable to dynamically resolve class. "
+                f"Try re-saving the flow or re-adding the component."
+            )
+            raise ValueError(msg)
+
     custom_component: CustomComponent | Component = class_object(
         _user_id=user_id,
         _parameters=custom_params,
@@ -71,13 +144,9 @@ async def get_instance_results(
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
         if base_type == "custom_components":
-            return await build_custom_component(
-                params=custom_params, custom_component=custom_component
-            )
+            return await build_custom_component(params=custom_params, custom_component=custom_component)
         if base_type == "component":
-            return await build_component(
-                params=custom_params, custom_component=custom_component
-            )
+            return await build_component(params=custom_params, custom_component=custom_component)
         msg = f"Base type {base_type} not found."
         raise ValueError(msg)
 
@@ -159,9 +228,7 @@ async def update_table_params_with_load_from_db_fields(
 
     # Extract context once for use throughout the function
     context = None
-    if hasattr(custom_component, "graph") and hasattr(
-        custom_component.graph, "context"
-    ):
+    if hasattr(custom_component, "graph") and hasattr(custom_component.graph, "context"):
         context = custom_component.graph.context
 
     async with session_scope() as session:
@@ -198,9 +265,7 @@ async def update_table_params_with_load_from_db_fields(
                             request_variables = context["request_variables"]
                             if variable_name in request_variables:
                                 key = request_variables[variable_name]
-                                logger.debug(
-                                    f"Found context override for variable '{variable_name}'"
-                                )
+                                logger.debug(f"Found context override for variable '{variable_name}'")
 
                         if key is None:
                             key = os.getenv(variable_name)
@@ -209,9 +274,7 @@ async def update_table_params_with_load_from_db_fields(
                                     f"Using environment variable {variable_name} for table column {column_name}"
                                 )
                             else:
-                                logger.error(
-                                    f"Environment variable {variable_name} is not set."
-                                )
+                                logger.error(f"Environment variable {variable_name} is not set.")
                     else:
                         # Load from database
                         key = await custom_component.get_variable(
@@ -230,13 +293,9 @@ async def update_table_params_with_load_from_db_fields(
                 if fallback_to_env_vars and key is None:
                     key = os.getenv(variable_name)
                     if key:
-                        logger.info(
-                            f"Using environment variable {variable_name} for table column {column_name}"
-                        )
+                        logger.info(f"Using environment variable {variable_name} for table column {column_name}")
                     else:
-                        logger.error(
-                            f"Environment variable {variable_name} is not set."
-                        )
+                        logger.error(f"Environment variable {variable_name} is not set.")
 
                 # Update the column value with the resolved value
                 updated_row[column_name] = key if key is not None else None
@@ -264,13 +323,9 @@ async def update_params_with_load_from_db_fields(
             settings_service and settings_service.settings.use_noop_database
         )
         if is_noop_session:
-            logger.debug(
-                "Loading variables from environment variables because database is not available."
-            )
+            logger.debug("Loading variables from environment variables because database is not available.")
             context = None
-            if hasattr(custom_component, "graph") and hasattr(
-                custom_component.graph, "context"
-            ):
+            if hasattr(custom_component, "graph") and hasattr(custom_component.graph, "context"):
                 context = custom_component.graph.context
             return load_from_env_vars(params, load_from_db_fields, context=context)
         for field in load_from_db_fields:
@@ -289,9 +344,7 @@ async def update_params_with_load_from_db_fields(
                     continue
 
                 try:
-                    key = await custom_component.get_variable(
-                        name=params[field], field=field, session=session
-                    )
+                    key = await custom_component.get_variable(name=params[field], field=field, session=session)
                 except ValueError as e:
                     if "User id is not set" in str(e):
                         raise
@@ -303,19 +356,13 @@ async def update_params_with_load_from_db_fields(
                 if fallback_to_env_vars and key is None:
                     key = os.getenv(params[field])
                     if key:
-                        logger.info(
-                            f"Using environment variable {params[field]} for {field}"
-                        )
+                        logger.info(f"Using environment variable {params[field]} for {field}")
                     else:
-                        logger.error(
-                            f"Environment variable {params[field]} is not set."
-                        )
+                        logger.error(f"Environment variable {params[field]} is not set.")
 
                 params[field] = key if key is not None else None
                 if key is None:
-                    logger.warning(
-                        f"Could not get value for {field}. Setting it to None."
-                    )
+                    logger.warning(f"Could not get value for {field}. Setting it to None.")
 
         return params
 
@@ -369,12 +416,8 @@ async def build_custom_component(params: dict, custom_component: CustomComponent
     artifact = {"repr": custom_repr, "raw": raw, "type": artifact_type}
 
     if custom_component.get_vertex() is not None:
-        custom_component.set_artifacts(
-            {custom_component.get_vertex().outputs[0].get("name"): artifact}
-        )
-        custom_component.set_results(
-            {custom_component.get_vertex().outputs[0].get("name"): build_result}
-        )
+        custom_component.set_artifacts({custom_component.get_vertex().outputs[0].get("name"): artifact})
+        custom_component.set_results({custom_component.get_vertex().outputs[0].get("name"): build_result})
         return custom_component, build_result, artifact
 
     msg = "Custom component does not have a vertex"

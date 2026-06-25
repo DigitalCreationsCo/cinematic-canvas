@@ -163,9 +163,7 @@ class NapService:
             UniverseNotFoundError: If ``initialize()`` has not been called.
         """
         if not self._universe:
-            raise UniverseNotFoundError(
-                "No universe configured. Call initialize() first."
-            )
+            raise UniverseNotFoundError("No universe configured. Call initialize() first.")
         return self._universe
 
     def get_world_manifest(self) -> dict[str, Any]:
@@ -183,9 +181,7 @@ class NapService:
         worlds = self.get_entities("world")
         if not worlds:
             universe = self.get_universe_name()
-            raise EntityNotFoundError(
-                f"No world entity found in universe '{universe}'."
-            )
+            raise EntityNotFoundError(f"No world entity found in universe '{universe}'.")
         return worlds[0]
 
     def get_entity(self, uri: str) -> dict[str, Any]:
@@ -231,10 +227,7 @@ class NapService:
                 base_path=self._base_path,
             )
         except Exception as exc:
-            raise EntityNotFoundError(
-                f"Entity not found at '{uri}' in universe "
-                f"'{universe}': {exc}"
-            ) from exc
+            raise EntityNotFoundError(f"Entity not found at '{uri}' in universe '{universe}': {exc}") from exc
 
         if not manifest:
             raise EntityNotFoundError(f"Entity not found: '{uri}'")

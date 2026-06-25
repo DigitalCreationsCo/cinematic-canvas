@@ -242,7 +242,7 @@ class Vertex:
 
     def parse_data(self) -> None:
         self.data = self.full_data["data"]
-        if self.data["node"]["template"]["_type"] == "Component":
+        if self.data["node"]["template"].get("_type", "Component") == "Component":
             if "outputs" not in self.data["node"]:
                 msg = f"Outputs not found for {self.display_name}"
                 raise ValueError(msg)
@@ -274,11 +274,11 @@ class Vertex:
                 list_to_append.extend(value_dict["input_types"])
 
         template_dict = self.data["node"]["template"]
+        template_type = template_dict.get("_type", "Component")
         self.vertex_type = (
             self.data["type"]
-            if "Tool" not in [type_ for out in self.outputs for type_ in out["types"]]
-            or template_dict["_type"].islower()
-            else template_dict["_type"]
+            if "Tool" not in [type_ for out in self.outputs for type_ in out["types"]] or template_type.islower()
+            else template_type
         )
 
         if self.base_type is None:

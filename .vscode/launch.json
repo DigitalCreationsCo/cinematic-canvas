@@ -6,7 +6,8 @@
             "type": "debugpy",
             "request": "launch",
             "env": {
-                "PX_DEV": "narrative"
+            "PX_DEV": "narrative, files_and_knowledge",
+            "PORTALS_LOG_LEVEL": "debug",
             },
             "module": "uvicorn",
             "args": [
@@ -25,6 +26,29 @@
             "jinja": true,
             "python": "${workspaceFolder}/.venv/bin/python",
             "subProcess": true // Attach to the worker subprocesses
+        },
+        {
+            "name": "Debug Backend (no reload)",
+            "type": "debugpy",
+            "request": "launch",
+            "env": {
+                "PX_DEV": "1",
+                "PORTALS_LOG_LEVEL": "debug"
+            },
+            "module": "uvicorn",
+            "args": [
+                "--factory",
+                "portals.main:create_app",
+                "--host", "127.0.0.1",
+                "--port", "7860",
+                // NO --reload here — single process, breakpoints work
+                "--workers", "1",
+                "--env-file", ".env",
+                "--loop", "asyncio"
+            ],
+            "jinja": true,
+            "python": "${workspaceFolder}/.venv/bin/python"
+            // subProcess NOT needed without reload
         },
         {
             "name": "Debug Frontend",

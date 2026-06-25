@@ -306,8 +306,7 @@ class DatabaseService(Service):
         """Synchronous context manager that yields a database session.
 
         Provides a sync session for callers that cannot use ``async with``
-        (e.g. ``ProjectService``, ``BaseStateAwareComponent``,
-        ``BaseEntityReadPatchComponent``).
+        (e.g. ``ProjectService``, ``BaseStateAwareComponent``).
 
         * When ``use_noop_database`` is set, yields a ``NoopSession``.
         * Otherwise creates a real ``sqlmodel.Session`` bound to

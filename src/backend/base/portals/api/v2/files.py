@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from px.log.logger import logger
+from px.utils.helpers import build_content_type_from_extension
 from sqlmodel import col, select
 
 from portals.api.schemas import UploadFileResponse
@@ -667,6 +668,56 @@ async def read_file_content(file_stream: AsyncIterable[bytes] | bytes, *, decode
         raise HTTPException(status_code=500, detail=f"Error reading file: {exc}") from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Error reading file: {exc}") from exc
+
+
+@router.get("/images/{file_id}")
+async def serve_image(
+    file_id: uuid.UUID,
+    current_user: CurrentActiveUser,
+    session: DbSession,
+    storage_service: Annotated[StorageService, Depends(get_storage_service)],
+):
+    """Serve an image file by its ID for browser rendering.
+
+    Fetches the file record from the database, retrieves the content from storage,
+    and returns it with the correct image content type for inline browser rendering.
+    """
+    try:
+        # Fetch the file from the database
+        file = await fetch_file_object(file_id, current_user, session)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Get the basename of the file path
+        file_name = Path(file.path).name
+
+        # Build the storage namespace from user_id + folder_id
+        storage_flow_id = get_storage_namespace(current_user.id, file.folder_id)
+
+        # Fetch the full file content from storage
+        file_content = await storage_service.get_file(flow_id=storage_flow_id, file_name=file_name)
+        if file_content is None:
+            raise HTTPException(status_code=404, detail="File not found in storage")
+
+        # Determine the content type from the file extension
+        extension = file_name.split(".")[-1] if "." in file_name else ""
+        if not extension:
+            raise HTTPException(status_code=500, detail=f"Could not determine file extension for {file_name}")
+
+        content_type = build_content_type_from_extension(extension)
+        if content_type is None:
+            raise HTTPException(status_code=500, detail=f"Could not determine content type for extension: {extension}")
+        if not content_type.startswith("image"):
+            raise HTTPException(status_code=500, detail=f"File content type {content_type} is not an image")
+
+        return StreamingResponse(io.BytesIO(file_content), media_type=content_type)
+
+    except HTTPException:
+        raise
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=f"File not found: {e}") from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error serving image: {e}") from e
 
 
 @router.get("/{file_id}")

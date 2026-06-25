@@ -6265,12 +6265,12 @@ wheels = [
 
 [[package]]
 name = "nap-sdk"
-version = "0.2.2"
+version = "0.2.6"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/dd/ad0bd63c27dfac3553d49c0df617ecfce4014cb5dc979dedcf084299d598/nap_sdk-0.2.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:df03656d2539615612baabb6c645be04b6f50df2f3b23b73f3aa7eac76b0ac5c", size = 608155, upload-time = "2026-06-17T23:23:50.325Z" },
-    { url = "https://files.pythonhosted.org/packages/a5/f9/a1a91f88291ce8a66019218cee281b08f04aa582be2fcf764b75bc302245/nap_sdk-0.2.2-cp313-cp313-manylinux_2_39_x86_64.whl", hash = "sha256:5fc7a402c5dab371b30622712b43ca8072a9accf1618a81b811a35741de682bc", size = 814377, upload-time = "2026-06-17T23:23:51.623Z" },
-    { url = "https://files.pythonhosted.org/packages/ee/c8/c96876c74ec6d6a6d9792b976ce0d8046c14c8bea004acbfd9742d25e692/nap_sdk-0.2.2-cp313-cp313-win_amd64.whl", hash = "sha256:8de8d62b6cc7a897ec8ebcc660e9cd0fda5f77e10bd7e7ad10c195fd704f2eed", size = 534390, upload-time = "2026-06-17T23:23:52.961Z" },
+    { url = "https://files.pythonhosted.org/packages/31/c6/22596ede279f5a8b1c9bde642fbcf783b985b500fddfd26cb3e3f96f7b0b/nap_sdk-0.2.6-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0a9572442101aefe22a0ef0ff8dce7844bbb563f2ef7ad6589a967412895eabe", size = 4702069, upload-time = "2026-06-24T01:21:22.811Z" },
+    { url = "https://files.pythonhosted.org/packages/22/8c/2c45ab6cc11f5721afff59d3a2f59435e58c61ad4b37288bdd9bd36d517b/nap_sdk-0.2.6-cp313-cp313-manylinux_2_39_x86_64.whl", hash = "sha256:4e46ac6fdd1ca2484c9321f4ad69c8c2ffdcbff0d4cb12e5cfc21a5fef7c82e5", size = 5208310, upload-time = "2026-06-24T01:21:24.347Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/bd/8316c271286ec9a5920a25668fde1e3e3ca30907ef5d458b0374e2cc0ecc/nap_sdk-0.2.6-cp313-cp313-win_amd64.whl", hash = "sha256:b58a2f208196781490a02c73899fc93dffa13ae254aa35a34f2d968ab3518463", size = 4448139, upload-time = "2026-06-24T01:21:26.445Z" },
 ]
 
 [[package]]
@@ -8099,7 +8099,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "nap-sdk", specifier = ">=0.2.2" },
+    { name = "nap-sdk", specifier = ">=0.2.6" },
     { name = "narrativeengine" },
     { name = "portals-base", extras = ["complete"], editable = "src/backend/base" },
     { name = "sqlalchemy", extras = ["postgresql-psycopg"], marker = "extra == 'postgresql'", specifier = ">=2.0.38,<3.0.0" },

@@ -4,15 +4,18 @@ import { memo, useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import type { AllNodeType } from "@/types/flow";
 import { cn } from "@/utils/utils";
+import ImageNodeInspection from "./components/ImageNodeInspection";
 import InspectionPanelFields from "./components/InspectionPanelFields";
 import InspectionPanelHeader from "./components/InspectionPanelHeader";
 
 interface InspectionPanelProps {
   selectedNode: AllNodeType | null;
+  onClose?: () => void;
 }
 
 const InspectionPanel = memo(function InspectionPanel({
   selectedNode,
+  onClose,
 }: InspectionPanelProps) {
   const [isEditingFields, setIsEditingFields] = useState(false);
 

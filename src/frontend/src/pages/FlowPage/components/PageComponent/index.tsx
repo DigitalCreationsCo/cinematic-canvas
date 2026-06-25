@@ -25,7 +25,6 @@ import FlowToolbar from "@/components/core/flowToolbarComponent";
 import { isImageFile } from "@/components/core/playgroundComponent/chat-view/utils/file-utils";
 import {
   COLOR_OPTIONS,
-  DRAG_EVENTS_CUSTOM_TYPESS,
   NOTE_NODE_MIN_HEIGHT,
   NOTE_NODE_MIN_WIDTH,
 } from "@/constants/constants";
@@ -56,8 +55,8 @@ import type {
   AllNodeType,
   EdgeType,
   FlowType,
-  ImageNodeDataType,
-  ImageNodeType,
+  GenericNodeType,
+  NodeDataType,
   NoteNodeType,
 } from "../../../../types/flow";
 import {
@@ -69,7 +68,7 @@ import {
   updateIds,
   validateSelection,
 } from "../../../../utils/reactflowUtils";
-import { edgeTypes, nodeTypes } from "../../consts";
+import { edgeTypes, nodeTypes, spawnImageNode } from "../../consts";
 import ConnectionLineComponent from "../ConnectionLineComponent";
 import FlowBuildingComponent from "../flowBuildingComponent";
 import SelectionMenu from "../SelectionMenuComponent";
@@ -89,6 +88,14 @@ import {
 } from "./MemoizedComponents";
 import getRandomName from "./utils/get-random-name";
 import isWrappedWithClass from "./utils/is-wrapped-with-class";
+
+// Drag MIME type for image file drags from the project-files sidebar.
+// Kept separate from DRAG_EVENTS_CUSTOM_TYPESS so that the canvas onDrop
+// handler can distinguish image-file drags from standard component drags
+// (which go through addComponent).
+// NOTE: browsers lowercase custom MIME types in dataTransfer.types, so the
+// key used for matching must be lowercase. setData/getData are case-insensitive.
+const IMAGE_DRAG_MIME_TYPE = "imagenode";
 
 export default function Page({
   view,
@@ -661,101 +668,98 @@ export default function Page({
       if (grabbingElement.length > 0) {
         document.body.removeChild(grabbingElement[0]);
       }
-      // Image file dropped from the sidebar → create/focus an image node.
-      // Each image file can only have a single node; re-dropping focuses it.
-      const imageKey = event.dataTransfer.types.find(
-        (type) => type === DRAG_EVENTS_CUSTOM_TYPESS.imagenode,
-      );
-      if (imageKey && reactFlowInstance) {
+
+      // Image file dragged from the project-files sidebar → create a
+      // genericNode with an image_path template field.
+      // Uses the dedicated "imagenode" MIME type (not in DRAG_EVENTS_CUSTOM_TYPESS)
+      // so we can tell it apart from standard component drags.
+      if (event.dataTransfer.types.includes(IMAGE_DRAG_MIME_TYPE)) {
         takeSnapshot();
-        const imageData = JSON.parse(event.dataTransfer.getData(imageKey)) as {
+        const rawData = event.dataTransfer.getData(IMAGE_DRAG_MIME_TYPE);
+        if (!rawData) return;
+        const imageData = JSON.parse(rawData) as {
           fileId: string;
           filePath: string;
           fileName: string;
         };
 
-        // Duplicate detection: focus & select an existing node for this file.
+        // addComponent → paste treats {x,y} (without paneX) as SCREEN
+        // coordinates and converts to flow coordinates itself via
+        // screenToFlowPosition. Passing pre-converted flow coordinates here
+        // would double-convert and place the node far off-screen.
+        const screenPosition = { x: event.clientX, y: event.clientY };
+
+        // Duplicate detection
         const existing = nodes.find(
           (n) =>
-            n.type === "imageNode" &&
-            (n.data as ImageNodeDataType)?.node?.file_id === imageData.fileId,
-        ) as ImageNodeType | undefined;
+            n.type === "genericNode" &&
+            (n.data as NodeDataType)?.node?.template?.image_path?.value ===
+              imageData.filePath,
+        ) as GenericNodeType | undefined;
 
         if (existing) {
           setNodes((nds) =>
             nds.map((n) => ({ ...n, selected: n.id === existing.id })),
           );
-          reactFlowInstance.setCenter(
-            existing.position.x,
-            existing.position.y,
-            {
-              duration: 400,
-              zoom: 1.2,
-            },
-          );
         } else {
-          const position = reactFlowInstance.screenToFlowPosition({
-            x: event.clientX,
-            y: event.clientY,
-          });
-          const id = getNodeId("imageNode");
-          const newNode: ImageNodeType = {
-            id,
-            type: "imageNode",
-            position,
-            data: {
-              type: "imageNode",
-              id,
-              node: {
-                file_id: imageData.fileId,
-                file_path: imageData.filePath,
-                file_name: imageData.fileName,
-              },
-            },
-          };
-          // Add the new image node and then select & center it
-          setNodes((nds) => nds.concat(newNode));
-          // Ensure the newly created node is selected and centered after ReactFlow updates
-          requestAnimationFrame(() => {
-            setNodes((nds) =>
-              nds.map((n) => ({ ...n, selected: n.id === id })),
-            );
-            reactFlowInstance.setCenter(position.x, position.y, {
-              duration: 400,
-              zoom: 1.2,
-            });
-          });
+          spawnImageNode(imageData, screenPosition, addComponent);
+
+          // const id = getNodeId("genericNode");
+          // const newNode: GenericNodeType = {
+          //   id,
+          //   type: "genericNode",
+          //   position: flowPosition,
+          //   data: {
+          //     type: "genericNode",
+          //     id,
+          //     node: buildImageNodeClass({
+          //       filePath: imageData.filePath,
+          //       fileId: imageData.fileId,
+          //       displayName: imageData.fileName,
+          //     }),
+          //   },
+          // };
+          // setNodes((nds) => nds.concat(newNode));
+          // // Ensure the newly created node is selected after ReactFlow renders
+          // requestAnimationFrame(() => {
+          //   setNodes((nds) =>
+          //     nds.map((n) => ({ ...n, selected: n.id === id })),
+          //   );
+          // });
         }
         return;
       }
 
+      // Native Component Drop
       if (event.dataTransfer.types.some((type) => isSupportedNodeTypes(type))) {
         takeSnapshot();
-
         const datakey = event.dataTransfer.types.find((type) =>
           isSupportedNodeTypes(type),
         );
 
-        // Extract the data from the drag event and parse it as a JSON object
+        const eventDataTransferData = event.dataTransfer.getData(datakey!);
         const data: { type: string; node?: APIClassType } = JSON.parse(
-          event.dataTransfer.getData(datakey!),
+          eventDataTransferData,
         );
 
         addComponent(data.node!, data.type, {
           x: event.clientX,
           y: event.clientY,
         });
-      } else if (event.dataTransfer.types.some((types) => types === "Files")) {
+        return;
+      }
+
+      // OS Filesystem Drop
+      if (event.dataTransfer.types.some((types) => types === "Files")) {
         takeSnapshot();
-        // Screen coordinates for uploadFlow → paste() (it handles conversion internally)
+        // Screen coordinates — addComponent → paste treats {x,y} (without
+        // paneX) as SCREEN coordinates and converts to flow coordinates
+        // itself via screenToFlowPosition. Pre-converting here would
+        // double-convert and place nodes off-screen.
         const screenPosition = {
           x: event.clientX,
           y: event.clientY,
         };
-        // Flow coordinates for direct ImageNode creation
-        const flowPosition = reactFlowInstance
-          ? reactFlowInstance.screenToFlowPosition(screenPosition)
-          : screenPosition;
         const droppedFiles = Array.from(event.dataTransfer.files!);
         const imageFiles = droppedFiles.filter((f) => isImageFile(f));
         const otherFiles = droppedFiles.filter((f) => !isImageFile(f));
@@ -764,57 +768,32 @@ export default function Page({
         if (imageFiles.length > 0) {
           (async () => {
             try {
-              // Upload each file individually via the mutation to get the
-              // server-assigned file ID (used for duplicate detection).
-              const uploaded: { id: string; path: string; name: string }[] = [];
-              for (const file of imageFiles) {
+              for (let i = 0; i < imageFiles.length; i++) {
+                const file = imageFiles[i];
                 validateFileSize(file);
+                // Upload each file individually via the mutation
                 const fileInfo = await uploadFileMutation({
                   file,
                   folderId,
                 });
-                uploaded.push({
-                  id: fileInfo.id,
-                  path: fileInfo.path,
-                  name: file.name,
-                });
+
+                // Offset each dropped image in screen space (addComponent
+                // converts the final {x,y} to flow coordinates).
+                const offsetPosition = {
+                  x: screenPosition.x + i * 50,
+                  y: screenPosition.y + i * 50,
+                };
+
+                spawnImageNode(
+                  {
+                    filePath: fileInfo.path,
+                    fileId: fileInfo.id,
+                    fileName: file.name,
+                  },
+                  offsetPosition,
+                  addComponent,
+                );
               }
-              // Build all new nodes first, then batch-add them in a single setNodes call
-              const newNodes: ImageNodeType[] = uploaded.map(
-                (fileInfo, index): ImageNodeType => {
-                  const id = getNodeId("imageNode");
-                  return {
-                    id,
-                    type: "imageNode",
-                    position: {
-                      x: flowPosition.x + index * 50,
-                      y: flowPosition.y + index * 50,
-                    },
-                    data: {
-                      type: "imageNode",
-                      id,
-                      node: {
-                        file_id: fileInfo.id,
-                        file_path: fileInfo.path,
-                        file_name: fileInfo.name,
-                      },
-                    },
-                  };
-                },
-              );
-              setNodes((nds) => nds.concat(newNodes));
-              // Select and center the last dropped node for immediate interaction
-              const lastId = newNodes[newNodes.length - 1].id;
-              requestAnimationFrame(() => {
-                setNodes((nds) =>
-                  nds.map((n) => ({ ...n, selected: n.id === lastId })),
-                );
-                reactFlowInstance?.setCenter(
-                  newNodes[newNodes.length - 1].position.x,
-                  newNodes[newNodes.length - 1].position.y,
-                  { duration: 400, zoom: 1.2 },
-                );
-              });
             } catch (error) {
               setErrorData({
                 title: t("errors.upload"),
@@ -1052,12 +1031,12 @@ export default function Page({
   );
 
   // Determine if a single generic node is selected
-  const hasSingleGenericNodeSelected =
+  const hasSingleNodeSelected =
     lastSelection?.nodes?.length === 1 &&
     lastSelection.nodes[0].type === "genericNode";
 
   // Get the fresh node data from the store instead of using stale reference
-  const selectedNodeId = hasSingleGenericNodeSelected
+  const selectedNodeId = hasSingleNodeSelected
     ? lastSelection.nodes[0].id
     : null;
   const selectedNode = selectedNodeId
@@ -1099,7 +1078,10 @@ export default function Page({
                 />
                 {!isPreviewActive && <FlowToolbar />}
                 {inspectionPanelVisible && (
-                  <InspectionPanel selectedNode={selectedNode} />
+                  <InspectionPanel
+                    selectedNode={selectedNode}
+                    onClose={handleCloseInspectionPanel}
+                  />
                 )}
               </>
             )}

@@ -65,15 +65,23 @@ def test_normalize_pieces_and_precedence():
     assert hat["description"] == "A red hat"
     assert hat["caption"] == "A red hat"
 
+    # file_name fallback when no other description is set
+    pieces_no_desc = [
+        {"type": "image", "name": "photo", "file_name": "sunset.png", "image": "http://x"},
+        {"type": "image", "name": "logo", "file_name": "logo.svg", "image": "http://x", "description": "Company logo"},
+    ]
+    resolved = comp._normalize_pieces(pieces_no_desc, overrides={})
+    assert resolved[0]["description"] == "sunset.png"  # falls back to file_name
+    assert resolved[0]["caption"] == "sunset.png"
+    assert resolved[1]["description"] == "Company logo"  # inherited description still wins
+    assert resolved[1]["caption"] == "Company logo"
+
 
 def test_normalize_pieces_max_six():
     """At most MAX_GROUP_PIECES (6) pieces should be returned."""
     comp = GroupComponent()
     # Create 10 pieces (more than the max)
-    pieces = [
-        {"type": "image", "name": f"piece_{i}", "description": f"Desc {i}"}
-        for i in range(10)
-    ]
+    pieces = [{"type": "image", "name": f"piece_{i}", "description": f"Desc {i}"} for i in range(10)]
     resolved = comp._normalize_pieces(pieces, overrides={})
     assert len(resolved) == 6, f"Expected 6 pieces, got {len(resolved)}"
     # The first 6 should be kept

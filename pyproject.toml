@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 
 dependencies = [
-    "nap-sdk>=0.2.2",
+    "nap-sdk>=0.2.6",
     "narrativeengine",
     "portals-base[complete]",
 ]

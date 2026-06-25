@@ -3,7 +3,7 @@
 All tests create a fresh NAP universe via ``nap_sdk.repo_init`` inside a
 temporary directory, so no mocks are used.  Each test is fully isolated.
 
-Notes
+Notes:
 -----
 - nap_sdk 0.2.6 supports only ``character``, ``location``, ``scene``,
   ``prop``, and ``world`` entity types.  ``group`` is NOT supported
@@ -17,12 +17,12 @@ from __future__ import annotations
 
 import os
 import tempfile
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 import nap_sdk
 import pytest
 import yaml
-
 from px.services.nap_service import (
     EntityNotFoundError,
     InvalidUriError,
@@ -108,7 +108,7 @@ def nap_repo() -> Generator[str, None, None]:
 
 
 @pytest.fixture
-def initialized_repo(nap_repo: str) -> Generator[tuple[str, str], None, None]:
+def initialized_repo(nap_repo: str) -> tuple[str, str]:
     """Create a universe with 2 characters, 1 location, 1 prop, 1 scene, 1 world.
 
     Entities:
@@ -125,32 +125,33 @@ def initialized_repo(nap_repo: str) -> Generator[tuple[str, str], None, None]:
     universe = "testverse"
     nap_sdk.repo_init(universe, base_path=nap_repo)
 
-    nap_sdk.repo_create_entity(universe, "character", "hero", "Luke",
-                               author="test", base_path=nap_repo)
-    nap_sdk.repo_create_entity(universe, "character", "villain", "Vader",
-                               author="test", base_path=nap_repo)
-    nap_sdk.repo_create_entity(universe, "location", "tatooine", "Tatooine",
-                               author="test", base_path=nap_repo)
-    nap_sdk.repo_create_entity(universe, "prop", "lightsaber", "Lightsaber",
-                               author="test", base_path=nap_repo)
-    nap_sdk.repo_create_entity(universe, "scene", "battle", "Battle of Endor",
-                               author="test", base_path=nap_repo)
+    nap_sdk.repo_create_entity(universe, "character", "hero", "Luke", author="test", base_path=nap_repo)
+    nap_sdk.repo_create_entity(universe, "character", "villain", "Vader", author="test", base_path=nap_repo)
+    nap_sdk.repo_create_entity(universe, "location", "tatooine", "Tatooine", author="test", base_path=nap_repo)
+    nap_sdk.repo_create_entity(universe, "prop", "lightsaber", "Lightsaber", author="test", base_path=nap_repo)
+    nap_sdk.repo_create_entity(universe, "scene", "battle", "Battle of Endor", author="test", base_path=nap_repo)
 
     # Add representation to lightsaber
     _set_representation_on_entity(
-        universe, "prop", "lightsaber", "reference_image",
+        universe,
+        "prop",
+        "lightsaber",
+        "reference_image",
         {"hash": "sha256:abc123", "format": "png"},
         base_path=nap_repo,
     )
 
     # Add reference on hero (appears_in scene)
     _set_reference_on_entity(
-        universe, "character", "hero", "appears_in",
+        universe,
+        "character",
+        "hero",
+        "appears_in",
         ["nap://testverse/scene/battle"],
         base_path=nap_repo,
     )
 
-    yield universe, nap_repo
+    return universe, nap_repo
 
 
 @pytest.fixture
@@ -163,7 +164,7 @@ def service(initialized_repo: tuple[str, str]) -> NapService:
 
 
 @pytest.fixture
-def no_world_repo(nap_repo: str) -> Generator[tuple[str, str], None, None]:
+def no_world_repo(nap_repo: str) -> tuple[str, str]:
     """Universe initialised but then the world entity is removed.
 
     ``repo_init`` creates a world automatically, so we ``os.remove``
@@ -177,18 +178,17 @@ def no_world_repo(nap_repo: str) -> Generator[tuple[str, str], None, None]:
     if os.path.exists(world_path):
         os.remove(world_path)
 
-    nap_sdk.repo_create_entity(universe, "character", "loner", "Loner",
-                               author="test", base_path=nap_repo)
+    nap_sdk.repo_create_entity(universe, "character", "loner", "Loner", author="test", base_path=nap_repo)
 
-    yield universe, nap_repo
+    return universe, nap_repo
 
 
 @pytest.fixture
-def empty_repo(nap_repo: str) -> Generator[tuple[str, str], None, None]:
+def empty_repo(nap_repo: str) -> tuple[str, str]:
     """Initialised universe with no custom entities (only auto-created world)."""
     universe = "emptyverse"
     nap_sdk.repo_init(universe, base_path=nap_repo)
-    yield universe, nap_repo
+    return universe, nap_repo
 
 
 # =========================================================================
@@ -215,7 +215,8 @@ class TestInitialize:
             svc.initialize("nonexistent")
 
     def test_reinitialize_same_universe_is_idempotent(
-        self, initialized_repo: tuple[str, str],
+        self,
+        initialized_repo: tuple[str, str],
     ) -> None:
         """Calling initialize() twice with the same universe is a no-op."""
         universe, base_path = initialized_repo
@@ -225,7 +226,9 @@ class TestInitialize:
         assert svc.universe == universe
 
     def test_reinitialize_different_universe_clears_cache(
-        self, initialized_repo: tuple[str, str], nap_repo: str,
+        self,
+        initialized_repo: tuple[str, str],
+        nap_repo: str,
     ) -> None:
         """Switching universes clears the cache."""
         universe, base_path = initialized_repo
@@ -238,9 +241,14 @@ class TestInitialize:
 
         # Create a second universe and re-init
         nap_sdk.repo_init("otherverse", base_path=base_path)
-        nap_sdk.repo_create_entity(universe="otherverse", entity_type="character",
-                                   entity_id="other", name="Other",
-                                   author="test", base_path=base_path)
+        nap_sdk.repo_create_entity(
+            universe="otherverse",
+            entity_type="character",
+            entity_id="other",
+            name="Other",
+            author="test",
+            base_path=base_path,
+        )
         svc.initialize("otherverse")
         assert svc.universe == "otherverse"
         assert len(svc._manifest_cache) == 0  # cache cleared
@@ -258,7 +266,8 @@ class TestInitialize:
         assert get_nap_read_service() is None
 
     def test_singleton_initialize_then_get(
-        self, initialized_repo: tuple[str, str],
+        self,
+        initialized_repo: tuple[str, str],
     ) -> None:
         """initialize_nap_read_service() registers the global instance."""
         universe, base_path = initialized_repo
@@ -420,21 +429,25 @@ class TestResolveMany:
 
     def test_all_successful(self, service: NapService) -> None:
         """All URIs resolve in order."""
-        results = service.resolve_many([
-            "nap://testverse/character/hero",
-            "nap://testverse/character/villain",
-        ])
+        results = service.resolve_many(
+            [
+                "nap://testverse/character/hero",
+                "nap://testverse/character/villain",
+            ]
+        )
         assert len(results) == 2
         assert results[0]["name"] == "Luke"
         assert results[1]["name"] == "Vader"
 
     def test_some_failures_are_skipped(self, service: NapService) -> None:
         """Unresolvable URIs are silently skipped."""
-        results = service.resolve_many([
-            "nap://testverse/character/hero",
-            "nap://testverse/character/nobody",  # does not exist
-            "nap://testverse/character/villain",
-        ])
+        results = service.resolve_many(
+            [
+                "nap://testverse/character/hero",
+                "nap://testverse/character/nobody",  # does not exist
+                "nap://testverse/character/villain",
+            ]
+        )
         assert len(results) == 2
         names = [r["name"] for r in results]
         assert "Luke" in names
@@ -462,7 +475,11 @@ class TestQuery:
         """Query a nested properties path."""
         # Add a property to hero
         _set_property_on_entity(
-            "testverse", "character", "hero", "species", "human",
+            "testverse",
+            "character",
+            "hero",
+            "species",
+            "human",
             base_path=service._base_path,
         )
 
@@ -706,7 +723,8 @@ class TestEdgeCases:
     def test_prop_has_representations(self, service: NapService) -> None:
         """Prop representation is queryable."""
         rep = service.get_representation(
-            "nap://testverse/prop/lightsaber", "reference_image",
+            "nap://testverse/prop/lightsaber",
+            "reference_image",
         )
         assert rep is not None
         assert rep["format"] == "png"

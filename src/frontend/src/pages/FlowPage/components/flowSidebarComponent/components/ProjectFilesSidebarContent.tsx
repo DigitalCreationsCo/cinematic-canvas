@@ -2,11 +2,22 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ForwardedIconComponent from "@/components/common/genericIconComponent";
 import ShadTooltip from "@/components/common/shadTooltipComponent";
-import { isImageFile } from "@/components/core/playgroundComponent/chat-view/utils/file-utils";
+import {
+  getFilePreviewUrl,
+  isImageFile,
+} from "@/components/core/playgroundComponent/chat-view/utils/file-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Loading from "@/components/ui/loading";
-import { DRAG_EVENTS_CUSTOM_TYPESS } from "@/constants/constants";
+
+// Drag MIME type for image file drags from the project-files sidebar.
+// Kept separate from DRAG_EVENTS_CUSTOM_TYPESS so that the canvas onDrop
+// handler can distinguish image-file drags from standard component drags
+// (which go through addComponent).
+// NOTE: browsers lowercase custom MIME types in dataTransfer.types, so we use
+// the lowercase form. setData/getData are case-insensitive.
+const IMAGE_DRAG_MIME_TYPE = "imagenode";
+
 import { useGetFilesV2 } from "@/controllers/API/queries/file-management";
 import { usePostRenameFileV2 } from "@/controllers/API/queries/file-management/use-put-rename-file";
 import useUploadFile from "@/hooks/files/use-upload-file";
@@ -172,6 +183,21 @@ export default function ProjectFilesSidebarContent({
 
               const isImage = isImageFile(file);
               const handleDragStart = (e: React.DragEvent) => {
+                // Set the custom MIME type data first (most important)
+                const dragPayload = JSON.stringify({
+                  fileId: file.id,
+                  filePath: file.path,
+                  fileName: getDisplayName(file),
+                });
+                e.dataTransfer.setData(IMAGE_DRAG_MIME_TYPE, dragPayload);
+                // Also set text/plain as fallback for browser compatibility
+                try {
+                  e.dataTransfer.setData("text/plain", dragPayload);
+                } catch {
+                  // non-critical fallback
+                }
+                e.dataTransfer.effectAllowed = "move";
+
                 // Create a clone for the drag image similar to other sidebar draggables
                 try {
                   const crt = (e.currentTarget as HTMLElement).cloneNode(
@@ -185,27 +211,19 @@ export default function ProjectFilesSidebarContent({
                   document.body.appendChild(crt);
                   e.dataTransfer.setDragImage(crt, 0, 0);
                 } catch (err) {
-                  // ignore clone failures
+                  // Drag image clone is non-critical
                 }
-
-                e.dataTransfer.setData(
-                  DRAG_EVENTS_CUSTOM_TYPESS.imagenode,
-                  JSON.stringify({
-                    fileId: file.id,
-                    filePath: file.path,
-                    fileName: getDisplayName(file),
-                  }),
-                );
-                e.dataTransfer.effectAllowed = "move";
               };
 
               const handleDragEnd = () => {
-                if (
-                  document.getElementsByClassName("cursor-grabbing").length > 0
-                ) {
-                  document.body.removeChild(
-                    document.getElementsByClassName("cursor-grabbing")[0],
-                  );
+                const elements =
+                  document.getElementsByClassName("cursor-grabbing");
+                while (elements.length > 0) {
+                  try {
+                    document.body.removeChild(elements[0]);
+                  } catch {
+                    break;
+                  }
                 }
               };
 
@@ -220,9 +238,37 @@ export default function ProjectFilesSidebarContent({
                   onDragStart={isImage ? handleDragStart : undefined}
                   onDragEnd={isImage ? handleDragEnd : undefined}
                 >
+                  {isImage && file.id ? (
+                    <img
+                      src={
+                        getFilePreviewUrl({
+                          path: file.path,
+                          file_id: file.id,
+                        }) ?? undefined
+                      }
+                      alt={getDisplayName(file)}
+                      className="h-8 w-8 shrink-0 rounded object-cover"
+                      onError={(e) => {
+                        // Fallback: hide broken image, show generic icon behind
+                        (e.target as HTMLImageElement).style.display = "none";
+                        const parent = (e.target as HTMLImageElement)
+                          .parentElement;
+                        const iconEl = parent?.querySelector(
+                          ".file-icon-fallback",
+                        );
+                        if (iconEl) {
+                          iconEl.classList.remove("hidden");
+                        }
+                      }}
+                    />
+                  ) : null}
                   <ForwardedIconComponent
                     name={icon}
-                    className={cn("h-4 w-4 shrink-0", iconColor)}
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      iconColor,
+                      isImage && file.id ? "file-icon-fallback hidden" : "",
+                    )}
                   />
                   <div className="min-w-0 flex-1">
                     {isEditing ? (

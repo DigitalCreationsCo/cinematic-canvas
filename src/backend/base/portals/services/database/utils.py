@@ -43,16 +43,12 @@ def _ensure_sqlite_directory_exists(database_url: str) -> None:
                 # Concurrently-safe directory instantiation to handle multi-worker processes
                 if not parent_directory.exists():
                     parent_directory.mkdir(parents=True, exist_ok=True)
-                    logger.info(
-                        f"Successfully provisioned missing parent directory structure: {parent_directory}"
-                    )
+                    logger.info(f"Successfully provisioned missing parent directory structure: {parent_directory}")
     except Exception as exc:
         logger.exception(
             f"Failsafe execution halted: Unable to verify or create directory paths for URL: {database_url}"
         )
-        raise RuntimeError(
-            f"Pre-flight database filesystem initialization failed: {exc}"
-        ) from exc
+        raise RuntimeError(f"Pre-flight database filesystem initialization failed: {exc}") from exc
 
 
 async def initialize_database(*, fix_migration: bool = False) -> None:
@@ -66,24 +62,24 @@ async def initialize_database(*, fix_migration: bool = False) -> None:
     _ensure_sqlite_directory_exists(configured_database_url)
 
     await database_service.ensure_postgresql_version()
-    try:
-        if database_service.settings_service.settings.database_connection_retry:
-            await database_service.create_db_and_tables_with_retry()
-        else:
-            await database_service.create_db_and_tables()
-    except Exception as exc:
-        # if the exception involves tables already existing
-        # we can ignore it
-        if "already exists" not in str(exc):
-            msg = "Error creating DB and tables"
-            await logger.aexception(msg)
-            raise RuntimeError(msg) from exc
-    try:
-        await database_service.check_schema_health()
-    except Exception as exc:
-        msg = "Error checking schema health"
-        logger.exception(msg)
-        raise RuntimeError(msg) from exc
+    # try:
+    #     if database_service.settings_service.settings.database_connection_retry:
+    #         await database_service.create_db_and_tables_with_retry()
+    #     else:
+    #         await database_service.create_db_and_tables()
+    # except Exception as exc:
+    #     # if the exception involves tables already existing
+    #     # we can ignore it
+    #     if "already exists" not in str(exc):
+    #         msg = "Error creating DB and tables"
+    #         await logger.aexception(msg)
+    #         raise RuntimeError(msg) from exc
+    # try:
+    #     await database_service.check_schema_health()
+    # except Exception as exc:
+    #     msg = "Error checking schema health"
+    #     logger.exception(msg)
+    #     raise RuntimeError(msg) from exc
     try:
         await database_service.run_migrations(fix=fix_migration)
     except CommandError as exc:
@@ -93,9 +89,7 @@ async def initialize_database(*, fix_migration: bool = False) -> None:
             or "Can't locate revision identified by" in error_message
         ):
             # Wrong revision in the DB: delete alembic_version and re-run migrations
-            logger.warning(
-                "Wrong revision in DB, deleting alembic_version table and running migrations again"
-            )
+            logger.warning("Wrong revision in DB, deleting alembic_version table and running migrations again")
             from portals.services.deps import session_scope
 
             async with session_scope() as session:
@@ -161,7 +155,7 @@ def normalize_string_or_none(v: str | None) -> str | None:
     if v is None:
         return None
     stripped = v.strip()
-    return stripped if stripped else None
+    return stripped or None
 
 
 def parse_uuid(value: UUID | str, *, field_name: str = "value") -> UUID:

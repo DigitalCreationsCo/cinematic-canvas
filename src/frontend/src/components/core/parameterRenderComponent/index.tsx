@@ -14,12 +14,14 @@ import AccordionPromptComponent from "./components/accordionPromptComponent";
 import DictComponent from "./components/dictComponent";
 import { EmptyParameterComponent } from "./components/emptyParameterComponent";
 import FloatComponent from "./components/floatComponent";
+import ImagePreviewField from "./components/imagePreviewComponent";
 import InputListComponent from "./components/inputListComponent";
 import IntComponent from "./components/intComponent";
 import KeypairListComponent from "./components/keypairListComponent";
 import McpComponent from "./components/mcpComponent";
 import MultiselectComponent from "./components/multiselectComponent";
 import MustachePromptAreaComponent from "./components/mustachePromptComponent";
+import PiecesGridComponent from "./components/piecesGridComponent";
 import PromptAreaComponent from "./components/promptComponent";
 import QueryComponent from "./components/queryComponent";
 import SortableListComponent from "./components/sortableListComponent";
@@ -88,6 +90,30 @@ export function ParameterRenderComponent({
       showParameter,
       inspectionPanel,
     };
+
+    if (name === "pieces") {
+      return (
+        <PiecesGridComponent
+          {...baseInputProps}
+          id={`piecesgrid_${id}`}
+          mode="grid"
+        />
+      );
+    }
+
+    if (name === "piece_overrides") {
+      return (
+        <PiecesGridComponent
+          {...baseInputProps}
+          id={`piecesgrid_${id}`}
+          mode="captions"
+        />
+      );
+    }
+
+    if (name === "image_path") {
+      return <ImagePreviewField {...baseInputProps} />;
+    }
 
     if (TEXT_FIELD_TYPES.includes(templateData.type ?? "")) {
       if (templateData.list) {

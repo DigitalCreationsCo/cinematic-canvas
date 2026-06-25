@@ -1,9 +1,6 @@
 import type { Edge, Node, ReactFlowJsonObject } from "@xyflow/react";
 import type { BuildStatus } from "../../constants/enums";
 import type { APIClassType, OutputFieldType } from "../api/index";
-import type { ImageNodeDataType } from "./imageNode";
-
-export type { ImageNodeDataType } from "./imageNode";
 
 export type PaginatedFlowsType = {
   items: FlowType[];
@@ -41,15 +38,10 @@ export type FlowType = {
 
 export type GenericNodeType = Node<NodeDataType, "genericNode">;
 export type NoteNodeType = Node<NoteDataType, "noteNode">;
-export type ImageNodeType = Node<ImageNodeDataType, "imageNode">;
 
-export type AllNodeType = GenericNodeType | NoteNodeType | ImageNodeType;
-export type SetNodeType<T = "genericNode" | "noteNode" | "imageNode"> =
-  T extends "genericNode"
-    ? GenericNodeType
-    : T extends "noteNode"
-      ? NoteNodeType
-      : ImageNodeType;
+export type AllNodeType = GenericNodeType | NoteNodeType;
+export type SetNodeType<T = "genericNode" | "noteNode"> =
+  T extends "genericNode" ? GenericNodeType : NoteNodeType;
 
 export type noteClassType = Pick<
   APIClassType,

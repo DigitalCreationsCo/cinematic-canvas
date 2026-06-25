@@ -21,10 +21,8 @@ order for the *final* description used in the generated prompt is:
             → inherited ``description``
 
 The component assembles all pieces into a combined prompt, invokes an
-image-generation model using the piece images as reference inputs, and
-(optionally) persists the generated image as a **project-scoped asset** via the
-existing ``asset_entries`` / ``asset_versions`` / ``media_objects`` tables — no
-database migration required.
+image-generation model using the piece images as reference inputs.
+The group + generated image is persisted using nap.
 
 The group itself is **ephemeral**: it is reassembled from its inputs on each
 execution. The generated image is what gets persisted; the pieces always
@@ -345,7 +343,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
     # ── Helpers ─────────────────────────────────────────────────────────
     def _normalize_pieces(self, pieces: Any, overrides: dict) -> list[dict]:
-        """Coerce the raw pieces input into a list of resolved piece dicts.
+        """Resolve the raw pieces input into a list of piece dicts.
 
         Resolution order for each piece's final description (used as the
         ``caption``)::
@@ -380,17 +378,20 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             if piece is None:
                 continue
 
-            name = piece.get("name") or ""
+            name = piece.get("name") or piece.get("file_name") or ""
             inherited = piece.get("description") or ""
             custom_inline = piece.get("custom_description")
             override = overrides.get(name)
-            
+
             # Attempt to recover file_id from graph if missing
             file_id = piece.get("file_id")
             if not file_id:
                 file_id = self._find_file_id_in_graph(name)
 
-            final_description = custom_inline or (override if override is not None else inherited)
+            # Resolution order:
+            #   inline custom_description → overrides[name] → inherited description → file_name → ""
+            file_name = piece.get("file_name") or ""
+            final_description = custom_inline or (override if override is not None else inherited) or file_name or ""
             caption = final_description  # the resolved caption
 
             resolved.append(
@@ -402,6 +403,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
                     "inherited_description": inherited,
                     "image": piece.get("image"),
                     "file_id": file_id,
+                    "file_name": file_name,
                 }
             )
         return resolved
@@ -410,24 +412,23 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         """Attempt to find file_id for a piece in the graph."""
         if not self.graph or not hasattr(self.graph, "nodes"):
             return None
-        
+
         for node in self.graph.nodes:
             # Check for display_name in node.data or node.data.node
             node_data = node.data
             if not node_data:
                 continue
-            
+
             # The node data structure can be complex, check both locations
             display_name = node_data.get("display_name")
             if not display_name and "node" in node_data:
                 display_name = node_data["node"].get("display_name")
-            
+
             if display_name == piece_name:
                 template = node_data.get("node", {}).get("template", {})
                 if "file_id" in template:
                     return template["file_id"].get("value")
         return None
-
 
     @staticmethod
     def _coerce_piece(raw: Any) -> dict | None:
@@ -485,7 +486,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             if has_image:
                 lines.append(f"      Image: attached reference — {name}")
             else:
-                lines.append(f"      Image: none")
+                lines.append("      Image: none")
 
         return "\n".join(lines)
 
@@ -544,8 +545,12 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
         try:
             result = image_llm.invoke(message)
-        except Exception:
-            logger.warning("Image model rejected multimodal input; retrying with prompt only.")
+        except Exception as first_err:
+            logger.warning(
+                "Multimodal invocation failed for group '%s': %s. Retrying with text-only prompt.",
+                getattr(self, "group_name", "unknown"),
+                first_err,
+            )
             try:
                 result = image_llm.invoke(prompt)
             except Exception as e:  # pragma: no cover - defensive
@@ -581,10 +586,12 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
             # Caption text immediately before the image
             if caption:
-                content_parts.append({
-                    "type": "text",
-                    "text": f"Reference — {name}: {caption}",
-                })
+                content_parts.append(
+                    {
+                        "type": "text",
+                        "text": f"Reference — {name}: {caption}",
+                    }
+                )
 
             # Image reference
             image_ref = piece.get("image")
@@ -596,6 +603,9 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
         if len(content_parts) <= 1:
             # No usable reference images — just use the text prompt.
+            if not prompt:
+                logger.warning("Group has no prompt text and no reference images — using a default prompt.")
+                return "Generate an image based on the described group pieces."
             return prompt
 
         try:
@@ -664,14 +674,18 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         # Build the group manifest — mirrors the output payload schema.
         pieces_data: list[dict] = []
         for p in resolved_pieces:
-            pieces_data.append({
-                "name": p.get("name"),
-                "type": p.get("type"),
-                "caption": p.get("caption"),
-                "inherited_description": p.get("inherited_description"),
-                "image": p.get("image"),
-                "file_id": p.get("file_id"),
-            })
+            pieces_data.append(
+                {
+                    "name": p.get("name"),
+                    "type": p.get("type"),
+                    "description": p.get("description"),
+                    "caption": p.get("caption"),
+                    "inherited_description": p.get("inherited_description"),
+                    "image": p.get("image"),
+                    "file_id": p.get("file_id"),
+                    "file_name": p.get("file_name"),
+                }
+            )
 
         manifest: dict[str, Any] = {
             "name": group_name,
@@ -752,8 +766,9 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
             # 1. Write bytes to storage (produces the addressable handle).
             if storage_bytes is not None:
-                await self._save_to_storage(namespace, file_name, storage_bytes)
-                data_uri = storage_path
+                if await self._save_to_storage(namespace, file_name, storage_bytes):
+                    data_uri = storage_path
+                # else: keep data_uri as the base64 data URL or http URL
             # else: data_uri is already a URL — store that string directly.
 
             # 2. Record an asset version (project-scoped) via AssetVersionManager.
@@ -805,15 +820,19 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
         return None, None
 
-    async def _save_to_storage(self, namespace: str, file_name: str, data: bytes) -> None:
-        """Write image bytes to the storage service under the project namespace."""
+    async def _save_to_storage(self, namespace: str, file_name: str, data: bytes) -> bool:
+        """Write image bytes to the storage service under the project namespace.
+
+        Returns True if the file was written successfully, False otherwise.
+        """
         from px.services.deps import get_storage_service
 
         storage = get_storage_service()
         if storage is None:
             logger.warning("No storage service available; skipping storage write.")
-            return
+            return False
         await storage.save_file(flow_id=namespace, file_name=file_name, data=data)
+        return True
 
     async def _write_asset_version(
         self,

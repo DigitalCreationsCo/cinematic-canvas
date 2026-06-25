@@ -527,7 +527,6 @@ alembic-revision: ## generate a new migration
 	@echo 'Generating a new Alembic revision'
 	cd src/backend/base/portals/ && uv run alembic revision --autogenerate -m "$(message)"
 
-
 alembic-upgrade: ## upgrade database to the latest version
 	@echo 'Upgrading database to the latest version'
 	cd src/backend/base/portals/ && uv run alembic upgrade head

@@ -4,18 +4,19 @@ import asyncio
 from importlib import import_module
 from typing import TYPE_CHECKING
 
-from portals.services.cache.base import ExternalAsyncBaseCacheService
-from portals.services.cache.factory import CacheServiceFactory
-from portals.services.database.models.transactions.model import TransactionTable
-from portals.services.database.models.vertex_builds.model import VertexBuildTable
-from portals.services.database.utils import initialize_database
-from portals.services.schema import ServiceType
 from px.log.logger import logger
 from px.services.settings.constants import DEFAULT_SUPERUSER, DEFAULT_SUPERUSER_PASSWORD
 from px.services.settings.feature_flags import FEATURE_FLAGS
 from sqlalchemy import delete
 from sqlalchemy import exc as sqlalchemy_exc
 from sqlmodel import col, select
+
+from portals.services.cache.base import ExternalAsyncBaseCacheService
+from portals.services.cache.factory import CacheServiceFactory
+from portals.services.database.models.transactions.model import TransactionTable
+from portals.services.database.models.vertex_builds.model import VertexBuildTable
+from portals.services.database.utils import initialize_database
+from portals.services.schema import ServiceType
 
 from .deps import (
     get_auth_service,
@@ -26,13 +27,11 @@ from .deps import (
 )
 
 if TYPE_CHECKING:
-    from px.services.settings.manager import SettingsService
+    from px.services.settings.service import SettingsService
     from sqlmodel.ext.asyncio.session import AsyncSession
 
 
-async def get_or_create_super_user(
-    session: AsyncSession, username, password, is_default
-):
+async def get_or_create_super_user(session: AsyncSession, username, password, is_default):
     from portals.services.database.models.user.model import User
 
     stmt = select(User).where(User.username == username)
@@ -76,9 +75,7 @@ async def get_or_create_super_user(
     return await auth.create_super_user(username, password, db=session)
 
 
-async def setup_superuser(
-    settings_service: SettingsService, session: AsyncSession
-) -> None:
+async def setup_superuser(settings_service: SettingsService, session: AsyncSession) -> None:
     if settings_service.auth_settings.AUTO_LOGIN:
         await logger.adebug("AUTO_LOGIN is set to True. Creating default superuser.")
         username = DEFAULT_SUPERUSER
@@ -89,18 +86,13 @@ async def setup_superuser(
         # If AUTO_LOGIN is disabled, attempt to use configured credentials
         # or fall back to default credentials if none are provided.
         username = settings_service.auth_settings.SUPERUSER or DEFAULT_SUPERUSER
-        password = (
-            settings_service.auth_settings.SUPERUSER_PASSWORD
-            or DEFAULT_SUPERUSER_PASSWORD
-        ).get_secret_value()
+        password = (settings_service.auth_settings.SUPERUSER_PASSWORD or DEFAULT_SUPERUSER_PASSWORD).get_secret_value()
 
     if not username or not password:
         msg = "Username and password must be set"
         raise ValueError(msg)
 
-    is_default = (username == DEFAULT_SUPERUSER) and (
-        password == DEFAULT_SUPERUSER_PASSWORD.get_secret_value()
-    )
+    is_default = (username == DEFAULT_SUPERUSER) and (password == DEFAULT_SUPERUSER_PASSWORD.get_secret_value())
 
     try:
         user = await get_or_create_super_user(
@@ -124,9 +116,7 @@ async def teardown_superuser(settings_service, session: AsyncSession) -> None:
 
     if not settings_service.auth_settings.AUTO_LOGIN:
         try:
-            await logger.adebug(
-                "AUTO_LOGIN is set to False. Removing default superuser if exists."
-            )
+            await logger.adebug("AUTO_LOGIN is set to False. Removing default superuser if exists.")
             username = DEFAULT_SUPERUSER
             from portals.services.database.models.user.model import User
 
@@ -181,9 +171,7 @@ def initialize_session_service() -> None:
     )
 
 
-async def clean_transactions(
-    settings_service: SettingsService, session: AsyncSession
-) -> None:
+async def clean_transactions(settings_service: SettingsService, session: AsyncSession) -> None:
     """Clean up old transactions from the database.
 
     This function deletes transactions that exceed the maximum number to keep (configured in settings).
@@ -210,9 +198,7 @@ async def clean_transactions(
         # Don't re-raise since this is a cleanup task
 
 
-async def clean_vertex_builds(
-    settings_service: SettingsService, session: AsyncSession
-) -> None:
+async def clean_vertex_builds(settings_service: SettingsService, session: AsyncSession) -> None:
     """Clean up old vertex builds from the database.
 
     This function deletes vertex builds that exceed the maximum number to keep (configured in settings).
@@ -246,6 +232,9 @@ def register_all_service_factories() -> None:
     from px.services.schema import ServiceType
 
     service_manager = get_service_manager()
+    from px.services.mcp_composer import factory as mcp_composer_factory
+    from px.services.settings import factory as settings_factory
+
     from portals.services.auth import factory as auth_factory
     from portals.services.auth.service import AuthService
     from portals.services.cache import factory as cache_factory
@@ -264,8 +253,6 @@ def register_all_service_factories() -> None:
     from portals.services.tracing import factory as tracing_factory
     from portals.services.transaction import factory as transaction_factory
     from portals.services.variable import factory as variable_factory
-    from px.services.mcp_composer import factory as mcp_composer_factory
-    from px.services.settings import factory as settings_factory
 
     # Register all factories
     service_manager.register_factory(settings_factory.SettingsServiceFactory())
@@ -282,13 +269,9 @@ def register_all_service_factories() -> None:
     service_manager.register_factory(job_queue_factory.JobQueueServiceFactory())
     service_manager.register_factory(task_factory.TaskServiceFactory())
     service_manager.register_factory(store_factory.StoreServiceFactory())
-    service_manager.register_factory(
-        shared_component_cache_factory.SharedComponentCacheServiceFactory()
-    )
+    service_manager.register_factory(shared_component_cache_factory.SharedComponentCacheServiceFactory())
     # Override PX's no-op auth service with Portals's full JWT implementation
-    service_manager.register_service_class(
-        ServiceType.AUTH_SERVICE, AuthService, override=True
-    )
+    service_manager.register_service_class(ServiceType.AUTH_SERVICE, AuthService, override=True)
     service_manager.register_factory(auth_factory.AuthServiceFactory())
     service_manager.register_factory(mcp_composer_factory.MCPComposerServiceFactory())
     service_manager.set_factory_registered()
@@ -310,9 +293,7 @@ def register_builtin_adapters() -> None:
     coverage that confirms Watsonx tests run (not skip) in eligible environments.
     """
     if not FEATURE_FLAGS.wxo_deployments:
-        logger.debug(
-            "Skipping deployment adapter registration: wxo_deployments feature flag disabled"
-        )
+        logger.debug("Skipping deployment adapter registration: wxo_deployments feature flag disabled")
         return
 
     try:
@@ -324,17 +305,13 @@ def register_builtin_adapters() -> None:
 def register_builtin_deployment_mappers() -> None:
     """Import built-in deployment mapper modules so registration side effects fire."""
     if not FEATURE_FLAGS.wxo_deployments:
-        logger.debug(
-            "Skipping deployment mapper registration: wxo_deployments feature flag disabled"
-        )
+        logger.debug("Skipping deployment mapper registration: wxo_deployments feature flag disabled")
         return
 
     try:
         import_module("portals.api.v1.mappers.deployments.watsonx_orchestrate")
     except ModuleNotFoundError as exc:
-        logger.info(
-            "Skipping Watsonx Orchestrate deployment mapper registration: %s", exc
-        )
+        logger.info("Skipping Watsonx Orchestrate deployment mapper registration: %s", exc)
 
 
 async def initialize_services(*, fix_migration: bool = False) -> None:
@@ -350,13 +327,9 @@ async def initialize_services(*, fix_migration: bool = False) -> None:
     register_builtin_adapters()
     register_builtin_deployment_mappers()
 
-    cache_service = get_service(
-        ServiceType.CACHE_SERVICE, default=CacheServiceFactory()
-    )
+    cache_service = get_service(ServiceType.CACHE_SERVICE, default=CacheServiceFactory())
     # Test external cache connection
-    if isinstance(cache_service, ExternalAsyncBaseCacheService) and not (
-        await cache_service.is_connected()
-    ):
+    if isinstance(cache_service, ExternalAsyncBaseCacheService) and not (await cache_service.is_connected()):
         msg = "Cache service failed to connect to external database"
         raise ConnectionError(msg)
 
@@ -370,9 +343,7 @@ async def initialize_services(*, fix_migration: bool = False) -> None:
     try:
         await get_db_service().assign_orphaned_flows_to_superuser()
     except sqlalchemy_exc.IntegrityError as exc:
-        await logger.awarning(
-            f"Error assigning orphaned flows to the superuser: {exc!s}"
-        )
+        await logger.awarning(f"Error assigning orphaned flows to the superuser: {exc!s}")
 
     async with session_scope() as session:
         await clean_transactions(settings_service, session)

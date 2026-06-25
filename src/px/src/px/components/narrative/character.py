@@ -1,11 +1,12 @@
-from pydantic import BaseModel, Field
+import logging
 from typing import Any
+
+from portals.services.nap import get_nap_service
+
 from px.base.models.model import LCModelComponent
-from px.io import BoolInput, DictInput, DropdownInput, MessageInput, ModelInput, Output, StrInput
+from px.io import BoolInput, DictInput, MessageInput, ModelInput, Output, StrInput
 from px.schema.data import Data
 from px.schema.message import Message
-import logging
-from portals.services.nap import get_nap_service
 
 
 async def _generate_and_ingest_avatar_background(payload: dict, image_llm: Any, event_manager: Any) -> None:
@@ -88,7 +89,6 @@ class CharacterComponent(LCModelComponent):
 
     async def build_character_data(self) -> Data:
         """Path A: Assemble character profile and selectively expand missing fields via LLM."""
-
         # 1. Assemble baseline payload from draft inputs
         payload = {
             "reference_id": getattr(self, "reference_id", ""),
@@ -142,7 +142,6 @@ class CharacterComponent(LCModelComponent):
 
     async def generate_roleplay_response(self) -> Message:
         """Path B: Generate a conversational reply using the drafted character state."""
-
         # 1. Gather live draft state directly from inputs
         char_name = getattr(self, "character_name", "Unknown Character")
         desc = getattr(self, "description", "")
