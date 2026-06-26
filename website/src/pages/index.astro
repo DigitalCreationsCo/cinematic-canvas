@@ -1,4 +1,5 @@
 ---
+import PortalsCanvas from "../components/PortalsCanvas";
 import siteConfig from "../../site.json";
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
@@ -321,6 +322,46 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         </div>
       </div>
 
+
+      <!-- Workspace demo — Live React Flow canvas -->
+      <div class="workflow-inner" style="padding-top: 2rem;">
+        <div class="demo-header reveal">
+          <div>
+            <p class="section-label reveal">See It Live</p>
+            <h2 class="section-title reveal" style="margin-bottom: 0;">
+              The workspace,<br /><em>in action</em>
+            </h2>
+          </div>
+          <a href="/docs" class="btn-ghost reveal">Explore the Docs</a>
+        </div>
+
+        <div
+          class="reveal"
+          style="
+            margin-top: 2.5rem;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid var(--border-glass, rgba(255,255,255,0.08));
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+            min-height: 520px;
+          "
+        >
+          <PortalsCanvas client:load />
+        </div>
+
+        <p
+          class="reveal"
+          style="
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--color-muted-foreground, rgba(255,255,255,0.4));
+          "
+        >
+          Drag to pan · Scroll to zoom · Nodes are read-only
+        </p>
+      </div>
 
       <!-- Scroll-revealed expandable content -->
       <div class="workflow-reveal" id="workflow-reveal">
