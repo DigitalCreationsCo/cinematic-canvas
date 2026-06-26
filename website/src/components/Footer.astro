@@ -7,17 +7,20 @@ const isHome = pathname === "/";
 ---
 
 <footer class="footer">
-  <div class="footer-brand w-[280px]">
-    <div class="footer-logo">
+  <div class="footer-main">
+    <!-- Row 1: Headers, all bottom-aligned with the logo text's bottom -->
+    <div class="footer-logo-area">
       <span class="footer-logo-text-underlay">
         {siteConfig.name}
         <span class="text-2xl">&copy;</span>
       </span>
     </div>
-  </div>
 
-  <div class="footer-main">
-    <div>
+    <div class="footer-header-prod"><h4>Product</h4></div>
+    <div class="footer-header-comp"><h4>Company</h4></div>
+
+    <!-- Row 2: Body content, all top-aligned with the tagline's top -->
+    <div class="footer-brand-content">
       <p class="footer-tagline">
         {siteConfig.description}
       </p>
@@ -28,36 +31,22 @@ const isHome = pathname === "/";
       </p>
     </div>
 
-    <div class="footer-inner">
-      <div class="footer-col">
-        <h4 class="footer-col-title">Product</h4>
-        <ul class="footer-links">
-          <li><a href="/docs">Documentation</a></li>
-          <li><a href="/updates">Release Notes</a></li>
-        </ul>
-      </div>
+    <div class="footer-links-prod">
+      <ul class="footer-links">
+        <li><a href="/docs/getting-started">Getting Started</a></li>
+        <li><a href="/docs">Documentation</a></li>
+        <li><a href="/updates">Release Notes</a></li>
+      </ul>
+    </div>
 
-      <div class="footer-col">
-        <h4 class="footer-col-title">Resources</h4>
-        <ul class="footer-links">
-          <li><a href="/docs/getting-started">Getting Started</a></li>
-          <li><a href="/docs/features">Features</a></li>
-          <li><a href="/docs/guides">Guides</a></li>
-        </ul>
-      </div>
-
-      <div class="footer-col">
-        <h4 class="footer-col-title">Company</h4>
-        <ul class="footer-links">
-          <li><a href="#">About</a></li>
-          <li><a href="#">Contact</a></li>
-          <li><a href="#">Twitter</a></li>
-        </ul>
-      </div>
+    <div class="footer-links-comp">
+      <ul class="footer-links">
+        <li><a href="#">Contact Us</a></li>
+        <li><a href="#">About</a></li>
+        <li><a href="#">Twitter</a></li>
+      </ul>
     </div>
   </div>
-
-
 </footer>
 
 <style>
@@ -75,37 +64,37 @@ const isHome = pathname === "/";
     width: 100%;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: 20px 60px;
-    padding: 0 clamp(0px, 5vw, 60px);
+    grid-template-areas:
+      "logo    header-prod header-comp"
+      "content links-prod  links-comp";
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px 48px;
+    padding: 30px clamp(0px, 5vw, 60px) 60px;
   }
 
-  .footer-inner {
-    display: contents;
+  /* ── Row 1: bottom‑aligned headers ── */
+  .footer-logo-area       { grid-area: logo;       align-self: end; }
+  .footer-header-prod     { grid-area: header-prod; align-self: end; }
+  .footer-header-comp     { grid-area: header-comp; align-self: end; }
+
+  .footer-header-prod h4,
+  .footer-header-comp h4 {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-gold);
   }
 
-  .footer-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
+  /* ── Row 2: top‑aligned body content ── */
+  .footer-brand-content   { grid-area: content;    align-self: start; }
+  .footer-links-prod      { grid-area: links-prod; align-self: start; }
+  .footer-links-comp      { grid-area: links-comp; align-self: start; }
 
-  .footer-logo-mark {
-    width: 28px;
-    height: 28px;
-    background: linear-gradient(
-      135deg,
-      var(--color-gold) 0%,
-      var(--color-accent-red) 100%
-    );
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  }
-
+  /* ── Logo text ── */
   .footer-logo-text-underlay {
     position: relative;
     display: flex;
-    padding-top: 40px;
     bottom: 0;
     z-index: -1;
     font-family: var(--font-z);
@@ -114,8 +103,6 @@ const isHome = pathname === "/";
     font-weight: 500;
     text-align: center;
     width: min-content;
-    padding: 0 clamp(0px, 5vw, 60px);
-    margin: 0 auto;
     @apply tracking-tight lowercase;
   }
 
@@ -124,15 +111,6 @@ const isHome = pathname === "/";
     color: var(--color-muted-foreground);
     line-height: 1.6;
     max-width: 260px;
-  }
-
-  .footer-col-title {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--color-gold);
-    margin-bottom: 16px;
   }
 
   .footer-links {
@@ -157,17 +135,6 @@ const isHome = pathname === "/";
     color: var(--color-foreground);
   }
 
-  .footer-bottom {
-    width: 100%;
-    max-width: 1400px;
-    margin: 48px auto 0;
-    padding: 24px clamp(20px, 5vw, 60px);
-    border-top: none;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
   .footer-copy {
     font-family: var(--font-mono);
     font-size: 0.65rem;
@@ -175,16 +142,35 @@ const isHome = pathname === "/";
     letter-spacing: 0.08em;
   }
 
+  /* ── Responsive: tablet ── */
   @media (max-width: 1024px) {
     .footer-main {
-      /* Reverting alignment to default vertical flow for wrapped column stability */
-      align-items: start;
+      gap: 20px 32px;
     }
   }
 
+  /* ── Responsive: mobile ── */
   @media (max-width: 768px) {
     .footer-main {
+      grid-template-areas:
+        "logo"
+        "content"
+        "header-prod"
+        "links-prod"
+        "header-comp"
+        "links-comp";
       grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    /* Reset align-self on mobile so items flow naturally */
+    .footer-logo-area,
+    .footer-brand-content,
+    .footer-header-prod,
+    .footer-links-prod,
+    .footer-header-comp,
+    .footer-links-comp {
+      align-self: auto;
     }
   }
 </style>

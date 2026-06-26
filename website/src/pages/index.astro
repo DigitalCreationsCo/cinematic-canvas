@@ -1,5 +1,4 @@
 ---
-import PortalsCanvas from "../components/PortalsCanvas";
 import siteConfig from "../../site.json";
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
@@ -8,37 +7,33 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   <main class="editor-root relative w-full">
     <!-- Hero Section -->
     <section id="hero">
-      <div class="hero-bg">
-        <div class="hero-bg-gradient-1"></div>
-        <div class="hero-bg-gradient-2"></div>
-        <div class="hero-bg-gradient-3"></div>
-      </div>
 
-      <div class="hero-grain hero-bg content-center clip-overflow">
-        <video src="/videos/ive-come-for-you-bodalia/01.mp4" class="hero-video h-full w-full aspect-video m-auto" autoplay loop muted playsinline></video>
-      </div>
-
+       <p class="hero-eyebrow">
+            The production workspace for directors, screenwriters, and
+            authors
+          </p>
       <div class="hero-inner">
-        <div class="flex flex-col items-center">
-          <p class="hero-eyebrow">The AI Production Workspace</p>
+        <div class="hero-bg hero-grain">
+          <video src="/videos/ive-come-for-you-bodalia/01.mp4" class="hero-video" autoplay loop muted playsinline></video>
+          <div class="hero-bg-gradient-1"></div>
+          <div class="hero-bg-gradient-2"></div>
+          <div class="hero-bg-gradient-3"></div>
+        </div>
+        <div class="hero-inner-content">
+
           <h1 class="hero-title">
-            Where <span class="">stories</span>
+            Where <span>stories</span>
             <br />
             become <em>worlds</em>
           </h1>
-        </div>
 
-        <div class="flex flex-col items-center">
-          <p class="hero-subtitle">
-            The filmmaking workspace for directors, screenwriters, and
-            authors. From first concept to final frame — powered by AI.
-          </p>
 
-          <div class="hero-actions">
-            <a href="#features" class="btn-ghost">Explore Features</a>
-            <a href="/docs" class="btn-primary">Begin Your Story</a>
-          </div>
+
         </div>
+      </div>
+      <div class="hero-actions">
+        <a href="#features" class="btn-ghost">Explore Features</a>
+        <a href="/docs" class="btn-primary">Begin Your Story</a>
       </div>
     </section>
 
@@ -51,8 +46,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
       <div class="scroll-features">
         <div class="scroll-feature-item group card-cinematic-glass reveal clip-overflow">
-          <video src="/videos/ive-come-for-you-bodalia/02.mp4" class="hero-grain bg-video-cover" autoplay loop muted playsinline></video>
 
+          <video src="/videos/ive-come-for-you-bodalia/02.mp4" class="hero-grain bg-video-cover" autoplay loop muted playsinline></video>
           <div class="foreground-layer">
           <div class="feature-icon-wrap group-hover:feature-icon-wrap-hover">
             <svg viewBox="0 0 24 24"
@@ -71,7 +66,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         </div>
         </div>
 
-        <div class="scroll-feature-item card-cinematic-glass reveal reveal-delay-2 clip-overflow">
+        <div class="scroll-feature-item group card-cinematic-glass reveal reveal-delay-2 clip-overflow">
           <video src="/videos/ive-come-for-you-bodalia/02.mp4" class="hero-grain bg-video-cover" autoplay loop muted playsinline></video>
 
           <div class="foreground-layer">
@@ -132,280 +127,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         </div>
         </div>
 
-        <!-- <div class="scroll-feature-item card-cinematic-glass reveal">
-          <div class="feature-icon-wrap">
-            <svg viewBox="0 0 24 24"
-              ><path
-                d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-              ></path></svg
-            >
-          </div>
-          <span class="feature-card-tag">Autonomous</span>
-          <h3 class="feature-card-title">Dialogue Studio</h3>
-          <p class="feature-card-desc">
-            Write character-authentic dialogue that sounds like your characters,
-            not an AI. The dialogue engine stays in voice across every scene and
-            every draft.
-          </p>
-        </div>
-
-        <div
-          class="scroll-feature-item card-cinematic-glass reveal reveal-delay-1"
-        >
-          <div class="feature-icon-wrap">
-            <svg viewBox="0 0 24 24"
-              ><path
-                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-              ></path><polyline points="14 2 14 8 20 8"></polyline><line
-                x1="16"
-                y1="13"
-                x2="8"
-                y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg
-            >
-          </div>
-          <span class="feature-card-tag">Industry Standard</span>
-          <h3 class="feature-card-title">Format Interoperability</h3>
-          <p class="feature-card-desc">
-            Stop exporting documents. Portals deploys your worlds foundation into film, interactive, and ebooks with absolute continuity.
-          </p>
-        </div> -->
-      </div>
-    </section>
-
-    <!-- Workflow Section -->
-    <section id="workflow" class="workflow-section">
-      <div class="hero-lines"></div>
-
-      <div class="workflow-inner">
-        <p class="section-label reveal">How It Works</p>
-        <h2 class="section-title reveal">
-          From <em>idea</em> to final cut,<br />in one workspace
-        </h2>
-
-        <div class="workflow-steps">
-          <div class="workflow-step reveal">
-            <div class="step-circle">
-              <svg viewBox="0 0 24 24"
-                ><path
-                  d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                ></path></svg
-              >
-            </div>
-            <h4 class="step-title">Concept</h4>
-            <p class="step-desc">
-              Drop your seed idea. The AI helps you develop premise, genre,
-              tone, and theme.
-            </p>
-          </div>
-          <div class="workflow-step reveal reveal-delay-1">
-            <div class="step-circle">
-              <svg viewBox="0 0 24 24"
-                ><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4l3 3"
-                ></path></svg
-              >
-            </div>
-            <h4 class="step-title">Structure</h4>
-            <p class="step-desc">
-              Build your three-act framework, sequences, and beat sheet with
-              intelligent scaffolding.
-            </p>
-          </div>
-          <div class="workflow-step reveal reveal-delay-2">
-            <div class="step-circle">
-              <svg viewBox="0 0 24 24"
-                ><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                ></path><circle cx="9" cy="7" r="4"></circle><path
-                  d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
-                ></path></svg
-              >
-            </div>
-            <h4 class="step-title">Characters</h4>
-            <p class="step-desc">
-              Build your cast with deep psychological profiles, voices, and
-              relational dynamics.
-            </p>
-          </div>
-          <div class="workflow-step reveal reveal-delay-3">
-            <div class="step-circle">
-              <svg viewBox="0 0 24 24"
-                ><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
-                ></polygon><path
-                  d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"
-                ></path></svg
-              >
-            </div>
-            <h4 class="step-title">Write</h4>
-            <p class="step-desc">
-              Draft scenes, dialogue, and action lines with your AI co-writer
-              always available.
-            </p>
-          </div>
-          <div class="workflow-step reveal reveal-delay-4">
-            <div class="step-circle">
-              <svg viewBox="0 0 24 24"
-                ><path
-                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                ></path><polyline points="14 2 14 8 20 8"></polyline></svg
-              >
-            </div>
-            <h4 class="step-title">Export</h4>
-            <p class="step-desc">
-              Output industry-standard formats: Final Draft, Fountain, PDF, or
-              shoot-ready storyboards.
-            </p>
-          </div>
-        </div>
-      </div>
-
-
-      <!-- Workspace demo — Live React Flow canvas -->
-      <div class="workflow-inner" style="padding-top: 2rem;">
-        <div class="demo-header reveal">
-          <div>
-            <p class="section-label reveal">See It Live</p>
-            <h2 class="section-title reveal" style="margin-bottom: 0;">
-              The workspace,<br /><em>in action</em>
-            </h2>
-          </div>
-          <a href="/docs" class="btn-ghost reveal">Explore the Docs</a>
-        </div>
-
-        <div
-          class="reveal"
-          style="
-            margin-top: 2.5rem;
-            border-radius: 1rem;
-            overflow: hidden;
-            border: 1px solid var(--border-glass, rgba(255,255,255,0.08));
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(4px);
-            min-height: 520px;
-          "
-        >
-          <PortalsCanvas client:load />
-        </div>
-
-        <p
-          class="reveal"
-          style="
-            margin-top: 1.5rem;
-            text-align: center;
-            font-size: 0.85rem;
-            color: var(--color-muted-foreground, rgba(255,255,255,0.4));
-          "
-        >
-          Drag to pan · Scroll to zoom · Nodes are read-only
-        </p>
-      </div>
-    </section>
-
-    <!-- Stats Section -->
-    <!-- <section id="stats" class="stats-section">
-      <div class="stats-grid">
-        <div class="stat-item card-cinematic-glass reveal">
-          <div class="stat-num" data-target="50">
-            0<span style={{ fontSize: "1.5rem" }}>%</span>
-          </div>
-          <div class="stat-label">
-            Token savings compared to traditional tools
-          </div>
-        </div>
-        <div class="stat-item card-cinematic-glass reveal reveal-delay-1">
-          <div class="stat-num" data-target="100">
-            0<span style={{ fontSize: "1.5rem" }}>%</span>
-          </div>
-          <div class="stat-label">NPS score from Creators</div>
-        </div>
-        <div class="stat-item card-cinematic-glass reveal reveal-delay-2">
-          <div class="stat-num" data-target="4">
-            0<span style={{ fontSize: "1.5rem" }}>×</span>
-          </div>
-          <div class="stat-label">
-            Faster production compared to traditional tools
-          </div>
-        </div>
-        <div class="stat-item card-cinematic-glass reveal reveal-delay-3">
-          <div class="stat-num" data-target="4">0</div>
-          <div class="stat-label">
-            Projects in production in {siteConfig.name}
-          </div>
-        </div>
-      </div>
-    </section> -->
-
-    <!-- Pricing Section -->
-    <section id="pricing" class="pricing-section">
-      <p class="section-label reveal" style={{ justifyContent: "center" }}>
-        Pricing
-      </p>
-      <h2
-        class="section-title reveal"
-        style={{ margin: "0 auto", textAlign: "center" }}
-      >
-        For all <em>creators</em>
-      </h2>
-      <div class="pricing-grid">
-        <div class="pricing-card reveal">
-          <div>
-          <h3 class="pricing-tier">Creator</h3>
-          <div class="pricing-price">
-            <span class="amount">$0</span><span class="period">forever</span>
-          </div>
-          <p class="pricing-desc">
-            Explore what AI-assisted storytelling can do.
-          </p>
-          <ul class="pricing-features">
-            <li>3 active projects</li>
-            <li>50 scene generations/mo</li>
-            <li>Character profiles</li>
-            <li>Script PDF export</li>
-          </ul>
-        </div>
-          <a href="#" class="pricing-cta outline">Start For Free</a>
-        </div>
-
-        <div class="pricing-card featured reveal reveal-delay-1">
-          <div>
-          <div class="flex inline-gap"><h3 class="pricing-tier">Pro</h3>
-          <span class="pricing-badge">Most Popular</span>
-          </div>
-          <div class="pricing-price">
-            <span class="amount">$23</span><span class="period">/ month</span>
-          </div>
-          <p class="pricing-desc">
-            For creators building full-length projects.
-          </p>
-          <ul class="pricing-features">
-            <li>Unlimited projects</li>
-            <li>Unlimited AI generations</li>
-            <li>Deep character engine</li>
-            <li>Visual storyboard generator</li>
-            <li>World builder & lore keeper</li>
-            <li>All export formats</li>
-          </ul>
-        </div>
-          <a href="#" class="pricing-cta outline">Begin Your Story</a>
-        </div>
-        <div class="pricing-card reveal reveal-delay-2">
-          <div>
-          <h3 class="pricing-tier">Studio</h3>
-          <div class="pricing-price">
-            <span class="amount">$129</span><span class="period">/ month</span>
-          </div>
-          <p class="pricing-desc">
-            For production companies and writing teams at scale.
-          </p>
-          <ul class="pricing-features">
-            <li>Everything in Creator</li>
-            <li>Team collaboration</li>
-            <!-- <li>✓ Custom style training</li> -->
-            <li>Priority AI generation</li>
-            <li>Dedicated support</li>
-            <li>API access</li>
-          </ul>
-          </div>
-          <a href="#" class="pricing-cta outline">Begin Your Story</a>
-        </div>
       </div>
     </section>
 
@@ -515,27 +236,259 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       </div>
     </section>
 
+    <!-- Workflow Section -->
+    <section id="workflow" class="workflow-section">
+      <div class="hero-lines"></div>
+
+      <div class="workflow-inner">
+        <p class="section-label reveal">How It Works</p>
+        <h2 class="section-title reveal">
+          From idea to <em>final cut</em><br />in one workspace
+        </h2>
+
+        <div class="workflow-steps">
+          <div class="workflow-step reveal">
+            <div class="step-circle">
+              <svg viewBox="0 0 24 24"
+                ><path
+                  d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                ></path></svg
+              >
+            </div>
+            <h4 class="step-title">Concept</h4>
+            <p class="step-desc">
+              Drop your seed idea. The AI helps you develop premise, genre,
+              tone, and theme.
+            </p>
+          </div>
+          <div class="workflow-step reveal reveal-delay-1">
+            <div class="step-circle">
+              <svg viewBox="0 0 24 24"
+                ><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4l3 3"
+                ></path></svg
+              >
+            </div>
+            <h4 class="step-title">Structure</h4>
+            <p class="step-desc">
+              Build your three-act framework, sequences, and beat sheet with
+              intelligent scaffolding.
+            </p>
+          </div>
+          <div class="workflow-step reveal reveal-delay-2">
+            <div class="step-circle">
+              <svg viewBox="0 0 24 24"
+                ><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                ></path><circle cx="9" cy="7" r="4"></circle><path
+                  d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+                ></path></svg
+              >
+            </div>
+            <h4 class="step-title">Characters</h4>
+            <p class="step-desc">
+              Build your cast with deep psychological profiles, voices, and
+              relational dynamics.
+            </p>
+          </div>
+          <div class="workflow-step reveal reveal-delay-3">
+            <div class="step-circle">
+              <svg viewBox="0 0 24 24"
+                ><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
+                ></polygon><path
+                  d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"
+                ></path></svg
+              >
+            </div>
+            <h4 class="step-title">Write</h4>
+            <p class="step-desc">
+              Draft scenes, dialogue, and action lines with your AI co-writer
+              always available.
+            </p>
+          </div>
+          <div class="workflow-step reveal reveal-delay-4">
+            <div class="step-circle">
+              <svg viewBox="0 0 24 24"
+                ><path
+                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                ></path><polyline points="14 2 14 8 20 8"></polyline></svg
+              >
+            </div>
+            <h4 class="step-title">Export</h4>
+            <p class="step-desc">
+              Output industry-standard formats: Final Draft, Fountain, PDF, or
+              shoot-ready storyboards.
+            </p>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Scroll-revealed expandable content -->
+      <div class="workflow-reveal" id="workflow-reveal">
+        <div class="workflow-reveal-inner">
+          <div class="workflow-reveal-content">
+            <div class="workflow-reveal-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <line x1="10" y1="9" x2="8" y2="9"/>
+              </svg>
+            </div>
+            <div class="workflow-reveal-text">
+              <h3>Every step, connected</h3>
+              <p>Your story evolves seamlessly from concept to export — characters, structure, and scenes stay in sync across the entire workspace.</p>
+              <div class="workflow-reveal-tags">
+                <span>AI Co-writer</span>
+                <span>Smart outline</span>
+                <span>Story bible</span>
+              </div>
+            </div>
+            <div class="workflow-reveal-visual">
+              <div class="reveal-beam"></div>
+              <div class="reveal-dots"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <!-- <section id="stats" class="stats-section">
+      <div class="stats-grid">
+        <div class="stat-item card-cinematic-glass reveal">
+          <div class="stat-num" data-target="50">
+            0<span style={{ fontSize: "1.5rem" }}>%</span>
+          </div>
+          <div class="stat-label">
+            Token savings compared to traditional tools
+          </div>
+        </div>
+        <div class="stat-item card-cinematic-glass reveal reveal-delay-1">
+          <div class="stat-num" data-target="100">
+            0<span style={{ fontSize: "1.5rem" }}>%</span>
+          </div>
+          <div class="stat-label">NPS score from Creators</div>
+        </div>
+        <div class="stat-item card-cinematic-glass reveal reveal-delay-2">
+          <div class="stat-num" data-target="4">
+            0<span style={{ fontSize: "1.5rem" }}>×</span>
+          </div>
+          <div class="stat-label">
+            Faster production compared to traditional tools
+          </div>
+        </div>
+        <div class="stat-item card-cinematic-glass reveal reveal-delay-3">
+          <div class="stat-num" data-target="4">0</div>
+          <div class="stat-label">
+            Projects in production in {siteConfig.name}
+          </div>
+        </div>
+      </div>
+    </section> -->
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing-section">
+      <p class="section-label reveal" style={{ justifyContent: "center" }}>
+        Pricing
+      </p>
+      <h2
+        class="section-title reveal"
+        style={{ margin: "0 auto", textAlign: "center" }}
+      >
+        For all creators
+      </h2>
+      <div class="pricing-grid">
+        <div class="pricing-card reveal">
+          <div>
+          <h3 class="pricing-tier">Creator</h3>
+          <div class="pricing-price">
+            <span class="amount">$0</span><span class="period">forever</span>
+          </div>
+          <p class="pricing-desc">
+            Explore what AI-assisted storytelling can do.
+          </p>
+          <ul class="pricing-features">
+            <li>3 active projects</li>
+            <li>50 scene generations/mo</li>
+            <li>Character profiles</li>
+            <li>Script PDF export</li>
+          </ul>
+        </div>
+          <a href="#" class="pricing-cta outline">Start For Free</a>
+        </div>
+
+        <div class="pricing-card featured reveal reveal-delay-1">
+          <div>
+          <div class="flex inline-gap"><h3 class="pricing-tier">Pro</h3>
+          <span class="pricing-badge">Most Popular</span>
+          </div>
+          <div class="pricing-price">
+            <span class="amount">$23</span><span class="period">/ month</span>
+          </div>
+          <p class="pricing-desc">
+            For creators building full-length projects.
+          </p>
+          <ul class="pricing-features">
+            <li>Unlimited projects</li>
+            <li>Unlimited AI generations</li>
+            <li>Deep character engine</li>
+            <li>Visual storyboard generator</li>
+            <li>World builder & lore keeper</li>
+            <li>All export formats</li>
+          </ul>
+        </div>
+          <a href="#" class="pricing-cta outline">Begin Your Story</a>
+        </div>
+        <div class="pricing-card reveal reveal-delay-2">
+          <div>
+          <h3 class="pricing-tier">Studio</h3>
+          <div class="pricing-price">
+            <span class="amount">$129</span><span class="period">/ month</span>
+          </div>
+          <p class="pricing-desc">
+            For production companies and writing teams at scale.
+          </p>
+          <ul class="pricing-features">
+            <li>Everything in Creator</li>
+            <li>Team collaboration</li>
+            <!-- <li>✓ Custom style training</li> -->
+            <li>Priority AI generation</li>
+            <li>Dedicated support</li>
+            <li>API access</li>
+          </ul>
+          </div>
+          <a href="#" class="pricing-cta outline">Begin Your Story</a>
+        </div>
+      </div>
+    </section>
+
     <!-- CTA Section -->
     <section class="cta-section">
-      <!-- <p class="section-label reveal" style={{ justifyContent: "center" }}>
-        Your Story Awaits
-      </p> -->
-      <div class="cta-bg"></div>
+      <div class="cta-bg">
+        <div class="hero-grain">
+          <video src="/videos/ive-come-for-you-bodalia/01.mp4" class="cta-video" autoplay loop muted playsinline></video>
+        </div>
+      </div>
+
       <h2 class="cta-title reveal">
         The best films haven't been made yet
       </h2>
-      <p
-        class="hero-subtitle reveal"
-        style={{
-          margin: "24px auto 44px",
-          maxWidth: "500px",
-          textAlign: "center",
-        }}
-      >
-        Begin for free. No credit card required.
-      </p>
-      <div class="hero-actions" style={{ justifyContent: "center" }}>
-        <a href="/docs" class="btn-primary">Start creating</a>
+
+      <div>
+        <p
+          class="hero-subtitle reveal"
+          style={{
+            margin: "24px auto 34px",
+            maxWidth: "500px",
+            textAlign: "center",
+          }}
+        >
+          Begin for free. No credit card required.
+        </p>
+        <div class="hero-actions" style={{ justifyContent: "center" }}>
+          <a href="/docs" class="btn-primary">Start creating</a>
+        </div>
       </div>
     </section>
   </main>
@@ -581,6 +534,25 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       .querySelectorAll("[data-target]")
       .forEach((el) => statObserver.observe(el));
 
+    // Workflow reveal — expand/collapse on scroll intersection
+    const workflowSection = document.getElementById('workflow');
+    const workflowReveal = document.getElementById('workflow-reveal');
+    if (workflowSection && workflowReveal) {
+      const workflowObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              workflowReveal.classList.add('expanded');
+            } else {
+              workflowReveal.classList.remove('expanded');
+            }
+          });
+        },
+        { threshold: 0.1 },
+      );
+      workflowObserver.observe(workflowSection);
+    }
+
     // Sprocket holes generation
     document.querySelectorAll(".sprocket-strip").forEach((strip) => {
       const count = Math.ceil(window.innerHeight / 26);
@@ -612,112 +584,147 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       });
     });
 
-    // Hero video sizing: align top to the H1 top and fill area to bottom target.
-    function resizeHeroVideo() {
+    // Hero video is now a CSS-driven background of hero-inner.
+    // Ensure hero-inner has proper sizing on load.
+    function ensureHeroLayout() {
       const hero = document.getElementById('hero');
       if (!hero) return;
-      const vid = hero.querySelector('.hero-video');
-      const h1 = hero.querySelector('.hero-title');
       const heroInner = hero.querySelector('.hero-inner');
-      const cta = hero.querySelector('.hero-actions');
-      if (!vid || !h1 || !heroInner) return;
-
-      // Ensure the hero section is positioned for absolute children
-      if (getComputedStyle(hero).position === 'static') hero.style.position = 'relative';
-      heroInner.style.position = heroInner.style.position || 'relative';
-      heroInner.style.zIndex = 10;
-
-      const heroRect = hero.getBoundingClientRect();
-      const h1Rect = h1.getBoundingClientRect();
-      const heroInnerRect = heroInner.getBoundingClientRect();
-
-      const topOffset = Math.max(0, h1Rect.top - heroRect.top);
-
-      let bottomOffset;
-      // Desktop: use bottom of heroInner. Mobile: use bottom of CTA if present.
-      if (window.matchMedia('(min-width:1024px)').matches) {
-        bottomOffset = heroInnerRect.bottom - heroRect.top;
-      } else {
-        if (cta) bottomOffset = Math.max(heroInnerRect.bottom - heroRect.top, cta.getBoundingClientRect().bottom - heroRect.top);
-        else bottomOffset = heroInnerRect.bottom - heroRect.top;
-      }
-
-      const height = Math.max(0, bottomOffset - topOffset);
-
-      Object.assign(vid.style, {
-        position: 'absolute',
-        left: '0',
-        top: `${topOffset}px`,
-        width: '100vw',
-        height: `${height}px`,
-        objectFit: 'cover',
-        zIndex: '0',
-        pointerEvents: 'none',
-      });
-
-      // Ensure the video horizontally fills the viewport without shifting layout
-      // and that content remains above it.
-      vid.style.maxWidth = 'none';
+      if (!heroInner) return;
+      // The video is positioned via CSS (absolute, 100vw, object-fit: cover, bottom-aligned).
+      // Nothing dynamic needed — CSS handles it.
     }
 
-    window.addEventListener('resize', resizeHeroVideo);
-    window.addEventListener('orientationchange', resizeHeroVideo);
-    // Run after load and with a short delay to catch fonts/layout.
-    document.addEventListener('DOMContentLoaded', () => { resizeHeroVideo(); setTimeout(resizeHeroVideo, 150); });
+    window.addEventListener('resize', ensureHeroLayout);
+    window.addEventListener('orientationchange', ensureHeroLayout);
+    document.addEventListener('DOMContentLoaded', () => { ensureHeroLayout(); });
 
-    // IntersectionObserver for all videos: show & play the first intersecting video
-    // in document order; hide & pause others. Keeps layout stable (uses
-    // visibility/opacity), and updates as the user scrolls.
-    (function manageVideosByIntersection() {
-      const videos = Array.from(document.querySelectorAll('video'));
-      if (!videos.length) return;
+    // ── LTR Video Sequencer ──
+    // As the user scrolls through the #features section, feature card videos
+    // play one at a time in LTR order (card 1 → 2 → 3 → 4) driven by scroll
+    // progress. Cards stay in their static grid positions — only the visible
+    // video changes. Non-feature videos (hero, CTA) use a simple
+    // IntersectionObserver to show the first intersecting video.
+    (function initVideoSequencer() {
+      const section = document.getElementById('features');
+      const allVideos = Array.from(document.querySelectorAll('video'));
+      if (!allVideos.length) return;
 
-      // Initialize styles without affecting layout
-      videos.forEach((v) => {
-        v.style.transition = v.style.transition || 'opacity 200ms linear';
-        // Start hidden until observer updates visibility to avoid flash
-        if (!v.hasAttribute('data-observer-initialized')) {
-          v.style.opacity = '0';
-          v.style.visibility = 'hidden';
-          v.setAttribute('data-observer-initialized', '1');
+      // Separate feature-card videos from other videos (hero, CTA, etc.)
+      const featureVideos = section
+        ? Array.from(section.querySelectorAll('.scroll-feature-item video'))
+        : [];
+      const featureSet = new Set(featureVideos);
+      const otherVideos = allVideos.filter((v) => !featureSet.has(v));
+
+      // Init all videos: hidden by default
+      allVideos.forEach((v) => {
+        (v as HTMLVideoElement).style.transition =
+          (v as HTMLVideoElement).style.transition || 'opacity 300ms ease';
+        if (!v.hasAttribute('data-video-init')) {
+          (v as HTMLVideoElement).style.opacity = '0';
+          (v as HTMLVideoElement).style.visibility = 'hidden';
+          v.setAttribute('data-video-init', '1');
         }
       });
 
-      const intersecting = new Map();
+      // ── Non-feature videos: show the first intersecting one ──
+      if (otherVideos.length) {
+        const intersecting = new Map();
+        const io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              intersecting.set(
+                e.target,
+                e.isIntersecting && e.intersectionRatio > 0,
+              );
+            });
+            const first = otherVideos.find((v) => intersecting.get(v));
+            otherVideos.forEach((v) => {
+              const vid = v as HTMLVideoElement;
+              if (v === first) {
+                vid.style.visibility = 'visible';
+                vid.style.opacity = '1';
+                if (vid.paused) {
+                  const p = vid.play();
+                  if (p?.catch) p.catch(() => {});
+                }
+              } else {
+                vid.style.opacity = '0';
+                vid.style.visibility = 'hidden';
+                if (!vid.paused) try { vid.pause(); } catch (e) {}
+              }
+            });
+          },
+          { threshold: 0.35 },
+        );
+        otherVideos.forEach((v) => io.observe(v));
+        window.addEventListener('resize', () => io.takeRecords());
+        window.addEventListener('orientationchange', () => io.takeRecords());
+      }
 
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          intersecting.set(entry.target, entry.isIntersecting && entry.intersectionRatio > 0);
-        });
+      // ── Feature card videos: scroll-progress-driven LTR sequence ──
+      if (!featureVideos.length || !section) return;
 
-        // Choose the first video (document order) that is intersecting
-        const firstVisible = videos.find((v) => intersecting.get(v));
+      let activeIndex = -1;
+      let isActive = false;
 
-        videos.forEach((v) => {
-          if (v === firstVisible) {
-            // show and play
-            v.style.visibility = 'visible';
-            v.style.opacity = '1';
-            if (v.paused) {
-              const p = v.play();
-              if (p && p.catch) p.catch(() => {});
+      function showVideo(index: number) {
+        if (index === activeIndex) return;
+        activeIndex = index;
+        featureVideos.forEach((v, i) => {
+          const vid = v as HTMLVideoElement;
+          if (i === index) {
+            vid.style.visibility = 'visible';
+            vid.style.opacity = '1';
+            if (vid.paused) {
+              const p = vid.play();
+              if (p?.catch) p.catch(() => {});
             }
           } else {
-            // hide and pause (do not remove from layout)
-            v.style.opacity = '0';
-            v.style.visibility = 'hidden';
-            if (!v.paused) {
-              try { v.pause(); } catch (e) {}
-            }
+            vid.style.opacity = '0';
+            vid.style.visibility = 'hidden';
+            if (!vid.paused) try { vid.pause(); } catch (e) {}
           }
         });
-      }, { threshold: 0.35 });
+      }
 
-      videos.forEach((v) => observer.observe(v));
+      function onScroll() {
+        if (!isActive) return;
+        const rect = section.getBoundingClientRect();
+        // Total scroll range through the section = section height + viewport
+        const totalRange = section.offsetHeight + window.innerHeight;
+        const scrolled = -rect.top + window.innerHeight;
+        const progress = Math.max(0, Math.min(1, scrolled / totalRange));
+        const index = Math.min(
+          featureVideos.length - 1,
+          Math.floor(progress * featureVideos.length),
+        );
+        showVideo(index);
+      }
 
-      // Re-evaluate on resize/orientation changes since layout shifts can change intersection
-      window.addEventListener('resize', () => observer.takeRecords() && observer);
-      window.addEventListener('orientationchange', () => observer.takeRecords() && observer);
+      // Activate LTR sequencing when section enters viewport
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (
+              entry.isIntersecting &&
+              entry.boundingClientRect.top < window.innerHeight &&
+              entry.boundingClientRect.bottom > 0
+            ) {
+              isActive = true;
+              window.addEventListener('scroll', onScroll, { passive: true });
+              onScroll();
+            } else {
+              isActive = false;
+              window.removeEventListener('scroll', onScroll);
+            }
+          });
+        },
+        { threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] },
+      );
+
+      observer.observe(section);
     })();
   </script>
 </BaseLayout>

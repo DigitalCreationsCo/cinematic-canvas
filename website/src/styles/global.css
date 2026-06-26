@@ -62,3 +62,161 @@
 .reveal-delay-5 {
   transition-delay: 0.5s;
 }
+
+/* ── Workflow reveal — scroll-triggered expand/collapse ── */
+.workflow-reveal {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.8s cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1),
+    margin 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  margin-top: 0;
+}
+
+.workflow-reveal.expanded {
+  max-height: 340px;
+  opacity: 1;
+  margin-top: 2rem;
+}
+
+.workflow-reveal-inner {
+  height: 300px;
+  border-radius: 12px;
+  border: 1px solid var(--border-glass, rgba(255,255,255,0.06));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-gold), transparent 92%), transparent 60%);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.workflow-reveal-content {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem 2.5rem;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.workflow-reveal-icon {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-gold), transparent 85%);
+  border: 1px solid color-mix(in srgb, var(--color-gold), transparent 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workflow-reveal-icon svg {
+  width: 28px;
+  height: 28px;
+  stroke: var(--color-gold);
+}
+
+.workflow-reveal-text {
+  flex: 1;
+}
+
+.workflow-reveal-text h3 {
+  font-family: var(--font-z, inherit);
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.workflow-reveal-text p {
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--foreground), transparent 25%);
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+.workflow-reveal-tags {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.workflow-reveal-tags span {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-gold), transparent 85%);
+  color: var(--color-gold);
+  border: 1px solid color-mix(in srgb, var(--color-gold), transparent 75%);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.workflow-reveal-visual {
+  flex-shrink: 0;
+  width: 160px;
+  height: 120px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--color-gold), transparent 90%), transparent);
+}
+
+.reveal-beam {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-gold), transparent 85%), transparent);
+  animation: beam-sweep 4s ease-in-out infinite;
+}
+
+@keyframes beam-sweep {
+  0%, 100% {
+    left: -100%;
+  }
+  50% {
+    left: 200%;
+  }
+}
+
+.reveal-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--color-gold), transparent 80%) 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.3;
+}
+
+@media (max-width: 640px) {
+  .workflow-reveal-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.25rem;
+    padding: 1.5rem;
+  }
+
+  .workflow-reveal-text p {
+    max-width: none;
+  }
+
+  .workflow-reveal-tags {
+    justify-content: center;
+  }
+
+  .workflow-reveal-visual {
+    width: 120px;
+    height: 90px;
+  }
+
+  .workflow-reveal-inner {
+    height: auto;
+    min-height: 300px;
+  }
+}
