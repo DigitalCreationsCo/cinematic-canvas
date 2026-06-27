@@ -31,17 +31,8 @@
 }
 
 /* Scrollbar */
-.editor-root ::-webkit-scrollbar {
-  width: 3px;
-}
-
-.editor-root ::-webkit-scrollbar-track {
-  background: var(--background);
-}
-
-.editor-root ::-webkit-scrollbar-thumb {
-  background: var(--color-gold);
-  border-radius: 2px;
+::-webkit-scrollbar {
+  display: none !important;
 }
 
 /* Hero Section */
@@ -124,9 +115,9 @@
 }
 
 /* Push CTAs to bottom of hero */
-.editor-root .hero-inner .hero-actions {
-  margin-top: auto;
-  padding: 0 80px;
+.editor-root .hero-actions {
+  margin-top: 12px;
+  padding: 0 20px;
 }
 
 .editor-root .hero-bg {
@@ -280,8 +271,8 @@
   letter-spacing: .1em;
   max-width: 80%;
   opacity: 0;
-  margin-bottom: 28px;
-  text-transform: capitalize;
+  margin-bottom: 20px;
+  text-transform: uppercase;
   position: relative;
   z-index: 3;
   animation: fadeUp .8s .2s cubic-bezier(.23, 1, .32, 1) forwards;
@@ -530,7 +521,7 @@
 
 /* Feature Showcase */
 .editor-root .feature-showcase {
-  padding: 0 clamp(20px, 5vw, 60px) var(--section-pad);
+  padding: var(--section-pad) clamp(20px, 5vw, 60px);
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -546,6 +537,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.desktop-only {
+  display: inline;
+}
+
+.mobile-only {
+  display: none;
 }
 
 .editor-root .section-title {
@@ -601,7 +600,7 @@
 }
 
 /* Feature card video: inset behind the text content */
-.editor-root .bg-video-cover {
+.editor-root .feature-video-active {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -615,7 +614,7 @@
 }
 
 /* Triggered by the CARD hover, not the video — video has pointer-events: none */
-.editor-root .scroll-feature-item:hover .bg-video-cover {
+.editor-root .feature-video-active:hover {
   opacity: 0.55 !important;
 }
 
@@ -973,8 +972,6 @@
   background: var(--border-glass);
 }
 
-
-
 .ws-panel-title {
   font-family: var(--font-mono);
   font-size: .6rem;
@@ -1114,7 +1111,6 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-content);
 }
 
 .editor-root .workflow-steps {
@@ -1491,7 +1487,6 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse 80% 80% at 50% 50%, color-mix(in srgb, var(--destructive), transparent 90%) 0%, transparent 70%);
-  animation: cta-bg-motion 8s ease-in-out infinite;
 }
 
 .editor-root .cta-title {
@@ -2435,6 +2430,11 @@
     justify-content: space-between;
   }
 
+  .editor-root .hero-eyebrow {
+    font-size: .9rem;
+    margin-bottom: 0;
+  }
+
   .editor-root .pricing-grid {
     margin: 0 auto;
   }
@@ -2460,13 +2460,23 @@
   }
 
   .editor-root .hero-actions {
+    margin-top: 8px;
     flex-direction: column-reverse;
     width: 100%;
+    gap: 0px;
   }
 
   .editor-root .hero-actions .btn-primary,
   .editor-root .hero-actions .btn-ghost {
     width: 100%;
     text-align: center;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: inline;
   }
 }

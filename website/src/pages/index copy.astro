@@ -11,7 +11,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
          ═══════════════════════════════════════════════════════ -->
     <section id="hero">
       <p class="hero-eyebrow">
-        The production workspace for directors
+        The production workspace for directors, screenwriters, and authors
       </p>
       <div class="hero-inner">
         <div class="hero-bg hero-grain">
@@ -41,19 +41,217 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       </div>
     </section>
 
+    <!-- ═══════════════════════════════════════════════════════
+         FEATURES — Scroll-Controlled Video Sequencer
+         ═══════════════════════════════════════════════════════ -->
+    <section
+      id="features-track"
+      class="features-track"
+    >
+      <div id="features-sticky" class="features-sticky">
+        <section class="feature-showcase">
+          <h2 class="section-title col-span-full">
+            Every tool your<br /><em>world demands</em>
+          </h2>
+
+          <div id="feature-grid" class="features-grid">
+            <div class="feature-card card-cinematic-glass" data-video="/videos/ive-come-for-you-bodalia/02.mp4">
+              <div class="foreground-layer">
+                <div class="feature-icon-wrap">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"></path>
+                    <path d="M10 8L16 12L10 16V8Z"></path>
+                  </svg>
+                </div>
+                <span class="feature-card-tag">AI-Powered</span>
+                <h3 class="feature-card-title">Scene Intelligence</h3>
+                <p class="feature-card-desc">
+                  Generate rich scene descriptions, action lines, and subtext
+                  from a single prompt. The AI understands cinematic language,
+                  pacing, and genre conventions.
+                </p>
+              </div>
+            </div>
+
+            <div class="feature-card card-cinematic-glass" data-video="/videos/ive-come-for-you-bodalia/02.mp4">
+              <div class="foreground-layer">
+                <div class="feature-icon-wrap">
+                  <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                    <path d="M3 9h18M9 21V9"></path>
+                  </svg>
+                </div>
+                <span class="feature-card-tag">Contextual</span>
+                <h3 class="feature-card-title">Visual Storyboard</h3>
+                <p class="feature-card-desc">
+                  Auto-generate shot-by-shot storyboard frames from your
+                  screenplay. Adjust camera angles, lighting mood, and
+                  composition with natural language.
+                </p>
+              </div>
+            </div>
+
+            <div class="feature-card card-cinematic-glass" data-video="/videos/ive-come-for-you-bodalia/02.mp4">
+              <div class="foreground-layer">
+                <div class="feature-icon-wrap">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="8" r="3"></circle>
+                    <path d="M20 21a8 8 0 1 0-16 0"></path>
+                    <circle cx="18" cy="18" r="4"></circle>
+                    <path d="M18 16v4M16 18h4"></path>
+                  </svg>
+                </div>
+                <span class="feature-card-tag">Persistent Memory</span>
+                <h3 class="feature-card-title">Character Engine</h3>
+                <p class="feature-card-desc">
+                  Build psychologically deep characters with backstory
+                  generators, voice profiling, relationship mapping, and arc
+                  consistency across your entire narrative.
+                </p>
+              </div>
+            </div>
+
+            <div class="feature-card card-cinematic-glass" data-video="/videos/ive-come-for-you-bodalia/02.mp4">
+              <div class="foreground-layer">
+                <div class="feature-icon-wrap">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                  </svg>
+                </div>
+                <span class="feature-card-tag">Deep Lore</span>
+                <h3 class="feature-card-title">World Builder</h3>
+                <p class="feature-card-desc">
+                  Construct cohesive fictional universes with persistent lore,
+                  geography, history, culture, and rules. Never contradict
+                  yourself across episodes or volumes.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+         COMPARISON
+         ═══════════════════════════════════════════════════════ -->
+    <section class="compare-section">
+      <p class="section-label reveal">End-to-end production</p>
+      <h2 class="section-title reveal">
+        No more<br /><em>tool-hopping</em>
+      </h2>
+
+      <div class="compare-table reveal">
+        <div class="compare-header">
+          <span class="compare-col-label">Feature</span>
+          <span class="compare-col-label highlight">{siteConfig.name}</span>
+          <span class="compare-col-label">AI writers</span>
+          <span class="compare-col-label">Video-only tools</span>
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">
+            Theatrical-grade cinematic continuity
+            <p class="feature-card-desc">
+              Craft production-ready video sequences. Anchor character
+              fidelity, lighting physics, and environmental persistence to
+              rigorous production standards.
+            </p>
+          </span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">
+            Screenplay-native formatting
+            <p class="feature-card-desc">
+              Compose your project with a narrative-aware AI agent that
+              understands your world and creative intention.
+            </p>
+          </span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">
+            Visual storyboard generator
+            <p class="feature-card-desc">
+              Auto-generate storyboard frames from your screenplay.
+            </p>
+          </span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">
+            Persistent character memory
+            <p class="feature-card-desc">
+              Build deep characters with backstories and consistent personas
+              across your entire narrative arc.
+            </p>
+          </span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">
+            AI scene generation
+            <p class="feature-card-desc">
+              Create scenes and story beats from your world.
+            </p>
+          </span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">
+            World-building lore keeper
+            <p class="feature-card-desc">
+              Build cohesive universes with persistent lore, history, and
+              culture.
+            </p>
+          </span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">
+            Industry export formats
+            <p class="feature-card-desc">
+              Export screenplays in Final Draft, Fountain, PDF. Automatic
+              formatting for feature films, TV pilots and more.
+            </p>
+          </span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+          <span class="compare-cell"><span class="cross">✕</span></span>
+          <span class="compare-cell"><span class="check">✓</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+         WORKFLOW — Scroll-Controlled Step Sequencer
+         ═══════════════════════════════════════════════════════ -->
     <section id="workflow-track" class="workflow-track">
       <div id="workflow-sticky" class="workflow-sticky">
         <div class="hero-lines"></div>
         <div class="workflow-container">
-          <p class="section-label">Every tool your story demands</p>
+          <p class="section-label">How It Works</p>
           <h2 class="section-title">
             From idea<br class="mobile-only" />
             to <em>final cut</em><br />
             in one workspace
           </h2>
 
+          <!-- Horizontal steps row: one visible at a time, scrolled via JS -->
           <div class="steps-viewport">
             <div id="steps-row" class="steps-row">
+              <!-- Gradient line spanning all steps, sized in JS -->
               <div id="steps-line" class="steps-line"></div>
 
               <div class="workflow-step" data-index="0">
@@ -128,6 +326,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             </div>
           </div>
 
+          <!-- Per-step connected content — crossfades as steps change -->
           <div id="connected-wrap" class="connected-wrap">
             <div class="connected-content" data-step="0">
               <div class="connected-icon">
@@ -233,6 +432,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       </div>
     </section>
 
+    <!-- ═══════════════════════════════════════════════════════
+         PRICING
+         ═══════════════════════════════════════════════════════ -->
     <section id="pricing" class="pricing-section">
       <p class="section-label reveal section-label-centered">Pricing</p>
       <h2 class="section-title reveal section-title-centered">
@@ -302,6 +504,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       </div>
     </section>
 
+    <!-- ═══════════════════════════════════════════════════════
+         CTA
+         ═══════════════════════════════════════════════════════ -->
     <section class="cta-section">
       <div class="cta-bg">
         <div class="hero-grain">
@@ -852,9 +1057,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       background: linear-gradient(
         90deg,
         transparent 0%,
-        color-mix(in srgb, var(--color-foreground), transparent 60%) 5%,
-        color-mix(in srgb, var(--color-foreground), transparent 40%) 50%,
-        color-mix(in srgb, var(--color-foreground), transparent 60%) 95%,
+        color-mix(in srgb, var(--color-muted-foreground), transparent 60%) 5%,
+        color-mix(in srgb, var(--color-muted-foreground), transparent 40%) 50%,
+        color-mix(in srgb, var(--color-muted-foreground), transparent 60%) 95%,
         transparent 100%
       );
       z-index: 0;

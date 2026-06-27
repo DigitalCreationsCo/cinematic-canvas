@@ -702,30 +702,6 @@
   }
 }
 
-@keyframes cta-bg-motion {
-
-  0%,
-  100% {
-    transform: scale(1) translate(0, 0);
-    opacity: 0.8;
-  }
-
-  25% {
-    transform: scale(1.05) translate(2%, 1%);
-    opacity: 1;
-  }
-
-  50% {
-    transform: scale(1.02) translate(-1%, 2%);
-    opacity: 0.9;
-  }
-
-  75% {
-    transform: scale(1.08) translate(-2%, -1%);
-    opacity: 1;
-  }
-}
-
 @keyframes scan-line {
   0% {
     transform: translateY(-100%);
