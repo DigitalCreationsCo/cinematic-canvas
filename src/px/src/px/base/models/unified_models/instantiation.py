@@ -6,6 +6,7 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from px.base.models.model_utils import _to_str
+from px.log.logger import logger
 
 from .provider_queries import model_provider_metadata
 
@@ -24,7 +25,26 @@ def get_llm(
     watsonx_url=None,
     watsonx_project_id=None,
     ollama_base_url=None,
+    subscription_tier: str | None = None,
 ) -> Any:
+    """Instantiate a language model with credential routing.
+
+    When *api_key* is explicitly provided by the caller (e.g. from a
+    component input) it is used directly — no tier-based routing is
+    applied so that explicit component-level keys always take precedence.
+
+    When *api_key* is ``None``, the full tier-based credential routing
+    is performed via ``resolve_provider_api_key()``:
+      1. Studio + BYOK gate → BYOK from ``Variable`` table.
+      2. Fallback → managed key from ``Credential`` table.
+      3. Ultimate fallback → environment variable.
+
+    .. important::
+       If a BYOK-sourced key raises a 401 / authentication error during
+       model construction the function **fails immediately** with a
+       user-facing error and does **not** silently fall back to a managed
+       key.  This prevents draining platform quota on invalid user keys.
+    """
     # Resolve helpers via package namespace so tests patching
     # px.base.models.unified_models.<name> keep working.
     from px.base.models import unified_models as unified_models_module
@@ -60,8 +80,23 @@ def get_llm(
     # Get model class and parameter names from metadata
     api_key_param = metadata.get("api_key_param", "api_key")
 
-    # Get API key from user input or global variables
-    api_key = unified_models_module.get_api_key_for_provider(user_id, provider, api_key)
+    # ── Credential routing ───────────────────────────────────────────
+    # When the caller explicitly provides an api_key we respect it
+    # directly (backward-compatible with component inputs).  Otherwise
+    # the full tier-based routing kicks in.
+    key_source: str | None = None  # "byok", "managed", or None
+
+    if api_key is not None:
+        # Caller-supplied key — use the original resolution path
+        # (variable-name resolution, DB lookup via VariableService, …)
+        api_key = unified_models_module.get_api_key_for_provider(user_id, provider, api_key)
+    else:
+        # Tier-based routing
+        api_key, key_source = unified_models_module.resolve_provider_api_key(
+            user_id=user_id,
+            provider=provider,
+            subscription_tier=subscription_tier,
+        )
 
     # Validate API key (Ollama doesn't require one)
     if not api_key and provider != "Ollama":
@@ -141,13 +176,9 @@ def get_llm(
         provider_vars = unified_models_module.get_all_variables_for_provider(user_id, provider)
 
         # Priority: component value > database value > env var
-        watsonx_url_value = (
-            watsonx_url if watsonx_url else provider_vars.get("WATSONX_URL") or os.environ.get("WATSONX_URL")
-        )
+        watsonx_url_value = watsonx_url or provider_vars.get("WATSONX_URL") or os.environ.get("WATSONX_URL")
         watsonx_project_id_value = (
-            watsonx_project_id
-            if watsonx_project_id
-            else provider_vars.get("WATSONX_PROJECT_ID") or os.environ.get("WATSONX_PROJECT_ID")
+            watsonx_project_id or provider_vars.get("WATSONX_PROJECT_ID") or os.environ.get("WATSONX_PROJECT_ID")
         )
 
         has_url = bool(watsonx_url_value)
@@ -177,9 +208,7 @@ def get_llm(
 
         # Priority: component value > database value > env var
         ollama_base_url_value = (
-            ollama_base_url
-            if ollama_base_url
-            else provider_vars.get("OLLAMA_BASE_URL") or os.environ.get("OLLAMA_BASE_URL")
+            ollama_base_url or provider_vars.get("OLLAMA_BASE_URL") or os.environ.get("OLLAMA_BASE_URL")
         )
         if ollama_base_url_value:
             kwargs[base_url_param] = ollama_base_url_value
@@ -187,6 +216,19 @@ def get_llm(
     try:
         return model_class(**kwargs)
     except Exception as e:
+        error_str = str(e).lower()
+
+        # ── 401 / auth error with a BYOK key → fail hard, no fallback ─
+        if key_source == "byok" and any(
+            word in error_str for word in ["401", "unauthorized", "authentication", "api key"]
+        ):
+            msg = (
+                f"Your {provider} API key is invalid or has expired. "
+                "Please update your key in your account settings and try again."
+            )
+            logger.error("BYOK 401 for user=%s provider=%s: %s", user_id, provider, e)
+            raise ValueError(msg) from e
+
         # If instantiation fails and it's WatsonX, provide additional context
         if provider in {"IBM WatsonX", "IBM watsonx.ai"} and ("url" in str(e).lower() or "project" in str(e).lower()):
             msg = (
@@ -217,8 +259,17 @@ def get_embeddings(
     watsonx_truncate_input_tokens=None,
     watsonx_input_text=None,
     ollama_base_url=None,
+    subscription_tier: str | None = None,
 ) -> Any:
-    """Instantiate an embeddings model from a model selection dict."""
+    """Instantiate an embeddings model from a model selection dict.
+
+    When *api_key* is explicitly provided by the caller it is used
+    directly — no tier-based routing is applied.
+
+    When *api_key* is ``None``, the full tier-based credential routing
+    is performed via ``resolve_provider_api_key()`` (see ``get_llm`` for
+    the resolution order).
+    """
     # Resolve helpers via package namespace so tests patching
     # px.base.models.unified_models.<name> keep working.
     from px.base.models import unified_models as unified_models_module
@@ -248,7 +299,17 @@ def get_embeddings(
     metadata = model_dict.get("metadata", {})
 
     # --- resolve API key -----------------------------------------------------
-    api_key = unified_models_module.get_api_key_for_provider(user_id, provider, api_key)
+    if api_key is not None:
+        # Caller-supplied key — use the original resolution path
+        api_key = unified_models_module.get_api_key_for_provider(user_id, provider, api_key)
+    else:
+        # Tier-based credential routing
+        api_key, _ = unified_models_module.resolve_provider_api_key(
+            user_id=user_id,
+            provider=provider,
+            subscription_tier=subscription_tier,
+        )
+
     if not api_key and provider != "Ollama":
         provider_variable_map = unified_models_module.get_model_provider_variable_mapping()
         variable_name = provider_variable_map.get(provider, f"{provider.upper().replace(' ', '_')}_API_KEY")
@@ -300,7 +361,7 @@ def get_embeddings(
         "request_timeout": float(request_timeout) if request_timeout else None,
         "max_retries": int(max_retries) if max_retries else None,
         "show_progress_bar": show_progress_bar,
-        "model_kwargs": model_kwargs if model_kwargs else None,
+        "model_kwargs": model_kwargs or None,
     }
 
     # Watson-specific parameters

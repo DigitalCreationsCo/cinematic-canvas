@@ -9,10 +9,11 @@ import sqlalchemy
 import stripe
 
 from portals.services.database.models.user.crud import get_user_by_id
-from portals.services.database.models.user.model import User
 
 if TYPE_CHECKING:
     from sqlmodel.ext.asyncio.session import AsyncSession
+
+    from portals.services.database.models.user.model import User
 
 logger = logging.getLogger(__name__)
 
@@ -234,10 +235,10 @@ async def handle_subscription_updated(subscription: dict, db: AsyncSession) -> N
         new_allowance = credit_service.MONTHLY_ALLOWANCES.get(new_tier, 0)
         if new_allowance > old_allowance:
             top_up = new_allowance - old_allowance
-            credit_row = await credit_service._ensure_user_credit_row(user_id, db, for_update=True)
+            credit_row = await credit_service._ensure_user_credit_row(user_id, db, for_update=True)  # noqa: SLF001
             credit_row.allowance_balance = max(credit_row.allowance_balance, new_allowance)
             credit_row.total_earned += top_up
-            await credit_service._record_transaction(
+            await credit_service._record_transaction(  # noqa: SLF001
                 user_id,
                 top_up,
                 "allowance",
@@ -273,11 +274,11 @@ async def handle_subscription_canceled(subscription: dict, db: AsyncSession) -> 
     # Forfeit allowance balance (purchased credits survive)
     from portals.services import credit_service
 
-    credit_row = await credit_service._ensure_user_credit_row(user_id, db, for_update=True)
+    credit_row = await credit_service._ensure_user_credit_row(user_id, db, for_update=True)  # noqa: SLF001
     forfeited = credit_row.allowance_balance
     if forfeited > 0:
         credit_row.allowance_balance = 0
-        await credit_service._record_transaction(
+        await credit_service._record_transaction(  # noqa: SLF001
             user_id,
             -forfeited,
             "allowance",
@@ -289,6 +290,44 @@ async def handle_subscription_canceled(subscription: dict, db: AsyncSession) -> 
         logger.info(
             "Forfeited %d allowance credits for canceled user %s",
             forfeited,
+            user_id,
+        )
+
+    # ── Purge BYOK credentials on subscription cancel ────────────────
+    # When a user cancels their subscription (or it expires) their
+    # BYOK keys stored in the Variable table must be deleted so that
+    # the user cannot continue using provisioned model access through
+    # old credentials they configured while on the studio tier.
+    #
+    # Only rows with type='Credential' (BYOK keys) are removed —
+    # generic variables are preserved.
+    #
+    # CRITICAL: the WHERE clause MUST be scoped to this user.  A
+    # bare DELETE on the variable table would be catastrophic.
+    from portals.services.database.models.variable.model import Variable
+
+    deleted_count = 0
+    try:
+        result = await db.execute(
+            sqlalchemy.delete(Variable).where(
+                Variable.user_id == user_id,
+                Variable.type == "Credential",
+            )
+        )
+        deleted_count = result.rowcount  # type: ignore[attr-defined]
+        await db.flush()
+    except Exception:
+        logger.exception(
+            "Failed to purge BYOK credentials for canceled user %s",
+            user_id,
+        )
+        # Do not re-raise — the subscription cancellation itself
+        # succeeded; credential cleanup is best-effort.
+
+    if deleted_count:
+        logger.info(
+            "Purged %d BYOK credential(s) for canceled user %s",
+            deleted_count,
             user_id,
         )
 

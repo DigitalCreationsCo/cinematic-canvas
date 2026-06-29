@@ -1,78 +1,47 @@
+version: "3.9"
+
 services:
-  pubsub-emulator:
-    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:549.0.1-emulators
-    command: gcloud beta emulators pubsub start --project=test-project --host-port=0.0.0.0:8085
-    ports:
-      - "8085:8085"
-
-  pipeline:
-    build:
-      context: .
-      dockerfile: src/pipeline/Dockerfile
+  api:
+    build: ./services/api
     environment:
-      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
-      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
-      - POSTGRES_URL=${POSTGRES_URL}
-      - GOOGLE_CLOUD_BUCKET=${GOOGLE_CLOUD_BUCKET}
-      - ENABLE_QUALITY_CONTROL=true
-      - ACCEPT_THRESHOLD="0.90"
-      - MINOR_ISSUE_THRESHOLD="0.85"
-      - MAJOR_ISSUE_THRESHOLD="0.75"
-      - FAILTHRESHOLD="0.75"
-      - MAX_RETRIES="3"
-      - SAFETY_RETRIES="2"
-      - LLM_TEXT_PROVIDER="google"
-      - TEXT_MODEL_NAME="gemini-3-pro-preview"
-      - IMAGE_MODEL_NAME="gemini-2.5-flash-image"
-      - VIDEO_MODEL_NAME="veo-2.0-generate-exp"
-      - LOCAL_AUDIO_PATH="audio/Day.mp3"
-    depends_on:
-      - pubsub-emulator
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres # pragma: allowlist secret
 
-  worker:
-    build:
-      context: .
-      dockerfile: src/pipeline/Dockerfile
-    command: npx tsx src/worker/index.ts
-    environment:
-      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
-      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
-      - POSTGRES_URL=${POSTGRES_URL}
-      - GOOGLE_CLOUD_BUCKET=${GOOGLE_CLOUD_BUCKET}
-      - ENABLE_QUALITY_CONTROL=true
-      - ACCEPT_THRESHOLD="0.90"
-      - MINOR_ISSUE_THRESHOLD="0.85"
-      - MAJOR_ISSUE_THRESHOLD="0.75"
-      - FAILTHRESHOLD="0.75"
-      - MAX_RETRIES="3"
-      - SAFETY_RETRIES="2"
-      - LLM_TEXT_PROVIDER="google"
-      - TEXT_MODEL_NAME="gemini-3-pro-preview"
-      - IMAGE_MODEL_NAME="gemini-2.5-flash-image"
-      - VIDEO_MODEL_NAME="veo-2.0-generate-exp"
-    depends_on:
-      - pubsub-emulator
+      S3_ENDPOINT: http://localstack:4566
+      S3_BUCKET: portals-dev
+      S3_ACCESS_KEY_ID: test
+      S3_SECRET_ACCESS_KEY: test # pragma: allowlist secret
 
-  api-server:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
+      GITHUB_APP_ID: ${GITHUB_APP_ID}
+      GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY}
     ports:
       - "8000:8000"
-    environment:
-      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
-      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
-      - POSTGRES_URL=${POSTGRES_URL}
-      - GOOGLE_CLOUD_BUCKET=${GOOGLE_CLOUD_BUCKET}
-      - PORT=8000
     depends_on:
-      - pubsub-emulator
+      - db
+      - localstack
 
-  client:
-    build:
-      context: .
-      dockerfile: src/client/Dockerfile
+  db:
+    image: supabase/postgres:15.8.1.049
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # pragma: allowlist secret
     ports:
-      - "5173:5173"
-    depends_on:
-      - api-server
+      - "5432:5432"
+    volumes:
+      - supabase_db_data:/var/lib/postgresql/data
+
+  localstack:
+    image: localstack/localstack
+    restart: unless-stopped
+    environment:
+      SERVICES: s3
+      DEFAULT_REGION: us-east-1
+    ports:
+      - "4566:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+
+volumes:
+  supabase_db_data:
+  localstack_data:

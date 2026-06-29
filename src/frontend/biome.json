@@ -26,8 +26,21 @@
       },
       "complexity": {
         "noAdjacentSpacesInRegex": "error",
+        "noBannedTypes": "warn",
         "noExtraBooleanCast": "error",
-        "noUselessEscapeInRegex": "error"
+        "noForEach": "off",
+        "noStaticOnlyClass": "warn",
+        "noThisInStatic": "error",
+        "noUselessCatch": "warn",
+        "noUselessConstructor": "warn",
+        "noUselessEscapeInRegex": "error",
+        "noUselessLoneBlockStatements": "warn",
+        "noUselessRename": "error",
+        "noUselessSwitchCase": "warn",
+        "noUselessUndefinedInitialization": "warn",
+        "useArrowFunction": "off",
+        "useOptionalChain": "warn",
+        "useSimplifiedLogicExpression": "warn"
       },
       "correctness": {
         "noConstAssign": "error",
@@ -37,24 +50,54 @@
         "noGlobalObjectCalls": "error",
         "noInvalidBuiltinInstantiation": "error",
         "noInvalidConstructorSuper": "error",
+        "noInvalidDirectionInLinearGradient": "warn",
         "noNonoctalDecimalEscape": "error",
         "noPrecisionLoss": "error",
         "noSelfAssign": "warn",
         "noSetterReturn": "error",
         "noSwitchDeclarations": "error",
+        "noUnmatchableAnbSelector": "warn",
         "noUnreachable": "error",
         "noUnreachableSuper": "error",
         "noUnsafeFinally": "error",
         "noUnusedImports": "error",
-
         "noUnusedLabels": "error",
         "noUnusedPrivateClassMembers": "error",
         "noUnusedVariables": "warn",
         "useExhaustiveDependencies": "off",
+        "useHookAtTopLevel": "error",
         "useIsNan": "error",
         "useValidForDirection": "error",
         "useValidTypeof": "error",
         "useYield": "error"
+      },
+      "performance": {
+        "noAccumulatingSpread": "warn",
+        "noBarrelFile": "off",
+        "noDelete": "warn"
+      },
+      "style": {
+        "noInferrableTypes": "warn",
+        "noNamespace": "error",
+        "noNonNullAssertion": "warn",
+        "noParameterAssign": "warn",
+        "noParameterProperties": "off",
+        "noRestrictedGlobals": "off",
+        "noShoutyConstants": "warn",
+        "noUnusedTemplateLiteral": "warn",
+        "noUselessElse": "warn",
+        "useCollapsedElseIf": "warn",
+        "useConsistentArrayType": "off",
+        "useConst": "warn",
+        "useDefaultParameterLast": "warn",
+        "useExponentiationOperator": "warn",
+        "useFragmentSyntax": "warn",
+        "useNumberNamespace": "warn",
+        "useSelfClosingElements": "warn",
+        "useShorthandAssign": "warn",
+        "useShorthandFunctionType": "off",
+        "useSingleVarDeclarator": "off",
+        "useTemplate": "warn"
       },
       "suspicious": {
         "noAssignInExpressions": "error",
@@ -68,15 +111,18 @@
             "allow": ["error", "warn"]
           }
         },
+        "noConstEnum": "warn",
         "noControlCharactersInRegex": "error",
         "noDebugger": "error",
+        "noDoubleEquals": "warn",
+        "noDuplicateAtImportRules": "error",
         "noDuplicateCase": "error",
         "noDuplicateClassMembers": "error",
         "noDuplicateElseIf": "error",
-        "noDuplicateAtImportRules": "error",
         "noDuplicateObjectKeys": "error",
         "noDuplicateParameters": "error",
-        "noExplicitAny": "error",
+        "noEmptyBlock": "warn",
+        "noExplicitAny": "off",
         "noFallthroughSwitchClause": "error",
         "noFunctionAssign": "error",
         "noGlobalAssign": "error",
@@ -88,16 +134,22 @@
         "noSelfCompare": "warn",
         "noShadowRestrictedNames": "error",
         "noSparseArray": "error",
+        "noThenProperty": "warn",
+        "noUnsafeDeclarationMerging": "warn",
         "noUnsafeNegation": "error",
+        "noVar": "error",
         "noWith": "error",
-        "useGetterReturn": "error"
+        "useDefaultSwitchClauseLast": "warn",
+        "useGetterReturn": "error",
+        "useNamespaceKeyword": "error"
       }
     }
   },
   "javascript": {
     "formatter": {
       "quoteStyle": "double"
-    }
+    },
+    "globals": ["globalThis"]
   },
   "assist": {
     "enabled": true,
@@ -106,5 +158,23 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["*.test.ts", "*.test.tsx", "*.spec.ts", "*.spec.tsx"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useExhaustiveDependencies": "off"
+          },
+          "style": {
+            "noNonNullAssertion": "off"
+          },
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -1,26 +1,19 @@
 """Group narrative component.
 
-A *group* is a named collection of image and prop *pieces*. Groups are used to
-organize reference material that can be assigned to narrative entities
+A *group* is a named collection of references and can be assigned to entities
 (outfits, styles, world-building references, mood boards, ...).
 
 Each piece carries:
 
 * ``type``        — ``"image"`` or ``"prop"``
 * ``name``        — a display name (filename for images, prop name for props)
-* ``description`` — the piece's **inherited** description (the prop's own
+* ``description`` — the piece's description from the origin (the prop's own
   description, or a description supplied with the image)
+* ``caption``     — inherited from the piece's origin description
 * ``image``       — the reference image (base64 data-URL, http URL, or a
   storage path like ``"{flow_id}/{file_name}"``)
 
-A piece may additionally carry an inline ``custom_description``. Resolution
-order for the *final* description used in the generated prompt is:
-
-    inline ``custom_description``
-        → ``piece_overrides[<name>]``
-            → inherited ``description``
-
-The component assembles all pieces into a combined prompt, invokes an
+The group component assembles all pieces into a combined prompt with references, invokes an
 image-generation model using the piece images as reference inputs.
 The group + generated image is persisted using nap.
 
@@ -39,7 +32,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from typing import Any
+from typing import Any, TypedDict
 
 from portals.schema import Data
 
@@ -51,7 +44,6 @@ from px.base.models.unified_models import (
 )
 from px.components.narrative.base_state_aware import BaseStateAwareComponent
 from px.io import (
-    BoolInput,
     DataInput,
     DictInput,
     FloatInput,
@@ -63,25 +55,19 @@ from px.io import (
 )
 from px.log.logger import logger
 
-# ── Field name constants ─────────────────────────────────────────────
-
-_GROUP_NAME = "group_name"
-_GROUP_DESCRIPTION = "group_description"
-_PIECES = "pieces"
-_PIECE_OVERRIDES = "piece_overrides"
-
-_IMAGE_MODEL = "image_model"
-_ASPECT_RATIO = "aspect_ratio"
-_NEGATIVE_PROMPT = "negative_prompt"
-_GUIDANCE = "guidance"
-_SEED = "seed"
-_PERSIST_ASSET = "persist_asset"
-
-_ASSET_KEY_PREFIX = "group"
-
 # Maximum number of pieces included in a single group output. When more than
 # this many pieces are provided, only the first MAX_GROUP_PIECES are used.
 MAX_GROUP_PIECES = 6
+
+
+class GroupPiece(TypedDict):
+    name: str
+    type: str
+    file_name: str
+    file_id: str
+    image: str
+    description: str
+    custom_description: str
 
 
 def _slugify(value: str) -> str:
@@ -90,7 +76,49 @@ def _slugify(value: str) -> str:
     return slug or "unnamed"
 
 
-def _extract_image_data(result: Any) -> tuple[bytes | None, str | None]:
+def _deep_find_file_id_in_data(data: Any, target_name: str, _depth: int = 0) -> str | None:
+    """Recursive search for a ``file_id`` value within graph node data.
+
+    Walks dict values up to *MAX_DEPTH* levels, looking for a node whose
+    ``display_name`` matches *target_name*.  When found it extracts the
+    ``file_id`` from the node's ``template`` dict (the shape that graph
+    processing code produces).
+    """
+    MAX_DEPTH = 8  # noqa: N806
+    if _depth > MAX_DEPTH or not isinstance(data, dict):
+        return None
+
+    # Check display_name at the current level.
+    display_name = data.get("display_name")
+    if not display_name:
+        nested = data.get("node")
+        if isinstance(nested, dict):
+            display_name = nested.get("display_name")
+
+    if display_name == target_name:
+        # Locate template — may be at data["node"]["template"] or data["template"].
+        template: dict | None = None
+        nested = data.get("node")
+        if isinstance(nested, dict):
+            template = nested.get("template")
+        if not template:
+            template = data.get("template")
+        if isinstance(template, dict) and "file_id" in template:
+            file_id_entry = template["file_id"]
+            if isinstance(file_id_entry, dict):
+                return file_id_entry.get("value")
+            return file_id_entry
+
+    # Recurse into every dict value.
+    for value in data.values():
+        if isinstance(value, dict):
+            result = _deep_find_file_id_in_data(value, target_name, _depth + 1)
+            if result is not None:
+                return result
+    return None
+
+
+def _extract_image_data(result: Any, _depth: int = 0) -> tuple[bytes | None, str | None]:
     """Normalize an image-model invocation result into (bytes, data_or_url).
 
     Image-generation bindings return a variety of shapes; this mirrors the
@@ -99,6 +127,10 @@ def _extract_image_data(result: Any) -> tuple[bytes | None, str | None]:
 
     Returns ``(image_bytes, image_data)`` where exactly one may be populated.
     """
+    # Depth guard to prevent infinite recursion on circular references.
+    if _depth > 10:  # noqa: PLR2004
+        return None, None
+
     if result is None:
         return None, None
 
@@ -113,7 +145,7 @@ def _extract_image_data(result: Any) -> tuple[bytes | None, str | None]:
     if isinstance(result, list):
         # LangChain multimodal responses sometimes wrap the payload in a list.
         for item in result:
-            image_bytes, image_data = _extract_image_data(item)
+            image_bytes, image_data = _extract_image_data(item, _depth + 1)
             if image_bytes or image_data:
                 return image_bytes, image_data
         return None, None
@@ -122,13 +154,13 @@ def _extract_image_data(result: Any) -> tuple[bytes | None, str | None]:
         for key in ("image", "data", "b64_json", "url", "image_url"):
             value = result.get(key)
             if value:
-                return _extract_image_data(value)
+                return _extract_image_data(value, _depth + 1)
         return None, None
 
     # Objects exposing `.content` (e.g. AIMessage).
     content = getattr(result, "content", None)
     if content is not None:
-        return _extract_image_data(content)
+        return _extract_image_data(content, _depth + 1)
 
     return None, None
 
@@ -164,18 +196,18 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
     inputs = [
         StrInput(
-            name=_GROUP_NAME,
+            name="group_name",
             display_name="Group Name",
             info="Name of the collection (e.g. 'Outfits', 'Styles', 'World References').",
             required=True,
         ),
         MessageTextInput(
-            name=_GROUP_DESCRIPTION,
+            name="group_description",
             display_name="Group Description",
             info="Overall direction for what this group represents.",
         ),
         DataInput(
-            name=_PIECES,
+            name="pieces",
             display_name="Pieces",
             info=(
                 "List of pieces. Each piece is a Data/dict with: "
@@ -185,13 +217,15 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             is_list=True,
         ),
         DictInput(
-            name=_PIECE_OVERRIDES,
+            name="piece_overrides",
             display_name="Piece Captions",
-            info="Captions applied to the attached pieces in the prompt. Each piece shows its image preview and an editable caption field. The caption is inherited from the piece filename; edit it to customize the reference description.",
+            info="""Captions applied to the attached pieces in the prompt.
+            Each piece shows its image preview and an editable caption field.
+            The caption is inherited from the piece filename; edit it to customize the reference description.""",
             advanced=True,
         ),
         ModelInput(
-            name=_IMAGE_MODEL,
+            name="image_model",
             display_name="Image Model",
             info="The image-generation model used to produce the group's reference image.",
             model_type="image_generation",
@@ -199,41 +233,31 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             real_time_refresh=True,
         ),
         MessageTextInput(
-            name=_ASPECT_RATIO,
+            name="aspect_ratio",
             display_name="Aspect Ratio",
             info="Output aspect ratio (e.g. '1:1', '16:9', '9:16').",
             advanced=True,
         ),
         MessageTextInput(
-            name=_NEGATIVE_PROMPT,
+            name="negative_prompt",
             display_name="Negative Prompt",
             info="Concepts to avoid in the generated image.",
             advanced=True,
         ),
         FloatInput(
-            name=_GUIDANCE,
+            name="guidance",
             display_name="Guidance",
             info="How closely the model should follow the prompt.",
             advanced=True,
         ),
         IntInput(
-            name=_SEED,
+            name="seed",
             display_name="Seed",
             info="Reproducibility seed (0 or blank for random).",
             advanced=True,
         ),
-        BoolInput(
-            name=_PERSIST_ASSET,
-            display_name="Persist Generated Image?",
-            info=(
-                "If true, the generated image is saved as a project asset "
-                "(reusing the existing asset_entries system — no DB migration)."
-            ),
-            value=True,
-        ),
     ]
 
-    # ── Outputs ─────────────────────────────────────────────────────────
     outputs = [
         Output(
             display_name="Group Data",
@@ -244,31 +268,23 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
     def build_config(self):
         return {
-            _IMAGE_MODEL: {
+            "image_model": {
                 "display_name": "Image Model",
                 "info": "The image-generation model used to produce the group's reference image.",
             },
-            _PERSIST_ASSET: {
-                "display_name": "Persist Generated Image?",
-                "info": (
-                    "If true, the generated image is saved as a project asset "
-                    "(reusing the existing asset_entries system — no DB migration)."
-                ),
-            },
         }
 
-    def update_build_config(self, build_config, field_name, field_value, session_id):
-        # Wire real-time model-option refresh, mirroring ImageModelComponent.
+    def update_build_config(self, build_config, field_value, field_name=None):
         return handle_model_input_update(
-            build_config,
-            field_name,
+            self,
+            dict(build_config),
             field_value,
-            session_id,
-            model_input_name=_IMAGE_MODEL,
+            field_name,
+            cache_key_prefix="image_model_options",
+            model_field_name="image_model",
             get_options_func=get_image_generation_model_options,
         )
 
-    # ── Output method ───────────────────────────────────────────────────
     async def build(
         self,
     ) -> Data:
@@ -283,18 +299,14 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
         overrides = self.piece_overrides or {}
 
-        # 1. Normalize pieces and resolve each piece's final description.
         resolved_pieces = self._normalize_pieces(self.pieces, overrides)
         if not resolved_pieces:
             return Data(data={"error": "Group has no pieces to assemble."})
 
-        # 2. Resolve project context for asset persistence.
         project_id, namespace = self._resolve_project_context()
 
-        # 3. Build the combined prompt from the group + pieces.
         prompt = self._build_prompt(self.group_name, self.group_description, resolved_pieces)
 
-        # 4. Resolve the image model and generate.
         image_bytes, image_data = await self._generate_image(
             image_model=self.image_model,
             prompt=prompt,
@@ -309,17 +321,14 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             logger.warning("Group image generation returned no image.")
             generated = {"data": None, "url": None, "asset_key": None, "persisted": False}
         else:
-            # 5. Persist as a project asset (best-effort, never blocks output).
             generated = await self._persist_generated_image(
                 image_bytes=image_bytes,
                 image_data=image_data,
                 group_name=self.group_name,
                 project_id=project_id,
                 namespace=namespace,
-                persist_asset=self.persist_asset,
             )
 
-        # 6. Persist group data to NAP (best-effort, never blocks output).
         nap_info = await self._persist_group_to_nap(
             group_name=self.group_name,
             group_description=self.group_description,
@@ -328,27 +337,34 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             project_id=project_id,
         )
 
-        # 7. Return the assembled group payload — pieces always remain tracked.
         return Data(
             data={
                 "name": self.group_name,
                 "description": self.group_description,
                 "generated_image": generated,
                 "pieces": resolved_pieces,
-                "project_id": str(project_id) if project_id else None,
-                "nap_uri": nap_info.get("nap_uri") if nap_info else None,
-                "nap_commit_hash": nap_info.get("nap_commit_hash") if nap_info else None,
+                "project_id": str(project_id),
+                "nap_uri": nap_info.get("nap_uri"),
+                "nap_commit_hash": nap_info.get("nap_commit_hash"),
             },
         )
 
-    # ── Helpers ─────────────────────────────────────────────────────────
-    def _normalize_pieces(self, pieces: Any, overrides: dict) -> list[dict]:
+    def _normalize_pieces(self, pieces: Any, overrides: dict) -> list[GroupPiece]:
         """Resolve the raw pieces input into a list of piece dicts.
 
-        Resolution order for each piece's final description (used as the
-        ``caption``)::
+        Each piece's caption is resolved independently using this order::
 
-            inline ``custom_description`` → overrides[name] → inherited description
+            inline ``custom_description`` → overrides[name] → file_name
+            → inherited description → name → ""
+
+        * ``file_name`` is the filename from the origin component and is used
+          as the default caption. It always takes priority over the inherited
+          description so that the caption is never contaminated by long prop
+          description text from a different component.
+        * The ``overrides`` dict is keyed by piece name; only matches for the
+          current piece's name are applied (never cross-contaminate).
+        * ``custom_description`` is an inline override carried on the piece
+          Data itself (set programmatically by upstream components).
 
         At most *MAX_GROUP_PIECES* (6) pieces are returned. Any additional
         pieces are silently truncated and a warning is logged.
@@ -356,13 +372,8 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         if not pieces:
             return []
 
-        # `pieces` may arrive as a single object, a list, or a tuple.
-        if isinstance(pieces, (list, tuple)):
-            raw_pieces = list(pieces)
-        else:
-            raw_pieces = [pieces]
+        raw_pieces = list(pieces) if isinstance(pieces, (list, tuple)) else [pieces]
 
-        # Cap at MAX_GROUP_PIECES.
         if len(raw_pieces) > MAX_GROUP_PIECES:
             logger.warning(
                 "Group received %d pieces; truncating to %d (first %d used).",
@@ -372,35 +383,49 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             )
             raw_pieces = raw_pieces[:MAX_GROUP_PIECES]
 
-        resolved: list[dict] = []
+        resolved: list[GroupPiece] = []
         for raw in raw_pieces:
             piece = self._coerce_piece(raw)
             if piece is None:
                 continue
 
-            name = piece.get("name") or piece.get("file_name") or ""
-            inherited = piece.get("description") or ""
-            custom_inline = piece.get("custom_description")
-            override = overrides.get(name)
+            raw_name = piece.get("name") or piece.get("file_name") or piece.get("image", "").rsplit("/", 1)[-1] or ""
+            file_name = piece.get("file_name") or ""
+            if not file_name:
+                image_path = piece.get("image") or ""
+                file_name = image_path.rsplit("/", 1)[-1] if "/" in image_path else image_path
 
-            # Attempt to recover file_id from graph if missing
+            inherited_desc = piece.get("description") or ""
+            custom_inline = piece.get("custom_description")
+
+            # Override lookup — ONLY match when the piece has a non-empty name
+            # so pieces without a name never accidentally share an override.
+            override = overrides.get(raw_name) if raw_name else None
+
+            # Attempt to recover file_id from graph if missing.
             file_id = piece.get("file_id")
             if not file_id:
-                file_id = self._find_file_id_in_graph(name)
+                file_id = self._find_file_id_in_graph(raw_name)
 
-            # Resolution order:
-            #   inline custom_description → overrides[name] → inherited description → file_name → ""
-            file_name = piece.get("file_name") or ""
-            final_description = custom_inline or (override if override is not None else inherited) or file_name or ""
-            caption = final_description  # the resolved caption
+            # ── Caption resolution ─────────────────────────────────────────
+            # Each step is evaluated per-piece.  file_name always beats
+            # inherited_description so that the default caption is the filename
+            # from the origin component, NEVER a different piece's description.
+            final_caption = (
+                custom_inline
+                or (override if override is not None else None)
+                or file_name
+                or inherited_desc
+                or raw_name
+                or ""
+            )
 
             resolved.append(
                 {
+                    "name": raw_name,
                     "type": piece.get("type") or "image",
-                    "name": name,
-                    "description": final_description,
-                    "caption": caption,
-                    "inherited_description": inherited,
+                    "description": inherited_desc,
+                    "custom_description": final_caption,
                     "image": piece.get("image"),
                     "file_id": file_id,
                     "file_name": file_name,
@@ -409,45 +434,52 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         return resolved
 
     def _find_file_id_in_graph(self, piece_name: str) -> str | None:
-        """Attempt to find file_id for a piece in the graph."""
+        """Attempt to find file_id for a piece in the graph.
+
+        Uses recursive traversal to search through the graph node data
+        structure, which may be nested several levels deep depending on
+        how nodes are serialised.  Falls back silently when the graph is
+        not available or the piece name is not found.
+        """
         if not self.graph or not hasattr(self.graph, "nodes"):
             return None
 
         for node in self.graph.nodes:
-            # Check for display_name in node.data or node.data.node
             node_data = node.data
             if not node_data:
                 continue
+            file_id = _deep_find_file_id_in_data(node_data, piece_name)
+            if file_id:
+                return file_id
 
-            # The node data structure can be complex, check both locations
-            display_name = node_data.get("display_name")
-            if not display_name and "node" in node_data:
-                display_name = node_data["node"].get("display_name")
-
-            if display_name == piece_name:
-                template = node_data.get("node", {}).get("template", {})
-                if "file_id" in template:
-                    return template["file_id"].get("value")
+        logger.debug("file_id not found in graph for piece '%s'", piece_name)
         return None
 
     @staticmethod
     def _coerce_piece(raw: Any) -> dict | None:
-        """Extract a piece dict from a Data/dict/object input."""
+        """Returns a *copy* of the underlying dict so that callers always get
+        an independent snapshot — two calls for the same Data object will
+        never share a mutable reference.
+        This prevents subtle bugs where
+        the same ``.data`` dict is reused across pieces or mutated by
+        graph-processing code between iterations.
+        """  # noqa: D205
         if raw is None:
             return None
 
-        # px Data objects expose a `.data` dict.
+        # px Data objects expose a ``.data`` dict — copy it so each piece
+        # carries its own snapshot independent of the Data object's state.
         if hasattr(raw, "data") and isinstance(raw.data, dict):
-            return raw.data
+            return dict(raw.data)
 
         if isinstance(raw, dict):
-            return raw
+            return dict(raw)
 
         # Objects that behave like mappings.
         if hasattr(raw, "items") and hasattr(raw, "get"):
             try:
                 return dict(raw)  # type: ignore[arg-type]
-            except Exception:  # pragma: no cover - defensive
+            except Exception:  # pragma: no cover - defensive # noqa: BLE001
                 return None
         return None
 
@@ -455,7 +487,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         self,
         group_name: str,
         group_description: str,
-        resolved_pieces: list[dict],
+        resolved_pieces: list[GroupPiece],
     ) -> str:
         """Compose a text prompt describing the group and its pieces.
 
@@ -470,27 +502,22 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         lines.append("")
         lines.append("Pieces (grid):")
         for i, piece in enumerate(resolved_pieces, 1):
-            name = piece.get("name") or "(unnamed)"
-            caption = piece.get("caption") or piece.get("description") or ""
-            piece_type = piece.get("type") or "image"
-            has_image = bool(piece.get("image"))
+            name = piece["name"]
+            description = piece["custom_description"]
+            piece_type = piece["type"]
+            has_image = bool(piece["image"])
 
             # Grid cell header
             lines.append(f"  [{i}] {name} ({piece_type})")
-
-            # Caption — the piece description override becomes the visible caption
-            if caption:
-                lines.append(f"      Caption: {caption}")
-
+            lines.append(f"      Description: {description}")
             # Image indicator
             if has_image:
                 lines.append(f"      Image: attached reference — {name}")
             else:
                 lines.append("      Image: none")
-
         return "\n".join(lines)
 
-    def _resolve_project_context(self) -> tuple[Any, str | None]:
+    def _resolve_project_context(self) -> tuple[str, str]:
         """Resolve (project_id, storage_namespace) from the active flow state.
 
         Falls back to (None, None) when project state can't be resolved (e.g.
@@ -499,20 +526,15 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         """
         try:
             folder = self.get_folder()
-        except Exception as e:  # pragma: no cover - defensive
+        except Exception as e:  # pragma: no cover - defensive # noqa: BLE001
             logger.warning(f"Could not resolve project state for group: {e}")
             return None, None
 
-        if not folder:
-            return None, None
+        project_id = folder.id
+        user_id = self.user_id
 
-        project_id = getattr(folder, "id", None)
-        user_id = getattr(self, "user_id", None)
-
-        namespace = None
-        if project_id is not None and user_id is not None:
-            # Mirrors portals.api.v2.files.get_storage_namespace for project files.
-            namespace = f"{user_id}/{project_id}"
+        # Mirrors portals.api.v2.files.get_storage_namespace for project files.
+        namespace = f"{user_id}/{project_id}"
 
         return project_id, namespace
 
@@ -521,7 +543,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         *,
         image_model: Any,
         prompt: str,
-        resolved_pieces: list[dict],
+        resolved_pieces: list[GroupPiece],
         aspect_ratio: str | None,
         negative_prompt: str | None,
         guidance: float | None,
@@ -535,17 +557,17 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             image_llm = get_llm(model=image_model, user_id=getattr(self, "user_id", None))
         except Exception as e:  # pragma: no cover - defensive
             logger.error(f"Failed to resolve image model: {e}")
-            return None, None
+            raise
 
         # Build a multimodal message: text prompt + each piece image as a
         # reference content part. Not all image-generation bindings accept
         # multimodal content; fall back to a plain prompt string if assembling
         # the reference parts fails or no usable images are available.
-        message = self._build_reference_message(prompt, resolved_pieces)
+        message = await self._build_reference_message(prompt, resolved_pieces)
 
         try:
             result = image_llm.invoke(message)
-        except Exception as first_err:
+        except Exception as first_err:  # noqa: BLE001
             logger.warning(
                 "Multimodal invocation failed for group '%s': %s. Retrying with text-only prompt.",
                 getattr(self, "group_name", "unknown"),
@@ -553,7 +575,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             )
             try:
                 result = image_llm.invoke(prompt)
-            except Exception as e:  # pragma: no cover - defensive
+            except Exception as e:  # pragma: no cover - defensive # noqa: BLE001
                 logger.error(f"Image generation failed: {e}")
                 return None, None
 
@@ -564,15 +586,16 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
         return _extract_image_data(result)
 
-    def _build_reference_message(self, prompt: str, resolved_pieces: list[dict]):
+    async def _build_reference_message(self, prompt: str, resolved_pieces: list[GroupPiece]):
         """Build a multimodal HumanMessage carrying the prompt + piece images.
 
         Each piece's caption text is placed *immediately before* its image in
         the content parts array so the model can associate each reference image
-        with its caption.  Falls back to the plain prompt string when image
-        references can't be resolved (so the caller can still attempt
-        generation without refs).
+        with its caption.  Always returns a ``HumanMessage`` (never a bare
+        string), so callers can rely on a consistent type.
         """
+        from langchain_core.messages import HumanMessage
+
         content_parts: list[dict] = []
 
         # 1. Main group prompt
@@ -582,7 +605,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         # 2. Per-piece reference — caption text then image, interleaved
         for piece in resolved_pieces:
             name = piece.get("name", "unnamed")
-            caption = piece.get("caption") or ""
+            caption = piece.get("custom_description") or ""
 
             # Caption text immediately before the image
             if caption:
@@ -593,57 +616,71 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
                     }
                 )
 
-            # Image reference
+            # Image reference — pass both image_ref and file_id so the
+            # resolution layer can prefer the v2 API when available.
             image_ref = piece.get("image")
+            file_id = piece.get("file_id")
             if image_ref:
                 try:
-                    content_parts.append(self._image_ref_to_content(image_ref))
-                except Exception as e:
+                    content_parts.append(await self._image_ref_to_content(image_ref, file_id))
+                except Exception as e:  # noqa: BLE001
                     logger.debug(f"Skipping piece image '{name}': {e}")
 
         if len(content_parts) <= 1:
-            # No usable reference images — just use the text prompt.
+            # No usable reference images — still return a HumanMessage with
+            # just the text prompt so the caller always gets a consistent type.
+            text = prompt or "Generate an image based on the described group pieces."
             if not prompt:
                 logger.warning("Group has no prompt text and no reference images — using a default prompt.")
-                return "Generate an image based on the described group pieces."
-            return prompt
+            return HumanMessage(content=[{"type": "text", "text": text}])
 
-        try:
-            from langchain_core.messages import HumanMessage
+        return HumanMessage(content=content_parts)
 
-            return HumanMessage(content=content_parts)
-        except Exception:  # pragma: no cover - defensive
-            return prompt
-
-    def _image_ref_to_content(self, image_ref: str) -> dict:
+    async def _image_ref_to_content(self, image_ref: str, file_id: str | None = None) -> dict:
         """Convert an image reference into a multimodal content part dict.
 
         Accepts data-URLs, http(s) URLs, or storage paths
         (``"{flow_id}/{file_name}"``). Storage paths are read via the storage
-        service and embedded as base64 data-URLs using the existing
-        ``create_image_content_dict`` utility.
+        service and embedded as base64 data-URLs.
+
+        When a ``file_id`` is available the v2 API construct
+        ``/api/v2/files/images/{file_id}`` is preferred for efficiency — the
+        model provider fetches the image directly instead of embedding base64.
+        When no ``file_id`` is present the image is fetched asynchronously
+        from storage and embedded as a data URL.
         """
         if not isinstance(image_ref, str):
             msg = f"Unsupported image reference type: {type(image_ref)}"
             raise TypeError(msg)
 
-        # Already a data URL or http(s) URL.
+        # Already a data URL or http(s) URL — use as-is.
         if image_ref.startswith(("data:", "http://", "https://")):
             return {"type": "image_url", "image_url": {"url": image_ref}}
 
-        # Treat as a storage path — resolve via the shared utility.
-        from px.utils.image import create_image_content_dict
+        # Prefer the v2 API by-ID endpoint when a file_id is available.
+        # The model provider will fetch the image from this URL itself,
+        # avoiding the overhead of base64-embedding in the request.
+        if file_id:
+            return {
+                "type": "image_url",
+                "image_url": {"url": f"/api/v2/files/images/{file_id}"},
+            }
 
-        return create_image_content_dict(image_ref)
+        # Fall back to fetching from storage and embedding as a data URL.
+        # This is the safe universal path that works everywhere (local dev,
+        # air-gapped networks, etc.), but produces larger request payloads.
+        from px.utils.image import async_create_image_content_dict
+
+        return await async_create_image_content_dict(image_ref)
 
     async def _persist_group_to_nap(
         self,
         *,
         group_name: str,
         group_description: str,
-        resolved_pieces: list[dict],
+        resolved_pieces: list[GroupPiece],
         generated_image: dict | None,
-        project_id: Any,
+        project_id: str,
     ) -> dict | None:
         """Persist the entire group as a **narrative entity** via NAP.
 
@@ -652,14 +689,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         resulting ``nap_uri`` is returned in the group output so downstream
         narrative components (Characters, Locations, …) can reference it.
 
-        Persistence is best-effort — on any failure the build still succeeds
-        and the group is returned with ``nap_uri`` set to ``None``.
         """
-        project_id_str = str(project_id) if project_id else None
-        if not project_id_str:
-            logger.debug("No project context — skipping NAP persistence.")
-            return None
-
         try:
             from portals.services.nap import get_nap_service
 
@@ -667,25 +697,24 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             if nap_service is None:
                 logger.warning("NAP service not available — skipping NAP persistence.")
                 return None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"NAP service unavailable: {e}")
             return None
 
         # Build the group manifest — mirrors the output payload schema.
-        pieces_data: list[dict] = []
-        for p in resolved_pieces:
-            pieces_data.append(
-                {
-                    "name": p.get("name"),
-                    "type": p.get("type"),
-                    "description": p.get("description"),
-                    "caption": p.get("caption"),
-                    "inherited_description": p.get("inherited_description"),
-                    "image": p.get("image"),
-                    "file_id": p.get("file_id"),
-                    "file_name": p.get("file_name"),
-                }
-            )
+        pieces_data: list[dict] = [
+            {
+                "name": p.get("name"),
+                "type": p.get("type"),
+                "description": p.get("description"),
+                "caption": p.get("custom_description"),
+                "inherited_description": p.get("description"),
+                "image": p.get("image"),
+                "file_id": p.get("file_id"),
+                "file_name": p.get("file_name"),
+            }
+            for p in resolved_pieces
+        ]
 
         manifest: dict[str, Any] = {
             "name": group_name,
@@ -704,7 +733,7 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         try:
             result = await nap_service.create_entity(
                 entity_type="group",
-                project_id=project_id_str,
+                project_id=project_id,
                 initial_data=manifest,
             )
             logger.info(
@@ -713,13 +742,82 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
                 result.uri,
                 result.commit_hash,
             )
-            return {
+            return {  # noqa: TRY300
                 "nap_uri": result.uri,
                 "nap_commit_hash": result.commit_hash,
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"Failed to persist group to NAP: {e}")
             return None
+
+    async def _write_asset_version(
+        self,
+        *,
+        project_id: Any,
+        asset_key: str,
+        data_uri: str,
+        group_name: str,
+    ) -> bool:
+        """Record a project-scoped asset version in the database.
+
+        The generated image is already saved to storage by the caller
+        (``_persist_generated_image``).  This method creates the metadata
+        entry (``AssetEntry`` + ``AssetVersionRow``) so the asset appears
+        in the project's asset registry.
+
+        Best-effort: returns ``True`` on success, ``False`` on any failure
+        (the image remains usable via the storage path).
+        """
+        try:
+            from uuid import UUID
+
+            from portals.services.database.models.asset_entry.model import AssetEntry
+            from portals.services.database.models.asset_version.model import AssetVersionRow
+            from sqlmodel import select
+
+            from px.services.deps import get_db_service
+
+            project_uuid = UUID(str(project_id)) if not isinstance(project_id, UUID) else project_id
+
+            db_service = get_db_service()
+            with db_service.with_session() as session:
+                # Find existing asset entry for this project + key.
+                stmt = select(AssetEntry).where(
+                    AssetEntry.project_id == project_uuid,
+                    AssetEntry.asset_key == asset_key,
+                )
+                entry = session.exec(stmt).first()
+
+                if not entry:
+                    entry = AssetEntry(
+                        project_id=project_uuid,
+                        asset_key=asset_key,
+                        head=0,
+                        best=0,
+                    )
+                    session.add(entry)
+                    session.commit()
+                    session.refresh(entry)
+
+                next_version = (entry.head or 0) + 1
+
+                version = AssetVersionRow(
+                    asset_entry_id=entry.id,
+                    version=next_version,
+                    data=data_uri,
+                    type="image",
+                    metadata={"name": group_name},
+                )
+                session.add(version)
+
+                entry.head = next_version
+                session.add(entry)
+                session.commit()
+
+            return True  # noqa: TRY300
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Failed to record asset version for group '{group_name}': {e}")
+            return False
 
     async def _persist_generated_image(
         self,
@@ -729,20 +827,20 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
         group_name: str,
         project_id: Any,
         namespace: str | None,
-        persist_asset: bool,
     ) -> dict:
         """Persist the generated image as a project-scoped asset.
 
-        Reuses the existing ``asset_entries`` / ``asset_versions`` /
-        ``media_objects`` tables (migration 0020_add_canvas_tables) via
-        ``AssetVersionManager`` — no DB migration required.
-
         Persistence is best-effort: on any failure the image is still returned
         in the payload with ``persisted=False``.
-        """
-        asset_key = f"{_ASSET_KEY_PREFIX}:{_slugify(group_name)}"
 
-        if not persist_asset or project_id is None or namespace is None:
+        Returns a dict with keys ``data``, ``url``, ``asset_key``, ``persisted``.
+        ``data`` / ``url`` are always the *original* model output (data URL,
+        http URL, or storage path after a successful write) and are never a
+        sentinel value.
+        """
+        asset_key = f"group:{_slugify(group_name)}"
+
+        if project_id is None or namespace is None:
             return {
                 "data": image_data,
                 "url": image_data,
@@ -750,9 +848,8 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
                 "persisted": False,
             }
 
-        # Normalize to a storable data string + bytes (for storage write).
         data_uri, storage_bytes = self._to_storable(image_bytes, image_data)
-        if not data_uri:
+        if data_uri is None and storage_bytes is None:
             return {
                 "data": image_data,
                 "url": image_data,
@@ -767,29 +864,42 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             # 1. Write bytes to storage (produces the addressable handle).
             if storage_bytes is not None:
                 if await self._save_to_storage(namespace, file_name, storage_bytes):
-                    data_uri = storage_path
-                # else: keep data_uri as the base64 data URL or http URL
-            # else: data_uri is already a URL — store that string directly.
+                    data_uri = storage_path  # now set to the real path
+                else:
+                    # Storage save failed — can't persist without a storage URI.
+                    # Return the original model output with persisted=False.
+                    return {
+                        "data": image_data,
+                        "url": image_data,
+                        "asset_key": asset_key,
+                        "persisted": False,
+                    }
+            else:
+                # else: data_uri is already a URL (http/data URL) — store that string.
 
-            # 2. Record an asset version (project-scoped) via AssetVersionManager.
-            persisted = await self._write_asset_version(
-                project_id=project_id,
-                asset_key=asset_key,
-                data_uri=data_uri,
-                group_name=group_name,
-            )
+                # 2. Record an asset version (project-scoped) via direct DB session.
+                persisted = await self._write_asset_version(
+                    project_id=project_id,
+                    asset_key=asset_key,
+                    data_uri=data_uri,
+                    group_name=group_name,
+                )
 
+                return {
+                    "data": data_uri,
+                    "url": data_uri,
+                    "asset_key": asset_key,
+                    "persisted": persisted,
+                }
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Failed to persist group image as asset: {e}")
+            # data_uri is already resolved to the storage path (if storage
+            # save succeeded) or the original URL/data-URL — return it so the
+            # caller never loses the addressable handle after a successful
+            # storage write.
             return {
                 "data": data_uri,
                 "url": data_uri,
-                "asset_key": asset_key,
-                "persisted": persisted,
-            }
-        except Exception as e:
-            logger.warning(f"Failed to persist group image as asset: {e}")
-            return {
-                "data": image_data or data_uri,
-                "url": image_data or data_uri,
                 "asset_key": asset_key,
                 "persisted": False,
             }
@@ -798,12 +908,17 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
     def _to_storable(image_bytes: bytes | None, image_data: str | None) -> tuple[str | None, bytes | None]:
         """Normalize generation output into (data_uri, bytes_for_storage).
 
-        - Raw bytes are stored as-is and addressed by the storage path.
-        - A data-URL string is decoded back to bytes so it can be stored.
-        - An http(s) URL is stored verbatim (no bytes needed).
+        * ``data_uri`` is ``None`` when bytes need to be stored first — it is
+          set to the actual storage path only after a successful save.
+        * ``data_uri`` is the http(s) URL string when no bytes are involved.
+        * ``data_uri`` is the base64 ``data:`` URL when the input was already
+          a data URL but decoding failed (defensive fallback).
+
+        Returns ``(None, None)`` when there is nothing to persist.
         """
         if image_bytes is not None:
-            return "pending", image_bytes
+            # Raw bytes — data_uri is unknown until we save to storage.
+            return None, image_bytes
 
         if image_data:
             # Inline base64 data-URL → decode to bytes for storage.
@@ -812,10 +927,11 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
 
                 try:
                     _, b64 = image_data.split(";base64,", 1)
-                    return "pending", base64.b64decode(b64)
-                except Exception:  # pragma: no cover - defensive
+                    return None, base64.b64decode(b64)
+                except Exception:  # pragma: no cover - defensive # noqa: BLE001
+                    # Decoding failed — keep the original data URL as fallback.
                     return image_data, None
-            # http(s) URL → store the string directly.
+            # http(s) URL → store the string directly (no bytes needed).
             return image_data, None
 
         return None, None
@@ -833,38 +949,3 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
             return False
         await storage.save_file(flow_id=namespace, file_name=file_name, data=data)
         return True
-
-    async def _write_asset_version(
-        self,
-        *,
-        project_id: Any,
-        asset_key: str,
-        data_uri: str,
-        group_name: str,
-    ) -> bool:
-        """Create a project-scoped asset version for the generated image."""
-        try:
-            from portals.services.asset_version_manager import AssetVersionManager, Scope
-
-            from px.services.deps import session_scope
-        except Exception as e:  # pragma: no cover - defensive
-            logger.warning(f"Asset persistence modules unavailable: {e}")
-            return False
-
-        try:
-            async with session_scope() as session:
-                manager = AssetVersionManager(session)
-                await manager.create_versioned_assets(
-                    scope=Scope(
-                        project_id=project_id,
-                        entity_type="project",
-                    ),
-                    asset_keys=[asset_key],
-                    type_="image",
-                    data_list=[data_uri],
-                    metadata={"source": "group", "group_name": group_name},
-                )
-            return True
-        except Exception as e:  # pragma: no cover - defensive
-            logger.warning(f"AssetVersionManager write failed: {e}")
-            return False

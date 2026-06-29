@@ -358,6 +358,7 @@ export function ParameterRenderComponent({
         return (
           <ModelInputComponent
             {...baseInputProps}
+            name={name}
             options={templateData?.options || []}
             placeholder={templateData?.placeholder}
             externalOptions={templateData?.external_options}

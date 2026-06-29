@@ -1,4 +1,24 @@
-"""Credential resolution and provider validation helpers."""
+"""Credential resolution and provider validation helpers.
+
+Secret-management hierarchy
+--------------------------
+This module is the **sole authority** for resolving API keys used by the
+model factory (``get_llm``).  Two credential sources exist:
+
+* **BYOK** (Bring Your Own Key) — user-provided keys stored in the
+  ``Variable`` table with ``type='Credential'``.  Only available on the
+  ``studio`` tier when the ``byok`` feature gate is enabled.
+
+* **Managed keys** — platform-owned keys stored in the ``Credential``
+  table (one row per provider).  Used as the primary key for non-studio
+  tiers and as a fallback when a studio user has no BYOK configured.
+
+Routing is performed by ``resolve_provider_api_key()`` which is called
+from ``get_llm()``.  The caller never needs to know which source was used
+unless a 401 error occurs with a BYOK key — in that case the error is
+surfaced directly to the user and **no** silent fallback to the managed
+key is permitted.
+"""
 
 from __future__ import annotations
 
@@ -18,15 +38,251 @@ from .provider_queries import (
     get_provider_all_variables,
 )
 
+# ---------------------------------------------------------------------------
+# Tier-based credential routing  (replaces the broken resolve_provider_credentials)
+# ---------------------------------------------------------------------------
+
+
+def resolve_provider_api_key(
+    user_id: UUID | str | None,
+    provider: str,
+    subscription_tier: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Resolve the API key with full tier-based credential routing.
+
+    Precedence (strict evaluation tree)
+    -----------------------------------
+    1. Determine the user's subscription tier (looked up from the DB if
+       *subscription_tier* is not provided).
+    2. If the tier is ``"studio"`` check the ``byok`` feature gate.
+       a. Gate passes → attempt to read a BYOK key from the ``Variable``
+          table (``type='Credential'``, name matching the provider's
+          primary variable key, e.g. ``OPENAI_API_KEY``).
+       b. Key found and valid → **use BYOK**.
+       c. No BYOK → fall through to the managed key.
+    3. Lower tiers / gate closed → try the managed key from the
+       ``Credential`` table (one row per provider).
+    4. If no managed key is configured → fall back to the canonical
+       environment variable (e.g. ``OPENAI_API_KEY``).
+
+    Returns:
+    -------
+    tuple[str | None, str | None]
+        ``(api_key, key_source)`` where *key_source* is one of
+        ``"byok"``, ``"managed"``, or ``None`` when no key could be
+        resolved.
+
+    401 guarantee
+    -------------
+    When the returned *key_source* is ``"byok"`` and the subsequent model
+    invocation raises a 401 / authentication error, the caller **must
+    not** silently fall back to a managed key.  Doing so would drain
+    platform quota.  Instead the error must be surfaced to the user with
+    a clear message that their provided key is invalid.
+    """
+    try:
+        api_key, key_source = run_until_complete(_resolve_provider_api_key_async(user_id, provider, subscription_tier))
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "Credential routing failed for user=%s provider=%s",
+            user_id,
+            provider,
+        )
+        return None, None
+
+    if api_key:
+        logger.debug(
+            "Credential routing: user=%s provider=%s source=%s key_present=True",
+            user_id,
+            provider,
+            key_source,
+        )
+    else:
+        logger.debug(
+            "Credential routing: user=%s provider=%s source=%s key_present=False",
+            user_id,
+            provider,
+            key_source,
+        )
+
+    return api_key, key_source
+
+
+def resolve_managed_api_key(provider: str) -> str | None:
+    """Read the platform-managed API key for *provider*.
+
+    Resolution order
+    -----------------
+    1. Managed key from the ``Credential`` table (one row per provider).
+    2. ``MANAGED_{provider}_API_KEY`` environment variable (kept for
+       backward compatibility in self-hosted / headless deployments).
+
+    This is a convenience wrapper used when the caller already knows they
+    want the managed key (e.g. caller does its own tier check).
+    """
+    api_key, key_source = resolve_provider_api_key(user_id=None, provider=provider, subscription_tier=None)
+    if key_source == "managed":
+        return api_key
+    return None
+
+
+def resolve_byok_api_key(user_id: UUID | str, provider: str) -> str | None:
+    """Read the user's BYOK API key for *provider* from the Variable table.
+
+    Returns ``None`` if no BYOK is configured, the variable is not found,
+    or decryption fails.
+    """
+    api_key, key_source = resolve_provider_api_key(user_id=user_id, provider=provider, subscription_tier="studio")
+    if key_source == "byok":
+        return api_key
+    return None
+
+
+async def _resolve_provider_api_key_async(
+    user_id: UUID | str | None,
+    provider: str,
+    subscription_tier: str | None,
+) -> tuple[str | None, str | None]:
+    """Async implementation of ``resolve_provider_api_key``.
+
+    Uses a single database session for all lookups (tier, feature gate,
+    BYOK variable, managed credential) to minimise overhead.
+    """
+    provider_variable_map = get_model_provider_variable_mapping()
+    variable_name = provider_variable_map.get(provider)
+
+    # When there is no user context (headless / px run, or caller just
+    # wants the managed key without a user) we skip the tier and BYOK
+    # steps but still check the Credential table and env vars.
+    has_user_context = user_id is not None and not (isinstance(user_id, str) and user_id == "None")
+
+    user_uuid: UUID | None = (UUID(user_id) if isinstance(user_id, str) else user_id) if has_user_context else None
+
+    from sqlmodel import select
+
+    async with session_scope() as session:
+        # ── Step 1: Determine subscription tier ──────────────────────
+        tier = subscription_tier
+        if has_user_context and tier is None:
+            from portals.services.database.models.user.model import User
+
+            result = await session.execute(select(User).where(User.id == user_uuid))
+            user = result.scalar_one_or_none()
+            tier = user.subscription_tier or "free" if user else "free"
+
+        # ── Step 2: Studio tier → check BYOK feature gate ────────────
+        if has_user_context and tier == "studio" and variable_name:
+            from portals.services.auth import utils as auth_utils
+            from portals.services.database.models.feature_gate.model import (
+                FeatureGate,
+            )
+            from portals.services.database.models.variable.model import (
+                Variable,
+            )
+
+            gate_result = await session.execute(
+                select(FeatureGate).where(
+                    FeatureGate.feature == "byok",
+                    FeatureGate.tier == "studio",
+                    FeatureGate.enabled == True,  # noqa: E712
+                )
+            )
+            byok_gate = gate_result.scalar_one_or_none()
+
+            if byok_gate is not None and byok_gate.enabled:
+                # ── Step 2a: Attempt BYOK from Variable table ─────────
+                var_result = await session.execute(
+                    select(Variable).where(
+                        Variable.user_id == user_uuid,
+                        Variable.name == variable_name,
+                        Variable.type == "Credential",
+                    )
+                )
+                variable = var_result.scalar_one_or_none()
+
+                if variable is not None and variable.value:
+                    try:
+                        decrypted = auth_utils.decrypt_api_key(variable.value)
+                        if decrypted:
+                            logger.debug(
+                                "BYOK resolved for user=%s provider=%s",
+                                user_id,
+                                provider,
+                            )
+                            return decrypted, "byok"
+                    except Exception:  # noqa: BLE001
+                        logger.exception(
+                            "Failed to decrypt BYOK for user=%s provider=%s",
+                            user_id,
+                            provider,
+                        )
+
+                logger.debug(
+                    "BYOK feature gate passed but no key found for user=%s provider=%s — falling back to managed key",
+                    user_id,
+                    provider,
+                )
+
+        # ── Step 3: Managed key from Credential table ────────────────
+        from portals.services.database.models.credential.model import (
+            Credential,
+        )
+
+        cred_result = await session.execute(select(Credential).where(Credential.provider == provider))
+        credential = cred_result.scalar_one_or_none()
+
+        if credential is not None and credential.api_key:
+            try:
+                from portals.services.auth import utils as auth_utils
+
+                decrypted = auth_utils.decrypt_api_key(credential.api_key)
+                if decrypted:
+                    logger.debug("Managed key resolved for provider=%s", provider)
+                    return decrypted, "managed"
+            except Exception:  # noqa: BLE001
+                logger.exception("Failed to decrypt managed key for provider=%s", provider)
+
+        # ── Step 4: Ultimate fallback to environment variable ────────
+        if variable_name:
+            env_key = os.getenv(variable_name)
+            if env_key:
+                logger.debug(
+                    "Using environment variable %s for provider=%s",
+                    variable_name,
+                    provider,
+                )
+                return env_key, "managed"
+
+        # ── Nothing found ────────────────────────────────────────────
+        logger.warning(
+            "No credential resolved for user=%s provider=%s tier=%s",
+            user_id,
+            provider,
+            tier,
+        )
+        return None, None
+
+
+# ---------------------------------------------------------------------------
+# Original API  (kept for backward compatibility)
+# ---------------------------------------------------------------------------
+
 
 def get_api_key_for_provider(
-    user_id: UUID | str | None, provider: str, api_key: str | None = None
+    user_id: UUID | str | None,
+    provider: str,
+    api_key: str | None = None,
 ) -> str | None:
     """Get API key from component input or global variables.
 
-    When api_key is set to an environment variable name (e.g. ANTHROPIC_API_KEY),
-    that name is resolved from os.environ or global variables so imported flows
-    can reference credentials without storing the raw key.
+    When *api_key* is set to an environment variable name
+    (e.g. ``ANTHROPIC_API_KEY``), that name is resolved from
+    ``os.environ`` or global variables so imported flows can reference
+    credentials without storing the raw key.
+
+    .. note::
+       This function does **not** perform tier-based routing.  For that
+       use ``resolve_provider_api_key()`` instead.
     """
 
     # Resolve variable name (canonical or custom e.g. MY_OPENAI_API_KEY) from env or global vars
@@ -43,9 +299,7 @@ def get_api_key_for_provider(
                         return None
                     try:
                         return await variable_service.get_variable(
-                            user_id=(
-                                UUID(user_id) if isinstance(user_id, str) else user_id
-                            ),
+                            user_id=(UUID(user_id) if isinstance(user_id, str) else user_id),
                             name=var_name,
                             field="",
                             session=session,
@@ -80,10 +334,8 @@ def get_api_key_for_provider(
     # Try the database-backed variable service first when a user_id is available.
     # Fall through to os.environ regardless so px run (no user_id) can still pick
     # up canonical credentials from the shell.
-    has_user = user_id is not None and not (
-        isinstance(user_id, str) and user_id == "None"
-    )
-    api_key = None
+    has_user = user_id is not None and not (isinstance(user_id, str) and user_id == "None")
+    resolved_key = None
     if has_user:
 
         async def _get_variable():
@@ -93,7 +345,7 @@ def get_api_key_for_provider(
                     return None
                 try:
                     return await variable_service.get_variable(
-                        user_id=UUID(user_id) if isinstance(user_id, str) else user_id,
+                        user_id=(UUID(user_id) if isinstance(user_id, str) else user_id),
                         name=variable_name,
                         field="",
                         session=session,
@@ -102,19 +354,17 @@ def get_api_key_for_provider(
                     return None
 
         try:
-            api_key = run_until_complete(_get_variable())
+            resolved_key = run_until_complete(_get_variable())
         except (ValueError, Exception):  # noqa: BLE001
-            api_key = None
+            resolved_key = None
 
-    if api_key:
-        return api_key
+    if resolved_key:
+        return resolved_key
 
     return os.getenv(variable_name)
 
 
-def get_all_variables_for_provider(
-    user_id: UUID | str | None, provider: str
-) -> dict[str, str]:
+def get_all_variables_for_provider(user_id: UUID | str | None, provider: str) -> dict[str, str]:
     """Get all configured variables for a provider from database or environment."""
     result: dict[str, str] = {}
 
@@ -200,7 +450,8 @@ def _validate_and_get_enabled_providers(
                 if variable.value is not None:
                     try:
                         decrypted_value = auth_utils.decrypt_api_key(
-                            variable.value, settings_service=settings_service
+                            variable.value,
+                            settings_service=settings_service,
                         )
                         if decrypted_value and decrypted_value.strip():
                             value = decrypted_value
@@ -241,8 +492,8 @@ def _validate_and_get_enabled_providers(
                 try:
                     validate_model_provider_key(provider, collected_values)
                     enabled.add(provider)
-                except (ValueError, Exception) as e:  # noqa: BLE001
-                    logger.debug("Provider %s validation failed: %s", provider, e)
+                except (ValueError, Exception) as exc:  # noqa: BLE001
+                    logger.debug("Provider %s validation failed: %s", provider, exc)
 
     return enabled
 
@@ -256,7 +507,9 @@ class _VarWithValue:
         self.value = value
 
 
-async def _get_model_status(user_id: UUID | str) -> tuple[set[str], set[str]]:
+async def _get_model_status(
+    user_id: UUID | str,
+) -> tuple[set[str], set[str]]:
     """Fetch disabled and explicitly enabled model sets for a user.
 
     Returns:
@@ -329,27 +582,30 @@ async def _fetch_enabled_providers_for_user(user_id: UUID | str) -> set[str]:
                 try:
                     # Get the raw Variable object to access the actual value
                     variable_obj = await variable_service.get_variable_object(
-                        user_id=user_id_uuid, name=var_name, session=session
+                        user_id=user_id_uuid,
+                        name=var_name,
+                        session=session,
                     )
                     if variable_obj and variable_obj.value:
-                        all_provider_variables[var_name] = _VarWithValue(
-                            variable_obj.value
-                        )
+                        all_provider_variables[var_name] = _VarWithValue(variable_obj.value)
                 except Exception as e:  # noqa: BLE001
                     # Variable not found or error accessing it - skip
                     logger.error(
-                        f"Error accessing variable {var_name} for provider {provider}: {e}"
+                        "Error accessing variable %s for provider %s: %s",
+                        var_name,
+                        provider,
+                        e,
                     )
                     continue
 
         # Use shared helper to validate and get enabled providers
-        return _validate_and_get_enabled_providers(
-            all_provider_variables, provider_variable_map
-        )
+        return _validate_and_get_enabled_providers(all_provider_variables, provider_variable_map)
 
 
 def validate_model_provider_key(
-    provider: str, variables: dict[str, str], model_name: str | None = None
+    provider: str,
+    variables: dict[str, str],
+    model_name: str | None = None,
 ) -> None:
     """Validate a model provider by making a minimal test call."""
     if not provider:
@@ -363,7 +619,7 @@ def validate_model_provider_key(
         if models and models[0].get("models"):
             first_model = models[0]["models"][0]["model_name"]
     except Exception as e:  # noqa: BLE001
-        logger.error(f"Error getting unified models for provider {provider}: {e}")
+        logger.error("Error getting unified models for provider %s: %s", provider, e)
 
     # For providers that need a model to test credentials
     if not first_model and provider in [
@@ -392,9 +648,7 @@ def validate_model_provider_key(
             api_key = variables.get("ANTHROPIC_API_KEY")
             if not api_key:
                 return
-            llm = ChatAnthropic(
-                anthropic_api_key=api_key, model=first_model, max_tokens=1
-            )
+            llm = ChatAnthropic(anthropic_api_key=api_key, model=first_model, max_tokens=1)
             llm.invoke("test")
 
         elif provider == "Google Generative AI":
@@ -405,9 +659,7 @@ def validate_model_provider_key(
             api_key = variables.get("GOOGLE_API_KEY")
             if not api_key:
                 return
-            llm = ChatGoogleGenerativeAI(
-                google_api_key=api_key, model=first_model, max_tokens=1
-            )
+            llm = ChatGoogleGenerativeAI(google_api_key=api_key, model=first_model, max_tokens=1)
             llm.invoke("test")
 
         elif provider == "IBM WatsonX":
@@ -449,15 +701,10 @@ def validate_model_provider_key(
             if model_name:
                 available_models = [m.get("name") for m in data["models"]]
                 # Exact match or match with :latest
-                if (
-                    model_name not in available_models
-                    and f"{model_name}:latest" not in available_models
-                ):
+                if model_name not in available_models and f"{model_name}:latest" not in available_models:
                     # Lenient check for missing tag
                     if ":" not in model_name:
-                        if not any(
-                            m.startswith(f"{model_name}:") for m in available_models
-                        ):
+                        if not any(m.startswith(f"{model_name}:") for m in available_models):
                             available_str = ", ".join(available_models[:3])
                             msg = f"Model '{model_name}' not found on Ollama server. Available: {available_str}"
                             logger.error(msg)
@@ -474,7 +721,7 @@ def validate_model_provider_key(
         error_msg = str(e).lower()
         if any(word in error_msg for word in ["401", "authentication", "api key"]):
             msg = f"Invalid API key for {provider}"
-            logger.error(f"Invalid API key for {provider}: {e}")
+            logger.error("Invalid API key for %s: %s", provider, e)
             raise ValueError(msg) from e
 
         # Rethrow specific Ollama errors with a user-facing message

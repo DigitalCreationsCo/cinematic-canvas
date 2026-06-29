@@ -44,6 +44,7 @@ export default function ModelInputComponent({
   editNode,
   inspectionPanel,
   showEmptyState = false,
+  name = "model",
 }: BaseInputProps<SelectedModel[]> &
   ModelInputComponentType): JSX.Element | null {
   const { setErrorData } = useAlertStore();
@@ -82,7 +83,7 @@ export default function ModelInputComponent({
   const { refreshAllModelInputs } = useRefreshModelInputs();
 
   const postTemplateValue = usePostTemplateValue({
-    parameterId: "model",
+    parameterId: name,
     nodeId: nodeId || "",
     node: (nodeClass as APIClassType) || null,
   });
@@ -101,7 +102,7 @@ export default function ModelInputComponent({
   });
 
   const modelType = (() => {
-    const rawType = nodeClass?.template?.model?.model_type;
+    const rawType = nodeClass?.template?.[name]?.model_type;
     // Map from the Python ModelInputMixin model_type values to
     // the model-catalog (API) model_type values used for filtering.
     switch (rawType) {
@@ -308,7 +309,7 @@ export default function ModelInputComponent({
         const store = useFlowStore.getState();
         const node = store.getNode(nodeId);
         const nodeData = node?.data as NodeDataType | undefined;
-        if (nodeData?.node?.template?.model?._connection_mode) {
+        if (nodeData?.node?.template?.[name]?._connection_mode) {
           store.setNode(
             nodeId,
             (prev) => ({
@@ -320,8 +321,8 @@ export default function ModelInputComponent({
                   ...(prev.data as NodeDataType).node,
                   template: {
                     ...(prev.data as NodeDataType).node.template,
-                    model: {
-                      ...(prev.data as NodeDataType).node.template.model,
+                    [name]: {
+                      ...(prev.data as NodeDataType).node.template[name],
                       _connection_mode: false,
                     },
                   },

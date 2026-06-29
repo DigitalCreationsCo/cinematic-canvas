@@ -1,8 +1,0 @@
-[build]
-  base = "website"
-  command = "npm run build"
-<<<<<<< Updated upstream
-  publish = "dist"
-=======
-  publish = "dist"
->>>>>>> Stashed changes

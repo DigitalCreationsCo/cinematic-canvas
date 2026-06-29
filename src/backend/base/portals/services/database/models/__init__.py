@@ -4,6 +4,7 @@ from .asset_version import AssetVersionRow
 from .auth import SSOConfig, SSOUserProfile
 from .block import Block
 from .character import Character
+from .credential import Credential
 from .credit_transaction import CreditTransaction
 from .deployment import Deployment
 from .deployment_provider_account import DeploymentProviderAccount
@@ -38,6 +39,7 @@ __all__ = [
     "AssetVersionRow",
     "Block",
     "Character",
+    "Credential",
     "CreditTransaction",
     "Deployment",
     "DeploymentProviderAccount",
@@ -68,4 +70,5 @@ __all__ = [
     "UserCredit",
     "UserTeamLink",
     "Variable",
+    "VertexBuildTable",
 ]

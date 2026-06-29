@@ -1,43 +1,124 @@
 {
-    "editor.fontSize": 11,
-    "editor.lineHeight": 1.25,
-    "terminal.integrated.fontSize": 9.5,
-    "files.autoSave": "off",
-    "[python]": {
-        "editor.defaultFormatter": "charliermarsh.ruff",
-        "editor.formatOnSave": true
-    },
-    "js/ts": {
-        "tsdk": {
-            "path": "node_modules/typescript/lib",
-            "promptToUseWorkspaceVersion": true,
-        },
-        "tsserver": {
-            "automaticTypeAcquisition": {
-                "enabled": false,
-            },
-        },
-        "preferences": {
-            "importModuleSpecifier": "non-relative",
-        }
-    },
-    "typescript.tsconfig": "./tsconfig.editor.json",
-    "tailwindCSS.lint.suggestCanonicalClasses": "none",
-    "tailwindCSS.lint.suggestAppliedClasses": "ignore",
-    "search.exclude": {
-        "**/node_modules": true,
-        "**/dist": true,
-        "**/.next": true,
-        "**/.git": true,
-        "**/coverage": true,
-        "**/.DS_Store": true
-    },
-    "files.watcherExclude": {
-        "**/node_modules/**": true,
-        "**/dist/**": true,
-        "**/.next/**": true,
-        "**/.git/objects/**": true,
-        "**/.git/subtree-cache/**": true,
-        "**/coverage/**": true
-    },
+  // ── Editor Appearance ─────────────────────────────────────────────
+  "editor.fontSize": 11,
+  "editor.lineHeight": 1.25,
+  "editor.rulers": [120],
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports.biome": "explicit",
+    "source.fixAll.biome": "explicit",
+    "source.fixAll.eslint": "explicit"
+  },
+  "editor.defaultFormatter": "biomejs.biome",
+  "files.autoSave": "off",
+  "files.encoding": "utf8",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // ── Terminal ──────────────────────────────────────────────────────
+  "terminal.integrated.fontSize": 9.5,
+
+  // ── Python (Ruff formatter + Pyright type checking) ───────────────
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  "python.analysis.typeCheckingMode": "standard",
+  "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.inlayHints.functionReturnTypes": true,
+  "python.analysis.inlayHints.variableTypes": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.packageIndexDepths": [
+    { "name": "portals", "depth": 3 },
+    { "name": "portals_sdk", "depth": 2 },
+    { "name": "px", "depth": 3 }
+  ],
+
+  // ── TypeScript / JavaScript (Biome default) ───────────────────────
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "typescript.tsserver.automaticTypeAcquisition.enabled": false,
+  "typescript.tsconfig": "./tsconfig.editor.json",
+
+  // Biome is the default formatter; overrides below for specific languages
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true
+  },
+
+  // ── Tailwind CSS ──────────────────────────────────────────────────
+  "tailwindCSS.lint.suggestCanonicalClasses": "none",
+  "tailwindCSS.lint.suggestAppliedClasses": "ignore",
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+    ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+  ],
+
+  // ── Files / Search ────────────────────────────────────────────────
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.next": true,
+    "**/.git": true,
+    "**/coverage": true,
+    "**/.DS_Store": true,
+    "**/__pycache__": true,
+    "**/.ruff_cache": true,
+    "**/.venv": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/.next/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/coverage/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true
+  },
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+
+  // ── YAML ──────────────────────────────────────────────────────────
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.autoIndent": "advanced"
+  },
+
+  // ── TOML ──────────────────────────────────────────────────────────
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.formatOnSave": true
+  }
 }

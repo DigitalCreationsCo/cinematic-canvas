@@ -21,6 +21,9 @@ from .class_registry import (
 from .credentials import (
     get_all_variables_for_provider,
     get_api_key_for_provider,
+    resolve_byok_api_key,
+    resolve_managed_api_key,
+    resolve_provider_api_key,
     validate_model_provider_key,
 )
 from .instantiation import get_embeddings, get_llm
@@ -75,6 +78,9 @@ __all__ = [
     "handle_model_input_update",
     "model_provider_metadata",
     "normalize_model_names_to_dicts",
+    "resolve_byok_api_key",
+    "resolve_managed_api_key",
+    "resolve_provider_api_key",
     "update_model_options_in_build_config",
     "validate_model_provider_key",
 ]

@@ -1,0 +1,21 @@
+{
+  "recommendations": [
+    // Python
+    "charliermarsh.ruff",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.debugpy",
+
+    // TypeScript / JavaScript
+    "biomejs.biome",
+    "dbaeumer.vscode-eslint",
+
+    // Frontend
+    "bradlc.vscode-tailwindcss",
+
+    // General
+    "EditorConfig.EditorConfig",
+    "tamasfe.even-better-toml",
+    "redhat.vscode-yaml"
+  ]
+}
