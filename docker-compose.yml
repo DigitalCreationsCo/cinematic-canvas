@@ -3,45 +3,91 @@ version: "3.9"
 services:
   api:
     build: ./services/api
+    restart: unless-stopped
+    depends_on:
+      - db
+      - localstack
+      - lore-server
+
+    ports:
+      - "8000:8000"
+
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres # pragma: allowlist secret
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
 
       S3_ENDPOINT: http://localstack:4566
       S3_BUCKET: portals-dev
       S3_ACCESS_KEY_ID: test
-      S3_SECRET_ACCESS_KEY: test # pragma: allowlist secret
+      S3_SECRET_ACCESS_KEY: test
+
+      LORE_SERVER_URL: http://lore-server:41339
+      LORE_GRPC_HOST: lore-server:41337
+      LORE_QUIC_HOST: lore-server:41337
 
       GITHUB_APP_ID: ${GITHUB_APP_ID}
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY}
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-      - localstack
 
   db:
     image: supabase/postgres:15.8.1.049
     restart: unless-stopped
+
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres # pragma: allowlist secret
+      POSTGRES_PASSWORD: postgres
+
     ports:
       - "5432:5432"
+
     volumes:
-      - supabase_db_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
 
   localstack:
     image: localstack/localstack
     restart: unless-stopped
+
     environment:
       SERVICES: s3
       DEFAULT_REGION: us-east-1
+
     ports:
       - "4566:4566"
+
     volumes:
       - localstack_data:/var/lib/localstack
 
+  lore-server:
+    image: lore-server
+    # or:
+    # build:
+    #   context: ./lore
+    #   dockerfile: lore-server/Dockerfile
+    restart: unless-stopped
+
+    ports:
+      - "41337:41337/tcp"
+      - "41337:41337/udp"
+      - "41339:41339"
+
+    volumes:
+      # Persistent repository data
+      - lore_data:/data
+
+      # QUIC certificate
+      - ./infra/lore/cert.pem:/etc/lore/cert.pem:ro
+      - ./infra/lore/key.pem:/etc/lore/key.pem:ro
+
+      # Server configuration
+      - ./infra/lore/local.toml:/etc/lore/config/local.toml:ro
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:41339/health_check"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
 volumes:
-  supabase_db_data:
+  postgres_data:
   localstack_data:
+  lore_data:
