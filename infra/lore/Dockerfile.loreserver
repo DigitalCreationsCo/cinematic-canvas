@@ -1,0 +1,96 @@
+# =============================================================================
+# Dockerfile.loreserver — Portals Lore Server Runtime Image
+# =============================================================================
+#
+# Derives from the base image (portalshq/lore-server-base) which contains
+# the compiled loreserver binary with the AWS plugin. This Dockerfile
+# adds Portals-specific configuration — no source compilation occurs.
+#
+# Build:
+#   docker build --platform linux/amd64 \
+#     -f infra/lore/Dockerfile.loreserver \
+#     -t portalshq/lore-server:latest \
+#     .
+#
+# Or use the Makefile:
+#   make lore-up        # builds base + starts compose
+#
+# Usage:
+#   docker run -p 41337:41337/tcp -p 41337:41337/udp -p 41339:41339 \
+#     -v ./infra/lore/config:/etc/lore/config \
+#     -v ./infra/lore/certs:/etc/lore/certs:ro \
+#     -v lore_data:/data \
+#     -e LORE_ENV=dev \
+#     portalshq/lore-server:latest
+#
+# =============================================================================
+
+# Use the base image. The version tag matches the base image version.
+# When building locally, use :latest. In CI, pin to a specific version.
+FROM portalshq/lore-server-base:latest
+
+# ---------------------------------------------------------------------------
+# Runtime Directory Layout
+# ---------------------------------------------------------------------------
+
+# Config directory — mounted at runtime, but we ensure it exists for
+# clarity and so the healthcheck doesn't fail before the mount
+RUN mkdir -p /etc/lore/config
+
+# Certificate directory — mounted at runtime
+RUN mkdir -p /etc/lore/certs
+
+# Persistent data directory
+RUN mkdir -p /data
+
+# ---------------------------------------------------------------------------
+# Portals Configuration
+# ---------------------------------------------------------------------------
+#
+# Configuration files are COPIED into the image as fallback defaults.
+# In production, the config directory is mounted at runtime so that
+# configuration changes do not require a rebuild.
+#
+# The LORE_ENV environment variable selects which environment config
+# file is loaded (in addition to default.toml and local.toml).
+#
+# Layering order (later wins):
+#   1. Built-in default.toml (compiled into binary)
+#   2. /etc/lore/config/default.toml  (Portals base — overrides compiled)
+#   3. /etc/lore/config/${LORE_ENV}.toml
+#   4. /etc/lore/config/local.toml
+#   5. Environment variables (LORE__ prefix)
+
+# Copy base config that overrides compiled-in defaults
+COPY infra/lore/config/base.toml /etc/lore/config/default.toml
+
+# Copy environment-specific configs
+COPY infra/lore/config/dev.toml /etc/lore/config/
+COPY infra/lore/config/prod.toml /etc/lore/config/
+
+# Copy local overrides (empty by default, mounted in dev)
+COPY infra/lore/config/local.toml /etc/lore/config/
+
+# ---------------------------------------------------------------------------
+# Runtime Environment
+# ---------------------------------------------------------------------------
+
+# Default to dev environment — override with LORE_ENV=prod for production
+ENV LORE_ENV=dev
+
+# ---------------------------------------------------------------------------
+# Health Check
+# ---------------------------------------------------------------------------
+# The Lore HTTP server exposes GET /health_check on port 41339.
+# Returns 200 OK when the server is healthy.
+# Returns 503 Service Unavailable during startup or maintenance.
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=5 \
+    CMD curl -f http://localhost:41339/health_check || exit 1
+
+# ---------------------------------------------------------------------------
+# Entrypoint (inherited from base image)
+# ---------------------------------------------------------------------------
+# The base image sets ENTRYPOINT ["loreserver"].
+# No additional arguments needed — configuration is driven by
+# LORE_CONFIG_PATH, LORE_ENV, and the mounted config files.

@@ -1,0 +1,169 @@
+# syntax=docker/dockerfile:1
+#
+# Dockerfile.portals-backend — Backend-only Portals API image
+#
+# Builds a minimal production image for the Portals API server.
+# - No frontend code or assets
+# - PostgreSQL driver + aioboto3 for S3-compatible object storage
+# - Non-root user (uid=1000)
+# - Healthcheck at /health
+#
+# Build:
+#   docker build -f infra/backend/Dockerfile.portals-backend \
+#     -t portals-backend:latest .
+#
+# Or use the Makefile:
+#   make docker_build_backend
+#
+# =============================================================================
+
+################################
+# BUILDER
+################################
+FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS builder
+
+WORKDIR /app
+
+# Enable bytecode compilation for faster startup
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy from the cache instead of linking (mounted volume compatibility)
+ENV UV_LINK_MODE=copy
+
+# Install build dependencies for compiling Python C extensions
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install --no-install-recommends -y \
+        build-essential \
+        gcc \
+        git \
+        curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------------
+# Layer 1: Copy workspace dependency metadata only
+# ------------------------------------------------------------------
+# These files change infrequently, so this layer is cached across
+# rebuilds. The uv sync below installs all third-party dependencies
+# but skips the workspace members themselves (their source isn't
+# available yet — see --no-install-project).
+
+# Root workspace metadata
+COPY ./uv.lock /app/uv.lock
+COPY ./pyproject.toml /app/pyproject.toml
+COPY ./README.md /app/README.md
+
+# Workspace member: portals-base
+COPY ./src/backend/base/pyproject.toml /app/src/backend/base/pyproject.toml
+COPY ./src/backend/base/README.md /app/src/backend/base/README.md
+
+# Workspace member: px (dependency of portals-base)
+COPY ./src/px/pyproject.toml /app/src/px/pyproject.toml
+COPY ./src/px/README.md /app/src/px/README.md
+
+# Workspace member: portals-sdk
+COPY ./src/sdk/pyproject.toml /app/src/sdk/pyproject.toml
+COPY ./src/sdk/README.md /app/src/sdk/README.md
+
+# Install third-party dependencies from the lockfile
+# --no-install-project: skip installing any workspace package (source not yet available)
+# --no-dev: exclude dev dependency groups
+# --no-editable: install into .venv as regular wheels (not symlinks)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync \
+        --frozen \
+        --no-install-project \
+        --no-dev \
+        --no-editable \
+        --extra postgresql \
+        --extra aioboto3
+
+# ------------------------------------------------------------------
+# Layer 2: Copy all source code
+# ------------------------------------------------------------------
+COPY ./src /app/src
+
+# ------------------------------------------------------------------
+# Layer 3: Install workspace packages from local source
+# ------------------------------------------------------------------
+# --package portals-base: install only the portals-base package and its
+#   transitive dependencies (px, etc.), NOT the root 'portals' package
+#   which requires frontend assets and optional extras we don't ship.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync \
+        --frozen \
+        --no-dev \
+        --no-editable \
+        --package portals-base \
+        --extra postgresql \
+        --extra aioboto3
+
+# Clean uv cache to reduce image size
+RUN uv cache clean
+
+################################
+# RUNTIME
+################################
+FROM python:3.14-slim-trixie AS runtime
+
+# Minimal runtime dependencies
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install --no-install-recommends -y \
+        curl \
+        libpq5 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the virtual environment — contains all Python packages plus the
+# compiled portals-base package (including data files now fixed in
+# pyproject.toml via the [tool.hatch.build.targets.wheel] include directive).
+COPY --from=builder /app/.venv /app/.venv
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+
+# Create non-root user
+RUN useradd --uid 1000 --gid 0 --no-create-home --home-dir /app/data user
+
+# Pre-create PORTALS_CONFIG_DIR (/app/portals) with proper ownership.
+# The official compose file mounts a named volume at /app/portals; Docker
+# copies this directory's ownership into the fresh volume, so the
+# in-container uid=1000 user can write secret_key, profile_pictures, etc.
+# Without this, the volume is created as root:root and Portals crashes
+# with PermissionError on /app/portals/secret_key.
+RUN mkdir -p /app/data /app/portals \
+    && chown -R 1000:0 /app/data /app/portals \
+    && chmod -R g+rwX /app/portals \
+    && chown 1000:0 /app
+
+LABEL org.opencontainers.image.title=portals-backend
+LABEL org.opencontainers.image.authors=['Portals']
+LABEL org.opencontainers.image.licenses=MIT
+LABEL org.opencontainers.image.url=https://github.com/portals-ai/portals
+LABEL org.opencontainers.image.source=https://github.com/portals-ai/portals
+
+USER user
+WORKDIR /app
+
+# The 'portals-base run' CLI reads these env vars via pydantic-settings
+ENV PORTALS_HOST=0.0.0.0
+ENV PORTALS_PORT=7860
+ENV PORTALS_BACKEND_ONLY=true
+
+EXPOSE 7860
+
+# Healthcheck — uses the FastAPI /health endpoint (returns {"status":"ok"}
+# when the application is running). Not as thorough as /health_check (which
+# validates DB connectivity), but suitable for Docker liveness/readiness.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:7860/health || exit 1
+
+# Use the project's own CLI entry point, which handles:
+#   - Environment/configuration loading via pydantic-settings
+#   - PostgreSQL version pre-flight check
+#   - FastAPI app setup via setup_app()
+#   - Graceful shutdown and log management
+# --backend-only: skip frontend setup (not included in this image)
+CMD ["portals-base", "run", "--backend-only"]

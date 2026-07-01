@@ -130,6 +130,17 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["portals"]
+include = [
+    # Alembic database migrations
+    "portals/alembic.ini",
+    "portals/alembic/script.py.mako",
+    # Agentic flows
+    "portals/agentic/flows/*.json",
+    "portals/agentic/schema/*.json",
+    # Initial setup data — starter projects and profile pictures
+    "portals/initial_setup/starter_projects/*.json",
+    "portals/initial_setup/profile_pictures/**/*.svg",
+]
 
 
 [tool.pytest.ini_options]

@@ -1,0 +1,35 @@
+# This file applies to ALL Docker builds that use `.` as the build context.
+# Be mindful when adding exclusions — they affect the Lore server, PX, and
+# backend Dockerfiles alike.
+
+# --- Version control ---
+.git/
+.gitignore
+
+# --- Local Python environment ---
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# --- Node.js ---
+node_modules/
+src/frontend/
+
+# --- Local config and data ---
+.env
+.env.*
+!.env.example
+data/
+
+# --- OS metadata ---
+.DS_Store
+Thumbs.db
+
+# --- Local build artifacts ---
+dist/
+build/
+*.whl

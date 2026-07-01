@@ -1,0 +1,153 @@
+# =============================================================================
+# Portals Lore Server — Base Configuration
+# =============================================================================
+#
+# This file is mounted as `default.toml` in the config directory. It
+# overrides the compiled-in defaults (from lore-server/config/default.toml)
+# with Portals-specific settings.
+#
+# Layering: compiled defaults → THIS FILE → <env>.toml → local.toml → env vars
+#
+# This layer is for settings that are common across ALL environments
+# (dev, prod, CI). Environment-specific overrides go in dev.toml or
+# prod.toml. Developer-local overrides go in local.toml.
+#
+# =============================================================================
+
+# =============================================================================
+# General Server Settings
+# =============================================================================
+
+[server]
+connection_close_timeout_seconds = 5
+runtime_shutdown_timeout_seconds = 25
+
+# QUIC — Public endpoint (single-node, no replication)
+[server.quic]
+enabled = true
+host = "0.0.0.0"
+port = 41337
+# mTLS is NOT required — authentication is handled via JWT tokens
+verify_client_certs = false
+idle_timeout = 30_000
+keep_alive = 500
+max_bidi_streams = 8
+num_listeners = 10
+transport_bits_per_second = 1_073_741_824  # 1 gbit/s
+transport_rtt = 100  # 100 ms
+handler_timeout_seconds = 50
+
+# QUIC — Internal (disabled — single-node, no replication)
+[server.quic_internal]
+enabled = false
+
+# gRPC — Public endpoint
+[server.grpc]
+enabled = true
+host = "0.0.0.0"
+port = 41337
+request_handler_timeout_seconds = 50
+
+# gRPC Public Services
+[server.grpc_public_services.lock_service]
+max_encoding_message_size = 16777216
+
+# gRPC — Internal (disabled — single-node, no replication)
+[server.grpc_internal]
+enabled = false
+
+# HTTP — Health check, presigned URLs, and admin endpoints
+[server.http]
+enabled = true
+host = "0.0.0.0"
+port = 41339
+max_file_size = 10_485_760 # 10MB
+request_timeout_seconds = 300
+request_body_timeout_seconds = 3600
+available_interval_seconds = 30
+available_timeout_seconds = 5
+store_health_check = false
+
+# =============================================================================
+# TLS Certificate Configuration
+# =============================================================================
+#
+# Certificates are mounted at runtime at /etc/lore/certs/.
+# In development, these are self-signed certs.
+# In production, these are real TLS certificates.
+#
+# The certificate paths are the same across environments. Only the
+# mounted files differ.
+
+[server.quic.certificate]
+cert_file = "/etc/lore/certs/cert.pem"
+pkey_file = "/etc/lore/certs/key.pem"
+
+# =============================================================================
+# Store Configuration
+# =============================================================================
+
+# Immutable Store — content-addressed fragment storage
+# Mode is set per environment (dev uses "aws" pointed at LocalStack,
+# prod uses "aws" pointed at S3-compatible storage).
+[immutable_store]
+
+# Mutable Store — branch pointers and key-value metadata
+# Using the built-in local filesystem store.
+[mutable_store]
+mode = "local"
+
+# Local mutable store configuration
+[mutable_store.local]
+path = "/data"
+flush_delay_seconds = 10
+
+# Lock Store — distributed locking (single-node: in-process)
+[lock_store]
+mode = "local"
+
+# =============================================================================
+# Token Lock Store
+# =============================================================================
+
+# Topology — single-node mode (no peer discovery)
+[topology]
+provider = "none"
+
+# =============================================================================
+# Notification — in-process broadcast
+# =============================================================================
+
+[notification]
+mode = "local"
+
+# =============================================================================
+# Tokio Runtime
+# =============================================================================
+
+[tokio]
+max_blocking_threads = 512
+
+# =============================================================================
+# Telemetry
+# =============================================================================
+
+[telemetry.logger]
+enable_otlp = false
+format = "json"
+output = "stdout"
+
+[telemetry.metrics]
+export_interval_millis = 30000
+sample_interval_millis = 10000
+
+[telemetry.traces]
+sample_rate = 0.05
+sample_rate_low_tier = 0.001
+
+# =============================================================================
+# Features
+# =============================================================================
+
+[feature]
+history_step_size = 100

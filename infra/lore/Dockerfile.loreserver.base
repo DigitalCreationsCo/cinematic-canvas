@@ -1,0 +1,117 @@
+# =============================================================================
+# Dockerfile.loreserver.base — Lore Server Base Image
+# =============================================================================
+#
+# Builds a custom loreserver binary with the AWS plugin (S3 + DynamoDB)
+# compiled in, excluding unused plugins (hashicorp/consul).
+#
+# Produces: portalshq/lore-server-base:<version>
+#
+# This image is reusable across environments. No Portals-specific
+# configuration is baked in. Configuration belongs in the derived image
+# (Dockerfile.loreserver) and is mounted at runtime.
+#
+# Build:
+#   docker build --platform linux/amd64 \
+#     -f infra/lore/Dockerfile.loreserver.base \
+#     -t portalshq/lore-server-base:latest \
+#     ../lore
+#
+# Or use the Makefile:
+#   make lore-base
+#
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1: Builder — compile the custom loreserver binary
+# ---------------------------------------------------------------------------
+FROM rust:slim-trixie AS builder
+
+# Prevent apt from prompting for configuration
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    protobuf-compiler \
+    cmake \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Copy the entire workspace including vendor (patched quinn-proto)
+COPY . .
+
+# ---------------------------------------------------------------------------
+# Remove plugins and dependencies we do NOT compile:
+#   - hashicorp/consul plugin (unused)
+# ---------------------------------------------------------------------------
+RUN rm -f lore-server/src/plugins/hashicorp.rs \
+    && sed -i '/lore-hashicorp/d' lore-server/Cargo.toml
+
+# On ARM64 (Apple Silicon build machines), strip the Graviton-specific
+# target-cpu flag that breaks on non-Graviton CPUs
+ARG TARGETPLATFORM
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+        sed -i '/target-cpu=neoverse-512tvb/d' .cargo/config.toml; \
+    fi
+
+# ---------------------------------------------------------------------------
+# Build the release binary
+# ---------------------------------------------------------------------------
+# The binary is compiled with the `release-lto` profile (fat LTO, full
+# debuginfo, no debug assertions) when available, otherwise `release`.
+# See [profile.release-lto] in the workspace Cargo.toml.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/build/target \
+    cargo build --release --bin loreserver -p lore-server \
+    && cp /build/target/release/loreserver /loreserver-bin
+
+# Strip debug symbols from the binary to reduce image size (the binary
+# was compiled with debug=2 in the release-lto profile, which is
+# unnecessary in the final image)
+RUN strip /loreserver-bin
+
+# ---------------------------------------------------------------------------
+# Stage 2: Runtime base — minimal Debian with the compiled binary
+# ---------------------------------------------------------------------------
+FROM debian:trixie-slim
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Runtime dependencies: ca-certificates for TLS, curl for health checks
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the compiled binary
+COPY --from=builder /loreserver-bin /usr/local/bin/loreserver
+
+# Copy the upstream default.toml so the server starts with sensible
+# defaults even when no external config directory is mounted. This is
+# the ORIGINAL upstream config; Portals-specific overrides go in the
+# derived image (Dockerfile.loreserver).
+COPY --from=builder /build/lore-server/config/default.toml /etc/lore/config/default.toml
+
+# Create persistent data directory
+RUN mkdir -p /data
+
+# Environment defaults
+ENV LORE_CONFIG_PATH=/etc/lore/config
+ENV RUST_LOG=info
+
+# Expose ports:
+#   41337/tcp — gRPC (public API)
+#   41337/udp — QUIC (public API)
+#   41339/tcp — HTTP (health check, presigned URLs, admin)
+EXPOSE 41337 41337/udp 41339
+
+# Persistent data volume
+VOLUME /data
+
+# Default entrypoint — no flags needed because LORE_CONFIG_PATH and
+# LORE_ENV are set via environment variables
+ENTRYPOINT ["loreserver"]

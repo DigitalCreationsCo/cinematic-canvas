@@ -1,10 +1,10 @@
-.PHONY: all init format_backend format lint build run_backend dev help tests coverage clean_python_cache clean_npm_cache clean_frontend_build clean_all run_clic load_test_setup load_test_setup_basic load_test_list_flows load_test_run load_test_portals_quick load_test_stress load_test_example load_test_clean load_test_remote_setup load_test_remote_run load_test_help docs docs_build docs_install api_examples_local api_examples_local_syntax
+.PHONY: all init format_backend format lint build run_backend dev help tests coverage clean_python_cache clean_npm_cache clean_frontend_build clean_all run_clic load_test_setup load_test_setup_basic load_test_list_flows load_test_run load_test_portals_quick load_test_stress load_test_example load_test_clean load_test_remote_setup load_test_remote_run load_test_help docs docs_build docs_install api_examples_local api_examples_local_syntax lore-base lore-certs lore-up lore-up-d lore-down lore-logs lore-clean
 
 # Configurations
 VERSION=$(shell grep "^version" pyproject.toml | sed 's/.*\"\(.*\)\"$$/\1/')
 DOCKER=podman
 DOCKERFILE=docker/build_and_push.Dockerfile
-DOCKERFILE_BACKEND=docker/build_and_push_backend.Dockerfile
+DOCKERFILE_BACKEND=infra/backend/Dockerfile.portals-backend
 DOCKERFILE_FRONTEND=docker/frontend/build_and_push_frontend.Dockerfile
 DOCKER_COMPOSE=docker_example/docker-compose.yml
 PYTHON_REQUIRED=$(shell grep '^requires-python[[:space:]]*=' pyproject.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
@@ -362,13 +362,14 @@ dockerfile_build:
 		-f ${DOCKERFILE} \
 		-t portals:${VERSION} .
 
-dockerfile_build_be: dockerfile_build
+dockerfile_build_be:
 	@echo 'BUILDING DOCKER IMAGE BACKEND: ${DOCKERFILE_BACKEND}'
 	@command -v $(DOCKER) >/dev/null 2>&1 || { echo "Error: $(DOCKER) is not installed. Please install $(DOCKER), or run 'make docker_build_backend DOCKER=podman' (or DOCKER=docker) if you have an alternative installed."; exit 1; }
-	@$(DOCKER) build --rm \
-		--build-arg PORTALS_IMAGE=portals:${VERSION} \
+	@$(DOCKER) build \
 		-f ${DOCKERFILE_BACKEND} \
-		-t portals_backend:${VERSION} .
+		-t portals-backend:${VERSION} \
+		-t portals-backend:latest \
+		.
 
 dockerfile_build_fe: dockerfile_build
 	@echo 'BUILDING DOCKER IMAGE FRONTEND: ${DOCKERFILE_FRONTEND}'
@@ -1089,3 +1090,59 @@ api_examples_local_syntax: ## syntax-check docs API sample files locally without
 
 # Include frontend-specific Makefile
 include Makefile.frontend
+
+######################
+# LORE SERVER
+######################
+
+# Docker command for Lore images. Uses docker by default (unlike the
+# rest of the project which defaults to podman — see DOCKER=podman at
+# the top of this Makefile). Override on the command line to switch:
+#   make lore-base DOCKER=podman
+DOCKER = docker
+
+# Build the Lore server base image (compiles custom loreserver binary)
+lore-base: ## Build the Lore server base image from upstream source
+	@echo "$(GREEN)Building portalshq/lore-server-base:latest from ../lore...$(NC)"
+	$(DOCKER) build \
+		-f infra/lore/Dockerfile.loreserver.base \
+		-t portalshq/lore-server-base:latest \
+		../lore
+	@echo "$(GREEN)Done. Image: portalshq/lore-server-base:latest$(NC)"
+
+# Generate development self-signed certificates
+lore-certs: ## Generate self-signed TLS certificates for Lore development
+	@if [ ! -f infra/lore/cert.pem ] || [ ! -f infra/lore/key.pem ]; then \
+		echo "$(GREEN)Generating self-signed certificates...$(NC)"; \
+		openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+			-keyout infra/lore/key.pem \
+			-out infra/lore/cert.pem \
+			-subj "/CN=lore-server-dev" \
+			-addext "subjectAltName=DNS:localhost,DNS:lore-server,IP:127.0.0.1" 2>/dev/null; \
+		echo "$(GREEN)Certificates generated.$(NC)"; \
+	else \
+		echo "$(GREEN)Certificates already exist.$(NC)"; \
+	fi
+
+# Start the full Lore dev stack with compose
+lore-up: lore-base lore-certs ## Build Lore base image and start all services
+	@echo "$(GREEN)Starting Lore development stack...$(NC)"
+	$(DOCKER) compose up --build
+
+# Start Lore stack in background
+lore-up-d: lore-base lore-certs ## Build Lore base image and start services in background
+	@echo "$(GREEN)Starting Lore development stack (detached)...$(NC)"
+	$(DOCKER) compose up --build -d
+
+# Stop the Lore stack
+lore-down: ## Stop the Lore development stack
+	$(DOCKER) compose down
+
+# View Lore server logs
+lore-logs: ## View Lore server logs
+	$(DOCKER) compose logs -f lore-server
+
+# Clean Lore volumes
+lore-clean: ## Remove Lore volumes and stop stack
+	$(DOCKER) compose down -v
+	@echo "$(GREEN)Lore data volumes removed.$(NC)"

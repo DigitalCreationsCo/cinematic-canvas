@@ -1,0 +1,82 @@
+# =============================================================================
+# Portals Lore Server — Development Configuration
+# =============================================================================
+#
+# Loaded when LORE_ENV=dev (the default for local development).
+# This file layers on top of default.toml (base config).
+#
+# Development topology:
+#   - Immutable store: AWS plugin (S3 + DynamoDB) via LocalStack
+#   - Mutable store: Local filesystem at /data
+#   - Lock store: Local (in-process)
+#   - Single-node, no replication
+#
+# External services (run via docker-compose):
+#   - LocalStack (S3 + DynamoDB) at localstack:4566
+#   - PostgreSQL at db:5432 (used by the API, not Lore directly)
+#
+# =============================================================================
+
+# =============================================================================
+# Immutable Store — AWS plugin (S3 + DynamoDB via LocalStack)
+# =============================================================================
+
+[immutable_store]
+mode = "aws"
+
+# =============================================================================
+# Development TLS
+# =============================================================================
+#
+# Self-signed certificates are mounted at these paths.
+# In development, we disable mTLS verification since self-signed certs
+# don't satisfy WebPKI verifiers.
+
+[server.quic]
+verify_client_certs = false
+handler_timeout_seconds = 300  # Increased for slow LocalStack operations
+
+[server.grpc]
+request_handler_timeout_seconds = 300
+
+# HTTP presigned URL HMAC key (dev only — 32 zero bytes, NOT a real secret)
+[server.http]
+presigned_url_hmac_key = "0000000000000000000000000000000000000000000000000000000000000000"
+
+# =============================================================================
+# AWS Plugin — Pointed at LocalStack
+# =============================================================================
+#
+# The AWS plugin provides the immutable store. It uses:
+#   - S3 for fragment payload storage
+#   - DynamoDB for fragment metadata and associations
+#
+# In development, both S3 and DynamoDB run via LocalStack.
+# Credentials: test/test (LocalStack default).
+# Region: us-east-1 (arbitrary for LocalStack).
+
+[plugins.aws.immutable_store]
+s3_bucket = "portals-dev"
+s3_endpoint_url = "http://localstack:4566"
+s3_region = "us-east-1"
+s3_force_path_style = true
+dynamodb_fragments_table = "portals-fragments-dev"
+dynamodb_metadata_table = "portals-fragment-metadata-dev"
+dynamodb_endpoint_url = "http://localstack:4566"
+dynamodb_region = "us-east-1"
+timeout_millis = 30000
+s3_slow_operation_threshold_millis = 10000
+dynamodb_slow_operation_threshold_millis = 5000
+
+# =============================================================================
+# Telemetry — Human-readable logging for development
+# =============================================================================
+
+[telemetry.logger]
+enable_otlp = false
+format = "ansi"
+output = "stdout"
+
+[telemetry.traces]
+sample_rate = 1.0
+sample_rate_low_tier = 1.0

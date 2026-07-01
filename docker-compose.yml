@@ -1,93 +1,176 @@
-version: "3.9"
+# =============================================================================
+# Portals Docker Compose — Local Development
+# =============================================================================
+#
+# Services:
+#   api            — Portals API server (infra/backend/Dockerfile.portals-backend)
+#   db             — Supabase PostgreSQL
+#   localstack     — LocalStack (S3 + DynamoDB for Lore immutable store)
+#   lore-server    — Custom loreserver with AWS plugin compiled in
+#
+# Prerequisites:
+#   Build the Lore base image first (required by lore-server):
+#     docker build -f infra/lore/Dockerfile.loreserver.base \
+#       -t portalshq/lore-server-base:latest ../lore
+#
+#   Or use the Makefile:
+#     make lore-base   # builds Lore base image
+#     make lore-up     # builds base + starts all services
+#
+# Usage:
+#   docker compose up --build
+#
+# =============================================================================
 
 services:
+
+  # ---------------------------------------------------------------------------
+  # Portals API
+  # ---------------------------------------------------------------------------
+  # Backend-only API server. Built from infra/backend/Dockerfile.portals-backend
+  # which installs portals-base with PostgreSQL + aioboto3 extras.
   api:
-    build: ./services/api
+    build:
+      context: .
+      dockerfile: infra/backend/Dockerfile.portals-backend
     restart: unless-stopped
     depends_on:
-      - db
-      - localstack
-      - lore-server
-
+      db:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      lore-server:
+        condition: service_healthy
     ports:
-      - "8000:8000"
-
+      - "8000:7860"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
-
+      # Database — portals-base reads PORTALS_DATABASE_URL (not DATABASE_URL)
+      PORTALS_DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres # pragma: allowlist secret
+      # Object storage (S3-compatible via LocalStack for dev)
       S3_ENDPOINT: http://localstack:4566
       S3_BUCKET: portals-dev
       S3_ACCESS_KEY_ID: test
-      S3_SECRET_ACCESS_KEY: test
-
+      S3_SECRET_ACCESS_KEY: test # pragma: allowlist secret
+      # Lore server connectivity
       LORE_SERVER_URL: http://lore-server:41339
       LORE_GRPC_HOST: lore-server:41337
       LORE_QUIC_HOST: lore-server:41337
-
+      # GitHub integration (optional, for dev)
       GITHUB_APP_ID: ${GITHUB_APP_ID}
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY}
+    networks:
+      - portals-net
 
+  # ---------------------------------------------------------------------------
+  # PostgreSQL (Supabase)
+  # ---------------------------------------------------------------------------
   db:
     image: supabase/postgres:15.8.1.049
     restart: unless-stopped
-
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-
+      POSTGRES_PASSWORD: postgres # pragma: allowlist secret
     ports:
       - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - portals-net
 
+  # ---------------------------------------------------------------------------
+  # LocalStack (S3 + DynamoDB)
+  # ---------------------------------------------------------------------------
   localstack:
-    image: localstack/localstack
+    image: localstack/localstack:latest
     restart: unless-stopped
-
     environment:
-      SERVICES: s3
+      SERVICES: s3,dynamodb
       DEFAULT_REGION: us-east-1
-
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test # pragma: allowlist secret
+      EDGE_PORT: 4566
     ports:
       - "4566:4566"
-
     volumes:
       - localstack_data:/var/lib/localstack
+      - ./infra/lore/scripts/init-localstack.sh:/etc/localstack/init/ready.d/init-localstack.sh
+    healthcheck:
+      # Verify LocalStack is ready AND the init script has created the
+      # S3 bucket + DynamoDB tables that lore-server's AwsImmutableStore
+      # checks for on startup (ensure_bucket / ensure_table).
+      test: >
+        CMD bash -c '
+          curl -sf http://localhost:4566/_localstack/health > /dev/null &&
+          aws --endpoint-url=http://localhost:4566 s3 ls s3://portals-dev > /dev/null 2>&1 &&
+          aws --endpoint-url=http://localhost:4566 dynamodb describe-table --table-name portals-fragments-dev > /dev/null 2>&1 &&
+          aws --endpoint-url=http://localhost:4566 dynamodb describe-table --table-name portals-fragment-metadata-dev > /dev/null 2>&1
+        '
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 20s
+    networks:
+      - portals-net
 
+  # ---------------------------------------------------------------------------
+  # Lore Server
+  # ---------------------------------------------------------------------------
   lore-server:
-    image: lore-server
-    # or:
-    # build:
-    #   context: ./lore
-    #   dockerfile: lore-server/Dockerfile
+    image: portalshq/lore-server:latest
+    build:
+      context: .
+      dockerfile: infra/lore/Dockerfile.loreserver
     restart: unless-stopped
-
+    depends_on:
+      localstack:
+        condition: service_healthy
     ports:
       - "41337:41337/tcp"
       - "41337:41337/udp"
       - "41339:41339"
-
+    environment:
+      LORE_CONFIG_PATH: /etc/lore/config
+      LORE_ENV: dev
+      RUST_LOG: info
+      # AWS credentials for LocalStack
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test # pragma: allowlist secret
+      AWS_DEFAULT_REGION: us-east-1
     volumes:
       # Persistent repository data
       - lore_data:/data
-
-      # QUIC certificate
-      - ./infra/lore/cert.pem:/etc/lore/cert.pem:ro
-      - ./infra/lore/key.pem:/etc/lore/key.pem:ro
-
-      # Server configuration
-      - ./infra/lore/local.toml:/etc/lore/config/local.toml:ro
-
+      # TLS certificates (self-signed for development)
+      - ./infra/lore/cert.pem:/etc/lore/certs/cert.pem:ro
+      - ./infra/lore/key.pem:/etc/lore/certs/key.pem:ro
+      # Configuration directory (uses TOML layering)
+      - ./infra/lore/config:/etc/lore/config
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:41339/health_check"]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 15s
+    networks:
+      - portals-net
 
+# =============================================================================
+# Named Volumes
+# =============================================================================
 volumes:
   postgres_data:
   localstack_data:
   lore_data:
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  portals-net:
+    driver: bridge

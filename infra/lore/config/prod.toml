@@ -1,0 +1,120 @@
+# =============================================================================
+# Portals Lore Server — Production Configuration
+# =============================================================================
+#
+# Loaded when LORE_ENV=prod.
+# This file layers on top of default.toml (base config).
+#
+# Production topology:
+#   - Google Cloud VM, single node
+#   - Immutable store: AWS plugin (S3-compatible remote object storage)
+#   - Mutable store: Local filesystem (persistent SSD)
+#   - Lock store: Local (in-process)
+#   - JWT authentication with JWKS endpoint
+#   - TLS certificates from a real CA
+#
+# Configuration is environment-agnostic where possible. Environment-
+# specific values (endpoints, bucket names, etc.) should be set via
+# environment variables or local.toml.
+#
+# =============================================================================
+
+# =============================================================================
+# Immutable Store — AWS plugin (S3-compatible object storage)
+# =============================================================================
+#
+# Works with:
+#   - AWS S3 (standard)
+#   - Cloudflare R2 (S3-compatible)
+#   - MinIO (self-hosted S3-compatible)
+#   - Google Cloud Storage (S3-compatible endpoint)
+#
+# Configure the endpoint, bucket, region, and credentials via:
+#   - infra/lore/config/prod.toml (or local.toml for secrets)
+#   - environment variables (LORE__ prefix)
+#
+# Required environment variables or config overrides:
+#   LORE__PLUGINS__AWS__IMMUTABLE_STORE__S3_BUCKET
+#   LORE__PLUGINS__AWS__IMMUTABLE_STORE__S3_ENDPOINT_URL
+#   LORE__PLUGINS__AWS__IMMUTABLE_STORE__S3_REGION
+#   LORE__PLUGINS__AWS__IMMUTABLE_STORE__DYNAMODB_FRAGMENTS_TABLE
+#   LORE__PLUGINS__AWS__IMMUTABLE_STORE__DYNAMODB_METADATA_TABLE
+#   AWS_ACCESS_KEY_ID (via aws-config default chain)
+#   AWS_SECRET_ACCESS_KEY (via aws-config default chain)
+
+[immutable_store]
+mode = "aws"
+
+# =============================================================================
+# Production TLS
+# =============================================================================
+#
+# Real TLS certificates from a CA are mounted at /etc/lore/certs/.
+# mTLS is enabled for the internal endpoint if replication were active;
+# for the public endpoint, auth is handled via JWT tokens.
+
+[server.quic]
+verify_client_certs = false
+handler_timeout_seconds = 50
+
+[server.quic.certificate]
+cert_file = "/etc/lore/certs/cert.pem"
+pkey_file = "/etc/lore/certs/key.pem"
+
+[server.grpc]
+request_handler_timeout_seconds = 50
+
+# =============================================================================
+# JWT Authentication
+# =============================================================================
+#
+# The server validates JWT bearer tokens against a JWKS endpoint.
+# Configure the JWKS URL, expected issuer, and allowed audiences.
+#
+# Required overrides (via env vars or local.toml):
+#   LORE__SERVER__AUTH__JWK__ENDPOINT
+#   LORE__SERVER__AUTH__JWT_ISSUER
+#   LORE__SERVER__AUTH__JWT_AUDIENCE
+
+[server.auth.jwk]
+endpoint = "https://auth.portals.io/.well-known/jwks.json"
+
+[server.auth]
+jwt_audience = ["portals-api"]
+jwt_issuer = "https://auth.portals.io/"
+
+# =============================================================================
+# AWS Plugin — Production Configuration
+# =============================================================================
+#
+# The endpoint, bucket, region, and DynamoDB table names must be
+# configured per deployment. Set these via environment variables
+# or via local.toml (mounted per-environment).
+#
+# These values are PLACEHOLDERS — override them for your deployment.
+
+[plugins.aws.immutable_store]
+s3_bucket = "portals-immutable-store"
+s3_endpoint_url = "https://s3.amazonaws.com"
+s3_region = "us-east-1"
+s3_force_path_style = false
+dynamodb_fragments_table = "portals-fragments"
+dynamodb_metadata_table = "portals-fragment-metadata"
+dynamodb_endpoint_url = "https://dynamodb.us-east-1.amazonaws.com"
+dynamodb_region = "us-east-1"
+timeout_millis = 30000
+s3_slow_operation_threshold_millis = 10000
+dynamodb_slow_operation_threshold_millis = 5000
+
+# =============================================================================
+# Telemetry — JSON logging for production log aggregation
+# =============================================================================
+
+[telemetry.logger]
+enable_otlp = false
+format = "json"
+output = "stdout"
+
+[telemetry.traces]
+sample_rate = 0.05
+sample_rate_low_tier = 0.001
