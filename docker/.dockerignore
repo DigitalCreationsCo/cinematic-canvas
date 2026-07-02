@@ -1,0 +1,9 @@
+.venv/
+**/aws
+node_modules
+**/node_modules/
+dist/
+**/build/
+src/backend/portals/frontend
+**/portals-pre.db
+**/portals.db

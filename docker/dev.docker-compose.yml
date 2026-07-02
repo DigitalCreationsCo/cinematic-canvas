@@ -1,0 +1,42 @@
+networks:
+  dev-portals:
+
+services:
+  portals:
+    build:
+      context: ..
+      dockerfile: docker/dev.Dockerfile
+    image: dev-portals
+    container_name: dev-portals
+    restart: always
+    ports:
+      - "7860:7860"
+      - "3000:3000"
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PORTALS_DATABASE_URL=postgresql://portals:portals@postgres:5432/portals
+      - PORTALS_SUPERUSER=portals
+      - PORTALS_SUPERUSER_PASSWORD=portals
+      - PORTALS_CONFIG_DIR=/var/lib/portals
+    env_file:
+      - ../.env
+    volumes:
+      - ../:/app
+    depends_on:
+      - postgres
+    networks:
+      -  dev-portals
+
+
+  postgres:
+    container_name: postgres
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: portals
+      POSTGRES_PASSWORD: portals
+      POSTGRES_DB: portals
+    ports:
+      - "5432:5432"
+    networks:
+      -  dev-portals
+

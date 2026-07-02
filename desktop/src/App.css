@@ -1,0 +1,124 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  line-height: 1.6;
+}
+
+main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #30363d;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #58a6ff;
+}
+
+.cache-info {
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+section {
+  margin-bottom: 2rem;
+}
+
+section h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #f0f6fc;
+}
+
+.repo-input {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.repo-input input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+  color: #e6edf3;
+  font-size: 0.9rem;
+}
+
+.repo-input button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #21262d;
+  color: #e6edf3;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.repo-input button:hover {
+  background: #30363d;
+}
+
+.error {
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid #da3633;
+  border-radius: 6px;
+  background: #290a0a;
+  color: #ff7b72;
+  font-size: 0.85rem;
+}
+
+.repo-info table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.repo-info td {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #30363d;
+  font-size: 0.9rem;
+}
+
+.repo-info td:first-child {
+  width: 120px;
+  color: #8b949e;
+}
+
+code {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 0.85em;
+  padding: 0.15em 0.3em;
+  background: #161b22;
+  border-radius: 3px;
+}
+
+.docs-section p {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #8b949e;
+}
+
+.docs-section code {
+  color: #f0f6fc;
+}

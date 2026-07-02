@@ -1102,16 +1102,16 @@ include Makefile.frontend
 DOCKER = docker
 
 # Build the Lore server base image (compiles custom loreserver binary)
-lore-base: ## Build the Lore server base image from upstream source
-	@echo "$(GREEN)Building portalshq/lore-server-base:latest from ../lore...$(NC)"
+lore_base: ## Build the Lore server base image from upstream source
+	@echo "$(GREEN)Building portalshq/lore-server-base:latest from infra/lore/lore...$(NC)"
 	$(DOCKER) build \
 		-f infra/lore/Dockerfile.loreserver.base \
 		-t portalshq/lore-server-base:latest \
-		../lore
+		infra/lore/lore
 	@echo "$(GREEN)Done. Image: portalshq/lore-server-base:latest$(NC)"
 
 # Generate development self-signed certificates
-lore-certs: ## Generate self-signed TLS certificates for Lore development
+lore_certs: ## Generate self-signed TLS certificates for Lore development
 	@if [ ! -f infra/lore/cert.pem ] || [ ! -f infra/lore/key.pem ]; then \
 		echo "$(GREEN)Generating self-signed certificates...$(NC)"; \
 		openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
@@ -1125,24 +1125,24 @@ lore-certs: ## Generate self-signed TLS certificates for Lore development
 	fi
 
 # Start the full Lore dev stack with compose
-lore-up: lore-base lore-certs ## Build Lore base image and start all services
+lore_up: lore-base lore-certs ## Build Lore base image and start all services
 	@echo "$(GREEN)Starting Lore development stack...$(NC)"
 	$(DOCKER) compose up --build
 
 # Start Lore stack in background
-lore-up-d: lore-base lore-certs ## Build Lore base image and start services in background
+lore_up_d: lore-base lore-certs ## Build Lore base image and start services in background
 	@echo "$(GREEN)Starting Lore development stack (detached)...$(NC)"
 	$(DOCKER) compose up --build -d
 
 # Stop the Lore stack
-lore-down: ## Stop the Lore development stack
+lore_down: ## Stop the Lore development stack
 	$(DOCKER) compose down
 
 # View Lore server logs
-lore-logs: ## View Lore server logs
+lore_logs: ## View Lore server logs
 	$(DOCKER) compose logs -f lore-server
 
 # Clean Lore volumes
-lore-clean: ## Remove Lore volumes and stop stack
+lore_clean: ## Remove Lore volumes and stop stack
 	$(DOCKER) compose down -v
 	@echo "$(GREEN)Lore data volumes removed.$(NC)"

@@ -347,3 +347,9 @@ portals.db
 
 # docusaurus
 .docusaurus/
+
+# Lore server
+infra/lore/config/local.toml
+infra/lore/cert.pem
+infra/lore/key.pem
+infra/lore/certs/

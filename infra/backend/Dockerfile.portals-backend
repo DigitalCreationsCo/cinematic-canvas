@@ -20,7 +20,7 @@
 ################################
 # BUILDER
 ################################
-FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.13-trixie-slim AS builder
 
 WORKDIR /app
 
@@ -76,8 +76,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         --no-install-project \
         --no-dev \
         --no-editable \
-        --extra postgresql \
-        --extra aioboto3
+        --extra postgresql
 
 # ------------------------------------------------------------------
 # Layer 2: Copy all source code
@@ -105,7 +104,7 @@ RUN uv cache clean
 ################################
 # RUNTIME
 ################################
-FROM python:3.14-slim-trixie AS runtime
+FROM python:3.13-slim-trixie AS runtime
 
 # Minimal runtime dependencies
 RUN apt-get update \

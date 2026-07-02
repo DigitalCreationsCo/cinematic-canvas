@@ -6265,22 +6265,26 @@ wheels = [
 
 [[package]]
 name = "nap-sdk"
-version = "0.2.6"
+version = "0.3.2"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/c6/22596ede279f5a8b1c9bde642fbcf783b985b500fddfd26cb3e3f96f7b0b/nap_sdk-0.2.6-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0a9572442101aefe22a0ef0ff8dce7844bbb563f2ef7ad6589a967412895eabe", size = 4702069, upload-time = "2026-06-24T01:21:22.811Z" },
-    { url = "https://files.pythonhosted.org/packages/22/8c/2c45ab6cc11f5721afff59d3a2f59435e58c61ad4b37288bdd9bd36d517b/nap_sdk-0.2.6-cp313-cp313-manylinux_2_39_x86_64.whl", hash = "sha256:4e46ac6fdd1ca2484c9321f4ad69c8c2ffdcbff0d4cb12e5cfc21a5fef7c82e5", size = 5208310, upload-time = "2026-06-24T01:21:24.347Z" },
-    { url = "https://files.pythonhosted.org/packages/7f/bd/8316c271286ec9a5920a25668fde1e3e3ca30907ef5d458b0374e2cc0ecc/nap_sdk-0.2.6-cp313-cp313-win_amd64.whl", hash = "sha256:b58a2f208196781490a02c73899fc93dffa13ae254aa35a34f2d968ab3518463", size = 4448139, upload-time = "2026-06-24T01:21:26.445Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/74/8874e5c5c15e27a62e40567c6b5bb536e459c7a34aeb43e3bc5210493079/nap_sdk-0.3.2-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:a3696910c70cf518db1c2ff70ce7f8ad3699cacf1fcbe1547700e71d4e233ab3", size = 4863429, upload-time = "2026-07-01T18:17:11.111Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/2d/cfda9c8c58059a3020464b3bfd3963d7317acd14c0b8485636546296650d/nap_sdk-0.3.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:f9db437f3df484538943523a29a4df63810dc219c13392e60693c3e41aee1962", size = 4713903, upload-time = "2026-07-01T18:17:12.61Z" },
+    { url = "https://files.pythonhosted.org/packages/38/f5/b6b60e6b05364a02e8820a620700a50c018968f15e4b7e932a2519061831/nap_sdk-0.3.2-cp313-cp313-manylinux_2_39_aarch64.whl", hash = "sha256:5c88531671d12cc4936426d6d46c8b9498b9a975659ae9b26a521c589386a585", size = 5240064, upload-time = "2026-07-01T18:17:13.987Z" },
+    { url = "https://files.pythonhosted.org/packages/11/8b/04fe11308cb0588fc989198e5ddcd299718980059f18f2304e46385d573d/nap_sdk-0.3.2-cp313-cp313-manylinux_2_39_x86_64.whl", hash = "sha256:6246f5c73055f8383725967d384070293a1cd8c31d0ed8fde977d33ef45e3c24", size = 5235246, upload-time = "2026-07-01T18:17:15.277Z" },
+    { url = "https://files.pythonhosted.org/packages/af/18/3ec0a4619dbf4603039de1ab38887a182d3a768c47f5776590e068ce6542/nap_sdk-0.3.2-cp313-cp313-win_amd64.whl", hash = "sha256:8fb46b03a4de94d3fa9689528351c74c5e41fdd91873d8597fc2935695159e2c", size = 4450027, upload-time = "2026-07-01T18:17:16.682Z" },
 ]
 
 [[package]]
 name = "narrativeengine"
-version = "0.1.23"
+version = "0.3.2"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/e0/b0a68ae1680198ac8d27049f37bf16106318950466366715e323664cd97b/narrativeengine-0.1.23-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0096452edbae18982fad110793c52a61fd539ef3e74e99235b96002e041497af", size = 380390, upload-time = "2026-06-16T22:44:09.957Z" },
-    { url = "https://files.pythonhosted.org/packages/84/21/0bdda464f66ee9fcc2fa63a939efaaee8717a4c574ff24e9e316a10acedb/narrativeengine-0.1.23-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:d35a70a4ba16431f3bdb97c1f0e64d7e3265cbf87dc3a1df837d747a9782f576", size = 439710, upload-time = "2026-06-16T22:44:11.246Z" },
-    { url = "https://files.pythonhosted.org/packages/b0/f9/aa30c3058c063513ed14399a48f0b95304ff512f7fc806c45f5f245569ff/narrativeengine-0.1.23-cp313-cp313-win_amd64.whl", hash = "sha256:a2bf90893303dfdc48aed651d319bcf7392ef17fcd0fcc8bd38cd4ad9d9b2bf4", size = 286957, upload-time = "2026-06-16T22:44:12.244Z" },
+    { url = "https://files.pythonhosted.org/packages/19/dc/78f6a2842bdfd30ac5bc54e265372b8cbe4731cb25c9aceaf45053efd998/narrativeengine-0.3.2-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:18774b019b007c656bab04f9a16a7bff4a98c75eb6d71fd4bd5c018f75c0f0c0", size = 377433, upload-time = "2026-07-01T18:18:26.415Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/46/e836a0bf613e8c4333c05ae8a4250f62a0f6256af33df0134498561387da/narrativeengine-0.3.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:bf3b3d93679d9a01f613b83b272b07b42bf68904a822db6197ef260fb04c37ed", size = 369393, upload-time = "2026-07-01T18:18:27.556Z" },
+    { url = "https://files.pythonhosted.org/packages/49/ac/a753376dc44476d9fc8e502f16dbdefb612351c23ec3c309c42599cbaad6/narrativeengine-0.3.2-cp313-cp313-manylinux_2_34_aarch64.whl", hash = "sha256:06c46d0ed28c2e77cd3c6c20be6c54ad1d43d669b4a06af1e519575ab967a66c", size = 409779, upload-time = "2026-07-01T18:18:28.561Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/6a/414b823da4b9d746beed5794c57ec4b1c6e366811b3b2e3a294e5f1a8752/narrativeengine-0.3.2-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:d345e8f4087abe2b1bb6ffe583416deb10550be24e749eb40e4d6d4ff0773ad8", size = 428341, upload-time = "2026-07-01T18:18:29.481Z" },
+    { url = "https://files.pythonhosted.org/packages/97/95/36d8a42a37097e0f9780183652c808b8ff6506ffc2017bc99e79dea61bb8/narrativeengine-0.3.2-cp313-cp313-win_amd64.whl", hash = "sha256:604ccfe74f213ab2586e555aa720dd69778e6d600603704a189bfb04d755b9ac", size = 276340, upload-time = "2026-07-01T18:18:31.029Z" },
 ]
 
 [[package]]
@@ -8099,7 +8103,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "nap-sdk", specifier = ">=0.2.6" },
+    { name = "nap-sdk", specifier = "~=0.3.0" },
     { name = "narrativeengine" },
     { name = "portals-base", extras = ["complete"], editable = "src/backend/base" },
     { name = "sqlalchemy", extras = ["postgresql-psycopg"], marker = "extra == 'postgresql'", specifier = ">=2.0.38,<3.0.0" },
