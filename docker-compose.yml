@@ -11,11 +11,13 @@
 # Prerequisites:
 #   Build the Lore base image first (required by lore-server):
 #     docker build -f infra/lore/Dockerfile.loreserver.base \
-#       -t portalshq/lore-server-base:latest ../lore
+#       -t portalshq/lore-server-base:latest infra/lore/lore
 #
 #   Or use the Makefile:
-#     make lore-base   # builds Lore base image
-#     make lore-up     # builds base + starts all services
+#     make lore-base              # local single-arch build (dev)
+#     make lore-up                # builds base + starts all services
+#     make lore_base_push         # multi-arch build + push (CI/CD)
+#     make lore_server_push       # multi-arch build + push (CI/CD)
 #
 # Usage:
 #   docker compose up --build

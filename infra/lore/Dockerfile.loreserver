@@ -6,14 +6,39 @@
 # the compiled loreserver binary with the AWS plugin. This Dockerfile
 # adds Portals-specific configuration — no source compilation occurs.
 #
-# Build:
-#   docker build --platform linux/amd64 \
+# =============================================================================
+# !!! BASE IMAGE ALIGNMENT CHECK !!!
+# =============================================================================
+# The FROM line below references portalshq/lore-server-base:latest.
+# When the base image is built as a multi-arch manifest (via buildx --push),
+# this `:latest` tag is itself a multi-arch manifest. Docker will
+# automatically pull the correct architecture variant (amd64 or arm64) at
+# runtime.
+#
+# CRITICAL: lore-server must always be built AFTER lore-server-base is
+# pushed to the registry, because buildx resolves the FROM image from the
+# registry when --push is used. The local Docker daemon does not store
+# multi-arch manifests.
+# =============================================================================
+#
+# Multi-arch Build (CI/CD — pushes manifest directly to registry):
+#   docker buildx build \
+#     --platform linux/amd64,linux/arm64 \
+#     -f infra/lore/Dockerfile.loreserver \
+#     -t portalshq/lore-server:latest \
+#     --cache-to=type=inline \
+#     --push \
+#     .
+#
+# Local build (single-arch, for dev compose):
+#   docker build \
 #     -f infra/lore/Dockerfile.loreserver \
 #     -t portalshq/lore-server:latest \
 #     .
 #
 # Or use the Makefile:
-#   make lore-up        # builds base + starts compose
+#   make lore-up              # local single-arch build + compose (dev)
+#   make lore_server_push     # multi-arch build + push (CI/CD)
 #
 # Usage:
 #   docker run -p 41337:41337/tcp -p 41337:41337/udp -p 41339:41339 \

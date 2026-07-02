@@ -15,6 +15,16 @@
 # Or use the Makefile:
 #   make docker_build_backend
 #
+# Design notes:
+#   - SYNCES FROM PORTALS-BASE DIRECTORY, NOT WORKSPACE ROOT.
+#     The root pyproject.toml depends on `portals-base[complete]`, which
+#     would pull in torch + 30 nvidia GPU packages (~6GB), every LLM SDK,
+#     every vector store, every monitoring tool, etc. — completely unnecessary
+#     for a backend API server. By syncing from the portals-base project
+#     directory, only portals-base's core deps + explicitly requested extras
+#     (postgresql, aioboto3, openai) are installed; the openai extra is
+#     required because voice_mode.py imports it unconditionally.
+#   - Sets RUSTFLAGS for apify-client (reqwest unstable features).
 # =============================================================================
 
 ################################
@@ -29,6 +39,9 @@ ENV UV_COMPILE_BYTECODE=1
 
 # Copy from the cache instead of linking (mounted volume compatibility)
 ENV UV_LINK_MODE=copy
+
+# apify-client requires reqwest unstable features
+ENV RUSTFLAGS='--cfg reqwest_unstable'
 
 # Install build dependencies for compiling Python C extensions
 RUN apt-get update \
@@ -46,10 +59,17 @@ RUN apt-get update \
 # ------------------------------------------------------------------
 # These files change infrequently, so this layer is cached across
 # rebuilds. The uv sync below installs all third-party dependencies
-# but skips the workspace members themselves (their source isn't
-# available yet — see --no-install-project).
+# for the portals-base project (NOT the workspace root), skipping
+# the workspace members themselves since source isn't available yet.
+#
+# IMPORTANT: We use --project /app/src/backend/base to sync the
+# portals-base project specifically. This avoids resolving the root
+# pyproject.toml's dependency on `portals-base[complete]`, which would
+# pull in torch + nvidia GPU packages, all LLM providers, all vector
+# stores, all monitoring tools, etc. — completely unnecessary for a
+# backend API server image.
 
-# Root workspace metadata
+# Root workspace metadata (needed for workspace resolution)
 COPY ./uv.lock /app/uv.lock
 COPY ./pyproject.toml /app/pyproject.toml
 COPY ./README.md /app/README.md
@@ -66,17 +86,22 @@ COPY ./src/px/README.md /app/src/px/README.md
 COPY ./src/sdk/pyproject.toml /app/src/sdk/pyproject.toml
 COPY ./src/sdk/README.md /app/src/sdk/README.md
 
-# Install third-party dependencies from the lockfile
-# --no-install-project: skip installing any workspace package (source not yet available)
+# Install third-party dependencies for portals-base only
+# --project: sync the portals-base project (not the workspace root)
+# --no-install-project: skip workspace packages (source not yet available)
 # --no-dev: exclude dev dependency groups
 # --no-editable: install into .venv as regular wheels (not symlinks)
+# --extra postgresql: PostgreSQL driver
+# --extra openai: required by voice_mode.py (module-level import)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync \
         --frozen \
+        --project /app/src/backend/base \
         --no-install-project \
         --no-dev \
         --no-editable \
-        --extra postgresql
+        --extra postgresql \
+        --extra openai
 
 # ------------------------------------------------------------------
 # Layer 2: Copy all source code
@@ -86,20 +111,26 @@ COPY ./src /app/src
 # ------------------------------------------------------------------
 # Layer 3: Install workspace packages from local source
 # ------------------------------------------------------------------
-# --package portals-base: install only the portals-base package and its
-#   transitive dependencies (px, etc.), NOT the root 'portals' package
-#   which requires frontend assets and optional extras we don't ship.
+# Now that source is available, install portals-base (and its workspace
+# deps px, portals-sdk) with the extras needed by the backend API server:
+#   - postgresql: SQLAlchemy PostgreSQL driver
+#   - aioboto3: S3-compatible object storage
+#   - openai: required by voice_mode.py (module-level import, opt dep)
+#
+# NOTE: We do NOT clean the uv cache here. The cache is mounted via
+# `--mount=type=cache`, which is a Docker BuildKit cache volume that
+# lives outside the image layers. Cleaning it would not reduce the
+# final image size, and the mounted cache is "Resource busy" (EBUSY)
+# when accessed from within its own mount RUN command.
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync \
         --frozen \
+        --project /app/src/backend/base \
         --no-dev \
         --no-editable \
-        --package portals-base \
         --extra postgresql \
-        --extra aioboto3
-
-# Clean uv cache to reduce image size
-RUN uv cache clean
+        --extra aioboto3 \
+        --extra openai
 
 ################################
 # RUNTIME
@@ -119,6 +150,9 @@ RUN apt-get update \
 # compiled portals-base package (including data files now fixed in
 # pyproject.toml via the [tool.hatch.build.targets.wheel] include directive).
 COPY --from=builder /app/.venv /app/.venv
+
+# Also copy uv.lock for runtime debugging/hotfix-patching
+COPY --from=builder /app/uv.lock /app/uv.lock
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1

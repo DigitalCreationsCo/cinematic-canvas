@@ -77,20 +77,63 @@ After successful deployment, Terraform will output:
 
 ### 5. Push Docker Images to ECR
 
-The Terraform configuration creates ECR repositories but does not push images. You must build and push images manually:
+The Terraform configuration creates ECR repositories but does not push images. You must build and push images manually.
+
+> **⚠️ Multi-Architecture Note**: Production ECS tasks run on `linux/amd64` (x86_64). If you run Graviton/ARM-based instances, additionally build for `linux/arm64`. The commands below build for both platforms using `docker buildx`.
 
 ```bash
+# ---------------------------------------------------------------------------
+# Prerequisite: Register QEMU binfmt for cross-platform builds (one-time)
+# ---------------------------------------------------------------------------
+docker run --privileged --rm tonistiigi/binfmt --install all
+
+# ---------------------------------------------------------------------------
 # Authenticate Docker with ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+# ---------------------------------------------------------------------------
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com"
 
-# Build and push Lore server image
-docker build -f Dockerfile.loreserver.base -t <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/portals/lore-server:latest .
-docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/portals/lore-server:latest
+# ---------------------------------------------------------------------------
+# Build and push Lore server base image (multi-arch)
+# ---------------------------------------------------------------------------
+docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -f infra/lore/Dockerfile.loreserver.base \
+    -t "${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/portals/lore-server-base:latest" \
+    --cache-to=type=inline \
+    --cache-from=type=registry,ref="${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/portals/lore-server-base:cache" \
+    --push \
+    infra/lore/lore
 
-# Build and push Backend image
-docker build -f Dockerfile.backend -t <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/portals/backend:latest .
-docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/portals/backend:latest
+# ---------------------------------------------------------------------------
+# Build and push Lore server runtime image (multi-arch)
+# ---------------------------------------------------------------------------
+# NOTE: The runtime image derives FROM portalshq/lore-server-base:latest.
+# For ECR builds, you must first push the base with a tag that the runtime
+# can pull. Either retag the ECR base image to a public reference, or update
+# the Dockerfile.loreserver FROM line to point at the ECR base URL.
+docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -f infra/lore/Dockerfile.loreserver \
+    -t "${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/portals/lore-server:latest" \
+    --cache-to=type=inline \
+    --cache-from=type=registry,ref="${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/portals/lore-server:cache" \
+    --push \
+    .
+
+# ---------------------------------------------------------------------------
+# Build and push Backend image (single-arch — adjust platform as needed)
+# ---------------------------------------------------------------------------
+docker buildx build \
+    --platform linux/amd64 \
+    -f infra/backend/Dockerfile.portals-backend \
+    -t "${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/portals/backend:latest" \
+    --cache-to=type=inline \
+    --push \
+    .
 ```
+
+> **Note**: The Lore server build uses two stages: `Dockerfile.loreserver.base` compiles the binary, and `Dockerfile.loreserver` adds Portals configuration on top. The `--push` flag is **required** for multi-arch builds because the local Docker daemon cannot store multi-architecture manifests.
 
 ### 6. Update ECS Services
 

@@ -1,4 +1,4 @@
-.PHONY: all init format_backend format lint build run_backend dev help tests coverage clean_python_cache clean_npm_cache clean_frontend_build clean_all run_clic load_test_setup load_test_setup_basic load_test_list_flows load_test_run load_test_portals_quick load_test_stress load_test_example load_test_clean load_test_remote_setup load_test_remote_run load_test_help docs docs_build docs_install api_examples_local api_examples_local_syntax lore-base lore-certs lore-up lore-up-d lore-down lore-logs lore-clean
+.PHONY: all init format_backend format lint build run_backend dev help tests coverage clean_python_cache clean_npm_cache clean_frontend_build clean_all run_clic load_test_setup load_test_setup_basic load_test_list_flows load_test_run load_test_portals_quick load_test_stress load_test_example load_test_clean load_test_remote_setup load_test_remote_run load_test_help docs docs_build docs_install api_examples_local api_examples_local_syntax lore-base lore_base lore_base_push lore_server_push lore_push_all lore_builder_setup lore-certs lore-up lore-up-d lore-down lore-logs lore-clean
 
 # Configurations
 VERSION=$(shell grep "^version" pyproject.toml | sed 's/.*\"\(.*\)\"$$/\1/')
@@ -1110,6 +1110,9 @@ lore_base: ## Build the Lore server base image from upstream source
 		infra/lore/lore
 	@echo "$(GREEN)Done. Image: portalshq/lore-server-base:latest$(NC)"
 
+# Alias for lore_base (preserves backward compatibility)
+lore-base: lore_base
+
 # Generate development self-signed certificates
 lore_certs: ## Generate self-signed TLS certificates for Lore development
 	@if [ ! -f infra/lore/cert.pem ] || [ ! -f infra/lore/key.pem ]; then \
@@ -1125,12 +1128,12 @@ lore_certs: ## Generate self-signed TLS certificates for Lore development
 	fi
 
 # Start the full Lore dev stack with compose
-lore_up: lore-base lore-certs ## Build Lore base image and start all services
+lore_up: lore_base lore-certs ## Build Lore base image and start all services
 	@echo "$(GREEN)Starting Lore development stack...$(NC)"
 	$(DOCKER) compose up --build
 
 # Start Lore stack in background
-lore_up_d: lore-base lore-certs ## Build Lore base image and start services in background
+lore_up_d: lore_base lore-certs ## Build Lore base image and start services in background
 	@echo "$(GREEN)Starting Lore development stack (detached)...$(NC)"
 	$(DOCKER) compose up --build -d
 
@@ -1146,3 +1149,47 @@ lore_logs: ## View Lore server logs
 lore_clean: ## Remove Lore volumes and stop stack
 	$(DOCKER) compose down -v
 	@echo "$(GREEN)Lore data volumes removed.$(NC)"
+
+# ---------------------------------------------------------------------------
+# Multi-Arch Build & Push (CI/CD) — requires Docker buildx
+# ---------------------------------------------------------------------------
+
+# Idempotent buildx builder setup
+lore_builder_setup: ## Create/verify the buildx container driver for multi-arch builds
+	@if $(DOCKER) buildx inspect lore-builder >/dev/null 2>&1; then \
+		echo "$(GREEN)Builder 'lore-builder' already exists — reusing.$(NC)"; \
+		$(DOCKER) buildx use lore-builder; \
+	else \
+		echo "$(GREEN)Creating and bootstrapping builder 'lore-builder'...$(NC)"; \
+		$(DOCKER) buildx create --use --name lore-builder --bootstrap; \
+	fi
+
+# Build & push lore-server-base for linux/amd64 + linux/arm64
+lore_base_push: lore_builder_setup ## Build & push portalshq/lore-server-base (multi-arch: amd64 + arm64)
+	@echo "$(GREEN)Building & pushing portalshq/lore-server-base:latest (linux/amd64, linux/arm64)...$(NC)"
+	$(DOCKER) buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-f infra/lore/Dockerfile.loreserver.base \
+		-t portalshq/lore-server-base:latest \
+		--cache-to=type=inline \
+		--cache-from=type=registry,ref=portalshq/lore-server-base:cache \
+		--push \
+		infra/lore/lore
+	@echo "$(GREEN)Done. Multi-arch manifest pushed: portalshq/lore-server-base:latest$(NC)"
+
+# Build & push lore-server for linux/amd64 + linux/arm64
+lore_server_push: lore_builder_setup ## Build & push portalshq/lore-server (multi-arch: amd64 + arm64)
+	@echo "$(GREEN)Building & pushing portalshq/lore-server:latest (linux/amd64, linux/arm64)...$(NC)"
+	$(DOCKER) buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-f infra/lore/Dockerfile.loreserver \
+		-t portalshq/lore-server:latest \
+		--cache-to=type=inline \
+		--cache-from=type=registry,ref=portalshq/lore-server:cache \
+		--push \
+		.
+	@echo "$(GREEN)Done. Multi-arch manifest pushed: portalshq/lore-server:latest$(NC)"
+
+# Build & push both images in sequence
+lore_push_all: lore_base_push lore_server_push ## Build & push both lore-server-base and lore-server (multi-arch)
+	@echo "$(GREEN)All Lore images built and pushed successfully.$(NC)"

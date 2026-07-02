@@ -11,14 +11,24 @@
 # configuration is baked in. Configuration belongs in the derived image
 # (Dockerfile.loreserver) and is mounted at runtime.
 #
-# Build:
-#   docker build --platform linux/amd64 \
+# Multi-arch Build (CI/CD — pushes manifest directly to registry):
+#   docker buildx build \
+#     --platform linux/amd64,linux/arm64 \
 #     -f infra/lore/Dockerfile.loreserver.base \
 #     -t portalshq/lore-server-base:latest \
-#     ../lore
+#     --cache-to=type=inline \
+#     --push \
+#     infra/lore/lore
+#
+# Local build (single-arch, no registry push):
+#   docker build \
+#     -f infra/lore/Dockerfile.loreserver.base \
+#     -t portalshq/lore-server-base:latest \
+#     infra/lore/lore
 #
 # Or use the Makefile:
-#   make lore-base
+#   make lore-base             # local single-arch build (dev)
+#   make lore_base_push        # multi-arch build + push (CI/CD)
 #
 # =============================================================================
 
