@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars and fill in.
+
+project_id  = "my-gcp-project"
+region      = "us-central1"
+zone        = "us-central1-a"
+
+# Must be globally unique across all of GCS.
+bucket_name = "my-gcp-project-lore-immutable-store"
+
+# Informational -- shown in the `lore_remote_url` output. Repositories
+# are created client-side with `lore repository create`, not by Terraform.
+repository_name = "my-project"
+
+# Defaults are fine unless you want custom values. If you change these,
+# pass the matching --issuer/--audience to auth/mint_token.py.
+# jwt_issuer   = "lore-token-issuer"
+# jwt_audience = ["lore-server"]

@@ -1,0 +1,56 @@
+# =============================================================================
+# Production Environment — Example Terraform Variables
+# =============================================================================
+#
+# Copy this file to terraform.tfvars and fill in the required values.
+# The database_url is sensitive and should be provided securely.
+#
+# =============================================================================
+
+aws_region = "us-east-1"
+environment = "production"
+
+# REQUIRED: Supabase pooled PostgreSQL connection URL
+# Format: postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres?pgbouncer=true
+database_url = "postgresql://postgres:YOUR_PASSWORD@db.your-project.supabase.co:5432/postgres?pgbouncer=true"  # pragma: allowlist secret
+
+# OPTIONAL: Domain configuration (leave empty to use raw ALB/NLB DNS names)
+domain_name = ""
+hosted_zone_id = ""
+
+# Image tags
+lore_image_tag = "latest"
+backend_image_tag = "latest"
+
+# JWT configuration
+jwt_issuer = "lore-token-issuer"
+jwt_audience = ["lore-server"]
+
+# Resource names
+s3_bucket_name = "portals-lore-production-fragments"
+dynamodb_fragments_table_name = "portals-fragments"
+dynamodb_metadata_table_name = "portals-fragment-metadata"
+ecr_repository_names = ["portals/lore-server", "portals/backend"]
+
+# VPC configuration
+vpc_cidr = "10.0.0.0/16"
+availability_zones = []
+
+# Task configuration
+lore_cpu = 1024
+lore_memory = 2048
+lore_desired_count = 1
+
+backend_cpu = 512
+backend_memory = 1024
+backend_desired_count = 2
+
+# Logging
+log_retention_days = 30
+
+# Tags
+tags = {
+  Project     = "Portals"
+  Environment = "production"
+  ManagedBy   = "Terraform"
+}

@@ -1,0 +1,11 @@
+portals:
+  version: 0.1.0
+
+nap-sdk:
+  version: 0.3.0
+
+lore:
+  upstream_commit: 4bffa76bc782a6ed7354111ac3e733db2aec50c9  # pragma: allowlist secret
+  upstream_tag: ""
+  base_image: lore-server-base:0.8.5-nightly
+  image: ""

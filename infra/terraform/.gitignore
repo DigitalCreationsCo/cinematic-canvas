@@ -1,0 +1,11 @@
+# Contains the private signing key -- never commit this.
+generated/
+
+# Standard Terraform noise.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+crash.log
+crash.*.log

@@ -1,0 +1,172 @@
+#!/bin/bash
+set -euo pipefail
+
+LORE_HOME=/var/lib/lore
+GCS_MOUNT=/mnt/lore-immutable
+BUCKET="${bucket_name}"
+DATA_DISK_DEVICE="/dev/disk/by-id/google-lore-data"
+
+log() { echo "[lore-startup] $*"; }
+
+# --- 1. Base packages --------------------------------------------------
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get install -y curl openssl python3 lsb-release fuse e2fsprogs gnupg
+
+# --- 2. gcsfuse ----------------------------------------------------------
+if ! command -v gcsfuse >/dev/null 2>&1; then
+  GCSFUSE_REPO="gcsfuse-$(lsb_release -c -s)"
+  echo "deb https://packages.cloud.google.com/apt $GCSFUSE_REPO main" \
+    > /etc/apt/sources.list.d/gcsfuse.list
+  curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+  apt-get update -y
+  apt-get install -y gcsfuse
+fi
+
+mkdir -p "$GCS_MOUNT"
+cat > /etc/systemd/system/lore-gcsfuse.service <<UNIT
+[Unit]
+Description=gcsfuse mount for the Lore immutable store
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/gcsfuse --implicit-dirs --file-mode=664 --dir-mode=775 $BUCKET $GCS_MOUNT
+ExecStop=/bin/fusermount -u $GCS_MOUNT
+Restart=always
+RestartSec=5
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now lore-gcsfuse.service
+
+for i in $(seq 1 30); do
+  mountpoint -q "$GCS_MOUNT" && break
+  sleep 2
+done
+mountpoint -q "$GCS_MOUNT" || { log "ERROR: gcsfuse mount never came up"; exit 1; }
+mkdir -p "$GCS_MOUNT/immutable"
+
+# --- 3. Data disk: mutable store, certs, config -------------------------
+if [ ! -b "$DATA_DISK_DEVICE" ]; then
+  DATA_DISK_DEVICE="/dev/sdb"
+fi
+
+if ! blkid "$DATA_DISK_DEVICE" >/dev/null 2>&1; then
+  log "Formatting fresh data disk $DATA_DISK_DEVICE"
+  mkfs.ext4 -F "$DATA_DISK_DEVICE"
+fi
+
+mkdir -p "$LORE_HOME"
+if ! mountpoint -q "$LORE_HOME"; then
+  mount "$DATA_DISK_DEVICE" "$LORE_HOME"
+fi
+grep -q "$DATA_DISK_DEVICE" /etc/fstab || \
+  echo "$DATA_DISK_DEVICE $LORE_HOME ext4 discard,defaults,nofail 0 2" >> /etc/fstab
+
+mkdir -p "$LORE_HOME/mutable" "$LORE_HOME/certs" "$LORE_HOME/jwks" "$LORE_HOME/config"
+
+# --- 4. Self-signed TLS certificate, generated once and persisted -------
+# No domain to point at this box, so this is a self-signed cert keyed
+# to the static external IP. It survives restarts because it lives on
+# the persistent disk and this block only (re)generates it if absent.
+# Clients will need to explicitly trust it -- see README.
+if [ ! -f "$LORE_HOME/certs/cert.pem" ]; then
+  log "Generating self-signed certificate"
+  EXTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
+    "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip")
+  openssl req -x509 -newkey rsa:2048 -nodes \
+    -keyout "$LORE_HOME/certs/key.pem" \
+    -out "$LORE_HOME/certs/cert.pem" \
+    -days 825 -subj "/CN=$EXTERNAL_IP" \
+    -addext "subjectAltName=IP:$EXTERNAL_IP,IP:127.0.0.1,DNS:localhost"
+fi
+
+# --- 5. JWKS: the server's view of "who's allowed to sign tokens" -------
+# Pulled from instance metadata (Terraform put it there from the
+# keypair's public half) and served locally only -- loreserver fetches
+# it from itself at startup, nothing external ever needs to reach it.
+curl -s -H "Metadata-Flavor: Google" \
+  "http://metadata.google.internal/computeMetadata/v1/instance/attributes/lore-jwks" \
+  > "$LORE_HOME/jwks/jwks.json"
+
+cat > /etc/systemd/system/lore-jwks.service <<UNIT
+[Unit]
+Description=Local-only static file server for the Lore JWKS endpoint
+After=network.target
+
+[Service]
+WorkingDirectory=$LORE_HOME/jwks
+ExecStart=/usr/bin/python3 -m http.server 8080 --bind 127.0.0.1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now lore-jwks.service
+
+# --- 6. loreserver binary -------------------------------------------------
+if [ ! -x /usr/local/bin/loreserver ]; then
+  curl -fsSL https://raw.githubusercontent.com/EpicGames/lore/main/scripts/install.sh \
+    | bash -s -- --server --install-dir /usr/local/bin
+fi
+
+# --- 7. Server config -----------------------------------------------------
+cat > "$LORE_HOME/config/local.toml" <<TOML
+[server.quic.certificate]
+cert_file = "$LORE_HOME/certs/cert.pem"
+pkey_file = "$LORE_HOME/certs/key.pem"
+
+[server.grpc.certificate]
+cert_file = "$LORE_HOME/certs/cert.pem"
+pkey_file = "$LORE_HOME/certs/key.pem"
+
+[immutable_store.local]
+path = "$GCS_MOUNT/immutable"
+flush_delay_seconds = 10
+
+[mutable_store.local]
+path = "$LORE_HOME/mutable"
+flush_delay_seconds = 10
+
+[topology]
+provider = "none"
+
+[server.auth]
+jwt_issuer = "${jwt_issuer}"
+jwt_audience = ${jwt_audience_toml}
+
+[server.auth.jwk]
+endpoint = "http://127.0.0.1:8080/jwks.json"
+
+[server.http]
+store_health_check = true
+TOML
+
+# --- 8. loreserver systemd service ----------------------------------------
+cat > /etc/systemd/system/loreserver.service <<UNIT
+[Unit]
+Description=Lore Server
+After=network-online.target lore-gcsfuse.service lore-jwks.service
+Requires=lore-gcsfuse.service lore-jwks.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/loreserver --config $LORE_HOME/config
+Restart=always
+RestartSec=5
+User=root
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now loreserver.service
+
+log "Startup complete."

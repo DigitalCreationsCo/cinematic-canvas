@@ -1,0 +1,2 @@
+PyJWT[crypto]>=2.8
+google-cloud-secret-manager>=2.20
