@@ -7,38 +7,27 @@
 # adds Portals-specific configuration — no source compilation occurs.
 #
 # =============================================================================
-# !!! BASE IMAGE ALIGNMENT CHECK !!!
+# ARCHITECTURE HANDLING
 # =============================================================================
-# The FROM line below references portalshq/lore-server-base:latest.
-# When the base image is built as a multi-arch manifest (via buildx --push),
-# this `:latest` tag is itself a multi-arch manifest. Docker will
-# automatically pull the correct architecture variant (amd64 or arm64) at
-# runtime.
+# The FROM line uses an architecture-specific tag suffix (e.g., -amd64,
+# -arm64) resolved via Docker BuildKit's built-in TARGETARCH variable.
+# This avoids the multi-arch manifest ambiguity that plagued the old
+# :latest tag approach.
 #
-# CRITICAL: lore-server must always be built AFTER lore-server-base is
-# pushed to the registry, because buildx resolves the FROM image from the
-# registry when --push is used. The local Docker daemon does not store
-# multi-arch manifests.
+# Tag convention:
+#   portalshq/lore-server-base:latest-amd64  (Intel / AMD64)
+#   portalshq/lore-server-base:latest-arm64  (ARM64 / Graviton / Apple Silicon)
+#
+# CI/CD pipeline (native runners per arch):
+#   Intel runner → pushes portalshq/lore-server-base:latest-amd64
+#   ARM runner   → pushes portalshq/lore-server-base:latest-arm64
 # =============================================================================
 #
-# Multi-arch Build (CI/CD — pushes manifest directly to registry):
-#   docker buildx build \
-#     --platform linux/amd64,linux/arm64 \
-#     -f infra/lore/Dockerfile.loreserver \
-#     -t portalshq/lore-server:latest \
-#     --cache-to=type=inline \
-#     --push \
-#     .
+# Local build (for dev compose):
+#   make lore-up            # builds base + starts all services
 #
-# Local build (single-arch, for dev compose):
-#   docker build \
-#     -f infra/lore/Dockerfile.loreserver \
-#     -t portalshq/lore-server:latest \
-#     .
-#
-# Or use the Makefile:
-#   make lore-up              # local single-arch build + compose (dev)
-#   make lore_server_push     # multi-arch build + push (CI/CD)
+# CI/CD build & push (single arch per CI runner):
+#   make lore_server_push   # pushes portalshq/lore-server:latest-$(HOST_ARCH)
 #
 # Usage:
 #   docker run -p 41337:41337/tcp -p 41337:41337/udp -p 41339:41339 \
@@ -50,9 +39,16 @@
 #
 # =============================================================================
 
-# Use the base image. The version tag matches the base image version.
-# When building locally, use :latest. In CI, pin to a specific version.
-FROM portalshq/lore-server-base:latest
+# Use the base image with architecture-specific tag suffix.
+# TARGETARCH is automatically set by BuildKit to the target platform's
+# architecture (e.g., amd64, arm64). This ensures the correct arch
+# variant is resolved whether the image is local or in the registry.
+#
+# Tag convention:
+#   portalshq/lore-server-base:latest-amd64  (Intel / AMD64)
+#   portalshq/lore-server-base:latest-arm64  (ARM64 / Graviton / Apple Silicon)
+ARG TARGETARCH
+FROM portalshq/lore-server-base:latest-${TARGETARCH}
 
 # ---------------------------------------------------------------------------
 # Runtime Directory Layout

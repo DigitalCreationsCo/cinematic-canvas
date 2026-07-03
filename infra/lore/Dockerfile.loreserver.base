@@ -5,30 +5,40 @@
 # Builds a custom loreserver binary with the AWS plugin (S3 + DynamoDB)
 # compiled in, excluding unused plugins (hashicorp/consul).
 #
-# Produces: portalshq/lore-server-base:<version>
+# Produces: portalshq/lore-server-base:latest-<arch>
 #
 # This image is reusable across environments. No Portals-specific
 # configuration is baked in. Configuration belongs in the derived image
 # (Dockerfile.loreserver) and is mounted at runtime.
 #
-# Multi-arch Build (CI/CD — pushes manifest directly to registry):
+# CI/CD Build & Push (native runner per architecture — NO QEMU):
+#   # On Intel/AMD CI runner:
 #   docker buildx build \
-#     --platform linux/amd64,linux/arm64 \
+#     --platform linux/amd64 \
 #     -f infra/lore/Dockerfile.loreserver.base \
-#     -t portalshq/lore-server-base:latest \
+#     -t portalshq/lore-server-base:latest-amd64 \
 #     --cache-to=type=inline \
 #     --push \
 #     infra/lore/lore
 #
-# Local build (single-arch, no registry push):
-#   docker build \
+#   # On ARM64/Graviton CI runner:
+#   docker buildx build \
+#     --platform linux/arm64 \
 #     -f infra/lore/Dockerfile.loreserver.base \
-#     -t portalshq/lore-server-base:latest \
+#     -t portalshq/lore-server-base:latest-arm64 \
+#     --cache-to=type=inline \
+#     --push \
 #     infra/lore/lore
 #
-# Or use the Makefile:
+# Local build (host arch only, auto-detected):
+#   docker build \
+#     -f infra/lore/Dockerfile.loreserver.base \
+#     -t portalshq/lore-server-base:latest-amd64 \
+#     infra/lore/lore
+#
+# Or use the Makefile (recommended — auto-detects host arch):
 #   make lore-base             # local single-arch build (dev)
-#   make lore_base_push        # multi-arch build + push (CI/CD)
+#   make lore_base_push        # build + push host arch (CI/CD)
 #
 # =============================================================================
 

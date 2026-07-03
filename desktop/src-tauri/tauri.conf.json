@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "identifier": "com.vibrantceo.portals-desktop",
   "build": {
-    "beforeDevCommand": "npm run start --prefix ../../src/frontend",
+    "beforeDevCommand": "npm run start --prefix ../src/frontend",
     "devUrl": "http://localhost:3000",
-    "beforeBuildCommand": "npm run build --prefix ../../src/frontend",
-    "frontendDist": "../../src/frontend/build"
+    "beforeBuildCommand": "npm run build --prefix ../src/frontend",
+    "frontendDist": "../src/frontend/build"
   },
   "app": {
     "windows": [
