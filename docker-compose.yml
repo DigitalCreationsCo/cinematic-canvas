@@ -93,8 +93,14 @@ services:
     image: localstack/localstack:latest
     restart: unless-stopped
     environment:
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN- }
       SERVICES: s3,dynamodb
       DEFAULT_REGION: us-east-1
+      # AWS_DEFAULT_REGION is what the AWS CLI inside the container reads.
+      # It MUST match DEFAULT_REGION above.  Overridable via env var so
+      # that re-deploying to another region *just works* — change it in
+      # one place.
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test # pragma: allowlist secret
       EDGE_PORT: 4566
@@ -107,13 +113,15 @@ services:
       # Verify LocalStack is ready AND the init script has created the
       # S3 bucket + DynamoDB tables that lore-server's AwsImmutableStore
       # checks for on startup (ensure_bucket / ensure_table).
+      #
+      # NOTE: plain CMD-SHELL form (no "CMD" prefix) — Docker wraps
+      # this in `sh -c` automatically.  An explicit "CMD" prefix would
+      # be passed as a literal command name and fail.
       test: >
-        CMD bash -c '
-          curl -sf http://localhost:4566/_localstack/health > /dev/null &&
-          aws --endpoint-url=http://localhost:4566 s3 ls s3://portals-dev > /dev/null 2>&1 &&
-          aws --endpoint-url=http://localhost:4566 dynamodb describe-table --table-name portals-fragments-dev > /dev/null 2>&1 &&
-          aws --endpoint-url=http://localhost:4566 dynamodb describe-table --table-name portals-fragment-metadata-dev > /dev/null 2>&1
-        '
+        curl -sf http://localhost:4566/_localstack/health > /dev/null &&
+        aws --endpoint-url=http://localhost:4566 s3 ls s3://portals-dev > /dev/null 2>&1 &&
+        aws --endpoint-url=http://localhost:4566 dynamodb describe-table --table-name portals-fragments-dev > /dev/null 2>&1 &&
+        aws --endpoint-url=http://localhost:4566 dynamodb describe-table --table-name portals-fragment-metadata-dev > /dev/null 2>&1
       interval: 10s
       timeout: 10s
       retries: 15
@@ -144,7 +152,10 @@ services:
       # AWS credentials for LocalStack
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test # pragma: allowlist secret
-      AWS_DEFAULT_REGION: us-east-1
+      # MUST match localstack's AWS_DEFAULT_REGION.  Uses the same
+      # override pattern so that re-deploying to another region
+      # changes both services from a single env var.
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
     volumes:
       # Persistent repository data
       - lore_data:/data

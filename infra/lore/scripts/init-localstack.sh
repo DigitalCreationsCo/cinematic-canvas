@@ -12,9 +12,19 @@
 
 set -euo pipefail
 
-echo "=== LocalStack init: Creating Lore infrastructure ==="
+# ---------------------------------------------------------------------------
+# Region-agnostic init script.
+#
+# The AWS CLI uses AWS_DEFAULT_REGION from the container environment (set
+# in docker-compose.yml via the env var of the same name).  No hardcoded
+# --region flags — deploy to any region and this Just Works.
+# ---------------------------------------------------------------------------
+AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+export AWS_DEFAULT_REGION
 
-AWS="aws --endpoint-url=http://localhost:4566 --region=us-east-1"
+echo "=== LocalStack init: Creating Lore infrastructure (region: ${AWS_DEFAULT_REGION}) ==="
+
+AWS="aws --endpoint-url=http://localhost:4566"
 
 # ---------------------------------------------------------------------------
 # S3 Bucket — fragment payloads
@@ -22,7 +32,7 @@ AWS="aws --endpoint-url=http://localhost:4566 --region=us-east-1"
 BUCKET="portals-dev"
 if ! $AWS s3 ls "s3://${BUCKET}" 2>/dev/null; then
     echo "Creating S3 bucket: ${BUCKET}"
-    $AWS s3 mb "s3://${BUCKET}" --region us-east-1
+    $AWS s3 mb "s3://${BUCKET}"
 else
     echo "S3 bucket already exists: ${BUCKET}"
 fi
@@ -50,8 +60,7 @@ if ! $AWS dynamodb describe-table --table-name "${FRAGMENTS_TABLE}" 2>/dev/null;
         --attribute-definitions \
             AttributeName=hash,AttributeType=B \
             AttributeName=repository_context,AttributeType=B \
-        --billing-mode PAY_PER_REQUEST \
-        --region us-east-1
+        --billing-mode PAY_PER_REQUEST
 else
     echo "DynamoDB table already exists: ${FRAGMENTS_TABLE}"
 fi
@@ -73,8 +82,7 @@ if ! $AWS dynamodb describe-table --table-name "${METADATA_TABLE}" 2>/dev/null; 
             AttributeName=hash,KeyType=HASH \
         --attribute-definitions \
             AttributeName=hash,AttributeType=B \
-        --billing-mode PAY_PER_REQUEST \
-        --region us-east-1
+        --billing-mode PAY_PER_REQUEST
 else
     echo "DynamoDB table already exists: ${METADATA_TABLE}"
 fi

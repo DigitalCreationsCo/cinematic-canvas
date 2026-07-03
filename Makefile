@@ -1151,6 +1151,21 @@ lore_clean: ## Remove Lore volumes and stop stack
 	@echo "$(GREEN)Lore data volumes removed.$(NC)"
 
 # ---------------------------------------------------------------------------
+# LocalStack AWS helper  (host-side)
+# ---------------------------------------------------------------------------
+
+# Default region — matches docker-compose.yml DEFAULT_REGION.  Override on
+# the command line or via the environment when deploying to another region:
+#   make lore-aws CMD="dynamodb list-tables" LORE_REGION=eu-west-1
+LORE_REGION ?= us-east-1
+
+lore-aws: ## Run an AWS CLI command against the local LocalStack instance
+	aws --endpoint-url=http://localhost:4566 --region=$(LORE_REGION) $(CMD)
+
+lore-list-tables: ## List DynamoDB tables in LocalStack
+	aws --endpoint-url=http://localhost:4566 --region=$(LORE_REGION) dynamodb list-tables
+
+# ---------------------------------------------------------------------------
 # Multi-Arch Build & Push (CI/CD) — requires Docker buildx
 # ---------------------------------------------------------------------------
 
