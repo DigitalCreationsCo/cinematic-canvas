@@ -20,6 +20,7 @@ declare global {
 
 interface ImportMetaEnv {
   readonly BACKEND_URL: string;
+  readonly VITE_PROXY_TARGET: string;
   readonly ACCESS_TOKEN_EXPIRE_SECONDS: string;
   readonly CI: string;
   readonly PORTALS_AUTO_LOGIN: string;
