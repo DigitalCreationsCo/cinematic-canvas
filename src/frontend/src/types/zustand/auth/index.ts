@@ -8,7 +8,11 @@ export interface AuthStoreType {
   autoLogin: boolean | null;
   apiKey: string | null;
   authenticationErrorCount: number;
-
+  activeTeamRole: "owner" | "admin" | "member" | null;
+  setActiveTeam: (
+    teamId: string | null,
+    role: "owner" | "admin" | "member" | null,
+  ) => void;
   setIsAdmin: (isAdmin: boolean) => void;
   setIsAuthenticated: (isAuthenticated: boolean) => void;
   setAccessToken: (accessToken: string | null) => void;

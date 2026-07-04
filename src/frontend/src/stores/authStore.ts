@@ -9,10 +9,21 @@ import { cookieManager } from "@/utils/cookie-manager";
 
 interface TeamState {
   activeTeamId: string | null;
-  availableTeams: Array<{ id: string; name: string }> | null;
-  setActiveTeamId: (teamId: string | null) => void;
+  availableTeams: Array<{
+    id: string;
+    name: string;
+    role: "owner" | "admin" | "member";
+  }> | null;
+  setActiveTeam: (
+    teamId: string | null,
+    role: "owner" | "admin" | "member" | null,
+  ) => void;
   setAvailableTeams: (
-    teams: Array<{ id: string; name: string }> | null,
+    teams: Array<{
+      id: string;
+      name: string;
+      role: "owner" | "admin" | "member";
+    }> | null,
   ) => void;
 }
 
@@ -29,6 +40,10 @@ const useAuthStore = create<AuthStoreType & TeamState>((set, get) => ({
 
   activeTeamId: null,
   availableTeams: null,
+  activeTeamRole: null,
+
+  setActiveTeam: (activeTeamId, activeTeamRole) =>
+    set({ activeTeamId, activeTeamRole }),
 
   setIsAdmin: (isAdmin) => set({ isAdmin }),
   setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
@@ -39,7 +54,6 @@ const useAuthStore = create<AuthStoreType & TeamState>((set, get) => ({
   setAuthenticationErrorCount: (authenticationErrorCount) =>
     set({ authenticationErrorCount }),
 
-  setActiveTeamId: (activeTeamId) => set({ activeTeamId }),
   setAvailableTeams: (availableTeams) => set({ availableTeams }),
 
   logout: async () => {
@@ -61,6 +75,7 @@ const useAuthStore = create<AuthStoreType & TeamState>((set, get) => ({
       apiKey: null,
       activeTeamId: null,
       availableTeams: null,
+      activeTeamRole: null,
     });
   },
 }));
