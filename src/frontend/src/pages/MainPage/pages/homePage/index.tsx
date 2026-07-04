@@ -73,8 +73,13 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
     search,
   });
 
+  const folderItems = folderData?.flows?.items ?? [];
+  const filteredFlows = !folderId
+    ? folderItems.filter((flow) => !flow.folder_id)
+    : folderItems;
+
   const data = {
-    flows: folderData?.flows?.items ?? [],
+    flows: filteredFlows,
     name: folderData?.folder?.name ?? "",
     description: folderData?.folder?.description ?? "",
     parent_id: folderData?.folder?.parent_id ?? "",
@@ -228,12 +233,10 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
             prev.filter((id) => !flowsToSelect.includes(id)),
           );
         }
+      } else if (selected) {
+        setSelectedFlows([...selectedFlows, flowId]);
       } else {
-        if (selected) {
-          setSelectedFlows([...selectedFlows, flowId]);
-        } else {
-          setSelectedFlows(selectedFlows.filter((id) => id !== flowId));
-        }
+        setSelectedFlows(selectedFlows.filter((id) => id !== flowId));
       }
     },
     [selectedFlows, lastSelectedIndex, data.flows, isShiftPressed],
