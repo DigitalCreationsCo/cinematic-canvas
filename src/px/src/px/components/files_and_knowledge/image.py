@@ -1,5 +1,6 @@
+from px.base.data.utils import IMG_FILE_TYPES
 from px.custom.custom_component.component import Component
-from px.io import StrInput
+from px.io import FileInput, StrInput
 from px.schema import Data
 from px.template.field.base import Output
 
@@ -11,10 +12,19 @@ class ImageLoaderComponent(Component):
     name = "ImageLoader"
 
     inputs = [
+        FileInput(
+            name="image_file",
+            display_name="Upload Image",
+            file_types=IMG_FILE_TYPES,
+            info="Upload an image file to display on the canvas.",
+            required=False,
+            show=True,
+        ),
         StrInput(
             name="image_path",
-            display_name="Image",
-            required=True,
+            display_name="Image Path",
+            info="Alternatively, provide a file path to an existing image.",
+            required=False,
             show=True,
         ),
         # Hidden field that carries the v2 file_id so the frontend preview
@@ -36,10 +46,19 @@ class ImageLoaderComponent(Component):
     ]
 
     def build_data(self) -> Data:
-        file_name = self.image_path.split("/")[-1] if "/" in self.image_path else self.image_path
+        # Prefer the uploaded file; fall back to the text path.
+        resolved_path = (
+            self.image_file
+            if self.image_file
+            else self.image_path
+        )
+        if not resolved_path:
+            msg = "Please provide an image by uploading a file or entering a file path."
+            raise ValueError(msg)
+        file_name = resolved_path.split("/")[-1] if "/" in resolved_path else resolved_path
         return Data(
             data={
-                "image": self.image_path,
+                "image": resolved_path,
                 "file_name": file_name,
                 "file_id": self.file_id,
                 "name": file_name,
