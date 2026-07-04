@@ -12,7 +12,7 @@ export const ProtectedTeamRoute = ({
   children?: React.ReactNode;
   requiredRole?: "owner" | "admin" | "member";
 }) => {
-  const { data: teams, isLoading } = useGetTeams();
+  const { data: teams, isLoading, error } = useGetTeams();
   const activeTeamId = useAuthStore((state) => state.activeTeamId);
   const activeTeamRole = useAuthStore((state) => state.activeTeamRole);
   const setActiveTeam = useAuthStore((state) => state.setActiveTeam);
@@ -22,21 +22,15 @@ export const ProtectedTeamRoute = ({
   const location = useLocation();
 
   const hasTeams = teams && teams.length > 0;
-
-  // GUARD 2: Workspace Authorization Check
-  // Validates that the locally stored activeTeamId actually exists in the user's authorized remote team list.
   const activeTeam = hasTeams
     ? teams.find((team) => team.id === activeTeamId)
     : null;
   const isAuthorizedForActiveTeam = !!activeTeam;
 
   useEffect(() => {
-    // If the user has teams but their active ID is unauthorized/stale, auto-correct to their first available team.
     if (hasTeams && !isAuthorizedForActiveTeam) {
       setActiveTeam(teams[0].id, teams[0].role);
-    }
-    // Also sync the role if it somehow went out of sync
-    else if (activeTeam && activeTeamRole !== activeTeam.role) {
+    } else if (activeTeam && activeTeamRole !== activeTeam.role) {
       setActiveTeam(activeTeam.id, activeTeam.role);
     }
   }, [
@@ -58,6 +52,16 @@ export const ProtectedTeamRoute = ({
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <CustomLoader remSize={30} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <p className="text-destructive">
+          Failed to load teams. Please try again later.
+        </p>
       </div>
     );
   }

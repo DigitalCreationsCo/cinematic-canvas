@@ -38,6 +38,13 @@ export const useGetTeams: useQueryFunctionType<undefined, Array<Team>> = (
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     staleTime: 1000 * 60 * 5, // 5 minutes cache viability
+    retry: (failureCount, error: any) => {
+      // Don't retry on 403 or 401
+      if (error?.response?.status === 403 || error?.response?.status === 401) {
+        return false;
+      }
+      return failureCount < 3;
+    },
     ...options,
     enabled: shouldBeEnabled,
   });
