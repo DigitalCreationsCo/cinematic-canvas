@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
   const apiRoutes = API_ROUTES || ["^/api/v1/", "^/api/v2/", "/health"];
 
   const target =
-    env.VITE_PROXY_TARGET || PROXY_TARGET || "http://localhost:7860";
+    env.VITE_PROXY_TARGET || envPortals.VITE_PROXY_TARGET || PROXY_TARGET || "http://localhost:7860";
 
   const port = Number(env.VITE_PORT) || PORT || 3000;
 
