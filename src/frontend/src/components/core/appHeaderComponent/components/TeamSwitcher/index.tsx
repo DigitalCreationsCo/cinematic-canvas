@@ -1,21 +1,28 @@
 import {
   Team,
   useGetTeams,
-} from "@/controllers/API/queries/auth/use-get-teams";
+} from "@/controllers/API/queries/teams/use-get-teams";
 import useAuthStore from "@/stores/authStore";
 
 export const TeamSwitcher = () => {
-  const { activeTeamId, setActiveTeamId } = useAuthStore();
+  const { activeTeamId, setActiveTeam } = useAuthStore();
 
   const { data: teams, error } = useGetTeams();
 
   if (error) return <div>Failed to load teams</div>;
   if (!teams) return <div>Loading teams...</div>;
 
+  const handleTeamChange = (teamId: string) => {
+    const team = teams.find((t) => t.id === teamId);
+    if (team) {
+      setActiveTeam(team.id, team.role);
+    }
+  };
+
   return (
     <select
       value={activeTeamId || ""}
-      onChange={(e) => setActiveTeamId(e.target.value)}
+      onChange={(e) => handleTeamChange(e.target.value)}
       className="tracking-wide w-60 h-9 ml-2 px-3 rounded-none text-sm focus:ring-none active:ring-none focus:outline-none active:outline-none"
     >
       <option value="">Select a team</option>
