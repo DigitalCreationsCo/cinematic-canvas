@@ -1,3 +1,4 @@
+import { cloneDeep } from "lodash";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ICON_STROKE_WIDTH } from "@/constants/constants";
@@ -30,6 +31,7 @@ export default function InputFileComponent({
   editNode = false,
   placeholder,
   allowFolderSelection = false,
+  nodeId,
 }: InputProps<string, FileComponentType> & {
   allowFolderSelection?: boolean;
 }): JSX.Element {
@@ -38,8 +40,25 @@ export default function InputFileComponent({
   const currentFlowFolderId = useFlowStore(
     (state) => state.currentFlow?.folder_id,
   );
+  const setNode = useFlowStore((state) => state.setNode);
   const setErrorData = useAlertStore((state) => state.setErrorData);
   const { validateFileSize } = useFileSizeValidator();
+
+  /** Find the v2 file_id from the files list for a given file path and set it
+   *  on the node template so ImagePreviewField can route to the v2 by-id
+   *  image endpoint instead of falling back to the v1 path-based route. */
+  const syncFileId = (filePath: string) => {
+    if (!(nodeId && files)) return;
+    const file = files.find((f) => f.path === filePath);
+    if (!file?.id) return;
+    setNode(nodeId, (oldNode) => {
+      const newData = cloneDeep(oldNode.data);
+      if (newData.node?.template?.file_id) {
+        newData.node.template.file_id.value = file.id;
+      }
+      return { ...oldNode, data: newData };
+    });
+  };
 
   // Clear component state
   useEffect(() => {
@@ -156,6 +175,16 @@ export default function InputFileComponent({
       value: "",
       file_path: "",
     });
+    // Clear the v2 file_id on dismiss
+    if (nodeId) {
+      setNode(nodeId, (oldNode) => {
+        const newData = cloneDeep(oldNode.data);
+        if (newData.node?.template?.file_id) {
+          newData.node.template.file_id.value = "";
+        }
+        return { ...oldNode, data: newData };
+      });
+    }
   };
 
   const isDisabled = disabled || isPending;
@@ -190,28 +219,39 @@ export default function InputFileComponent({
         ) {
           return;
         }
-      } else {
-        if (
-          typeof value === "string" &&
-          files?.find((f) => f.name === value) &&
-          typeof file_path === "string" &&
-          files?.find((f) => f.path === file_path)
-        ) {
-          return;
-        }
+      } else if (
+        typeof value === "string" &&
+        files?.find((f) => f.name === value) &&
+        typeof file_path === "string" &&
+        files?.find((f) => f.path === file_path)
+      ) {
+        return;
       }
+      const resolvedPath = isList
+        ? (files ?? [])
+            .filter((f) => selectedFiles.includes(f.path))
+            .map((f) => f.path)
+        : (files?.find((f) => selectedFiles.includes(f.path))?.path ?? "");
+      const resolvedValue = isList
+        ? (files ?? [])
+            .filter((f) => selectedFiles.includes(f.path))
+            .map((f) => f.name)
+        : (files?.find((f) => selectedFiles.includes(f.path))?.name ?? "");
+
       handleOnNewValue({
-        value: isList
-          ? (files ?? [])
-              .filter((f) => selectedFiles.includes(f.path))
-              .map((f) => f.name)
-          : (files?.find((f) => selectedFiles.includes(f.path))?.name ?? ""),
-        file_path: isList
-          ? (files ?? [])
-              .filter((f) => selectedFiles.includes(f.path))
-              .map((f) => f.path)
-          : (files?.find((f) => selectedFiles.includes(f.path))?.path ?? ""),
+        value: resolvedValue,
+        file_path: resolvedPath,
       });
+
+      // Sync file_id for the resolved file path
+      const pathToSync = isList
+        ? Array.isArray(resolvedPath)
+          ? (resolvedPath[0] ?? "")
+          : resolvedPath
+        : resolvedPath;
+      if (pathToSync) {
+        syncFileId(pathToSync);
+      }
     }
   }, [files, value, file_path]);
 
@@ -245,6 +285,18 @@ export default function InputFileComponent({
                           ? newSelectedFiles
                           : (newSelectedFiles[0] ?? ""),
                       });
+                      // Sync file_id for the remaining selection
+                      if (newSelectedFiles.length > 0) {
+                        syncFileId(newSelectedFiles[0]);
+                      } else if (nodeId) {
+                        setNode(nodeId, (oldNode) => {
+                          const newData = cloneDeep(oldNode.data);
+                          if (newData.node?.template?.file_id) {
+                            newData.node.template.file_id.value = "";
+                          }
+                          return { ...oldNode, data: newData };
+                        });
+                      }
                     }}
                   />
                 </div>
@@ -265,6 +317,12 @@ export default function InputFileComponent({
                         ? selectedFiles
                         : (selectedFiles[0] ?? ""),
                     });
+                    // Propagate v2 file_id so ImagePreviewField uses the
+                    // by-id endpoint (which handles 3+ segment paths) instead
+                    // of falling back to the v1 path-based route.
+                    if (selectedFiles.length > 0) {
+                      syncFileId(selectedFiles[0]);
+                    }
                   }}
                   disabled={isDisabled}
                   types={fileTypes}

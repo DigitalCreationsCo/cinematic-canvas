@@ -7,6 +7,7 @@ from px.components._importing import import_mod
 if TYPE_CHECKING:
     from px.components.files_and_knowledge.directory import DirectoryComponent
     from px.components.files_and_knowledge.file import FileComponent
+    from px.components.files_and_knowledge.image import ImageLoaderComponent
     from px.components.files_and_knowledge.ingestion import KnowledgeIngestionComponent
     from px.components.files_and_knowledge.retrieval import KnowledgeBaseComponent
     from px.components.files_and_knowledge.save_file import SaveToFileComponent
@@ -18,11 +19,13 @@ _dynamic_imports = {
     "KnowledgeIngestionComponent": "ingestion",
     "KnowledgeBaseComponent": "retrieval",
     "SaveToFileComponent": "save_file",
+    "ImageLoaderComponent": "image",
 }
 
 __all__ = [
     "DirectoryComponent",
     "FileComponent",
+    "ImageLoaderComponent",
     "KnowledgeBaseComponent",
     "KnowledgeIngestionComponent",
     "SaveToFileComponent",

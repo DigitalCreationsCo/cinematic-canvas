@@ -50,7 +50,11 @@ export const usePostTemplateValue: useMutationFunctionType<
   const postTemplateValueFn = async (
     payload: IPostTemplateValue,
   ): Promise<APIClassType | undefined> => {
-    const template = node.template;
+    // Read from the live store so cross-field template updates applied between
+    // handleOnNewValue and the actual API call (e.g. image_file setting file_id
+    // on a different template field) are included in the mutation payload.
+    const liveNode = getNode(nodeId)?.data?.node as APIClassType | undefined;
+    const template = liveNode?.template ?? node.template;
 
     if (!template) return;
 
@@ -103,8 +107,7 @@ export const usePostTemplateValue: useMutationFunctionType<
     const newNode = getNode(nodeId)?.data?.node as APIClassType | undefined;
 
     if (
-      !newNode?.last_updated ||
-      !newTemplate.last_updated ||
+      !(newNode?.last_updated && newTemplate.last_updated) ||
       Date.parse(newNode.last_updated) < Date.parse(newTemplate.last_updated)
     ) {
       return newTemplate;
