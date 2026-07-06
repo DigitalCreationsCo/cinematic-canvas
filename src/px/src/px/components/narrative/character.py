@@ -113,7 +113,8 @@ class CharacterComponent(BaseStateAwareComponent, LCModelComponent):
     def build_config(self):
         return {
             _SELECTED_ENTITY: {
-                "display_name": "Select Character",
+                "display_name": "Character Name",
+                "info": "Type a character name. Existing characters appear as suggestions — select to load. Type a new name to create.",
                 "options": self.get_entity_options,
                 "refresh_button": True,
             },
@@ -121,6 +122,10 @@ class CharacterComponent(BaseStateAwareComponent, LCModelComponent):
                 "display_name": "Patch NAP Manifest?",
                 "info": ("If true, the character's cached manifest is evicted and re-read from the NAP repository."),
                 "advanced": False,
+            },
+            _GENERATION_PROMPT: {
+                "display_name": "Generation Prompt",
+                "info": "Describe the character to generate. Required when creating a new character.",
             },
             _CHARACTER_NAME: {
                 "display_name": "Name",
@@ -180,12 +185,17 @@ class CharacterComponent(BaseStateAwareComponent, LCModelComponent):
     ]
 
     inputs = [
-        DropdownInput(name=_SELECTED_ENTITY, display_name="Select Character"),
+        DropdownInput(
+            name=_SELECTED_ENTITY,
+            display_name="Character Name",
+            value="",
+            combobox=True,
+        ),
         BoolInput(name=_UPDATE_DB, display_name="Patch NAP Manifest?", value=False),
         MultilineInput(
             name=_GENERATION_PROMPT,
             display_name="Generation Prompt",
-            info=("Describe the character to generate. Used when no character is selected from the dropdown."),
+            info=("Describe the character to generate. Required when creating a new character."),
             value="",
         ),
         ModelInput(
@@ -324,30 +334,36 @@ class CharacterComponent(BaseStateAwareComponent, LCModelComponent):
                 selected_entity,
             )
 
-        # 4. If a character is selected and not cached, read from NAP.
-        if selected_entity and selected_entity not in self._character_cache:
-            result = self._execute_read_patch_logic(
-                selected_entity,
-                update_database=update_database,
-                updated_data={},
-            )
-            if "error" in result.data:
-                return result
-            self._character_cache[selected_entity] = result.data
+        # 4. Existing character path — resolve via URI mapping
+        if selected_entity:
+            if not hasattr(self, "_name_to_uri") or not self._name_to_uri:
+                self.get_entity_options()
+            uri = self._name_to_uri.get(selected_entity)
+            if uri:
+                # Known existing character — read NAP + serve from cache
+                if selected_entity not in self._character_cache:
+                    result = self._execute_read_patch_logic(
+                        selected_entity,
+                        update_database=update_database,
+                        updated_data={},
+                    )
+                    if "error" in result.data:
+                        return result
+                    self._character_cache[selected_entity] = result.data
+                manifest = dict(self._character_cache[selected_entity])
+                if updated_data:
+                    manifest.update(self._to_manifest_patch(updated_data))
+                return Data(data=manifest)
+            # Typed name not in URI mapping → fall through to draft generation
 
-        # 5. If cached, serve from cache with overrides applied.
-        if selected_entity in self._character_cache:
-            manifest = dict(self._character_cache[selected_entity])
-            if updated_data:
-                manifest.update(self._to_manifest_patch(updated_data))
-            return Data(data=manifest)
-
-        # 6. No character selected — try draft generation.
+        # 5. Draft generation
         generation_prompt = getattr(self, _GENERATION_PROMPT, None) or ""
         if generation_prompt:
+            if selected_entity:
+                generation_prompt = f"Character name: {selected_entity}\n\n{generation_prompt}"
             return self._generate_character_draft(generation_prompt)
 
-        # 7. Nothing to produce.
+        # 6. Nothing to produce.
         return Data(data={"info": "No character selected and no generation prompt provided."})
 
     async def character_response(self) -> Message:
@@ -436,7 +452,7 @@ class CharacterComponent(BaseStateAwareComponent, LCModelComponent):
         try:
             characters = self.get_entities("character")
             if not characters:
-                return ["No characters found in universe"]
+                return []
             names: list[str] = []
             for c in characters:
                 name = c.get("name", c.get("id", "(unnamed)"))
@@ -447,7 +463,7 @@ class CharacterComponent(BaseStateAwareComponent, LCModelComponent):
             return sorted(names)
         except (KeyError, TypeError) as exc:
             logger.warning("Failed to fetch character options: %s", exc)
-            return ["No characters found"]
+            return []
 
     # ═══════════════════════════════════════════════════════════════════
     # INTERNAL HELPERS
@@ -862,7 +878,7 @@ def _validate_selected_entity(entity_key: str | None) -> None:
     """
     if not entity_key or not entity_key.strip():
         msg = (
-            "No character selected. Please select a valid character from the dropdown "
+            "No character selected. Please select a character from the combobox "
             "or connect a valid character name to the 'selected_entity' input port."
         )
         raise ValueError(msg)
@@ -877,5 +893,8 @@ def _validate_selected_entity(entity_key: str | None) -> None:
         }
     )
     if entity_key in placeholder_messages:
-        msg = f"No character available ('{entity_key}'). Ensure the project has characters before using this component."
+        msg = (
+            f"No character available ('{entity_key}'). Ensure the project "
+            "has characters before using this component."
+        )
         raise ValueError(msg)

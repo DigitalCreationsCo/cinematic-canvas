@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from px.components.narrative.characters.character import (
+from px.components.narrative.character import (
     CharacterComponent,
     _validate_selected_entity,
 )
