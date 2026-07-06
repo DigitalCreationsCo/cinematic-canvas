@@ -10,13 +10,16 @@ type EmptyPageProps = {
   setOpenNewProjectModal?: (open: boolean) => void;
 };
 
-export const EmptyPage = ({ setOpenModal, setOpenNewProjectModal }: EmptyPageProps) => {
+export const EmptyPage = ({
+  setOpenModal,
+  setOpenNewProjectModal,
+}: EmptyPageProps) => {
   const folders = useFolderStore((state) => state.folders);
   const handleFileDrop = useFileDrop(undefined);
 
   return (
     <CardsWrapComponent
-      dragMessage={`Drop your flows or components here`}
+      dragMessage={"Drop your flows or components here"}
       onFileDrop={handleFileDrop}
     >
       <div className="m-0 h-full w-full bg-secondary p-0">

@@ -7,7 +7,10 @@ type EmptyFolderProps = {
   setOpenNewProjectModal?: (open: boolean) => void;
 };
 
-export const EmptyFolder = ({ setOpenModal, setOpenNewProjectModal }: EmptyFolderProps) => {
+export const EmptyFolder = ({
+  setOpenModal,
+  setOpenNewProjectModal,
+}: EmptyFolderProps) => {
   const folders = useFolderStore((state) => state.folders);
 
   return (

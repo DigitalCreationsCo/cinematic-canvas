@@ -35,12 +35,12 @@ class ExpandCreativePromptComponent(LCModelComponent):
             display_name="Input",
             info="The input text to send to the model",
         ),
-       MultilineInput(
+        MultilineInput(
             name="system_message",
             display_name="System Message",
             info="A system message that helps set the behavior of the assistant",
             advanced=False,
-            value=build_prompt_expansion_prompt()
+            value=build_prompt_expansion_prompt(),
         ),
         BoolInput(
             name="should_store_message",

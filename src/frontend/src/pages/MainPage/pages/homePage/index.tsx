@@ -292,11 +292,12 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
                       ? linkedRepository.pinned_commit_hash.slice(0, 7)
                       : "no commits yet"}
                   </span>
-                  {linkedRepository.tag && linkedRepository.tag !== "latest" && (
-                    <span className="rounded-full border px-2 py-0.5 text-xs">
-                      {linkedRepository.tag}
-                    </span>
-                  )}
+                  {linkedRepository.tag &&
+                    linkedRepository.tag !== "latest" && (
+                      <span className="rounded-full border px-2 py-0.5 text-xs">
+                        {linkedRepository.tag}
+                      </span>
+                    )}
                 </div>
               )}
               <HeaderComponent

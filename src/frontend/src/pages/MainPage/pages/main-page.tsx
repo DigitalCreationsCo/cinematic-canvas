@@ -77,7 +77,9 @@ export default function CollectionPage(): JSX.Element {
       <main className="flex h-full w-full overflow-hidden">
         {flows && examples && folders ? (
           <div
-            className={`relative mx-auto flex h-full w-full flex-col overflow-hidden`}
+            className={
+              "relative mx-auto flex h-full w-full flex-col overflow-hidden"
+            }
           >
             {showMainContent ? (
               <Outlet />
