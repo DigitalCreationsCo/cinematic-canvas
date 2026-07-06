@@ -514,6 +514,7 @@ async def _get_nap_repo_or_404(
             .join(ProjectRepositoryLink, ProjectRepositoryLink.repository_id == NapRepository.id)
             .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
             .where(NapRepository.id == repo_id, Folder.user_id == current_user.id)
+            .distinct()
         )
     ).first()
     if not repo:
@@ -609,6 +610,7 @@ async def list_repositories(
             .join(ProjectRepositoryLink, ProjectRepositoryLink.repository_id == NapRepository.id)
             .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
             .where(Folder.user_id == current_user.id)
+            .distinct()
         )
     ).all()
     return [NapRepositoryRead.model_validate(r) for r in repos]
@@ -635,6 +637,7 @@ async def recent_repositories(
             .join(ProjectRepositoryLink, ProjectRepositoryLink.repository_id == NapRepository.id)
             .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
             .where(Folder.user_id == current_user.id)
+            .distinct()
             .order_by(NapRepository.created_at.desc())
             .limit(limit)
         )
@@ -663,6 +666,7 @@ async def search_repositories(
             .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
             .where(Folder.user_id == current_user.id)
             .where(NapRepository.name.ilike(f"%{q}%"))
+            .distinct()
             .order_by(NapRepository.created_at.desc())
         )
     ).all()
@@ -897,6 +901,14 @@ async def delete_repository(
     the same name.
     """
     repo = await _get_nap_repo_or_404(repo_id, session, current_user)
+
+    # Delete link rows first to avoid FK violation
+    links = (
+        await session.exec(select(ProjectRepositoryLink).where(ProjectRepositoryLink.repository_id == repo.id))
+    ).all()
+    for link in links:
+        await session.delete(link)
+
     await session.delete(repo)
     await session.flush()
 

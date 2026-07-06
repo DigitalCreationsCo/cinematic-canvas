@@ -60,7 +60,10 @@ class NapRepository(NapRepositoryBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True, unique=True)
     error_message: str | None = Field(default=None, nullable=True)
 
-    folder_links: list["ProjectRepositoryLink"] = Relationship(back_populates="repository")
+    folder_links: list["ProjectRepositoryLink"] = Relationship(
+        back_populates="repository",
+        sa_relationship_kwargs={"cascade": "all, delete"},
+    )
 
 
 class NapRepositoryCreate(NapRepositoryBase):

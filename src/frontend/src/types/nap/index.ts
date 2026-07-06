@@ -112,7 +112,6 @@ export type CreateNapRepoRequest = {
 
 export type NapRepositoryRead = {
   id: string;
-  folder_id: string;
   name: string;
   nap_uri: string | null;
   repo_type: NapRepositoryType;
@@ -120,8 +119,6 @@ export type NapRepositoryRead = {
   entity_count: number;
   last_commit_hash: string | null;
   status: string;
-  tag: string;
-  pinned_commit_hash: string | null;
   error_message: string | null;
   created_at: string | null;
   updated_at: string | null;
