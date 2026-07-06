@@ -5,6 +5,7 @@ from .model import (
     NapRepositoryDetail,
     NapRepositoryRead,
     NapRepositoryUpdate,
+    ProjectRepositoryLink,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "NapRepositoryDetail",
     "NapRepositoryRead",
     "NapRepositoryUpdate",
+    "ProjectRepositoryLink",
 ]

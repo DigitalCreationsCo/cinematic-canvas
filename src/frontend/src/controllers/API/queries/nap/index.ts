@@ -65,14 +65,10 @@ export const useRepositoryTagsSearch: useQueryFunctionType<
     return res.data;
   };
 
-  return query(
-    ["useRepositoryTagsSearch", repositoryId, trimmedQuery],
-    fn,
-    {
-      ...options,
-      enabled: !!repositoryId && !!trimmedQuery && (options?.enabled ?? true),
-    },
-  );
+  return query(["useRepositoryTagsSearch", repositoryId, trimmedQuery], fn, {
+    ...options,
+    enabled: !!repositoryId && !!trimmedQuery && (options?.enabled ?? true),
+  });
 };
 
 interface IRepositoryByFolderParams {

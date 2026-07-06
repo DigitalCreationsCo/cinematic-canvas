@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from portals.services.database.models.deployment.model import Deployment
     from portals.services.database.models.file.model import File
     from portals.services.database.models.flow.model import Flow
-    from portals.services.database.models.nap_repository.model import NapRepository
+    from portals.services.database.models.nap_repository.model import ProjectRepositoryLink
     from portals.services.database.models.user.model import User
 
 
@@ -68,9 +68,9 @@ class Folder(FolderBase, table=True):  # type: ignore[call-arg]
         ),
     )
 
-    nap_repository: Optional["NapRepository"] = Relationship(
+    repository_links: list["ProjectRepositoryLink"] = Relationship(
         back_populates="folder",
-        sa_relationship_kwargs={"cascade": "all, delete, delete-orphan"},
+        sa_relationship_kwargs={"cascade": "all, delete"},
     )
 
     __table_args__ = (UniqueConstraint("user_id", "name", name="unique_folder_name"),)

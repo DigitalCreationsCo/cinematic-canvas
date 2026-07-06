@@ -19,7 +19,7 @@ from .location import Location
 from .lore import Lore
 from .media_object import MediaObject
 from .message import MessageTable
-from .nap_repository import NapRepository
+from .nap_repository import NapRepository, ProjectRepositoryLink
 from .notification import Notification
 from .prop import Prop
 from .scene import Scene
@@ -57,6 +57,7 @@ __all__ = [
     "MessageTable",
     "NapRepository",
     "Notification",
+    "ProjectRepositoryLink",
     "Prop",
     "SSOConfig",
     "SSOUserProfile",

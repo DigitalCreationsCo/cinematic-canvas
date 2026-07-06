@@ -8,6 +8,39 @@ if TYPE_CHECKING:
     from portals.services.database.models.folder.model import Folder
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Link table: many folders → one repository
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class ProjectRepositoryLink(SQLModel, table=True):
+    """Maps a project (folder) to a NAP repository.
+
+    A single repository can be referenced by multiple projects, each
+    potentially pinned to a different tag or commit.  The ``tag`` and
+    ``pinned_commit_hash`` fields are **per-project** concerns — they
+    live here rather than on ``NapRepository`` itself.
+    """
+
+    __tablename__ = "project_repository_link"
+
+    folder_id: UUID = Field(foreign_key="folder.id", primary_key=True)
+    repository_id: UUID = Field(foreign_key="nap_repository.id", primary_key=True)
+    tag: str = Field(default="latest")
+    """The tag this project is pinned to (defaults to ``"latest"``)."""
+    pinned_commit_hash: str | None = Field(default=None)
+    """The concrete commit hash ``tag`` resolved to when the link was
+    created.  ``None`` for brand-new repositories with no commits yet."""
+
+    folder: "Folder" = Relationship(back_populates="repository_links")
+    repository: "NapRepository" = Relationship(back_populates="folder_links")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Repository model (no longer has folder_id — that lives on the link)
+# ═══════════════════════════════════════════════════════════════════════
+
+
 class NapRepositoryBase(SQLModel):
     name: str = Field(index=True)
     nap_uri: str | None = Field(default=None, nullable=True)
@@ -16,18 +49,6 @@ class NapRepositoryBase(SQLModel):
     entity_count: int = Field(default=0)
     last_commit_hash: str | None = Field(default=None, nullable=True)
     status: str = Field(default="active")
-    tag: str = Field(default="latest")
-    """The tag this project's repository link is pinned to. Defaults to
-    the sentinel ``"latest"``, which always tracks the repository's most
-    recent commit rather than a fixed point in history. Fixed for the
-    life of the link — to point at a different tag, re-link the
-    repository (e.g. via a new project)."""
-    pinned_commit_hash: str | None = Field(default=None)
-    """The concrete commit hash ``tag`` resolved to when the repository
-    was linked. ``None`` for brand-new repositories with no commits yet.
-    Unlike ``tag``, this CAN be updated independently later — e.g. to
-    pull in a newer commit under the same tag — without re-running tag
-    selection."""
     created_at: datetime | None = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
     updated_at: datetime | None = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=True)
 
@@ -37,18 +58,17 @@ class NapRepository(NapRepositoryBase, table=True):
     __mapper_args__ = {"confirm_deleted_rows": False}
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, unique=True)
-    folder_id: UUID = Field(foreign_key="folder.id")
-    folder: "Folder" = Relationship(back_populates="nap_repository")
     error_message: str | None = Field(default=None, nullable=True)
+
+    folder_links: list["ProjectRepositoryLink"] = Relationship(back_populates="repository")
 
 
 class NapRepositoryCreate(NapRepositoryBase):
-    folder_id: UUID
+    pass
 
 
 class NapRepositoryRead(NapRepositoryBase):
     id: UUID
-    folder_id: UUID
     error_message: str | None = None
 
 

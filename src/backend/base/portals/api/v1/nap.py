@@ -25,6 +25,7 @@ from portals.services.database.models.nap_repository.model import (
     NapRepository,
     NapRepositoryDetail,
     NapRepositoryRead,
+    ProjectRepositoryLink,
 )
 from portals.services.nap import (
     CommitRef,
@@ -510,7 +511,8 @@ async def _get_nap_repo_or_404(
     repo = (
         await session.exec(
             select(NapRepository)
-            .join(Folder, NapRepository.folder_id == Folder.id)
+            .join(ProjectRepositoryLink, ProjectRepositoryLink.repository_id == NapRepository.id)
+            .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
             .where(NapRepository.id == repo_id, Folder.user_id == current_user.id)
         )
     ).first()
@@ -548,31 +550,20 @@ async def create_repository(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
-    # Check if folder already has a repository
-    existing = (
-        await session.exec(select(NapRepository).where(NapRepository.folder_id == UUID(body.folder_id)))
-    ).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Folder already has a repository",
-        )
-
     universe_name = body.name
     nap_uri = f"nap://{universe_name}"
 
     try:
         if body.repo_type == "local" and not await nap.universe_exists(universe_name):
             await nap.init_universe(universe_name)
-        # remote repos just store the URL — actual clone happens later
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
 
+    # Create the repository record
     db_repo = NapRepository(
-        folder_id=UUID(body.folder_id),
         name=body.name,
         nap_uri=nap_uri,
         repo_type=body.repo_type,
@@ -582,6 +573,14 @@ async def create_repository(
     session.add(db_repo)
     await session.flush()
     await session.refresh(db_repo)
+
+    # Link it to the folder
+    link = ProjectRepositoryLink(
+        folder_id=UUID(body.folder_id),
+        repository_id=db_repo.id,
+    )
+    session.add(link)
+    await session.flush()
 
     logger.info(
         "Created NAP repository: id=%s name=%s type=%s folder=%s",
@@ -607,7 +606,8 @@ async def list_repositories(
     repos = (
         await session.exec(
             select(NapRepository)
-            .join(Folder, NapRepository.folder_id == Folder.id)
+            .join(ProjectRepositoryLink, ProjectRepositoryLink.repository_id == NapRepository.id)
+            .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
             .where(Folder.user_id == current_user.id)
         )
     ).all()
@@ -624,13 +624,16 @@ async def recent_repositories(
     current_user: CurrentActiveUser,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[NapRepositoryRead]:
-    """Return the ``limit`` most recently created repositories for the
-    current user, ordered by ``created_at`` descending.
+    """Return recently created repositories for the current user.
+
+    Returns the ``limit`` most recently created repositories ordered by
+    ``created_at`` descending.
     """
     repos = (
         await session.exec(
             select(NapRepository)
-            .join(Folder, NapRepository.folder_id == Folder.id)
+            .join(ProjectRepositoryLink, ProjectRepositoryLink.repository_id == NapRepository.id)
+            .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
             .where(Folder.user_id == current_user.id)
             .order_by(NapRepository.created_at.desc())
             .limit(limit)
@@ -649,13 +652,15 @@ async def search_repositories(
     current_user: CurrentActiveUser,
     q: Annotated[str, Query(min_length=1)] = "",
 ) -> list[NapRepositoryRead]:
-    """Search the current user's repositories by name (case-insensitive
-    partial match).
+    """Search the current user's repositories by name.
+
+    Performs a case-insensitive partial match.
     """
     repos = (
         await session.exec(
             select(NapRepository)
-            .join(Folder, NapRepository.folder_id == Folder.id)
+            .join(ProjectRepositoryLink, ProjectRepositoryLink.repository_id == NapRepository.id)
+            .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
             .where(Folder.user_id == current_user.id)
             .where(NapRepository.name.ilike(f"%{q}%"))
             .order_by(NapRepository.created_at.desc())
@@ -809,12 +814,10 @@ async def recent_repository_tags(
     current_user: CurrentActiveUser,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[TagRead]:
-    """Return the ``limit`` most recently updated tags for a repository,
-    most-recent first.
+    """Return recently updated tags for a repository, most-recent first.
 
-    Does not include the synthetic ``"latest"`` tag —
-    the frontend should always offer that as a separate, always-present
-    default option.
+    Does not include the synthetic ``"latest"`` tag — the frontend should
+    always offer that as a separate, always-present default option.
     """
     repo = await _get_nap_repo_or_404(repo_id, session, current_user)
     try:
@@ -822,10 +825,7 @@ async def recent_repository_tags(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    return [
-        TagRead(name=t.name, commit_hash=t.commit_hash, updated_at=t.updated_at)
-        for t in tags[:limit]
-    ]
+    return [TagRead(name=t.name, commit_hash=t.commit_hash, updated_at=t.updated_at) for t in tags[:limit]]
 
 
 @router.get(
@@ -870,8 +870,10 @@ async def get_repository_by_folder(
     repo = (
         await session.exec(
             select(NapRepository)
-            .join(Folder, NapRepository.folder_id == Folder.id)
-            .where(NapRepository.folder_id == folder_id, Folder.user_id == current_user.id)
+            .join(ProjectRepositoryLink, ProjectRepositoryLink.repository_id == NapRepository.id)
+            .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
+            .where(ProjectRepositoryLink.folder_id == folder_id)
+            .where(Folder.user_id == current_user.id)
         )
     ).first()
     return NapRepositoryRead.model_validate(repo) if repo else None
@@ -966,8 +968,10 @@ async def create_project_with_repo(
     session: DbSession,
     current_user: CurrentActiveUser,
 ) -> CreateProjectWithRepoResponse:
-    """Create a Portals project folder, a NapRepository record, and
-    conditionally initialise a lore-server universe in one transaction.
+    """Create a Portals project and optional repository in one transaction.
+
+    Creates a Folder, a NapRepository record (if ``mode="new"``),
+    and conditionally initialises a lore-server universe.
 
     Supports two modes:
     - ``mode="existing"``: Link to an existing repository by ID
@@ -994,18 +998,11 @@ async def create_project_with_repo(
                 detail="repository_id is required when mode='existing'",
             )
 
-        existing_repo = await _get_nap_repo_or_404(
-            UUID(body.repository.repository_id), session, current_user
-        )
-
-        # Check if repository is already linked to another folder
-        if existing_repo.folder_id and existing_repo.folder_id != folder.id:
+        existing_repo = await session.get(NapRepository, UUID(body.repository.repository_id))
+        if not existing_repo:
             await session.delete(folder)
             await session.flush()
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Repository is already linked to another project",
-            )
+            raise HTTPException(status_code=404, detail="Repository not found")
 
         tag = body.repository.tag or "latest"
 
@@ -1020,11 +1017,8 @@ async def create_project_with_repo(
                 detail=str(exc),
             ) from exc
 
-        # Materialize that commit locally if it isn't already present.
-        # Local repos are always fully present locally by definition;
-        # only remote repos need an explicit commit-scoped clone. Multiple
-        # commits of the same repo may coexist locally.
-        if existing_repo.repo_type == "remote":
+        # Materialize that commit locally if needed
+        if existing_repo.repo_type == "remote" and pinned_commit_hash:
             already_local = await nap.commit_exists_locally(existing_repo.name, pinned_commit_hash)
             if not already_local:
                 try:
@@ -1041,14 +1035,15 @@ async def create_project_with_repo(
                         detail=str(exc),
                     ) from exc
 
-        # Link the existing repository to the new folder, pinned at the
-        # resolved tag/commit
-        existing_repo.folder_id = folder.id
-        existing_repo.tag = tag
-        existing_repo.pinned_commit_hash = pinned_commit_hash
-        session.add(existing_repo)
+        # Create the link — multiple projects can share one repository
+        link = ProjectRepositoryLink(
+            folder_id=folder.id,
+            repository_id=existing_repo.id,
+            tag=tag,
+            pinned_commit_hash=pinned_commit_hash,
+        )
+        session.add(link)
         await session.flush()
-        await session.refresh(existing_repo)
 
         db_repo = existing_repo
         mode = "existing"
@@ -1088,17 +1083,22 @@ async def create_project_with_repo(
 
         # Create the NapRepository record
         db_repo = NapRepository(
-            folder_id=folder.id,
             name=repo_name,
             nap_uri=f"nap://{repo_name}",
             repo_type="remote",
             status="active",
-            tag="latest",
-            pinned_commit_hash=None,
         )
         session.add(db_repo)
         await session.flush()
         await session.refresh(db_repo)
+
+        # Link the new repository to the folder
+        link = ProjectRepositoryLink(
+            folder_id=folder.id,
+            repository_id=db_repo.id,
+        )
+        session.add(link)
+        await session.flush()
 
     else:
         await session.delete(folder)

@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useCreateLoreProject,
@@ -11,12 +11,12 @@ import {
   useRepositoryTagsRecent,
   useRepositoryTagsSearch,
 } from "@/controllers/API/queries/nap";
-import type { NapRepositoryRead } from "@/types/nap";
 import { useCustomNavigate } from "@/customization/hooks/use-custom-navigate";
 import { track } from "@/customization/utils/analytics";
 import { useDebounce } from "@/hooks/use-debounce";
-import { slugify } from "@/utils/stringManipulation";
 import useAlertStore from "@/stores/alertStore";
+import type { NapRepositoryRead } from "@/types/nap";
+import { slugify } from "@/utils/stringManipulation";
 import BaseModal from "../baseModal";
 
 interface NewProjectModalProps {
@@ -39,7 +39,8 @@ export default function NewProjectModal({
   const [loading, setLoading] = useState(false);
 
   // Repository selection state
-  const [repositorySelection, setRepositorySelection] = useState<RepositorySelection>(null);
+  const [repositorySelection, setRepositorySelection] =
+    useState<RepositorySelection>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -77,7 +78,7 @@ export default function NewProjectModal({
 
   const { data: searchResults, isLoading: searchLoading } = useRepositorySearch(
     { q: debouncedSearchQuery },
-    { enabled: !!debouncedSearchQuery && isSearchActive }
+    { enabled: !!debouncedSearchQuery && isSearchActive },
   );
 
   const { mutateAsync: createProject } = useCreateLoreProject();
@@ -85,7 +86,9 @@ export default function NewProjectModal({
   // Tag selection only applies once an existing repository is selected —
   // a brand-new repository has no tags or commits yet.
   const selectedRepoId =
-    repositorySelection?.mode === "existing" ? repositorySelection.id : undefined;
+    repositorySelection?.mode === "existing"
+      ? repositorySelection.id
+      : undefined;
 
   const {
     data: recentTags,
@@ -94,19 +97,26 @@ export default function NewProjectModal({
     refetch: refetchRecentTags,
   } = useRepositoryTagsRecent(
     { repositoryId: selectedRepoId ?? "", limit: 3 },
-    { enabled: !!selectedRepoId }
+    { enabled: !!selectedRepoId },
   );
 
-  const debouncedSetTagSearchQuery = useDebounce(setDebouncedTagSearchQuery, 300);
+  const debouncedSetTagSearchQuery = useDebounce(
+    setDebouncedTagSearchQuery,
+    300,
+  );
 
   useEffect(() => {
     debouncedSetTagSearchQuery(tagSearchQuery);
   }, [tagSearchQuery, debouncedSetTagSearchQuery]);
 
-  const { data: tagSearchResults, isLoading: tagSearchLoading } = useRepositoryTagsSearch(
-    { repositoryId: selectedRepoId ?? "", q: debouncedTagSearchQuery },
-    { enabled: !!selectedRepoId && !!debouncedTagSearchQuery && isTagSearchActive }
-  );
+  const { data: tagSearchResults, isLoading: tagSearchLoading } =
+    useRepositoryTagsSearch(
+      { repositoryId: selectedRepoId ?? "", q: debouncedTagSearchQuery },
+      {
+        enabled:
+          !!selectedRepoId && !!debouncedTagSearchQuery && isTagSearchActive,
+      },
+    );
 
   // Tag choice is repo-specific — reset it whenever the selected
   // repository changes (including switching to "new" or clearing).
@@ -205,7 +215,9 @@ export default function NewProjectModal({
 
   const getFilteredTagSearchResults = () => {
     const recentNames = getRecentTagNames();
-    return tagSearchResults?.filter((tag) => !recentNames.includes(tag.name)) || [];
+    return (
+      tagSearchResults?.filter((tag) => !recentNames.includes(tag.name)) || []
+    );
   };
 
   const handleSelectTag = (tagName: string) => {
@@ -220,7 +232,9 @@ export default function NewProjectModal({
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setTagHighlightedIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev));
+      setTagHighlightedIndex((prev) =>
+        prev < results.length - 1 ? prev + 1 : prev,
+      );
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setTagHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
@@ -239,12 +253,12 @@ export default function NewProjectModal({
     const slug = slugify(name);
     // Check recent repos
     const recentMatch = recentRepos?.find(
-      (repo) => repo.name.toLowerCase() === slug
+      (repo) => repo.name.toLowerCase() === slug,
     );
     if (recentMatch) return recentMatch;
     // Check search results
     const searchMatch = searchResults?.find(
-      (repo) => repo.name.toLowerCase() === slug
+      (repo) => repo.name.toLowerCase() === slug,
     );
     return searchMatch || null;
   };
@@ -306,7 +320,7 @@ export default function NewProjectModal({
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlightedIndex((prev) =>
-        prev < totalOptions - 1 ? prev + 1 : prev
+        prev < totalOptions - 1 ? prev + 1 : prev,
       );
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -315,7 +329,10 @@ export default function NewProjectModal({
       e.preventDefault();
       if (highlightedIndex >= 0 && highlightedIndex < filteredResults.length) {
         handleSelectSearchRepo(filteredResults[highlightedIndex]);
-      } else if (hasCreateOption && highlightedIndex === filteredResults.length) {
+      } else if (
+        hasCreateOption &&
+        highlightedIndex === filteredResults.length
+      ) {
         handleCreateNewRepo(searchQuery);
       }
     } else if (e.key === "Escape") {
@@ -341,7 +358,9 @@ export default function NewProjectModal({
       return "Enter a project name.";
     }
     if (!repositorySelection) {
-      return recentError ? "Couldn't load repositories. Please retry or type a new repository name." : "Select or create a repository.";
+      return recentError
+        ? "Couldn't load repositories. Please retry or type a new repository name."
+        : "Select or create a repository.";
     }
     return "";
   };
@@ -450,7 +469,8 @@ export default function NewProjectModal({
             <div>
               <Label htmlFor="repository">Repository</Label>
               <p className="text-sm text-muted-foreground mt-1">
-                Stores characters, locations, scenes and props with full version history — one repository can back multiple projects.
+                Stores characters, locations, scenes and props with full version
+                history — one repository can back multiple projects.
               </p>
             </div>
 
@@ -505,10 +525,7 @@ export default function NewProjectModal({
             {repositorySelection?.mode === "existing" &&
               repositorySelection.source === "search" && (
                 <div className="flex items-center gap-2">
-                  <Badge
-                    variant="default"
-                    className="font-mono"
-                  >
+                  <Badge variant="default" className="font-mono">
                     {repositorySelection.name}
                   </Badge>
                   <button
@@ -541,7 +558,9 @@ export default function NewProjectModal({
                   onBlur={() => {
                     // Delay closing to allow click events to fire
                     setTimeout(() => {
-                      if (!dropdownRef.current?.contains(document.activeElement)) {
+                      if (
+                        !dropdownRef.current?.contains(document.activeElement)
+                      ) {
                         setIsSearchActive(false);
                         setHighlightedIndex(-1);
                       }
@@ -550,7 +569,9 @@ export default function NewProjectModal({
                   className="w-full"
                   data-testid="repository-search-input"
                   role="combobox"
-                  aria-expanded={(filteredSearchResults.length > 0 || hasCreateOption)}
+                  aria-expanded={
+                    filteredSearchResults.length > 0 || hasCreateOption
+                  }
                   aria-controls="repository-dropdown"
                 />
 
@@ -582,7 +603,9 @@ export default function NewProjectModal({
                       <button
                         type="button"
                         role="option"
-                        aria-selected={highlightedIndex === filteredSearchResults.length}
+                        aria-selected={
+                          highlightedIndex === filteredSearchResults.length
+                        }
                         onClick={() => handleCreateNewRepo(searchQuery)}
                         className={`w-full border-t px-3 py-2 text-left text-sm transition-colors ${
                           highlightedIndex === filteredSearchResults.length
@@ -613,7 +636,8 @@ export default function NewProjectModal({
               <div>
                 <Label htmlFor="repository-tag">Tag</Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Pins this project to a point in the repository's history. Defaults to the latest commit.
+                  Pins this project to a point in the repository's history.
+                  Defaults to the latest commit.
                 </p>
               </div>
 
@@ -694,7 +718,11 @@ export default function NewProjectModal({
                     onBlur={() => {
                       // Delay closing to allow click events to fire
                       setTimeout(() => {
-                        if (!tagDropdownRef.current?.contains(document.activeElement)) {
+                        if (
+                          !tagDropdownRef.current?.contains(
+                            document.activeElement,
+                          )
+                        ) {
                           setIsTagSearchActive(false);
                           setTagHighlightedIndex(-1);
                         }
@@ -740,7 +768,8 @@ export default function NewProjectModal({
       <BaseModal.Footer>
         <div className="flex w-full items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Repositories live on lore-server — local storage is a working cache only.
+            Repositories live on lore-server — local storage is a working cache
+            only.
           </p>
           <div className="flex items-center gap-3">
             <Button
