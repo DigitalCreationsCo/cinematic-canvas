@@ -8,6 +8,7 @@ import { useDeleteFolders } from "@/controllers/API/queries/folders";
 import CustomEmptyPageCommunity from "@/customization/components/custom-empty-page";
 import CustomLoader from "@/customization/components/custom-loader";
 import { useCustomNavigate } from "@/customization/hooks/use-custom-navigate";
+import NewProjectWizard from "@/modals/newProjectModal";
 import useAlertStore from "@/stores/alertStore";
 import useFlowsManagerStore from "@/stores/flowsManagerStore";
 import { useFolderStore } from "@/stores/foldersStore";
@@ -17,6 +18,7 @@ import { shouldShowMainContent } from "./main-page-utils";
 export default function CollectionPage(): JSX.Element {
   const [openModal, setOpenModal] = useState(false);
   const [openDeleteFolderModal, setOpenDeleteFolderModal] = useState(false);
+  const [openNewProjectModal, setOpenNewProjectModal] = useState(false);
   const setFolderToEdit = useFolderStore((state) => state.setFolderToEdit);
   const navigate = useCustomNavigate();
   const flows = useFlowsManagerStore((state) => state.flows);
@@ -69,6 +71,7 @@ export default function CollectionPage(): JSX.Element {
             setFolderToEdit(item);
             setOpenDeleteFolderModal(true);
           }}
+          setOpenNewProjectModal={setOpenNewProjectModal}
         />
       )}
       <main className="flex h-full w-full overflow-hidden">
@@ -79,7 +82,10 @@ export default function CollectionPage(): JSX.Element {
             {showMainContent ? (
               <Outlet />
             ) : (
-              <CustomEmptyPageCommunity setOpenModal={setOpenModal} />
+              <CustomEmptyPageCommunity
+                setOpenModal={setOpenModal}
+                setOpenNewProjectModal={setOpenNewProjectModal}
+              />
             )}
           </div>
         ) : (
@@ -95,6 +101,12 @@ export default function CollectionPage(): JSX.Element {
         setOpenDeleteFolderModal={setOpenDeleteFolderModal}
         handleDeleteFolder={handleDeleteFolder}
       />
+      {openNewProjectModal && (
+        <NewProjectWizard
+          open={openNewProjectModal}
+          setOpen={setOpenNewProjectModal}
+        />
+      )}
     </SidebarProvider>
   );
 }

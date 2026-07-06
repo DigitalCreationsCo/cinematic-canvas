@@ -19,6 +19,7 @@ from .location import Location
 from .lore import Lore
 from .media_object import MediaObject
 from .message import MessageTable
+from .nap_repository import NapRepository
 from .notification import Notification
 from .prop import Prop
 from .scene import Scene
@@ -54,6 +55,7 @@ __all__ = [
     "Lore",
     "MediaObject",
     "MessageTable",
+    "NapRepository",
     "Notification",
     "Prop",
     "SSOConfig",

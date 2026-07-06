@@ -49,17 +49,16 @@ const ListComponent = ({
 
   const { getIcon } = useGetTemplateStyle(flowData);
 
-  const editFlowLink = folderId
-    ? `/folder/${folderId}/flow/${flowData.id}`
-    : `/flow/${flowData.id}`;
+  const editFlowLink =
+    flowData.folder_id || folderId
+      ? `/folder/${flowData.folder_id ?? folderId}/flow/${flowData.id}`
+      : `/flow/${flowData.id}`;
 
   const handleClick = async () => {
     if (shiftPressed) {
       setSelected(!selected);
-    } else {
-      if (!isComponent) {
-        navigate(editFlowLink);
-      }
+    } else if (!isComponent) {
+      navigate(editFlowLink);
     }
   };
 
@@ -86,8 +85,8 @@ const ListComponent = ({
   );
 
   const swatchIndex =
-    (flowData.gradient && !isNaN(parseInt(flowData.gradient))
-      ? parseInt(flowData.gradient)
+    (flowData.gradient && !isNaN(Number.parseInt(flowData.gradient))
+      ? Number.parseInt(flowData.gradient)
       : getNumberFromString(flowData.gradient ?? flowData.id)) %
     swatchColors.length;
 
@@ -143,7 +142,7 @@ const ListComponent = ({
             </div>
             <div
               className={cn(
-                `item-center flex justify-center rounded-lg p-1.5 transition-opacity duration-200`,
+                "item-center flex justify-center rounded-lg p-1.5 transition-opacity duration-200",
                 swatchColors[swatchIndex],
                 selected
                   ? "duration-300"
@@ -162,7 +161,7 @@ const ListComponent = ({
             <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
               <div
                 className="flex min-w-0 flex-shrink truncate text-sm font-semibold"
-                data-testid={`flow-name-div`}
+                data-testid={"flow-name-div"}
               >
                 <span
                   className="truncate"

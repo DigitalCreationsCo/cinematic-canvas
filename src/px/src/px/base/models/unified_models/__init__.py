@@ -21,6 +21,7 @@ from .class_registry import (
 from .credentials import (
     get_all_variables_for_provider,
     get_api_key_for_provider,
+    get_effective_subscription_tier,
     resolve_byok_api_key,
     resolve_managed_api_key,
     resolve_provider_api_key,
@@ -58,6 +59,7 @@ __all__ = [
     "apply_provider_variable_config_to_build_config",
     "get_all_variables_for_provider",
     "get_api_key_for_provider",
+    "get_effective_subscription_tier",
     "get_embedding_class",
     "get_embedding_model_options",
     "get_embeddings",

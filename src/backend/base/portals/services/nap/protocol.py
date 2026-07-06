@@ -90,6 +90,44 @@ class ManifestRef:
     manifest: dict[str, Any]
 
 
+@dataclass
+class EntitySummary:
+    """Summary of a single entity in a universe listing."""
+
+    uri: str
+    entity_type: str
+    entity_id: str
+    commit_hash: str | None = None
+    updated_at: float | None = None
+
+
+@dataclass
+class CommitSummary:
+    """Summary of a single commit in a universe."""
+
+    uri: str
+    entity_type: str
+    entity_id: str
+    commit_hash: str
+    updated_at: float | None = None
+
+
+@dataclass
+class TagSummary:
+    """Summary of a single named tag in a universe.
+
+    A tag is a named pointer to a specific commit within a universe,
+    used to pin projects to a stable point in the universe's history.
+    The sentinel tag name ``"latest"`` is never stored — it is resolved
+    dynamically to the universe's most recent commit by
+    :meth:`NapRepository.resolve_tag`.
+    """
+
+    name: str
+    commit_hash: str
+    updated_at: float | None = None
+
+
 # ── Repository protocol ────────────────────────────────────────────────
 
 
@@ -235,5 +273,156 @@ class NapRepository(Protocol):
 
         Returns:
             Content hash in the form ``"sha256:<hex>"``.
+        """
+        ...
+
+    # ── Repository / universe-level operations ─────────────────────────
+
+    def list_universes(self) -> list[str]:
+        """Return all registered universe names.
+
+        A "universe" maps 1:1 to a project's NAP namespace
+        (e.g. ``"my-project"`` in ``nap://my-project/character/...``).
+        """
+        ...
+
+    def universe_exists(self, name: str) -> bool:
+        """Check whether a universe exists in this repository."""
+        ...
+
+    def init_universe(self, name: str) -> None:
+        """Register a new universe in this repository.
+
+        Args:
+            name: Universe name (typically the project UUID or slug).
+
+        Raises:
+            ValueError: If the universe already exists.
+        """
+        ...
+
+    def list_entities(self, universe: str) -> list[EntitySummary]:
+        """List all entity summaries in a universe."""
+        ...
+
+    def list_commits(self, universe: str, max_count: int = 50) -> list[CommitSummary]:
+        """List recent commits across all entities in a universe."""
+        ...
+
+    def clone_from_remote(self, remote_url: str, local_name: str) -> str:
+        """Clone a remote universe into the local repository.
+
+        Args:
+            remote_url: URL or path to the remote universe.
+            local_name: Name for the local copy.
+
+        Returns:
+            The local universe name.
+
+        Raises:
+            ValueError: If the remote is unreachable or the name
+                        conflicts with an existing universe.
+        """
+        ...
+
+    def push_to_remote(self, universe: str, remote_url: str) -> int:
+        """Push local commits to a remote universe.
+
+        Args:
+            universe: Local universe name.
+            remote_url: Target remote URL.
+
+        Returns:
+            Number of commits pushed.
+        """
+        ...
+
+    # ── Tags ─────────────────────────────────────────────────────────────
+
+    def list_tags(self, universe: str) -> list[TagSummary]:
+        """List all named tags in a universe, most-recently-updated first.
+
+        Does **not** include the synthetic ``"latest"`` tag — that is
+        always resolved dynamically via :meth:`resolve_tag` and is never
+        a stored, listable tag.
+        """
+        ...
+
+    def create_tag(
+        self,
+        universe: str,
+        name: str,
+        commit_hash: str | None = None,
+    ) -> TagSummary:
+        """Create or move a named tag to point at *commit_hash*.
+
+        Args:
+            universe: Universe the tag belongs to.
+            name: Tag name. Must not be the reserved word ``"latest"``.
+            commit_hash: Commit to point the tag at. If omitted, the tag
+                is pointed at the universe's current tip commit.
+
+        Returns:
+            The created/updated ``TagSummary``.
+
+        Raises:
+            ValueError: If *universe* doesn't exist, *name* is reserved,
+                or there is no commit to tag when *commit_hash* is omitted.
+        """
+        ...
+
+    def resolve_tag(self, universe: str, tag: str) -> str:
+        """Resolve a tag name to a concrete commit hash.
+
+        The sentinel value ``"latest"`` always resolves to the
+        universe's current tip commit, regardless of whether a stored
+        tag with that name exists.
+
+        Args:
+            universe: Universe to resolve the tag within.
+            tag: A stored tag name, or the sentinel ``"latest"``.
+
+        Returns:
+            The resolved commit hash.
+
+        Raises:
+            ValueError: If *universe* doesn't exist, or *tag* is not
+                ``"latest"`` and no matching stored tag is found, or the
+                universe has no commits yet.
+        """
+        ...
+
+    def clone_commit(
+        self,
+        remote_url: str,
+        local_name: str,
+        commit_hash: str,
+    ) -> str:
+        """Materialize a specific commit of a remote universe locally.
+
+        Unlike :meth:`clone_from_remote` (a one-time, whole-universe
+        clone), this method is **idempotent** and **additive**: calling
+        it repeatedly with different ``commit_hash`` values accumulates
+        multiple locally-available commits of the same universe rather
+        than overwriting a single local copy. Calling it again with a
+        commit hash that is already local is a no-op.
+
+        Args:
+            remote_url: URL of the remote universe.
+            local_name: Local universe name (same for every commit of
+                a given universe).
+            commit_hash: The specific commit to materialize locally.
+
+        Returns:
+            The local universe name.
+
+        Raises:
+            ValueError: If the remote or commit is unreachable.
+        """
+        ...
+
+    def commit_exists_locally(self, universe: str, commit_hash: str) -> bool:
+        """Check whether a specific commit of *universe* is already
+        materialized on local storage.
         """
         ...

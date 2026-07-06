@@ -5,6 +5,7 @@ import {
   Outlet,
   Route,
 } from "react-router-dom";
+import { ProtectedTeamRoute } from "@/components/authorization/teamGuard";
 import { ProtectedAdminRoute } from "./components/authorization/authAdminGuard";
 import { ProtectedRoute } from "./components/authorization/authGuard";
 import { ProtectedLoginRoute } from "./components/authorization/authLoginGuard";
@@ -45,6 +46,10 @@ import ViewPage from "./pages/ViewPage";
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const LoginAdminPage = lazy(() => import("./pages/AdminPage/LoginPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
+const CreateTeamPage = lazy(
+  () => import("./pages/TeamPage/pages/createTeamPage"),
+);
+const JoinTeamPage = lazy(() => import("./pages/TeamPage/pages/joinTeamPage"));
 
 const PlaygroundPage = lazy(() => import("./pages/Playground"));
 
@@ -79,10 +84,14 @@ const router = createBrowserRouter(
             path=""
             element={
               <ProtectedRoute>
-                <Outlet />
+                <ProtectedTeamRoute>
+                  <Outlet />
+                </ProtectedTeamRoute>
               </ProtectedRoute>
             }
           >
+            <Route path="create-team" element={<CreateTeamPage />} />
+            <Route path="join-team" element={<JoinTeamPage />} />
             <Route path="" element={<AppAuthenticatedPage />}>
               <Route path="" element={<CustomDashboardWrapperPage />}>
                 <Route path="" element={<CollectionPage />}>
@@ -172,7 +181,7 @@ const router = createBrowserRouter(
                 </Route>
                 {CustomRoutesStorePages()}
                 <Route path="account">
-                  <Route path="delete" element={<DeleteAccountPage />}></Route>
+                  <Route path="delete" element={<DeleteAccountPage />} />
                 </Route>
                 <Route
                   path="admin"

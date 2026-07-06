@@ -21,8 +21,10 @@ const EXTERNAL_LINK_ICON_CLASS =
 
 export const EmptyPageCommunity = ({
   setOpenModal,
+  setOpenNewProjectModal,
 }: {
   setOpenModal: (open: boolean) => void;
+  setOpenNewProjectModal?: (open: boolean) => void;
 }) => {
   const { t } = useTranslation();
   const handleFileDrop = useFileDrop(undefined);
@@ -155,7 +157,14 @@ export const EmptyPageCommunity = ({
               <Button
                 variant="default"
                 className="z-10 m-auto mt-3 h-10 w-full max-w-[10rem] rounded-lg font-bold transition-all duration-300"
-                onClick={() => setOpenModal(true)}
+                onClick={() => {
+                  // If no folders exist, open project modal first
+                  if (folders.length === 0 && setOpenNewProjectModal) {
+                    setOpenNewProjectModal(true);
+                  } else {
+                    setOpenModal(true);
+                  }
+                }}
                 id="new-project-btn"
                 data-testid="new_project_btn_empty_page"
               >

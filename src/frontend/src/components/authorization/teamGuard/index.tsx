@@ -12,7 +12,15 @@ export const ProtectedTeamRoute = ({
   children?: React.ReactNode;
   requiredRole?: "owner" | "admin" | "member";
 }) => {
-  const { data: teams, isLoading, error } = useGetTeams();
+  const availableTeams = useAuthStore((state) => state.availableTeams);
+  const {
+    data: teams,
+    isLoading,
+    error,
+  } = useGetTeams(
+    // Disable API call if we have teams in store (e.g., from creation response)
+    availableTeams ? { enabled: false } : undefined,
+  );
   const activeTeamId = useAuthStore((state) => state.activeTeamId);
   const activeTeamRole = useAuthStore((state) => state.activeTeamRole);
   const setActiveTeam = useAuthStore((state) => state.setActiveTeam);
@@ -21,22 +29,24 @@ export const ProtectedTeamRoute = ({
   const [searchParams] = useSearchParams();
   const location = useLocation();
 
-  const hasTeams = teams && teams.length > 0;
+  // Use store teams if available, otherwise use API response
+  const teamsData = availableTeams || teams;
+  const hasTeams = teamsData && teamsData.length > 0;
   const activeTeam = hasTeams
-    ? teams.find((team) => team.id === activeTeamId)
+    ? teamsData.find((team) => team.id === activeTeamId)
     : null;
   const isAuthorizedForActiveTeam = !!activeTeam;
 
   useEffect(() => {
     if (hasTeams && !isAuthorizedForActiveTeam) {
-      setActiveTeam(teams[0].id, teams[0].role);
+      setActiveTeam(teamsData[0].id, teamsData[0].role);
     } else if (activeTeam && activeTeamRole !== activeTeam.role) {
       setActiveTeam(activeTeam.id, activeTeam.role);
     }
   }, [
     hasTeams,
     isAuthorizedForActiveTeam,
-    teams,
+    teamsData,
     setActiveTeam,
     activeTeam,
     activeTeamRole,
@@ -57,13 +67,43 @@ export const ProtectedTeamRoute = ({
   }
 
   if (error) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <p className="text-destructive">
-          Failed to load teams. Please try again later.
-        </p>
-      </div>
-    );
+    // If we have teams in the store (from creation/join response), use those instead of redirecting
+    if (availableTeams && availableTeams.length > 0) {
+      // Continue with store data, ignore the error
+    } else {
+      // If we get a 403/401 error but the user is authenticated, treat it as "no teams"
+      // This can happen when the user is authenticated but has no team membership yet
+      const axiosError = error as any;
+      const isAuthError =
+        axiosError?.response?.status === 403 ||
+        axiosError?.response?.status === 401;
+
+      if (isAuthError && isAuthenticated) {
+        const isJoin = searchParams.get("join") === "true";
+        const token = searchParams.get("token");
+
+        // Route to Join Team if token is present
+        if (isJoin && token) {
+          if (!location.pathname.includes("/join-team")) {
+            return <CustomNavigate replace to={`/join-team?token=${token}`} />;
+          }
+        }
+        // Route to Create Team otherwise
+        else if (!location.pathname.includes("/create-team")) {
+          return <CustomNavigate replace to="/create-team" />;
+        }
+        // If already on create/join team page, render the page
+        return children ? <>{children}</> : <Outlet />;
+      }
+
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+          <p className="text-destructive">
+            Failed to load teams. Please try again later.
+          </p>
+        </div>
+      );
+    }
   }
 
   // Prevent UI flash or unauthorized downstream API calls while the useEffect corrects the activeTeamId

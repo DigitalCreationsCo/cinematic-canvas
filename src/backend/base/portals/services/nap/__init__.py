@@ -17,11 +17,14 @@ from typing import TYPE_CHECKING
 from portals.services.nap.mock_repository import MockNapRepository
 from portals.services.nap.protocol import (
     CommitRef,
+    CommitSummary,
     Conflict,
     DiffChange,
+    EntitySummary,
     ManifestRef,
     MergePreview,
     NapRepository,
+    TagSummary,
 )
 
 if TYPE_CHECKING:
@@ -206,6 +209,80 @@ class NapService:
 
         return await run_in_threadpool(self._repo.diff, from_m, to_m)
 
+    # ── Universe / repository-level operations ──────────────────────
+
+    async def list_universes(self) -> list[str]:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.list_universes)
+
+    async def init_universe(self, name: str) -> None:
+        from fastapi.concurrency import run_in_threadpool
+
+        await run_in_threadpool(self._repo.init_universe, name)
+
+    async def universe_exists(self, name: str) -> bool:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.universe_exists, name)
+
+    async def list_entities(self, universe: str) -> list[EntitySummary]:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.list_entities, universe)
+
+    async def list_commits(self, universe: str, max_count: int = 50) -> list[CommitSummary]:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.list_commits, universe, max_count)
+
+    async def clone_from_remote(self, remote_url: str, local_name: str) -> str:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.clone_from_remote, remote_url, local_name)
+
+    async def push_to_remote(self, universe: str, remote_url: str) -> int:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.push_to_remote, universe, remote_url)
+
+    # ── Tags ─────────────────────────────────────────────────────────────
+
+    async def list_tags(self, universe: str) -> list[TagSummary]:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.list_tags, universe)
+
+    async def create_tag(
+        self,
+        universe: str,
+        name: str,
+        commit_hash: str | None = None,
+    ) -> TagSummary:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.create_tag, universe, name, commit_hash)
+
+    async def resolve_tag(self, universe: str, tag: str) -> str:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.resolve_tag, universe, tag)
+
+    async def clone_commit(
+        self,
+        remote_url: str,
+        local_name: str,
+        commit_hash: str,
+    ) -> str:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.clone_commit, remote_url, local_name, commit_hash)
+
+    async def commit_exists_locally(self, universe: str, commit_hash: str) -> bool:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.commit_exists_locally, universe, commit_hash)
+
     async def ingest_media(
         self,
         data: bytes,
@@ -313,6 +390,7 @@ __all__ = [
     "NapRepository",
     "NapService",
     "PublishResult",
+    "TagSummary",
     "get_nap_service",
     "initialize_nap_service",
 ]

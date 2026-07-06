@@ -6,8 +6,8 @@ This module is the **sole authority** for resolving API keys used by the
 model factory (``get_llm``).  Two credential sources exist:
 
 * **BYOK** (Bring Your Own Key) — user-provided keys stored in the
-  ``Variable`` table with ``type='Credential'``.  Only available on the
-  ``studio`` tier when the ``byok`` feature gate is enabled.
+  ``Variable`` table with ``type='Credential'`` or supplied directly to a
+  model component.  Only available on the ``studio`` tier.
 
 * **Managed keys** — platform-owned keys stored in the ``Credential``
   table (one row per provider).  Used as the primary key for non-studio
@@ -54,16 +54,14 @@ def resolve_provider_api_key(
     -----------------------------------
     1. Determine the user's subscription tier (looked up from the DB if
        *subscription_tier* is not provided).
-    2. If the tier is ``"studio"`` check the ``byok`` feature gate.
-       a. Gate passes → attempt to read a BYOK key from the ``Variable``
+    2. If the tier is ``"studio"`` attempt to read a BYOK key from the ``Variable``
           table (``type='Credential'``, name matching the provider's
           primary variable key, e.g. ``OPENAI_API_KEY``).
-       b. Key found and valid → **use BYOK**.
-       c. No BYOK → fall through to the managed key.
-    3. Lower tiers / gate closed → try the managed key from the
+       a. Key found and valid → **use BYOK**.
+       b. No BYOK → fall through to the managed key.
+    3. Lower tiers → try the managed key from the
        ``Credential`` table (one row per provider).
-    4. If no managed key is configured → fall back to the canonical
-       environment variable (e.g. ``OPENAI_API_KEY``).
+    4. If no managed key is configured → return ``(None, None)``.
 
     Returns:
     -------
@@ -108,14 +106,48 @@ def resolve_provider_api_key(
     return api_key, key_source
 
 
+def get_effective_subscription_tier(
+    user_id: UUID | str | None,
+    subscription_tier: str | None = None,
+) -> str:
+    """Return the effective subscription tier for credential policy decisions.
+
+    The caller may pass a known tier to avoid an extra database lookup. When it
+    is absent, look up the user and fail closed to ``"free"`` if the lookup
+    cannot be completed.
+    """
+    if subscription_tier:
+        return subscription_tier.lower()
+
+    try:
+        return run_until_complete(_get_effective_subscription_tier_async(user_id))
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to resolve subscription tier for user=%s", user_id)
+        return "free"
+
+
+async def _get_effective_subscription_tier_async(user_id: UUID | str | None) -> str:
+    has_user_context = user_id is not None and not (isinstance(user_id, str) and user_id == "None")
+    if not has_user_context:
+        return "free"
+
+    user_uuid: UUID | None = UUID(user_id) if isinstance(user_id, str) else user_id
+
+    from portals.services.database.models.user.model import User
+    from sqlmodel import select
+
+    async with session_scope() as session:
+        result = await session.execute(select(User).where(User.id == user_uuid))
+        user = result.scalar_one_or_none()
+        return (user.subscription_tier or "free").lower() if user else "free"
+
+
 def resolve_managed_api_key(provider: str) -> str | None:
     """Read the platform-managed API key for *provider*.
 
     Resolution order
     -----------------
     1. Managed key from the ``Credential`` table (one row per provider).
-    2. ``MANAGED_{provider}_API_KEY`` environment variable (kept for
-       backward compatibility in self-hosted / headless deployments).
 
     This is a convenience wrapper used when the caller already knows they
     want the managed key (e.g. caller does its own tier check).
@@ -162,66 +194,52 @@ async def _resolve_provider_api_key_async(
 
     async with session_scope() as session:
         # ── Step 1: Determine subscription tier ──────────────────────
-        tier = subscription_tier
+        tier = subscription_tier.lower() if subscription_tier else subscription_tier
         if has_user_context and tier is None:
             from portals.services.database.models.user.model import User
 
             result = await session.execute(select(User).where(User.id == user_uuid))
             user = result.scalar_one_or_none()
-            tier = user.subscription_tier or "free" if user else "free"
+            tier = (user.subscription_tier or "free").lower() if user else "free"
 
-        # ── Step 2: Studio tier → check BYOK feature gate ────────────
+        # ── Step 2: Studio tier → check BYOK ─────────────────────────
         if has_user_context and tier == "studio" and variable_name:
             from portals.services.auth import utils as auth_utils
-            from portals.services.database.models.feature_gate.model import (
-                FeatureGate,
-            )
             from portals.services.database.models.variable.model import (
                 Variable,
             )
 
-            gate_result = await session.execute(
-                select(FeatureGate).where(
-                    FeatureGate.feature == "byok",
-                    FeatureGate.tier == "studio",
-                    FeatureGate.enabled == True,  # noqa: E712
+            var_result = await session.execute(
+                select(Variable).where(
+                    Variable.user_id == user_uuid,
+                    Variable.name == variable_name,
+                    Variable.type == "Credential",
                 )
             )
-            byok_gate = gate_result.scalar_one_or_none()
+            variable = var_result.scalar_one_or_none()
 
-            if byok_gate is not None and byok_gate.enabled:
-                # ── Step 2a: Attempt BYOK from Variable table ─────────
-                var_result = await session.execute(
-                    select(Variable).where(
-                        Variable.user_id == user_uuid,
-                        Variable.name == variable_name,
-                        Variable.type == "Credential",
-                    )
-                )
-                variable = var_result.scalar_one_or_none()
-
-                if variable is not None and variable.value:
-                    try:
-                        decrypted = auth_utils.decrypt_api_key(variable.value)
-                        if decrypted:
-                            logger.debug(
-                                "BYOK resolved for user=%s provider=%s",
-                                user_id,
-                                provider,
-                            )
-                            return decrypted, "byok"
-                    except Exception:  # noqa: BLE001
-                        logger.exception(
-                            "Failed to decrypt BYOK for user=%s provider=%s",
+            if variable is not None and variable.value:
+                try:
+                    decrypted = auth_utils.decrypt_api_key(variable.value)
+                    if decrypted:
+                        logger.debug(
+                            "BYOK resolved for user=%s provider=%s",
                             user_id,
                             provider,
                         )
+                        return decrypted, "byok"
+                except Exception:  # noqa: BLE001
+                    logger.exception(
+                        "Failed to decrypt BYOK for user=%s provider=%s",
+                        user_id,
+                        provider,
+                    )
 
-                logger.debug(
-                    "BYOK feature gate passed but no key found for user=%s provider=%s — falling back to managed key",
-                    user_id,
-                    provider,
-                )
+            logger.debug(
+                "No BYOK key found for studio user=%s provider=%s; falling back to managed key",
+                user_id,
+                provider,
+            )
 
         # ── Step 3: Managed key from Credential table ────────────────
         from portals.services.database.models.credential.model import (
@@ -241,17 +259,6 @@ async def _resolve_provider_api_key_async(
                     return decrypted, "managed"
             except Exception:  # noqa: BLE001
                 logger.exception("Failed to decrypt managed key for provider=%s", provider)
-
-        # ── Step 4: Ultimate fallback to environment variable ────────
-        if variable_name:
-            env_key = os.getenv(variable_name)
-            if env_key:
-                logger.debug(
-                    "Using environment variable %s for provider=%s",
-                    variable_name,
-                    provider,
-                )
-                return env_key, "managed"
 
         # ── Nothing found ────────────────────────────────────────────
         logger.warning(

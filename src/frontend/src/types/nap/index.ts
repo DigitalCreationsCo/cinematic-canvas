@@ -6,6 +6,8 @@
  * dirty indicator, etc.).
  */
 
+import type { FolderType } from "../../pages/MainPage/entities";
+
 // ─── Entity creation ──────────────────────────────────────────────────
 
 export type CreateEntityRequest = {
@@ -93,6 +95,97 @@ export type NapNodeMeta = {
   nap_uri?: string | null;
   /** The commit hash of the latest published revision. */
   nap_commit_hash?: string | null;
+};
+
+// ─── MergePreview (frontend-only state) ───────────────────────────────
+
+// ─── Repository types ────────────────────────────────────────────────
+
+export type NapRepositoryType = "local" | "remote";
+
+export type CreateNapRepoRequest = {
+  folder_id: string;
+  name: string;
+  repo_type: NapRepositoryType;
+  remote_url?: string | null;
+};
+
+export type NapRepositoryRead = {
+  id: string;
+  folder_id: string;
+  name: string;
+  nap_uri: string | null;
+  repo_type: NapRepositoryType;
+  remote_url: string | null;
+  entity_count: number;
+  last_commit_hash: string | null;
+  status: string;
+  tag: string;
+  pinned_commit_hash: string | null;
+  error_message: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type EntitySummary = {
+  uri: string;
+  entity_type: string;
+  entity_id: string;
+  commit_hash: string | null;
+  updated_at: number | null;
+};
+
+export type CommitSummary = {
+  uri: string;
+  entity_type: string;
+  entity_id: string;
+  commit_hash: string;
+  updated_at: number | null;
+};
+
+export type NapRepositoryDetail = NapRepositoryRead & {
+  entities: EntitySummary[];
+  recent_commits: CommitSummary[];
+};
+
+export type CloneNapRepoRequest = {
+  repo_id: string;
+  remote_url: string;
+};
+
+export type PushNapRepoRequest = {
+  repo_id: string;
+  remote_url: string;
+};
+
+// ─── Combined project creation ────────────────────────────────────────
+
+export type RepositorySelection = {
+  mode: "existing" | "new";
+  /** Whether to link to an existing repository or create a new one. */
+  repository_id?: string;
+  /** The ID of an existing repository (required when mode='existing'). */
+  name?: string;
+  /** The name for a new repository (required when mode='new'). */
+};
+
+export type CreateProjectWithRepoRequest = {
+  name: string;
+  /** The project name (also used to derive the NAP universe slug). */
+  description?: string;
+  /** Optional project description. */
+  repository: RepositorySelection;
+  /** Repository selection: link to existing or create new. */
+};
+
+export type CreateProjectWithRepoResponse = {
+  folder: FolderType;
+  /** The newly created Portals project folder. */
+  repository: NapRepositoryRead;
+  /** The NapRepository record linking to the lore-server universe. */
+  mode: "created" | "existing";
+  /** ``"created"`` if a new lore-server universe was initialised,
+      ``"existing"`` if a universe with the same slug already existed. */
 };
 
 // ─── MergePreview (frontend-only state) ───────────────────────────────

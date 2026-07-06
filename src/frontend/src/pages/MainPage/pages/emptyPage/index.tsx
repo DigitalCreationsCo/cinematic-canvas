@@ -7,9 +7,10 @@ import useFileDrop from "../../hooks/use-on-file-drop";
 
 type EmptyPageProps = {
   setOpenModal: (open: boolean) => void;
+  setOpenNewProjectModal?: (open: boolean) => void;
 };
 
-export const EmptyPage = ({ setOpenModal }: EmptyPageProps) => {
+export const EmptyPage = ({ setOpenModal, setOpenNewProjectModal }: EmptyPageProps) => {
   const folders = useFolderStore((state) => state.folders);
   const handleFileDrop = useFileDrop(undefined);
 
@@ -36,7 +37,14 @@ export const EmptyPage = ({ setOpenModal }: EmptyPageProps) => {
             </p>
             <Button
               variant="default"
-              onClick={() => setOpenModal(true)}
+              onClick={() => {
+                // If no folders exist, open project modal first
+                if (folders.length === 0 && setOpenNewProjectModal) {
+                  setOpenNewProjectModal(true);
+                } else {
+                  setOpenModal(true);
+                }
+              }}
               id="new-project-btn"
               data-testid="new_project_btn_empty_page"
             >

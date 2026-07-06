@@ -1,79 +1,90 @@
+import * as Dialog from "@radix-ui/react-dialog";
 import { saveAs } from "file-saver";
 import OpenSeadragon from "openseadragon";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useAlertStore from "../../../stores/alertStore";
+import { Button } from "../../ui/button";
 import { Separator } from "../../ui/separator";
 import ForwardedIconComponent from "../genericIconComponent";
 
-export default function ImageViewer({ image }: { image: string }) {
+interface ImageViewerProps {
+  image?: string; // Kept for backward compatibility
+  imageView?: {
+    type: "single" | "group";
+    images: {
+      url: string;
+      file_id?: string;
+      file_name?: string;
+      caption?: string;
+    }[];
+    current: number;
+  };
+}
+
+export default function ImageViewer({ image, imageView }: ImageViewerProps) {
   const { t } = useTranslation();
   const viewerRef = useRef(null);
-  const [_errorDownloading, _setErrordownloading] = useState(false);
   const setErrorList = useAlertStore((state) => state.setErrorData);
-  const [_initialMsg, _setInicialMsg] = useState("Please build your flow");
+
+  const currentView = imageView ?? {
+    type: "single",
+    images: image ? [{ url: image }] : [],
+    current: 0,
+  };
+
+  const [currentIndex, setCurrentIndex] = useState(currentView.current);
+  const currentImage = currentView.images[currentIndex];
 
   useEffect(() => {
     try {
-      if (viewerRef.current) {
-        // Initialize OpenSeadragon viewer
+      if (viewerRef.current && currentImage) {
         const viewer = OpenSeadragon({
           element: viewerRef.current,
           prefixUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/2.4.2/images/", // Optional: Set the path to OpenSeadragon images
-          tileSources: { type: "image", url: image },
+            "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/2.4.2/images/",
+          tileSources: { type: "image", url: currentImage.url },
           defaultZoomLevel: 1,
           maxZoomPixelRatio: 4,
           showNavigationControl: false,
         });
+
+        // Setup custom controls
         const zoomInButton = document.getElementById("zoom-in-button");
         const zoomOutButton = document.getElementById("zoom-out-button");
         const homeButton = document.getElementById("home-button");
         const fullPageButton = document.getElementById("full-page-button");
 
-        zoomInButton!.addEventListener("click", () =>
-          viewer.viewport.zoomBy(1.2),
-        );
-        zoomOutButton!.addEventListener("click", () =>
-          viewer.viewport.zoomBy(0.8),
-        );
-        homeButton!.addEventListener("click", () => viewer.viewport.goHome());
-        fullPageButton!.addEventListener("click", () =>
-          viewer.setFullScreen(true),
-        );
+        const handlers = {
+          zoomIn: () => viewer.viewport.zoomBy(1.2),
+          zoomOut: () => viewer.viewport.zoomBy(0.8),
+          home: () => viewer.viewport.goHome(),
+          fullPage: () => viewer.setFullScreen(true),
+        };
 
-        // Optionally, you can set additional viewer options here
+        zoomInButton?.addEventListener("click", handlers.zoomIn);
+        zoomOutButton?.addEventListener("click", handlers.zoomOut);
+        homeButton?.addEventListener("click", handlers.home);
+        fullPageButton?.addEventListener("click", handlers.fullPage);
 
-        // Cleanup function
         return () => {
           viewer.destroy();
-          zoomInButton!.removeEventListener("click", () =>
-            viewer.viewport.zoomBy(1.2),
-          );
-          zoomOutButton!.removeEventListener("click", () =>
-            viewer.viewport.zoomBy(0.8),
-          );
-          homeButton!.removeEventListener("click", () =>
-            viewer.viewport.goHome(),
-          );
-          fullPageButton!.removeEventListener("click", () =>
-            viewer.setFullScreen(true),
-          );
+          zoomInButton?.removeEventListener("click", handlers.zoomIn);
+          zoomOutButton?.removeEventListener("click", handlers.zoomOut);
+          homeButton?.removeEventListener("click", handlers.home);
+          fullPageButton?.removeEventListener("click", handlers.fullPage);
         };
       }
     } catch (error) {
       console.error("Error initializing OpenSeadragon:", error);
     }
-  }, [image]);
+  }, [currentImage?.url]);
 
-  function download() {
-    const imageUrl = image;
-    // Fetch the image data
-    fetch(imageUrl)
+  function download(url: string) {
+    fetch(url)
       .then((response) => response.blob())
       .then((blob) => {
-        // Save the image using FileSaver.js
-        saveAs(blob, "image.jpg");
+        saveAs(blob, currentImage?.file_name || "image.jpg");
       })
       .catch((error) => {
         setErrorList({ title: "There was an error downloading your image" });
@@ -81,83 +92,102 @@ export default function ImageViewer({ image }: { image: string }) {
       });
   }
 
-  return image === "" ? (
-    <div className="align-center flex h-full w-full flex-col justify-center gap-5 rounded-md border border-border bg-muted">
-      <div className="align-center flex justify-center gap-2">
-        <ForwardedIconComponent name="Image" />
-        {t("output.imgTitle")}
-      </div>
-      <div className="align-center flex justify-center">
-        <div className="portals-chat-desc align-center flex justify-center">
-          <div className="portals-chat-desc-span">{t("output.imgError")}</div>
-        </div>
-      </div>
-    </div>
-  ) : (
-    <>
-      <div className="align-center my-2 mb-4 flex w-full justify-center">
-        <div className="shadow-round-btn-shadow hover:shadow-round-btn-shadow flex w-[50%] items-center justify-center rounded-sm border bg-muted shadow-md transition-all">
-          <button
-            id="zoom-in-button"
-            className="relative inline-flex w-full items-center justify-center px-3 py-3 text-sm font-semibold transition-all duration-500 ease-in-out hover:bg-hover"
-          >
-            <ForwardedIconComponent
-              name="ZoomIn"
-              className={"h-5 w-5 text-secondary-foreground"}
-            />
-          </button>
-          <div>
-            <Separator orientation="vertical" />
-          </div>
-          <button
-            id="zoom-out-button"
-            className="relative inline-flex w-full items-center justify-center px-3 py-3 text-sm font-semibold transition-all duration-500 ease-in-out hover:bg-hover"
-          >
-            <ForwardedIconComponent
-              name="ZoomOut"
-              className={"h-5 w-5 text-secondary-foreground"}
-            />
-          </button>
-          <div>
-            <Separator orientation="vertical" />
-          </div>
-          <button
-            id="home-button"
-            className="relative inline-flex w-full items-center justify-center px-3 py-3 text-sm font-semibold transition-all duration-500 ease-in-out hover:bg-hover"
-          >
-            <ForwardedIconComponent
-              name="RotateCcw"
-              className={"h-5 w-5 text-secondary-foreground"}
-            />
-          </button>
-          <div>
-            <Separator orientation="vertical" />
-          </div>
-          <button
-            id="full-page-button"
-            className="relative inline-flex w-full items-center justify-center px-3 py-3 text-sm font-semibold transition-all duration-500 ease-in-out hover:bg-hover"
-          >
-            <ForwardedIconComponent
-              name="Maximize2"
-              className={"h-5 w-5 text-secondary-foreground"}
-            />
-          </button>
-          <div>
-            <Separator orientation="vertical" />
-          </div>
+  const navigate = (direction: number) => {
+    setCurrentIndex(
+      (prev) =>
+        (prev + direction + currentView.images.length) %
+        currentView.images.length,
+    );
+  };
 
-          <button
-            onClick={download}
-            className="relative inline-flex w-full items-center justify-center px-3 py-3 text-sm font-semibold transition-all duration-500 ease-in-out hover:bg-hover"
-          >
-            <ForwardedIconComponent
-              name="ArrowDownToLine"
-              className={"h-5 w-5 text-secondary-foreground"}
-            />
-          </button>
-        </div>
+  if (!currentImage) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-5 rounded-md border border-border bg-muted">
+        <ForwardedIconComponent name="Image" />
+        {t("output.imgError")}
       </div>
-      <div id="canvas" ref={viewerRef} className={`h-[90%] w-full`} />
-    </>
+    );
+  }
+
+  return (
+    <Dialog.Root>
+      <div className="flex flex-col items-center gap-2">
+        {/* Main View */}
+        <div
+          className="relative h-[300px] w-full cursor-pointer overflow-hidden rounded-md border"
+          onClick={() => document.getElementById("expand-trigger")?.click()}
+        >
+          <img
+            src={currentImage.url}
+            className="h-full w-full object-contain"
+            alt={currentImage.caption || "Image"}
+          />
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50">
+            <ForwardedIconComponent
+              name="Maximize"
+              className="text-white h-10 w-10"
+            />
+          </div>
+        </div>
+
+        {/* Group Navigation */}
+        {currentView.type === "group" && currentView.images.length > 1 && (
+          <div className="flex items-center gap-2">
+            <Button size="icon" variant="outline" onClick={() => navigate(-1)}>
+              <ForwardedIconComponent name="ChevronLeft" />
+            </Button>
+            <span>
+              {currentIndex + 1} / {currentView.images.length}
+            </span>
+            <Button size="icon" variant="outline" onClick={() => navigate(1)}>
+              <ForwardedIconComponent name="ChevronRight" />
+            </Button>
+          </div>
+        )}
+
+        {/* Modal/Expanded View */}
+        <Dialog.Trigger asChild>
+          <button id="expand-trigger" className="hidden" />
+        </Dialog.Trigger>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/80 z-50" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 w-[90vw] h-[90vh] -translate-x-1/2 -translate-y-1/2 bg-background p-4 rounded-lg z-50 flex flex-col">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-lg font-semibold">{currentImage.caption}</h2>
+              <Dialog.Close asChild>
+                <Button variant="ghost">Close</Button>
+              </Dialog.Close>
+            </div>
+
+            <div className="flex-1 relative">
+              <div id="canvas" ref={viewerRef} className="h-full w-full" />
+
+              {/* Controls inside modal */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-background/80 p-2 rounded-full">
+                <Button id="zoom-in-button" size="icon" variant="ghost">
+                  <ForwardedIconComponent name="ZoomIn" />
+                </Button>
+                <Button id="zoom-out-button" size="icon" variant="ghost">
+                  <ForwardedIconComponent name="ZoomOut" />
+                </Button>
+                <Button id="home-button" size="icon" variant="ghost">
+                  <ForwardedIconComponent name="RotateCcw" />
+                </Button>
+                <Button id="full-page-button" size="icon" variant="ghost">
+                  <ForwardedIconComponent name="Maximize2" />
+                </Button>
+                <Button
+                  onClick={() => download(currentImage.url)}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <ForwardedIconComponent name="ArrowDownToLine" />
+                </Button>
+              </div>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </div>
+    </Dialog.Root>
   );
 }

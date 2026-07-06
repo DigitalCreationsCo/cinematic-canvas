@@ -1,3 +1,4 @@
+import { useLocation } from "react-router-dom";
 import useAuthStore from "@/stores/authStore";
 import type { useQueryFunctionType } from "@/types/api";
 import { api } from "../../api";
@@ -15,11 +16,14 @@ export const useGetTeams: useQueryFunctionType<undefined, Array<Team>> = (
 ) => {
   const { query } = UseRequestProcessor();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const location = useLocation();
 
   async function getTeamsFn(): Promise<Array<Team>> {
-    const response = await api.get<Array<Team>>(`${getURL("TEAMS")}`);
+    const response = await api.get<{ total_count: number; teams: Array<Team> }>(
+      `${getURL("TEAMS")}`,
+    );
 
-    const teams = response["data"];
+    const teams = response.data.teams;
     const store = useAuthStore.getState();
     store.setAvailableTeams(teams);
 
@@ -28,11 +32,17 @@ export const useGetTeams: useQueryFunctionType<undefined, Array<Team>> = (
       store.setActiveTeam(teams[0].id, teams[0].role);
     }
 
-    return response.data;
+    return teams;
   }
 
-  // Ensure the query only runs when the user is explicitly authenticated
-  const shouldBeEnabled = isAuthenticated && (options?.enabled ?? true);
+  // Disable query on create-team and join-team pages to prevent 403 loops
+  const isOnboardingPage =
+    location.pathname.includes("/create-team") ||
+    location.pathname.includes("/join-team");
+
+  // Ensure the query only runs when the user is explicitly authenticated and not on onboarding pages
+  const shouldBeEnabled =
+    isAuthenticated && !isOnboardingPage && (options?.enabled ?? true);
 
   const queryResult = query(["useGetTeams"], getTeamsFn, {
     refetchOnWindowFocus: false,

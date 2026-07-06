@@ -194,11 +194,8 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
     display_name = "Generate Storyboard"
     name = "GenerateStoryboard"
     description = (
-        "Generates a structured storyboard via multi-pass LLM calls. "
-        "Pass 1 builds initial context (characters, locations, props, metadata). "
-        "Pass 2+ generates scenes in batches, optionally guided by audio-analysis segments. "
-        "Single-pass structured output retained for backward compatibility. "
-        "Project-aware: fetches existing characters, locations, and props from the NAP universe."
+        "Generate a storyboard from characters, locations, props, metadata. "
+        "Accepts an optional audio track for music video storyboards. "
     )
     icon = "sparkles"
     documentation: str = "https://docs.portals.org/components-models"
@@ -233,7 +230,7 @@ class GenerateStoryboardComponent(BaseStateAwareComponent, StructuredOutputCompo
         MessageTextInput(
             name="title",
             display_name="Title",
-            info="Title of the project.",
+            info="Title of the storyboard. Defaults to the title of the project.",
         ),
         # ── Audio File ────────────────────────────────────────────────────────
         FileInput(

@@ -27,6 +27,9 @@ interface TeamState {
   ) => void;
 }
 
+const PORTALS_ACTIVE_TEAM_ID = "portals_active_team_id";
+const PORTALS_AVAILABLE_TEAMS = "portals_available_teams";
+
 const useAuthStore = create<AuthStoreType & TeamState>((set, get) => ({
   isAdmin: false,
   // Authentication state is now determined by session validation, not cookie reads
@@ -38,12 +41,20 @@ const useAuthStore = create<AuthStoreType & TeamState>((set, get) => ({
   apiKey: null,
   authenticationErrorCount: 0,
 
-  activeTeamId: null,
-  availableTeams: null,
+  activeTeamId: localStorage.getItem(PORTALS_ACTIVE_TEAM_ID) || null,
+  availableTeams: JSON.parse(
+    localStorage.getItem(PORTALS_AVAILABLE_TEAMS) || "null",
+  ),
   activeTeamRole: null,
 
-  setActiveTeam: (activeTeamId, activeTeamRole) =>
-    set({ activeTeamId, activeTeamRole }),
+  setActiveTeam: (activeTeamId, activeTeamRole) => {
+    if (activeTeamId) {
+      localStorage.setItem(PORTALS_ACTIVE_TEAM_ID, activeTeamId);
+    } else {
+      localStorage.removeItem(PORTALS_ACTIVE_TEAM_ID);
+    }
+    set({ activeTeamId, activeTeamRole });
+  },
 
   setIsAdmin: (isAdmin) => set({ isAdmin }),
   setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
@@ -54,12 +65,33 @@ const useAuthStore = create<AuthStoreType & TeamState>((set, get) => ({
   setAuthenticationErrorCount: (authenticationErrorCount) =>
     set({ authenticationErrorCount }),
 
-  setAvailableTeams: (availableTeams) => set({ availableTeams }),
+  setActiveTeamId: (activeTeamId) => {
+    if (activeTeamId) {
+      localStorage.setItem(PORTALS_ACTIVE_TEAM_ID, activeTeamId);
+    } else {
+      localStorage.removeItem(PORTALS_ACTIVE_TEAM_ID);
+    }
+    set({ activeTeamId });
+  },
+
+  setAvailableTeams: (availableTeams) => {
+    if (availableTeams) {
+      localStorage.setItem(
+        PORTALS_AVAILABLE_TEAMS,
+        JSON.stringify(availableTeams),
+      );
+    } else {
+      localStorage.removeItem(PORTALS_AVAILABLE_TEAMS);
+    }
+    set({ availableTeams });
+  },
 
   logout: async () => {
     localStorage.removeItem(PORTALS_ACCESS_TOKEN);
     localStorage.removeItem(PORTALS_API_TOKEN);
     localStorage.removeItem(PORTALS_REFRESH_TOKEN);
+    localStorage.removeItem(PORTALS_ACTIVE_TEAM_ID);
+    localStorage.removeItem(PORTALS_AVAILABLE_TEAMS);
 
     cookieManager.clearAuthCookies();
 
@@ -75,7 +107,6 @@ const useAuthStore = create<AuthStoreType & TeamState>((set, get) => ({
       apiKey: null,
       activeTeamId: null,
       availableTeams: null,
-      activeTeamRole: null,
     });
   },
 }));

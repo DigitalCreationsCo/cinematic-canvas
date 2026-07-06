@@ -10,6 +10,7 @@ Covers:
 
 from __future__ import annotations
 
+import importlib
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -259,29 +260,72 @@ class TestGetLlmCredentialRouting:
     """Tests for the credential routing behaviour added to get_llm()."""
 
     @patch("px.base.models.unified_models.get_api_key_for_provider")
+    @patch("px.base.models.unified_models.resolve_provider_api_key")
+    @patch("px.base.models.unified_models.get_effective_subscription_tier")
     @patch("px.base.models.unified_models.get_model_class")
-    def test_explicit_api_key_bypasses_routing(self, mock_get_class, mock_get_key):
-        """When api_key is explicitly passed, tier-based routing is NOT used."""
+    def test_non_studio_explicit_api_key_uses_managed_routing(
+        self,
+        mock_get_class,
+        mock_get_tier,
+        mock_resolve,
+        mock_get_key,
+    ):
+        """Non-studio component api_key input is ignored and managed routing is used."""
         from px.base.models.unified_models.instantiation import get_llm
 
-        mock_get_key.return_value = "sk-explicit"  # pragma: allowlist secret
+        mock_get_tier.return_value = "pro"
+        mock_resolve.return_value = ("sk-managed", "managed")  # pragma: allowlist secret
         mock_get_class.return_value = MagicMock()
 
         get_llm(
             model=_make_model_dict(),
             user_id=str(uuid4()),
             api_key="sk-explicit",  # pragma: allowlist secret
+            subscription_tier="pro",
         )
 
-        # Should have used get_api_key_for_provider (backward compat path)
-        mock_get_key.assert_called_once_with(ANY, "OpenAI", "sk-explicit")  # pragma: allowlist secret
+        mock_get_tier.assert_called_once_with(user_id=ANY, subscription_tier="pro")
+        mock_resolve.assert_called_once_with(user_id=ANY, provider="OpenAI", subscription_tier="pro")
+        mock_get_key.assert_not_called()
 
     @patch("px.base.models.unified_models.resolve_provider_api_key")
+    @patch("px.base.models.unified_models.get_api_key_for_provider")
+    @patch("px.base.models.unified_models.get_effective_subscription_tier")
     @patch("px.base.models.unified_models.get_model_class")
-    def test_none_api_key_triggers_routing(self, mock_get_class, mock_resolve):
+    def test_studio_explicit_api_key_is_honored(
+        self,
+        mock_get_class,
+        mock_get_tier,
+        mock_get_key,
+        mock_resolve,
+    ):
+        """Studio users may use an explicit component api_key as BYOK."""
+        from px.base.models.unified_models.instantiation import get_llm
+
+        model_class = MagicMock()
+        mock_get_class.return_value = model_class
+        mock_get_tier.return_value = "studio"
+        mock_get_key.return_value = "sk-explicit"  # pragma: allowlist secret
+
+        get_llm(
+            model=_make_model_dict(),
+            user_id=str(uuid4()),
+            api_key="sk-explicit",  # pragma: allowlist secret
+            subscription_tier="studio",
+        )
+
+        mock_get_key.assert_called_once_with(ANY, "OpenAI", "sk-explicit")  # pragma: allowlist secret
+        mock_resolve.assert_not_called()
+        assert model_class.call_args.kwargs["api_key"] == "sk-explicit"  # pragma: allowlist secret
+
+    @patch("px.base.models.unified_models.resolve_provider_api_key")
+    @patch("px.base.models.unified_models.get_effective_subscription_tier")
+    @patch("px.base.models.unified_models.get_model_class")
+    def test_none_api_key_triggers_routing(self, mock_get_class, mock_get_tier, mock_resolve):
         """When api_key is None, tier-based routing IS used."""
         from px.base.models.unified_models.instantiation import get_llm
 
+        mock_get_tier.return_value = "pro"
         mock_resolve.return_value = ("sk-routed", "managed")  # pragma: allowlist secret
         mock_get_class.return_value = MagicMock()
 
@@ -294,16 +338,16 @@ class TestGetLlmCredentialRouting:
 
         mock_resolve.assert_called_once_with(user_id=ANY, provider="OpenAI", subscription_tier="pro")
 
-    @patch("px.base.models.unified_models.get_model_provider_variable_mapping")
     @patch("px.base.models.unified_models.resolve_provider_api_key")
-    def test_no_api_key_and_no_routing_raises_value_error(self, mock_resolve, mock_mapping):
+    @patch("px.base.models.unified_models.get_effective_subscription_tier")
+    def test_no_api_key_and_no_routing_raises_value_error(self, mock_get_tier, mock_resolve):
         """When both routing and fallback produce no key, raise ValueError."""
         from px.base.models.unified_models.instantiation import get_llm
 
+        mock_get_tier.return_value = "free"
         mock_resolve.return_value = (None, None)
-        mock_mapping.return_value = {"OpenAI": "OPENAI_API_KEY"}
 
-        with pytest.raises(ValueError, match="API key is required"):
+        with pytest.raises(ValueError, match="No managed OpenAI credential is configured"):
             get_llm(
                 model=_make_model_dict(),
                 user_id=str(uuid4()),
@@ -312,11 +356,13 @@ class TestGetLlmCredentialRouting:
             )
 
     @patch("px.base.models.unified_models.resolve_provider_api_key")
+    @patch("px.base.models.unified_models.get_effective_subscription_tier")
     @patch("px.base.models.unified_models.get_model_class")
-    def test_ollama_does_not_require_api_key(self, mock_get_class, mock_resolve):
+    def test_ollama_does_not_require_api_key(self, mock_get_class, mock_get_tier, mock_resolve):
         """Ollama is exempt from API key requirements."""
         from px.base.models.unified_models.instantiation import get_llm
 
+        mock_get_tier.return_value = "free"
         mock_resolve.return_value = (None, None)
         mock_get_class.return_value = MagicMock()
 
@@ -333,11 +379,13 @@ class TestGetLlm401Enforcement:
     """BYOK 401 errors must NOT silently fall back to managed keys."""
 
     @patch("px.base.models.unified_models.resolve_provider_api_key")
+    @patch("px.base.models.unified_models.get_effective_subscription_tier")
     @patch("px.base.models.unified_models.get_model_class")
-    def test_byok_401_raises_clear_error_no_fallback(self, mock_get_class, mock_resolve):
+    def test_byok_401_raises_clear_error_no_fallback(self, mock_get_class, mock_get_tier, mock_resolve):
         """BYOK key failing with 401 must raise a user-facing error."""
         from px.base.models.unified_models.instantiation import get_llm
 
+        mock_get_tier.return_value = "studio"
         mock_resolve.return_value = ("sk-invalid-byok", "byok")  # pragma: allowlist secret
         mock_get_class.return_value = MagicMock(
             side_effect=Exception("Error code: 401 - Authentication: invalid API key")
@@ -355,11 +403,13 @@ class TestGetLlm401Enforcement:
         assert "managed" not in str(exc_info.value).lower()
 
     @patch("px.base.models.unified_models.resolve_provider_api_key")
+    @patch("px.base.models.unified_models.get_effective_subscription_tier")
     @patch("px.base.models.unified_models.get_model_class")
-    def test_byok_unauthorized_raises_clear_error(self, mock_get_class, mock_resolve):
+    def test_byok_unauthorized_raises_clear_error(self, mock_get_class, mock_get_tier, mock_resolve):
         """BYOK key failing with 'unauthorized' must raise a user-facing error."""
         from px.base.models.unified_models.instantiation import get_llm
 
+        mock_get_tier.return_value = "studio"
         mock_resolve.return_value = ("sk-expired-byok", "byok")  # pragma: allowlist secret
         mock_get_class.return_value = MagicMock(side_effect=Exception("Unauthorized: token expired"))
 
@@ -372,11 +422,13 @@ class TestGetLlm401Enforcement:
             )
 
     @patch("px.base.models.unified_models.resolve_provider_api_key")
+    @patch("px.base.models.unified_models.get_effective_subscription_tier")
     @patch("px.base.models.unified_models.get_model_class")
-    def test_managed_key_401_re_raises_original(self, mock_get_class, mock_resolve):
+    def test_managed_key_401_re_raises_original(self, mock_get_class, mock_get_tier, mock_resolve):
         """A 401 with a managed key raises the original error, not BYOK message."""
         from px.base.models.unified_models.instantiation import get_llm
 
+        mock_get_tier.return_value = "free"
         mock_resolve.return_value = ("sk-managed-broken", "managed")  # pragma: allowlist secret
         mock_get_class.return_value = MagicMock(side_effect=Exception("Error code: 401 - Authentication failed"))
 
@@ -388,21 +440,65 @@ class TestGetLlm401Enforcement:
                 subscription_tier="free",
             )
 
+    @patch("px.base.models.unified_models.resolve_provider_api_key")
     @patch("px.base.models.unified_models.get_api_key_for_provider")
+    @patch("px.base.models.unified_models.get_effective_subscription_tier")
     @patch("px.base.models.unified_models.get_model_class")
-    def test_explicit_api_key_401_re_raises_original(self, mock_get_class, mock_get_key):
-        """When api_key was explicitly passed, 401 re-raises the original error."""
+    def test_studio_explicit_api_key_401_raises_clear_error(
+        self,
+        mock_get_class,
+        mock_get_tier,
+        mock_get_key,
+        mock_resolve,
+    ):
+        """Studio explicit api_key is BYOK, so auth failures get the BYOK message."""
         from px.base.models.unified_models.instantiation import get_llm
 
+        mock_get_tier.return_value = "studio"
         mock_get_key.return_value = "sk-explicit"  # pragma: allowlist secret
         mock_get_class.return_value = MagicMock(side_effect=Exception("Error code: 401 - Unauthorized"))
 
-        with pytest.raises(Exception, match="401"):
+        with pytest.raises(ValueError, match="API key"):
             get_llm(
                 model=_make_model_dict(),
                 user_id=str(uuid4()),
                 api_key="sk-explicit",  # pragma: allowlist secret
+                subscription_tier="studio",
             )
+        mock_resolve.assert_not_called()
+
+
+class TestModelComponentCredentialDelegation:
+    """Model components should delegate credential policy to get_llm()."""
+
+    @pytest.mark.parametrize(
+        ("module_name", "class_name", "method_name"),
+        [
+            ("px.components.models_and_agents.language_model", "LanguageModelComponent", "build_model"),
+            ("px.components.models_and_agents.image_model", "ImageModelComponent", "build_model"),
+            ("px.components.models_and_agents.video_model", "VideoModelComponent", "build_model"),
+            ("px.components.models_and_agents.agent", "AgentComponent", "_get_llm"),
+        ],
+    )
+    def test_components_pass_api_key_to_shared_get_llm(self, module_name, class_name, method_name, monkeypatch):
+        module = importlib.import_module(module_name)
+        component = getattr(module, class_name)()
+        captured_kwargs = {}
+
+        def fake_get_llm(**kwargs):
+            captured_kwargs.update(kwargs)
+            return MagicMock()
+
+        monkeypatch.setattr(module, "get_llm", fake_get_llm)
+        component.model = _make_model_dict()
+        component._user_id = str(uuid4())
+        component.api_key = "sk-component"  # pragma: allowlist secret
+        component.temperature = 0.1
+        component.stream = False
+
+        getattr(component, method_name)()
+
+        assert captured_kwargs["api_key"] == "sk-component"  # pragma: allowlist secret
 
 
 # ============================================================================

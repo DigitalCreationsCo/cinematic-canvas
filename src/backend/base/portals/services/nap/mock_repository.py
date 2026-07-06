@@ -17,10 +17,13 @@ from typing import Any
 
 from portals.services.nap.protocol import (
     CommitRef,
+    CommitSummary,
     Conflict,
     DiffChange,
+    EntitySummary,
     ManifestRef,
     MergePreview,
+    TagSummary,
 )
 
 
@@ -129,9 +132,12 @@ class MockNapRepository:
     def __init__(self, assets_dir: str | Path | None = None) -> None:
         self._store: dict[str, dict[str, Any]] = {}
         self._heads: dict[str, str] = {}  # uri → latest commit hash
-        self._commits: dict[str, str] = {}  # uri → ordered list of commit hashes
+        self._commits: dict[str, list[str]] = {}  # uri → ordered list of commit hashes
         self._assets: dict[str, bytes] = {}
         self._assets_dir = Path(assets_dir) if assets_dir else Path("/tmp/nap-assets")
+        self._universes: dict[str, set[str]] = {}  # universe → set of URIs
+        self._tags: dict[str, dict[str, TagSummary]] = {}  # universe → {tag name → TagSummary}
+        self._local_commits: dict[str, set[str]] = {}  # universe → set of locally-cloned commit hashes
 
     # ── Protocol implementation ──────────────────────────────────────────
 
@@ -147,6 +153,11 @@ class MockNapRepository:
 
         manifest.setdefault("uri", uri)
         manifest.setdefault("created_at", time.time())
+        universe = uri.split("/")[2] if uri.startswith("nap://") else None
+        if universe and universe not in self._universes:
+            self._universes[universe] = set()
+        if universe:
+            self._universes[universe].add(uri)
         return self._publish(uri, manifest, message)
 
     def resolve(self, uri: str, commit: str) -> dict[str, Any]:
@@ -270,6 +281,151 @@ class MockNapRepository:
         (self._assets_dir / filename).write_bytes(data)
 
         return content_hash
+
+    # ── Universe/repository-level operations ────────────────────────────
+
+    def list_universes(self) -> list[str]:
+        return sorted(self._universes.keys())
+
+    def universe_exists(self, name: str) -> bool:
+        return name in self._universes
+
+    def init_universe(self, name: str) -> None:
+        if name in self._universes:
+            msg = f"Universe '{name}' already exists"
+            raise ValueError(msg)
+        self._universes[name] = set()
+
+    def list_entities(self, universe: str) -> list[EntitySummary]:
+        prefix = f"nap://{universe}/"
+        uris: set[str] = set()
+        for key in self._store:
+            if key.startswith(prefix):
+                uri = key.split("@")[0]
+                uris.add(uri)
+        result: list[EntitySummary] = []
+        for uri in sorted(uris):
+            head = self._heads.get(uri)
+            manifest = self._store.get(self._store_key(uri, head)) if head else {}
+            entity_type = manifest.get("type", "unknown")
+            entity_id = manifest.get("id", uri.rsplit("/", 1)[-1])
+            result.append(
+                EntitySummary(
+                    uri=uri,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    commit_hash=head,
+                    updated_at=manifest.get("updated_at"),
+                )
+            )
+        return result
+
+    def list_commits(self, universe: str, max_count: int = 50) -> list[CommitSummary]:
+        prefix = f"nap://{universe}/"
+        all_commits: list[CommitSummary] = []
+        for uri, commit_hashes in self._commits.items():
+            if not uri.startswith(prefix):
+                continue
+            entity_type = "unknown"
+            entity_id = uri.rsplit("/", 1)[-1]
+            for commit_hash in commit_hashes:
+                key = self._store_key(uri, commit_hash)
+                manifest = self._store.get(key, {})
+                entity_type = manifest.get("type", entity_type)
+                all_commits.append(
+                    CommitSummary(
+                        uri=uri,
+                        entity_type=entity_type,
+                        entity_id=entity_id,
+                        commit_hash=commit_hash,
+                        updated_at=manifest.get("updated_at"),
+                    )
+                )
+        all_commits.sort(key=lambda c: c.updated_at or 0, reverse=True)
+        return all_commits[:max_count]
+
+    def clone_from_remote(self, remote_url: str, local_name: str) -> str:
+        if local_name in self._universes:
+            msg = f"Local universe '{local_name}' already exists"
+            raise ValueError(msg)
+        self._universes[local_name] = set()
+        return local_name
+
+    def push_to_remote(self, universe: str, remote_url: str) -> int:
+        if universe not in self._universes:
+            msg = f"Universe '{universe}' not found"
+            raise ValueError(msg)
+        return 0
+
+    # ── Tags ─────────────────────────────────────────────────────────────
+
+    def list_tags(self, universe: str) -> list[TagSummary]:
+        tags = self._tags.get(universe, {})
+        return sorted(tags.values(), key=lambda t: t.updated_at or 0, reverse=True)
+
+    def create_tag(
+        self,
+        universe: str,
+        name: str,
+        commit_hash: str | None = None,
+    ) -> TagSummary:
+        if universe not in self._universes:
+            msg = f"Universe '{universe}' not found"
+            raise ValueError(msg)
+        if name == "latest":
+            msg = "'latest' is a reserved tag name and cannot be created"
+            raise ValueError(msg)
+
+        resolved_commit = commit_hash or self._latest_commit_for_universe(universe)
+        if resolved_commit is None:
+            msg = f"Universe '{universe}' has no commits to tag"
+            raise ValueError(msg)
+
+        tag = TagSummary(name=name, commit_hash=resolved_commit, updated_at=time.time_ns())
+        self._tags.setdefault(universe, {})[name] = tag
+        return tag
+
+    def resolve_tag(self, universe: str, tag: str) -> str:
+        if universe not in self._universes:
+            msg = f"Universe '{universe}' not found"
+            raise ValueError(msg)
+
+        if tag == "latest":
+            commit = self._latest_commit_for_universe(universe)
+            if commit is None:
+                msg = f"Universe '{universe}' has no commits yet"
+                raise ValueError(msg)
+            return commit
+
+        tag_obj = self._tags.get(universe, {}).get(tag)
+        if tag_obj is None:
+            msg = f"Tag '{tag}' not found in universe '{universe}'"
+            raise ValueError(msg)
+        return tag_obj.commit_hash
+
+    def clone_commit(
+        self,
+        remote_url: str,
+        local_name: str,
+        commit_hash: str,
+    ) -> str:
+        # Idempotent & additive, unlike clone_from_remote: repeated calls
+        # for the same universe accumulate distinct local commits instead
+        # of raising on an already-existing local universe.
+        if local_name not in self._universes:
+            self._universes[local_name] = set()
+        self._local_commits.setdefault(local_name, set()).add(commit_hash)
+        return local_name
+
+    def commit_exists_locally(self, universe: str, commit_hash: str) -> bool:
+        return commit_hash in self._local_commits.get(universe, set())
+
+    def _latest_commit_for_universe(self, universe: str) -> str | None:
+        """Return the most recently published commit across all
+        entities in *universe* — the universe's synthetic "tip".
+        """
+        commits = self.list_commits(universe, max_count=1)
+        return commits[0].commit_hash if commits else None
 
     # ── Internal helpers ─────────────────────────────────────────────────
 

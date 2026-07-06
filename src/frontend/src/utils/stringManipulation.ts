@@ -228,4 +228,14 @@ export const sanitizeHTML = (htmlString: string): string => {
   return DOMPurify.sanitize(htmlString);
 };
 
+export const slugify = (name: string): string => {
+  /** Convert a project name into a filesystem-safe NAP universe slug.
+   * Matches backend _slugify() logic in nap.py.
+   */
+  let slug = name.toLowerCase();
+  slug = slug.replace(/[^a-z0-9-]/g, "-");
+  slug = slug.replace(/-+/g, "-");
+  return slug.replace(/^-|-$/g, "");
+};
+
 export { sanitizeMcpName };

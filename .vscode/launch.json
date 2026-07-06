@@ -16,7 +16,7 @@
                 "--host",
                 "127.0.0.1",
                 "--port",
-                "7860",
+                "8000",
                 "--reload",
                 "--env-file",
                 ".env",
@@ -40,7 +40,7 @@
                 "--factory",
                 "portals.main:create_app",
                 "--host", "127.0.0.1",
-                "--port", "7860",
+                "--port", "8000",
                 // NO --reload here — single process, breakpoints work
                 "--workers", "1",
                 "--env-file", ".env",

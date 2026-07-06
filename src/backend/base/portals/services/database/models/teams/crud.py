@@ -34,14 +34,15 @@ from portals.services.database.models.user.model import User
 # ---------------------------------------------------------------------------
 
 
-def _map_team_to_read(team: Team) -> TeamRead:
-    """Convert an ORM Team to a TeamRead with member count."""
+def _map_team_to_read(team: Team, role: str | None = None) -> TeamRead:
+    """Convert an ORM Team to a TeamRead with member count and optional user role."""
     return TeamRead(
         id=team.id,
         name=team.name,
         created_at=team.created_at,
         updated_at=team.updated_at,
         member_count=len(team.members) if team.members else 0,
+        role=role,
     )
 
 
@@ -65,11 +66,7 @@ async def _assert_team_exists(session: AsyncSession, team_id: UUID) -> Team:
 
     Eagerly loads ``.members`` so callers don't trigger N+1 queries.
     """
-    stmt = (
-        select(Team)
-        .where(Team.id == team_id)
-        .options(selectinload(Team.members).selectinload(UserTeamLink.user))
-    )
+    stmt = select(Team).where(Team.id == team_id).options(selectinload(Team.members).selectinload(UserTeamLink.user))
     team = (await session.exec(stmt)).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
@@ -100,10 +97,15 @@ async def _assert_not_last_owner(
     exclude_user_id: UUID | None = None,
 ) -> None:
     """Raise 409 if removing/excluding *exclude_user_id* would leave the team
-    with zero owners."""
-    stmt = select(func.count()).select_from(UserTeamLink).where(
-        UserTeamLink.team_id == team_id,
-        UserTeamLink.role == "owner",
+    with zero owners.
+    """
+    stmt = (
+        select(func.count())
+        .select_from(UserTeamLink)
+        .where(
+            UserTeamLink.team_id == team_id,
+            UserTeamLink.role == "owner",
+        )
     )
     if exclude_user_id is not None:
         stmt = stmt.where(UserTeamLink.user_id != exclude_user_id)
@@ -112,8 +114,7 @@ async def _assert_not_last_owner(
     if remaining_owner_count < 1:
         raise HTTPException(
             status_code=409,
-            detail="Cannot remove the last owner of the team. "
-            "Promote another member to owner first.",
+            detail="Cannot remove the last owner of the team. Promote another member to owner first.",
         )
 
 
@@ -160,6 +161,9 @@ async def create_team(
     await session.flush()
     await session.refresh(team)
 
+    # Note: Session scope handles commit automatically at end of request
+    # Manual commit not needed and can cause issues with session state
+
     logger.info(f"Team created: {team.id} by user {owner_user_id}")
     return team
 
@@ -187,15 +191,13 @@ async def get_teams_for_user(
 
     Supports optional name-based search filtering.
     """
-    # Subquery: team IDs the user belongs to
-    team_ids_subq = (
-        select(UserTeamLink.team_id)
-        .where(UserTeamLink.user_id == user_id)
-        .scalar_subquery()
-    )
+    # Subquery: team IDs the user belongs to with their role
+    team_links_subq = select(UserTeamLink.team_id, UserTeamLink.role).where(UserTeamLink.user_id == user_id).subquery()
 
-    base_query: SelectOfScalar = select(Team).where(Team.id.in_(team_ids_subq))
-    count_query = select(func.count()).select_from(Team).where(Team.id.in_(team_ids_subq))
+    base_query: SelectOfScalar = select(Team, team_links_subq.c.role).join(
+        team_links_subq, Team.id == team_links_subq.c.team_id
+    )
+    count_query = select(func.count()).select_from(Team).join(team_links_subq, Team.id == team_links_subq.c.team_id)
 
     if search:
         search_filter = Team.name.ilike(f"%{search}%")
@@ -210,11 +212,11 @@ async def get_teams_for_user(
     )
     base_query = base_query.offset(skip).limit(limit).order_by(Team.created_at.desc())
 
-    teams = (await session.exec(base_query)).fetchall()
+    results = (await session.exec(base_query)).fetchall()
 
     return TeamsResponse(
         total_count=total_count,
-        teams=[_map_team_to_read(t) for t in teams],
+        teams=[_map_team_to_read(team, role) for team, role in results],
     )
 
 
@@ -356,11 +358,7 @@ async def update_member_role(
     await session.flush()
 
     # Reload user relationship for serialization
-    stmt = (
-        select(UserTeamLink)
-        .where(UserTeamLink.id == link.id)
-        .options(selectinload(UserTeamLink.user))
-    )
+    stmt = select(UserTeamLink).where(UserTeamLink.id == link.id).options(selectinload(UserTeamLink.user))
     link = (await session.exec(stmt)).first()
 
     return _map_link_to_member_read(link)
@@ -399,11 +397,7 @@ async def get_member_count(
     team_id: UUID,
 ) -> int:
     """Return the number of members in a team."""
-    stmt = (
-        select(func.count())
-        .select_from(UserTeamLink)
-        .where(UserTeamLink.team_id == team_id)
-    )
+    stmt = select(func.count()).select_from(UserTeamLink).where(UserTeamLink.team_id == team_id)
     return (await session.exec(stmt)).first() or 0
 
 

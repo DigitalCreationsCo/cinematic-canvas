@@ -200,9 +200,10 @@ export default function IOFieldView({
               <div>Expand the view to see the image</div>
             ) : (
               <ImageViewer
+                imageView={flowPoolNode?.data?.image_view}
                 image={
-                  (flowPool[node.id] ?? [])[
-                    (flowPool[node.id]?.length ?? 1) - 1
+                  (flowPool[node!.id] ?? [])[
+                    (flowPool[node!.id]?.length ?? 1) - 1
                   ]?.params ?? ""
                 }
               />

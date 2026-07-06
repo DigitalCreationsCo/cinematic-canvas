@@ -5,6 +5,7 @@ import PaginatorComponent from "@/components/common/paginatorComponent";
 import CardsWrapComponent from "@/components/core/cardsWrapComponent";
 import { IS_MAC } from "@/constants/constants";
 import { useGetFolderQuery } from "@/controllers/API/queries/folders/use-get-folder";
+import { useRepositoryByFolder } from "@/controllers/API/queries/nap";
 import { CustomBanner } from "@/customization/components/custom-banner";
 import { CustomMcpServerTab } from "@/customization/components/custom-McpServerTab";
 import {
@@ -73,10 +74,16 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
     search,
   });
 
-  const folderItems = folderData?.flows?.items ?? [];
-  const filteredFlows = !folderId
-    ? folderItems.filter((flow) => !flow.folder_id)
-    : folderItems;
+  const linkedFolderId = folderId ?? myCollectionId;
+  const { data: linkedRepository } = useRepositoryByFolder(
+    { folderId: linkedFolderId ?? "" },
+    { enabled: !!linkedFolderId },
+  );
+
+  const allFlows = folderData?.flows?.items ?? [];
+  const filteredFlows = folderId
+    ? allFlows
+    : allFlows.filter((f) => !f.folder_id);
 
   const data = {
     flows: filteredFlows,
@@ -87,7 +94,7 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
     pagination: {
       page: folderData?.flows?.page ?? 1,
       size: folderData?.flows?.size ?? 12,
-      total: folderData?.flows?.total ?? 0,
+      total: folderId ? (folderData?.flows?.total ?? 0) : filteredFlows.length,
       pages: folderData?.flows?.pages ?? 0,
     },
   };
@@ -273,6 +280,25 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
           {ENABLE_DATASTAX_PORTALS && <CustomBanner />}
           <div className="flex flex-1 flex-col justify-start p-4">
             <div className="flex h-full flex-col justify-start">
+              {linkedRepository && (
+                <div
+                  className="mb-2 flex items-center gap-2 text-sm text-muted-foreground"
+                  data-testid="linked-repository-indicator"
+                >
+                  <span className="font-mono">{linkedRepository.name}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-mono">
+                    {linkedRepository.pinned_commit_hash
+                      ? linkedRepository.pinned_commit_hash.slice(0, 7)
+                      : "no commits yet"}
+                  </span>
+                  {linkedRepository.tag && linkedRepository.tag !== "latest" && (
+                    <span className="rounded-full border px-2 py-0.5 text-xs">
+                      {linkedRepository.tag}
+                    </span>
+                  )}
+                </div>
+              )}
               <HeaderComponent
                 folderName={folderName}
                 flowType={flowType}
@@ -285,7 +311,10 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
                 selectedFlows={selectedFlows}
               />
               {isEmptyFolder ? (
-                <EmptyFolder setOpenModal={setNewProjectModal} />
+                <EmptyFolder
+                  setOpenModal={setNewProjectModal}
+                  setOpenNewProjectModal={setNewProjectModal}
+                />
               ) : (
                 <div className="flex h-full flex-col">
                   {isLoading ? (

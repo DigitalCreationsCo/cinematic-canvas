@@ -78,8 +78,10 @@ function ApiInterceptor() {
         if (shouldRetryRefresh) {
           if (
             error?.config?.url?.includes("github") ||
-            error?.config?.url?.includes("public")
+            error?.config?.url?.includes("public") ||
+            error?.config?.url?.includes("teams")
           ) {
+            // Don't retry for teams endpoint on 403 - let the query handle it
             return Promise.reject(error);
           }
           const stillRefresh = checkErrorCount();

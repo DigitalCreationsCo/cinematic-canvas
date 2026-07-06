@@ -58,11 +58,7 @@ async def add_team(
     team = await create_team(session, team_create, current_user.id)
 
     # Reload with members for the member_count
-    stmt = (
-        select(Team)
-        .where(Team.id == team.id)
-        .options(selectinload(Team.members).selectinload(UserTeamLink.user))
-    )
+    stmt = select(Team).where(Team.id == team.id).options(selectinload(Team.members).selectinload(UserTeamLink.user))
     team = (await session.exec(stmt)).first()
 
     return TeamRead(
@@ -71,6 +67,7 @@ async def add_team(
         created_at=team.created_at,
         updated_at=team.updated_at,
         member_count=len(team.members),
+        role="owner",  # Creator is always the owner
     )
 
 
@@ -143,9 +140,7 @@ async def remove_team(
     _team, membership = await verify_team_membership(session, team_id, current_user.id)
 
     if membership.role != "owner":
-        raise HTTPException(
-            status_code=403, detail="Only team owners can delete the team"
-        )
+        raise HTTPException(status_code=403, detail="Only team owners can delete the team")
 
     await delete_team(session, team_id)
     logger.info(f"Team {team_id} deleted by user {current_user.id}")
@@ -191,9 +186,7 @@ async def add_team_member(
 
     # Only owners can assign the 'owner' role
     if member_add.role == "owner" and membership.role != "owner":
-        raise HTTPException(
-            status_code=403, detail="Only owners can assign the owner role"
-        )
+        raise HTTPException(status_code=403, detail="Only owners can assign the owner role")
 
     return await add_member(session, team_id, member_add.user_id, member_add.role)
 
@@ -226,9 +219,7 @@ async def patch_member_role(
     target_is_currently_owner = target_link.role == "owner"
     target_becoming_owner = member_update.role == "owner"
 
-    if (
-        target_is_currently_owner or target_becoming_owner
-    ) and membership.role != "owner":
+    if (target_is_currently_owner or target_becoming_owner) and membership.role != "owner":
         raise HTTPException(
             status_code=403,
             detail="Only owners can change the owner role",
@@ -254,9 +245,7 @@ async def remove_team_member(
 
     if not is_self_removal:
         # Verify caller has permissions to remove others
-        _team, membership = await verify_team_membership(
-            session, team_id, current_user.id
-        )
+        _team, membership = await verify_team_membership(session, team_id, current_user.id)
         if membership.role not in ("owner", "admin"):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
 

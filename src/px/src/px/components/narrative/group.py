@@ -346,6 +346,24 @@ class GroupComponent(BaseStateAwareComponent, LCModelComponent):
                 "project_id": str(project_id),
                 "nap_uri": nap_info.get("nap_uri"),
                 "nap_commit_hash": nap_info.get("nap_commit_hash"),
+                # Provide a standardized image_view payload so the frontend
+                # can open a gallery viewer for the group's pieces. Each
+                # entry includes a url (data-url, http url or storage path),
+                # optional file_id, filename and a caption to show in the
+                # viewer. "current" defaults to 0.
+                "image_view": {
+                    "type": "group",
+                    "images": [
+                        {
+                            "url": p.get("image"),
+                            "file_id": p.get("file_id"),
+                            "file_name": p.get("file_name"),
+                            "caption": p.get("custom_description") or p.get("description") or p.get("name"),
+                        }
+                        for p in resolved_pieces
+                    ],
+                    "current": 0,
+                },
             },
         )
 

@@ -29,15 +29,10 @@ def get_llm(
 ) -> Any:
     """Instantiate a language model with credential routing.
 
-    When *api_key* is explicitly provided by the caller (e.g. from a
-    component input) it is used directly — no tier-based routing is
-    applied so that explicit component-level keys always take precedence.
-
-    When *api_key* is ``None``, the full tier-based credential routing
-    is performed via ``resolve_provider_api_key()``:
-      1. Studio + BYOK gate → BYOK from ``Variable`` table.
-      2. Fallback → managed key from ``Credential`` table.
-      3. Ultimate fallback → environment variable.
+    The user's subscription tier is evaluated before any caller-supplied
+    API key is honored. Explicit component keys are treated as BYOK and
+    are usable only by ``studio`` users. Non-studio users always resolve
+    the platform-managed key from the ``Credential`` table.
 
     .. important::
        If a BYOK-sourced key raises a 401 / authentication error during
@@ -81,32 +76,41 @@ def get_llm(
     api_key_param = metadata.get("api_key_param", "api_key")
 
     # ── Credential routing ───────────────────────────────────────────
-    # When the caller explicitly provides an api_key we respect it
-    # directly (backward-compatible with component inputs).  Otherwise
-    # the full tier-based routing kicks in.
+    # Tier is resolved before any explicit component key is considered:
+    # only studio users may use BYOK/component-provided keys.
     key_source: str | None = None  # "byok", "managed", or None
+    effective_tier = unified_models_module.get_effective_subscription_tier(
+        user_id=user_id,
+        subscription_tier=subscription_tier,
+    )
+    has_explicit_api_key = bool(api_key is not None and str(api_key).strip())
 
-    if api_key is not None:
-        # Caller-supplied key — use the original resolution path
-        # (variable-name resolution, DB lookup via VariableService, …)
+    if effective_tier == "studio" and has_explicit_api_key:
+        # Caller-supplied key is BYOK and only valid for studio users.
         api_key = unified_models_module.get_api_key_for_provider(user_id, provider, api_key)
+        key_source = "byok" if api_key else None
     else:
-        # Tier-based routing
+        # Non-studio users ignore explicit component keys and use managed
+        # credentials. Studio users without an explicit key may still use
+        # stored BYOK through the resolver before falling back to managed.
         api_key, key_source = unified_models_module.resolve_provider_api_key(
             user_id=user_id,
             provider=provider,
-            subscription_tier=subscription_tier,
+            subscription_tier=effective_tier,
         )
 
     # Validate API key (Ollama doesn't require one)
     if not api_key and provider != "Ollama":
-        # Get the correct variable name from the provider variable mapping
-        provider_variable_map = unified_models_module.get_model_provider_variable_mapping()
-        variable_name = provider_variable_map.get(provider, f"{provider.upper().replace(' ', '_')}_API_KEY")
-        msg = (
-            f"{provider} API key is required when using {provider} provider. "
-            f"Please provide it in the component or configure it globally as {variable_name}."
-        )
+        if effective_tier == "studio":
+            msg = (
+                f"No {provider} API key is available. Add your {provider} API key "
+                "or ask an administrator to configure a managed credential for this provider."
+            )
+        else:
+            msg = (
+                f"No managed {provider} credential is configured. "
+                "Please ask an administrator to configure a managed credential for this provider."
+            )
         raise ValueError(msg)
 
     # Get model class from metadata, falling back to the provider-level

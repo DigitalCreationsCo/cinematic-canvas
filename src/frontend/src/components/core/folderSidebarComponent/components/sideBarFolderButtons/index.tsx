@@ -52,10 +52,12 @@ import { SelectOptions } from "./components/select-options";
 type SideBarFoldersButtonsComponentProps = {
   handleChangeFolder?: (id: string) => void;
   handleDeleteFolder?: (item: FolderType) => void;
+  setOpenNewProjectModal?: (open: boolean) => void;
 };
 const SideBarFoldersButtonsComponent = ({
   handleChangeFolder,
   handleDeleteFolder,
+  setOpenNewProjectModal,
 }: SideBarFoldersButtonsComponentProps) => {
   const location = useLocation();
   const pathname = location.pathname;
@@ -201,21 +203,25 @@ const SideBarFoldersButtonsComponent = ({
   };
 
   function addNewFolder() {
-    mutateAddFolder(
-      {
-        data: {
-          name: "New Project",
-          parent_id: null,
-          description: "",
+    if (setOpenNewProjectModal) {
+      setOpenNewProjectModal(true);
+    } else {
+      mutateAddFolder(
+        {
+          data: {
+            name: "New Project",
+            parent_id: null,
+            description: "",
+          },
         },
-      },
-      {
-        onSuccess: (folder) => {
-          track("Create New Project");
-          handleChangeFolder!(folder.id);
+        {
+          onSuccess: (folder) => {
+            track("Create New Project");
+            handleChangeFolder!(folder.id);
+          },
         },
-      },
-    );
+      );
+    }
   }
 
   function handleEditFolderName(e, name): void {

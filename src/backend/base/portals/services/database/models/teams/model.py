@@ -65,6 +65,7 @@ class TeamRead(SQLModel):
     created_at: datetime
     updated_at: datetime
     member_count: int = 0
+    role: str | None = None  # User's role in this team (owner/admin/member)
 
 
 # ---------------------------------------------------------------------------
