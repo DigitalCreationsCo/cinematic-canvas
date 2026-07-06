@@ -15,7 +15,10 @@ import { useCustomNavigate } from "@/customization/hooks/use-custom-navigate";
 import { track } from "@/customization/utils/analytics";
 import { useDebounce } from "@/hooks/use-debounce";
 import useAlertStore from "@/stores/alertStore";
-import type { NapRepositoryRead } from "@/types/nap";
+import type {
+  NapRepositoryRead,
+  RepositorySelection as RepositorySelectionType,
+} from "@/types/nap";
 import { slugify } from "@/utils/stringManipulation";
 import BaseModal from "../baseModal";
 
@@ -372,7 +375,7 @@ export default function NewProjectModal({
     try {
       track("Create New Project", { name: projectName });
 
-      let repositoryPayload;
+      let repositoryPayload: RepositorySelectionType | undefined;
       if (repositorySelection?.mode === "existing") {
         repositoryPayload = {
           mode: "existing" as const,
@@ -385,6 +388,8 @@ export default function NewProjectModal({
           name: repositorySelection.name,
         };
       }
+
+      if (!repositoryPayload) return;
 
       const response = await createProject({
         data: {

@@ -164,6 +164,9 @@ export type RepositorySelection = {
   /** The ID of an existing repository (required when mode='existing'). */
   name?: string;
   /** The name for a new repository (required when mode='new'). */
+  tag?: string;
+  /** Tag to pin the project to (defaults to "latest" on the backend).
+   * Ignored when mode='new'. */
 };
 
 export type CreateProjectWithRepoRequest = {
