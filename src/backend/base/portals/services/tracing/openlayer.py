@@ -68,9 +68,7 @@ class OpenlayerTracer(BaseTracer):
         # Get config based on flow name
         config = self._get_config(trace_name)
         if not config:
-            logger.debug(
-                "Openlayer tracer not initialized: no configuration found (check OPENLAYER_API_KEY)"
-            )
+            logger.debug("Openlayer tracer not initialized: no configuration found (check OPENLAYER_API_KEY)")
             self._ready = False
         else:
             self._ready = self.setup_openlayer(config)
@@ -83,7 +81,7 @@ class OpenlayerTracer(BaseTracer):
         If no separator is found, both values default to the full trace_name.
         """
         if " - " in trace_name:
-            return trace_name.split(" - ")[0], trace_name.split(" - ")[-1]
+            return trace_name.split(" - ", maxsplit=1)[0], trace_name.rsplit(" - ", maxsplit=1)[-1]
         return trace_name, trace_name
 
     @property
@@ -100,9 +98,7 @@ class OpenlayerTracer(BaseTracer):
         required_keys = ["api_key", "inference_pipeline_id"]
         for key in required_keys:
             if key not in config or not config[key]:
-                logger.debug(
-                    "Openlayer tracer not initialized: missing required key '{}'", key
-                )
+                logger.debug("Openlayer tracer not initialized: missing required key '{}'", key)
                 return False
 
         try:
@@ -185,15 +181,11 @@ class OpenlayerTracer(BaseTracer):
         name = trace_name.removesuffix(f" ({trace_id})")
 
         # Map Portals trace_type to Openlayer StepType
-        step_type = self._step_type_map.get(
-            trace_type, self._openlayer_enums.StepType.USER_CALL
-        )
+        step_type = self._step_type_map.get(trace_type, self._openlayer_enums.StepType.USER_CALL)
 
         # Convert inputs and metadata
         converted_inputs = self._convert_to_openlayer_types(inputs) if inputs else {}
-        converted_metadata = (
-            self._convert_to_openlayer_types(metadata) if metadata else {}
-        )
+        converted_metadata = self._convert_to_openlayer_types(metadata) if metadata else {}
 
         # Create Step using SDK step_factory
         try:
@@ -247,9 +239,7 @@ class OpenlayerTracer(BaseTracer):
         if logs:
             if not step.metadata:
                 step.metadata = {}
-            step.metadata["logs"] = [
-                log if isinstance(log, dict) else log.model_dump() for log in logs
-            ]
+            step.metadata["logs"] = [log if isinstance(log, dict) else log.model_dump() for log in logs]
 
         # Clear current step context
         # Use None as positional argument to avoid LookupError when ContextVar is not set
@@ -282,9 +272,7 @@ class OpenlayerTracer(BaseTracer):
 
             # Use SDK's post_process_trace
             try:
-                trace_data, input_variable_names = (
-                    self._openlayer_tracer.post_process_trace(self.trace_obj)
-                )
+                trace_data, input_variable_names = self._openlayer_tracer.post_process_trace(self.trace_obj)
             except Exception:  # noqa: BLE001
                 return  # finally block will still execute
 
@@ -435,9 +423,7 @@ class OpenlayerTracer(BaseTracer):
             ):
                 response = step.output.get("response")
                 if response:
-                    metadata["chat_output"] = (
-                        response if isinstance(response, str) else str(response)
-                    )
+                    metadata["chat_output"] = response if isinstance(response, str) else str(response)
 
             # Extract Chat Input
             if step.name in CHAT_INPUT_NAMES:
@@ -449,18 +435,13 @@ class OpenlayerTracer(BaseTracer):
             if (
                 hasattr(step, "start_time")
                 and step.start_time
-                and (
-                    metadata["start_time"] is None
-                    or step.start_time < metadata["start_time"]
-                )
+                and (metadata["start_time"] is None or step.start_time < metadata["start_time"])
             ):
                 metadata["start_time"] = step.start_time
             if (
                 hasattr(step, "end_time")
                 and step.end_time
-                and (
-                    metadata["end_time"] is None or step.end_time > metadata["end_time"]
-                )
+                and (metadata["end_time"] is None or step.end_time > metadata["end_time"])
             ):
                 metadata["end_time"] = step.end_time
 
@@ -477,9 +458,7 @@ class OpenlayerTracer(BaseTracer):
         Also converts LangChain objects in the steps to JSON-serializable format,
         since _convert_step_objects_recursively is skipped when _has_external_trace=True.
         """
-        if not self.langchain_handler or not hasattr(
-            self.langchain_handler, "_traces_by_root"
-        ):
+        if not self.langchain_handler or not hasattr(self.langchain_handler, "_traces_by_root"):
             return
 
         langchain_traces = self.langchain_handler._traces_by_root
@@ -529,9 +508,7 @@ class OpenlayerTracer(BaseTracer):
         falling back to our own _convert_to_openlayer_types for inputs/output.
         """
         handler = self.langchain_handler
-        if handler is not None and hasattr(
-            handler, "_convert_step_objects_recursively"
-        ):
+        if handler is not None and hasattr(handler, "_convert_step_objects_recursively"):
             handler._convert_step_objects_recursively(step)
         else:
             # Fallback: convert inputs and output ourselves
@@ -559,11 +536,7 @@ class OpenlayerTracer(BaseTracer):
             elif not root_input:
                 # Look for input_value inside Chat Input / Agent component data
                 extracted = self._extract_input_from_components(flow_inputs)
-                root_input = {
-                    "flow_input": extracted
-                    if extracted
-                    else self._convert_to_openlayer_types(flow_inputs)
-                }
+                root_input = {"flow_input": extracted or self._convert_to_openlayer_types(flow_inputs)}
         return root_input
 
     def _extract_input_from_components(self, flow_inputs: dict[str, Any]) -> str | None:
@@ -591,11 +564,7 @@ class OpenlayerTracer(BaseTracer):
             # Look for Chat Output component's message in flow_outputs
             chat_output_found = False
             for key, value in flow_outputs.items():
-                if (
-                    any(name in key for name in CHAT_OUTPUT_NAMES)
-                    and isinstance(value, dict)
-                    and "message" in value
-                ):
+                if any(name in key for name in CHAT_OUTPUT_NAMES) and isinstance(value, dict) and "message" in value:
                     chat_output_msg = self._convert_to_openlayer_type(value["message"])
                     if chat_output_msg:
                         root_output = chat_output_msg
@@ -605,9 +574,7 @@ class OpenlayerTracer(BaseTracer):
             # If no Chat Output found, try Agent component output
             if not chat_output_found:
                 for key, value in flow_outputs.items():
-                    if any(name in key for name in AGENT_NAMES) and isinstance(
-                        value, dict
-                    ):
+                    if any(name in key for name in AGENT_NAMES) and isinstance(value, dict):
                         response = value.get("response")
                         if response:
                             root_output = self._convert_to_openlayer_type(response)
@@ -636,9 +603,7 @@ class OpenlayerTracer(BaseTracer):
         flow_name, _ = self._parse_trace_name(self.trace_name)
 
         # Extract metadata from components with error handling
-        extracted_metadata = self._extract_flow_metadata(
-            self.component_steps.values(), error=error
-        )
+        extracted_metadata = self._extract_flow_metadata(self.component_steps.values(), error=error)
 
         root_input = self._resolve_root_input(flow_inputs, extracted_metadata)
         root_output = self._resolve_root_output(flow_outputs, error, extracted_metadata)
@@ -676,10 +641,7 @@ class OpenlayerTracer(BaseTracer):
     def _convert_to_openlayer_types(self, io_dict: dict[str, Any]) -> dict[str, Any]:
         if io_dict is None:
             return {}
-        return {
-            str(key): self._convert_to_openlayer_type(value)
-            for key, value in io_dict.items()
-        }
+        return {str(key): self._convert_to_openlayer_type(value) for key, value in io_dict.items()}
 
     def _convert_to_openlayer_type(self, value: Any) -> Any:
         """Convert Portals/LangChain types to Openlayer-compatible primitives.
@@ -691,9 +653,7 @@ class OpenlayerTracer(BaseTracer):
             Converted value suitable for Openlayer ingestion
         """
         if isinstance(value, dict):
-            return {
-                key: self._convert_to_openlayer_type(val) for key, val in value.items()
-            }
+            return {key: self._convert_to_openlayer_type(val) for key, val in value.items()}
 
         if isinstance(value, list):
             return [self._convert_to_openlayer_type(v) for v in value]
@@ -711,11 +671,7 @@ class OpenlayerTracer(BaseTracer):
             return value.page_content
 
         # Handle Pydantic models
-        if (
-            hasattr(value, "model_dump")
-            and callable(value.model_dump)
-            and not isinstance(value, type)
-        ):
+        if hasattr(value, "model_dump") and callable(value.model_dump) and not isinstance(value, type):
             try:
                 return self._convert_to_openlayer_type(value.model_dump())
             except Exception:  # noqa: BLE001, S110
@@ -726,9 +682,7 @@ class OpenlayerTracer(BaseTracer):
             try:
                 return {
                     "name": str(value.name),
-                    "description": str(value.description)
-                    if value.description
-                    else None,
+                    "description": str(value.description) if value.description else None,
                 }
             except Exception:  # noqa: BLE001, S110
                 pass

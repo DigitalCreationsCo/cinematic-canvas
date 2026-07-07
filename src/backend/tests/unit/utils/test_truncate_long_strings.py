@@ -1,8 +1,8 @@
 import math
 
 import pytest
-from px.utils.util_strings import truncate_long_strings
 from portals.serialization.constants import MAX_TEXT_LENGTH
+from px.utils.util_strings import truncate_long_strings
 
 
 @pytest.mark.parametrize(

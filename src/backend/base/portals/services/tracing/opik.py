@@ -6,19 +6,21 @@ from typing import TYPE_CHECKING, Any
 
 from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+from px.log.logger import logger
+from typing_extensions import override
+
 from portals.schema.data import Data
 from portals.schema.message import Message
 from portals.services.tracing.base import BaseTracer
-from px.log.logger import logger
-from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
     from langchain_core.callbacks.base import BaseCallbackHandler
-    from portals.services.tracing.schema import Log
     from px.graph.vertex.base import Vertex
+
+    from portals.services.tracing.schema import Log
 
 
 def get_distributed_trace_headers(trace_id, span_id):
@@ -44,7 +46,7 @@ class OpikTracer(BaseTracer):
         self.opik_trace_id = None
         self.user_id = user_id
         self.session_id = session_id
-        self.flow_id = trace_name.split(" - ")[-1]
+        self.flow_id = trace_name.rsplit(" - ", maxsplit=1)[-1]
         self.spans: dict = {}
 
         config = self._get_config()
@@ -66,9 +68,7 @@ class OpikTracer(BaseTracer):
                 **config,
             )
 
-            missing_configuration, _ = (
-                self._client._config.get_misconfiguration_detection_results()
-            )
+            missing_configuration, _ = self._client._config.get_misconfiguration_detection_results()
 
             if missing_configuration:
                 return False
@@ -90,9 +90,7 @@ class OpikTracer(BaseTracer):
             )
             self.opik_trace_id = self.trace.id
         except ImportError:
-            logger.exception(
-                "Could not import opik. Please install it with `pip install opik`."
-            )
+            logger.exception("Could not import opik. Please install it with `pip install opik`.")
             return False
 
         except Exception as e:  # noqa: BLE001
@@ -138,9 +136,7 @@ class OpikTracer(BaseTracer):
         )
 
         self.spans[trace_id] = span
-        self._distributed_headers = get_distributed_trace_headers(
-            self.opik_trace_id, span.id
-        )
+        self._distributed_headers = get_distributed_trace_headers(self.opik_trace_id, span.id)
 
     @override
     def end_trace(
@@ -210,11 +206,7 @@ class OpikTracer(BaseTracer):
 
     def _convert_to_opik_types(self, io_dict: dict[str | Any, Any]) -> dict[str, Any]:
         """Converts data types to Opik compatible formats."""
-        return {
-            str(key): self._convert_to_opik_type(value)
-            for key, value in io_dict.items()
-            if key is not None
-        }
+        return {str(key): self._convert_to_opik_type(value) for key, value in io_dict.items() if key is not None}
 
     def _convert_to_opik_type(self, value):
         """Recursively converts a value to a Opik compatible type."""

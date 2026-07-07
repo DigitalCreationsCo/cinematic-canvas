@@ -28,7 +28,6 @@ from portals.services.database.models.nap_repository.model import (
     ProjectRepositoryLink,
 )
 from portals.services.nap import (
-    BranchSummary,
     CommitRef,
     ManifestRef,
     NapService,
@@ -934,6 +933,110 @@ async def get_repository_by_folder(
         )
     ).first()
     return NapRepositoryRead.model_validate(repo) if repo else None
+
+
+@router.post(
+    "/repositories/ensure-cloned/{folder_id}",
+    summary="Ensure the repository linked to a folder is cloned locally",
+)
+async def ensure_repository_cloned(
+    folder_id: UUID,
+    nap: NapDep,
+    session: DbSession,
+    current_user: CurrentActiveUser,
+) -> dict:
+    """Ensure the repository linked to a project folder is cloned to local storage.
+
+    Checks if the repository exists locally and clones it if not.
+    This is called when loading a flow to ensure the repository is available locally.
+    """
+    # Get the repository linked to this folder
+    repo = (
+        await session.exec(
+            select(NapRepository)
+            .join(ProjectRepositoryLink, ProjectRepositoryLink.repository_id == NapRepository.id)
+            .join(Folder, Folder.id == ProjectRepositoryLink.folder_id)
+            .where(ProjectRepositoryLink.folder_id == folder_id)
+            .where(Folder.user_id == current_user.id)
+        )
+    ).first()
+
+    if not repo:
+        return {"status": "no_repository", "message": "No repository linked to this folder"}
+
+    if repo.repo_type != "remote":
+        return {"status": "not_remote", "message": "Repository is not remote, no cloning needed"}
+
+    # Get the project repository link to find the pinned commit hash
+    link = (
+        await session.exec(
+            select(ProjectRepositoryLink).where(
+                ProjectRepositoryLink.folder_id == folder_id,
+                ProjectRepositoryLink.repository_id == repo.id,
+            )
+        )
+    ).first()
+
+    if not link:
+        return {"status": "no_link", "message": "No repository link found"}
+
+    pinned_commit_hash = link.pinned_commit_hash
+
+    # Check if the commit already exists locally
+    if pinned_commit_hash:
+        try:
+            already_local = await nap.commit_exists_locally(repo.name, pinned_commit_hash)
+            if already_local:
+                logger.info(
+                    "Repository already cloned locally: folder_id=%s repo_name=%s commit=%s",
+                    folder_id,
+                    repo.name,
+                    pinned_commit_hash,
+                )
+                return {"status": "already_cloned", "message": "Repository already cloned locally"}
+        except ValueError as exc:
+            logger.warning(
+                "Failed to check if commit exists locally: folder_id=%s repo_name=%s error=%s",
+                folder_id,
+                repo.name,
+                exc,
+            )
+
+    # Clone the repository if not already local
+    if repo.remote_url:
+        try:
+            if pinned_commit_hash:
+                # Clone the specific commit
+                await nap.clone_commit(repo.remote_url, repo.name, pinned_commit_hash)
+                logger.info(
+                    "Cloned repository commit locally: folder_id=%s repo_name=%s commit=%s",
+                    folder_id,
+                    repo.name,
+                    pinned_commit_hash,
+                )
+                return {"status": "cloned", "message": "Repository cloned locally"}
+            # Clone the entire repository
+            local_name = await nap.clone_from_remote(repo.remote_url, repo.name)
+            logger.info(
+                "Cloned entire repository locally: folder_id=%s repo_name=%s local_name=%s",
+                folder_id,
+                repo.name,
+                local_name,
+            )
+            return {"status": "cloned", "message": "Repository cloned locally"}
+        except ValueError as exc:
+            logger.error(
+                "Failed to clone repository: folder_id=%s repo_name=%s error=%s",
+                folder_id,
+                repo.name,
+                exc,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to clone repository: {exc!s}",
+            ) from exc
+
+    return {"status": "no_remote_url", "message": "Repository has no remote URL"}
 
 
 @router.delete(

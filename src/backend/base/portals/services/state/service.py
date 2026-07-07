@@ -2,9 +2,10 @@ from collections import defaultdict
 from collections.abc import Callable
 from threading import Lock
 
-from portals.services.base import Service
 from px.log.logger import logger
 from px.services.settings.service import SettingsService
+
+from portals.services.base import Service
 
 
 class StateService(Service):

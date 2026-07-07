@@ -3,7 +3,6 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
-from px.services.adapters.deployment.schema import DeploymentType
 from portals.services.database.models.deployment.model import Deployment
 from portals.services.database.models.deployment_provider_account.model import (
     DeploymentProviderAccount,
@@ -37,6 +36,7 @@ from portals.services.database.models.flow_version_deployment_attachment.schema 
 )
 from portals.services.database.models.folder.model import Folder
 from portals.services.database.models.user.model import User
+from px.services.adapters.deployment.schema import DeploymentType
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
@@ -324,9 +324,7 @@ class TestGetDeploymentAttachment:
 
 @pytest.mark.asyncio
 class TestListDeploymentAttachments:
-    async def test_list_ordered_by_created_at(
-        self, db: AsyncSession, user: User, flow: Flow, deployment: Deployment
-    ):
+    async def test_list_ordered_by_created_at(self, db: AsyncSession, user: User, flow: Flow, deployment: Deployment):
         fv1 = FlowVersion(flow_id=flow.id, user_id=user.id, version_number=2, data={})
         fv2 = FlowVersion(flow_id=flow.id, user_id=user.id, version_number=3, data={})
         db.add_all([fv1, fv2])
@@ -334,36 +332,24 @@ class TestListDeploymentAttachments:
         await db.refresh(fv1)
         await db.refresh(fv2)
 
-        await create_deployment_attachment(
-            db, user_id=user.id, flow_version_id=fv1.id, deployment_id=deployment.id
-        )
+        await create_deployment_attachment(db, user_id=user.id, flow_version_id=fv1.id, deployment_id=deployment.id)
         await db.commit()
-        await create_deployment_attachment(
-            db, user_id=user.id, flow_version_id=fv2.id, deployment_id=deployment.id
-        )
+        await create_deployment_attachment(db, user_id=user.id, flow_version_id=fv2.id, deployment_id=deployment.id)
         await db.commit()
 
-        results = await list_deployment_attachments(
-            db, user_id=user.id, deployment_id=deployment.id
-        )
+        results = await list_deployment_attachments(db, user_id=user.id, deployment_id=deployment.id)
         assert len(results) == 2
         assert results[0].flow_version_id == fv1.id
         assert results[1].flow_version_id == fv2.id
 
-    async def test_list_empty(
-        self, db: AsyncSession, user: User, deployment: Deployment
-    ):
-        results = await list_deployment_attachments(
-            db, user_id=user.id, deployment_id=deployment.id
-        )
+    async def test_list_empty(self, db: AsyncSession, user: User, deployment: Deployment):
+        results = await list_deployment_attachments(db, user_id=user.id, deployment_id=deployment.id)
         assert results == []
 
 
 @pytest.mark.asyncio
 class TestListDeploymentAttachmentsForFlowVersionIds:
-    async def test_filters_by_flow_version_ids(
-        self, db: AsyncSession, user: User, flow: Flow, deployment: Deployment
-    ):
+    async def test_filters_by_flow_version_ids(self, db: AsyncSession, user: User, flow: Flow, deployment: Deployment):
         fv1 = FlowVersion(flow_id=flow.id, user_id=user.id, version_number=2, data={})
         fv2 = FlowVersion(flow_id=flow.id, user_id=user.id, version_number=3, data={})
         fv3 = FlowVersion(flow_id=flow.id, user_id=user.id, version_number=4, data={})
@@ -374,9 +360,7 @@ class TestListDeploymentAttachmentsForFlowVersionIds:
         await db.refresh(fv3)
 
         for fv in [fv1, fv2, fv3]:
-            await create_deployment_attachment(
-                db, user_id=user.id, flow_version_id=fv.id, deployment_id=deployment.id
-            )
+            await create_deployment_attachment(db, user_id=user.id, flow_version_id=fv.id, deployment_id=deployment.id)
         await db.commit()
 
         results = await list_deployment_attachments_for_flow_version_ids(
@@ -389,9 +373,7 @@ class TestListDeploymentAttachmentsForFlowVersionIds:
         returned_fv_ids = {r.flow_version_id for r in results}
         assert returned_fv_ids == {fv1.id, fv3.id}
 
-    async def test_empty_flow_version_ids_returns_empty(
-        self, db: AsyncSession, user: User, deployment: Deployment
-    ):
+    async def test_empty_flow_version_ids_returns_empty(self, db: AsyncSession, user: User, deployment: Deployment):
         results = await list_deployment_attachments_for_flow_version_ids(
             db,
             user_id=user.id,
@@ -530,9 +512,7 @@ class TestUpdateFlowVersionByProviderSnapshotId:
         folder: Folder,
         provider_account: DeploymentProviderAccount,
     ):
-        flow_version_2 = FlowVersion(
-            flow_id=flow.id, user_id=user.id, version_number=2, data={}
-        )
+        flow_version_2 = FlowVersion(flow_id=flow.id, user_id=user.id, version_number=2, data={})
         deployment_2 = Deployment(
             user_id=user.id,
             project_id=folder.id,
@@ -583,9 +563,7 @@ class TestUpdateFlowVersionByProviderSnapshotId:
         assert len(rows) == 2
         assert all(row.flow_version_id == flow_version_2.id for row in rows)
 
-    async def test_returns_zero_when_snapshot_id_not_found(
-        self, db: AsyncSession, user: User
-    ):
+    async def test_returns_zero_when_snapshot_id_not_found(self, db: AsyncSession, user: User):
         updated_count = await update_flow_version_by_provider_snapshot_id(
             db,
             user_id=user.id,
@@ -597,9 +575,7 @@ class TestUpdateFlowVersionByProviderSnapshotId:
 
 @pytest.mark.asyncio
 class TestDeleteDeploymentAttachmentsByDeploymentId:
-    async def test_delete_all_for_deployment(
-        self, db: AsyncSession, user: User, flow: Flow, deployment: Deployment
-    ):
+    async def test_delete_all_for_deployment(self, db: AsyncSession, user: User, flow: Flow, deployment: Deployment):
         fv1 = FlowVersion(flow_id=flow.id, user_id=user.id, version_number=2, data={})
         fv2 = FlowVersion(flow_id=flow.id, user_id=user.id, version_number=3, data={})
         db.add_all([fv1, fv2])
@@ -607,30 +583,18 @@ class TestDeleteDeploymentAttachmentsByDeploymentId:
         await db.refresh(fv1)
         await db.refresh(fv2)
 
-        await create_deployment_attachment(
-            db, user_id=user.id, flow_version_id=fv1.id, deployment_id=deployment.id
-        )
-        await create_deployment_attachment(
-            db, user_id=user.id, flow_version_id=fv2.id, deployment_id=deployment.id
-        )
+        await create_deployment_attachment(db, user_id=user.id, flow_version_id=fv1.id, deployment_id=deployment.id)
+        await create_deployment_attachment(db, user_id=user.id, flow_version_id=fv2.id, deployment_id=deployment.id)
         await db.commit()
 
-        count = await delete_deployment_attachments_by_deployment_id(
-            db, user_id=user.id, deployment_id=deployment.id
-        )
+        count = await delete_deployment_attachments_by_deployment_id(db, user_id=user.id, deployment_id=deployment.id)
         assert count == 2
 
-        remaining = await list_deployment_attachments(
-            db, user_id=user.id, deployment_id=deployment.id
-        )
+        remaining = await list_deployment_attachments(db, user_id=user.id, deployment_id=deployment.id)
         assert remaining == []
 
-    async def test_delete_none_returns_zero(
-        self, db: AsyncSession, user: User, deployment: Deployment
-    ):
-        count = await delete_deployment_attachments_by_deployment_id(
-            db, user_id=user.id, deployment_id=deployment.id
-        )
+    async def test_delete_none_returns_zero(self, db: AsyncSession, user: User, deployment: Deployment):
+        count = await delete_deployment_attachments_by_deployment_id(db, user_id=user.id, deployment_id=deployment.id)
         assert count == 0
 
 
@@ -706,9 +670,7 @@ class TestDeleteDeploymentAttachmentsByKeys:
         )
         await db.commit()
 
-        remaining = await list_attachments_by_deployment_ids(
-            db, user_id=user.id, deployment_ids=[deployment.id, d2.id]
-        )
+        remaining = await list_attachments_by_deployment_ids(db, user_id=user.id, deployment_ids=[deployment.id, d2.id])
         remaining_ids = {row.id for row in remaining}
         assert deleted_count == 2
         assert dep1_target.id not in remaining_ids
@@ -739,9 +701,7 @@ class TestListAttachmentsByDeploymentIds:
         await db.commit()
         await db.refresh(d2)
 
-        fv2 = FlowVersion(
-            flow_id=flow_version.flow_id, user_id=user.id, version_number=2, data={}
-        )
+        fv2 = FlowVersion(flow_id=flow_version.flow_id, user_id=user.id, version_number=2, data={})
         db.add(fv2)
         await db.commit()
         await db.refresh(fv2)
@@ -752,22 +712,14 @@ class TestListAttachmentsByDeploymentIds:
             flow_version_id=flow_version.id,
             deployment_id=deployment.id,
         )
-        await create_deployment_attachment(
-            db, user_id=user.id, flow_version_id=fv2.id, deployment_id=d2.id
-        )
+        await create_deployment_attachment(db, user_id=user.id, flow_version_id=fv2.id, deployment_id=d2.id)
         await db.commit()
 
-        results = await list_attachments_by_deployment_ids(
-            db, user_id=user.id, deployment_ids=[deployment.id, d2.id]
-        )
+        results = await list_attachments_by_deployment_ids(db, user_id=user.id, deployment_ids=[deployment.id, d2.id])
         assert len(results) == 2
 
-    async def test_empty_deployment_ids_returns_empty(
-        self, db: AsyncSession, user: User
-    ):
-        results = await list_attachments_by_deployment_ids(
-            db, user_id=user.id, deployment_ids=[]
-        )
+    async def test_empty_deployment_ids_returns_empty(self, db: AsyncSession, user: User):
+        results = await list_attachments_by_deployment_ids(db, user_id=user.id, deployment_ids=[])
         assert results == []
 
 
@@ -791,27 +743,19 @@ class TestListAttachmentsForFlowWithProviderInfo:
         )
         await db.commit()
 
-        results = await list_attachments_for_flow_with_provider_info(
-            db, user_id=user.id, flow_ids=[flow.id]
-        )
+        results = await list_attachments_for_flow_with_provider_info(db, user_id=user.id, flow_ids=[flow.id])
         assert len(results) == 1
         attachment, provider_account_id, provider_key = results[0]
         assert attachment.flow_version_id == flow_version.id
         assert provider_account_id == provider_account.id
         assert provider_key == DeploymentProviderKey.WATSONX_ORCHESTRATE
 
-    async def test_no_attachments_returns_empty(
-        self, db: AsyncSession, user: User, flow: Flow
-    ):
-        results = await list_attachments_for_flow_with_provider_info(
-            db, user_id=user.id, flow_ids=[flow.id]
-        )
+    async def test_no_attachments_returns_empty(self, db: AsyncSession, user: User, flow: Flow):
+        results = await list_attachments_for_flow_with_provider_info(db, user_id=user.id, flow_ids=[flow.id])
         assert results == []
 
     async def test_empty_flow_ids_returns_empty(self, db: AsyncSession, user: User):
-        results = await list_attachments_for_flow_with_provider_info(
-            db, user_id=user.id, flow_ids=[]
-        )
+        results = await list_attachments_for_flow_with_provider_info(db, user_id=user.id, flow_ids=[])
         assert results == []
 
     async def test_multiple_versions_same_flow(
@@ -835,14 +779,10 @@ class TestListAttachmentsForFlowWithProviderInfo:
             deployment_id=deployment.id,
         )
         await db.commit()
-        await create_deployment_attachment(
-            db, user_id=user.id, flow_version_id=fv2.id, deployment_id=deployment.id
-        )
+        await create_deployment_attachment(db, user_id=user.id, flow_version_id=fv2.id, deployment_id=deployment.id)
         await db.commit()
 
-        results = await list_attachments_for_flow_with_provider_info(
-            db, user_id=user.id, flow_ids=[flow.id]
-        )
+        results = await list_attachments_for_flow_with_provider_info(db, user_id=user.id, flow_ids=[flow.id])
         assert len(results) == 2
 
     async def test_multiple_flows_returns_attachments_for_each_flow(
@@ -920,30 +860,20 @@ class TestCountAttachmentsByDeploymentIds:
             flow_version_id=flow_version.id,
             deployment_id=deployment.id,
         )
-        await create_deployment_attachment(
-            db, user_id=user.id, flow_version_id=fv2.id, deployment_id=deployment.id
-        )
+        await create_deployment_attachment(db, user_id=user.id, flow_version_id=fv2.id, deployment_id=deployment.id)
         await db.commit()
 
-        counts = await count_attachments_by_deployment_ids(
-            db, user_id=user.id, deployment_ids=[deployment.id]
-        )
+        counts = await count_attachments_by_deployment_ids(db, user_id=user.id, deployment_ids=[deployment.id])
         assert counts == {deployment.id: 2}
 
-    async def test_empty_deployment_ids_returns_empty_dict(
-        self, db: AsyncSession, user: User
-    ):
-        counts = await count_attachments_by_deployment_ids(
-            db, user_id=user.id, deployment_ids=[]
-        )
+    async def test_empty_deployment_ids_returns_empty_dict(self, db: AsyncSession, user: User):
+        counts = await count_attachments_by_deployment_ids(db, user_id=user.id, deployment_ids=[])
         assert counts == {}
 
     async def test_deployment_with_no_attachments_returns_zero_count(
         self, db: AsyncSession, user: User, deployment: Deployment
     ):
-        counts = await count_attachments_by_deployment_ids(
-            db, user_id=user.id, deployment_ids=[deployment.id]
-        )
+        counts = await count_attachments_by_deployment_ids(db, user_id=user.id, deployment_ids=[deployment.id])
         assert counts[deployment.id] == 0
 
 
@@ -1160,9 +1090,7 @@ class TestCascadeDeletes:
         await db.delete(deployment)
         await db.commit()
 
-        stmt = select(FlowVersionDeploymentAttachment).where(
-            FlowVersionDeploymentAttachment.id == att_id
-        )
+        stmt = select(FlowVersionDeploymentAttachment).where(FlowVersionDeploymentAttachment.id == att_id)
         assert (await db.exec(stmt)).first() is None
 
     async def test_cascade_on_flow_version_delete(
@@ -1184,9 +1112,7 @@ class TestCascadeDeletes:
         await db.delete(flow_version)
         await db.commit()
 
-        stmt = select(FlowVersionDeploymentAttachment).where(
-            FlowVersionDeploymentAttachment.id == att_id
-        )
+        stmt = select(FlowVersionDeploymentAttachment).where(FlowVersionDeploymentAttachment.id == att_id)
         assert (await db.exec(stmt)).first() is None
 
     async def test_cascade_on_user_delete(
@@ -1208,9 +1134,7 @@ class TestCascadeDeletes:
         await db.delete(user)
         await db.commit()
 
-        stmt = select(FlowVersionDeploymentAttachment).where(
-            FlowVersionDeploymentAttachment.id == att_id
-        )
+        stmt = select(FlowVersionDeploymentAttachment).where(FlowVersionDeploymentAttachment.id == att_id)
         assert (await db.exec(stmt)).first() is None
 
 
@@ -1236,9 +1160,7 @@ class TestUserScoping:
         await db.commit()
         await db.refresh(other_user)
 
-        results = await list_deployment_attachments(
-            db, user_id=other_user.id, deployment_id=deployment.id
-        )
+        results = await list_deployment_attachments(db, user_id=other_user.id, deployment_id=deployment.id)
         assert results == []
 
     async def test_other_user_cannot_get(

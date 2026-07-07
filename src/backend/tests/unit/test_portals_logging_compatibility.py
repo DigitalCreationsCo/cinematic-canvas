@@ -67,10 +67,10 @@ def test_portals_logging_specific_functions():
 def test_no_conflict_with_px_logging():
     """Test that portals.logging and px.logging don't conflict."""
     # Import both
-    from px.logging import configure as px_configure
-    from px.logging import logger as px_logger
     from portals.logging import configure as lf_configure
     from portals.logging import logger as lf_logger
+    from px.logging import configure as px_configure
+    from px.logging import logger as px_logger
 
     # They should be the same underlying objects since portals.logging imports from px.log.logger
     # and px.logging re-exports from px.log.logger
@@ -90,9 +90,9 @@ def test_no_conflict_with_px_logging():
 
 def test_portals_logging_imports_from_px():
     """Test that portals.logging correctly imports from px."""
+    from portals.logging import configure, logger
     from px.log.logger import configure as px_configure
     from px.log.logger import logger as px_logger
-    from portals.logging import configure, logger
 
     # portals.logging should import equivalent objects from px.log.logger
     # Due to module initialization order, object identity may vary
@@ -116,12 +116,12 @@ def test_backwards_compatibility_scenario():
     # 3. Both should work without conflicts
 
     # Import from all paths
+    from portals.logging import configure as lf_configure
+    from portals.logging import logger as lf_logger
     from px.log.logger import configure as orig_configure
     from px.log.logger import logger as orig_logger
     from px.logging import configure as px_configure
     from px.logging import logger as px_logger
-    from portals.logging import configure as lf_configure
-    from portals.logging import logger as lf_logger
 
     # All should be callable/have expected methods
     assert callable(lf_configure)

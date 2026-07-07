@@ -4,6 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from portals.custom import Component
 from px.base.models.anthropic_constants import ANTHROPIC_MODELS
 from px.base.models.openai_constants import (
     OPENAI_CHAT_MODEL_NAMES,
@@ -11,7 +12,6 @@ from px.base.models.openai_constants import (
 )
 from px.components.models_and_agents import AgentComponent
 from px.components.tools.calculator import CalculatorToolComponent
-from portals.custom import Component
 
 from tests.base import ComponentTestBaseWithClient, ComponentTestBaseWithoutClient
 from tests.unit.mock_language_model import MockLanguageModel
@@ -28,12 +28,8 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
     def file_names_mapping(self):
         return []
 
-    async def component_setup(
-        self, component_class: type[Any], default_kwargs: dict[str, Any]
-    ) -> Component:
-        component_instance = await super().component_setup(
-            component_class, default_kwargs
-        )
+    async def component_setup(self, component_class: type[Any], default_kwargs: dict[str, Any]) -> Component:
+        component_instance = await super().component_setup(component_class, default_kwargs)
         # Mock _should_process_output method
         component_instance._should_process_output = lambda output: False  # noqa: ARG005
         return component_instance
@@ -56,9 +52,7 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
             "output_schema": [],
         }
 
-    async def test_max_tokens_input_field_present(
-        self, component_class, default_kwargs
-    ):
+    async def test_max_tokens_input_field_present(self, component_class, default_kwargs):
         """Test that max_tokens input field is present in the agent component."""
         component = await self.component_setup(component_class, default_kwargs)
 
@@ -68,9 +62,7 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
         assert "max_tokens" in input_names, "max_tokens input field should be present"
 
         # Verify the component has the attribute
-        assert hasattr(component, "max_tokens"), (
-            "Component should have max_tokens attribute"
-        )
+        assert hasattr(component, "max_tokens"), "Component should have max_tokens attribute"
 
     async def test_agent_filters_empty_chat_history_messages(self):
         """Test that empty messages in chat history are filtered out."""
@@ -89,9 +81,7 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
         assert len(messages) == 1
         assert messages[0].content == "Hello"
 
-    async def test_agent_receives_string_input_from_message_object(
-        self, component_class, default_kwargs
-    ):
+    async def test_agent_receives_string_input_from_message_object(self, component_class, default_kwargs):
         """Test that agent extracts text string from Message object instead of passing the entire object.
 
         This test addresses the issue where agents were receiving:
@@ -130,27 +120,19 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
                     assert "response_metadata" not in str(input_dict["input"])
                 elif isinstance(lc_message.content, list):
                     # For multimodal content, extract text parts
-                    text_parts = [
-                        item.get("text", "")
-                        for item in lc_message.content
-                        if item.get("type") == "text"
-                    ]
+                    text_parts = [item.get("text", "") for item in lc_message.content if item.get("type") == "text"]
                     input_dict = {"input": " ".join(text_parts) if text_parts else ""}
                     assert isinstance(input_dict["input"], str)
                 else:
                     input_dict = {"input": str(lc_message.content)}
                     assert isinstance(input_dict["input"], str)
 
-    async def test_agent_handles_multimodal_message_input(
-        self, component_class, default_kwargs
-    ):
+    async def test_agent_handles_multimodal_message_input(self, component_class, default_kwargs):
         """Test that agent properly extracts text from multimodal Message objects."""
         from px.schema.message import Message
 
         # Create a Message object with text content (no actual files for testing)
-        message = Message(
-            text="What is in this image?", sender="User", sender_name="User"
-        )
+        message = Message(text="What is in this image?", sender="User", sender_name="User")
 
         # Set up the component
         default_kwargs["input_value"] = message
@@ -167,11 +149,7 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
                 assert isinstance(lc_message.content, str)
             elif isinstance(lc_message.content, list):
                 # Multimodal content - extract text parts
-                text_parts = [
-                    item.get("text", "")
-                    for item in lc_message.content
-                    if item.get("type") == "text"
-                ]
+                text_parts = [item.get("text", "") for item in lc_message.content if item.get("type") == "text"]
                 extracted_text = " ".join(text_parts) if text_parts else ""
                 assert isinstance(extracted_text, str)
                 # Verify we got text, not a message object
@@ -188,27 +166,17 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
         assert "base_url_ibm_watsonx" in input_names
         assert "project_id" in input_names
 
-    async def test_watsonx_fields_hidden_by_default(
-        self, component_class, default_kwargs
-    ):
+    async def test_watsonx_fields_hidden_by_default(self, component_class, default_kwargs):
         """Test that WatsonX fields are hidden by default."""
         component = await self.component_setup(component_class, default_kwargs)
 
         # Find the WatsonX input fields
         watsonx_url_input = next(
-            (
-                inp
-                for inp in component.inputs
-                if hasattr(inp, "name") and inp.name == "base_url_ibm_watsonx"
-            ),
+            (inp for inp in component.inputs if hasattr(inp, "name") and inp.name == "base_url_ibm_watsonx"),
             None,
         )
         project_id_input = next(
-            (
-                inp
-                for inp in component.inputs
-                if hasattr(inp, "name") and inp.name == "project_id"
-            ),
+            (inp for inp in component.inputs if hasattr(inp, "name") and inp.name == "project_id"),
             None,
         )
 
@@ -218,9 +186,7 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
         assert project_id_input.show is False
 
     @patch("px.components.models_and_agents.agent.get_language_model_options")
-    async def test_update_build_config_shows_watsonx_fields(
-        self, mock_opts, component_class, default_kwargs
-    ):
+    async def test_update_build_config_shows_watsonx_fields(self, mock_opts, component_class, default_kwargs):
         """Test that update_build_config shows WatsonX fields when IBM WatsonX is selected."""
         from px.schema.dotdict import dotdict
 
@@ -293,9 +259,7 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
         assert updated_config["base_url_ibm_watsonx"]["show"] is False
         assert updated_config["project_id"]["show"] is False
 
-    async def test_get_agent_requirements_passes_watsonx_params(
-        self, component_class, default_kwargs
-    ):
+    async def test_get_agent_requirements_passes_watsonx_params(self, component_class, default_kwargs):
         """Test that get_agent_requirements passes WatsonX URL and project_id to get_llm()."""
         from unittest.mock import AsyncMock, patch
 
@@ -364,9 +328,7 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
 
         await component.get_agent_requirements()
 
-        assert mock_get_llm.call_args.kwargs["model"] == [
-            mock_get_options.return_value[0]
-        ]
+        assert mock_get_llm.call_args.kwargs["model"] == [mock_get_options.return_value[0]]
 
     @patch("px.components.models_and_agents.agent.get_llm")
     async def test_get_agent_requirements_accepts_connected_model_instance(
@@ -453,9 +415,7 @@ class TestAgentComponent(ComponentTestBaseWithoutClient):
         call_kwargs = mock_get_llm.call_args.kwargs
 
         # max_tokens should be passed as None when not set
-        assert "max_tokens" in call_kwargs, (
-            "max_tokens should be passed to get_llm even when None"
-        )
+        assert "max_tokens" in call_kwargs, "max_tokens should be passed to get_llm even when None"
         assert call_kwargs["max_tokens"] is None
 
     @patch("px.components.models_and_agents.agent.AgentComponent.get_memory_data")
@@ -509,9 +469,7 @@ class TestAgentComponentWithClient(ComponentTestBaseWithClient):
         from tests.api_keys import get_openai_api_key
 
         api_key = get_openai_api_key()
-        tools = [
-            CalculatorToolComponent().build_tool()
-        ]  # Use the Calculator component as a tool
+        tools = [CalculatorToolComponent().build_tool()]  # Use the Calculator component as a tool
         input_value = "What is 2 + 2?"
 
         temperature = 0.1
@@ -553,9 +511,7 @@ class TestAgentComponentWithClient(ComponentTestBaseWithClient):
         failed_models = []
         for model_name in OPENAI_CHAT_MODEL_NAMES + OPENAI_REASONING_MODEL_NAMES:
             # Initialize the AgentComponent with mocked inputs
-            tools = [
-                CalculatorToolComponent().build_tool()
-            ]  # Use the Calculator component as a tool
+            tools = [CalculatorToolComponent().build_tool()]  # Use the Calculator component as a tool
             agent = AgentComponent(
                 tools=tools,
                 input_value=input_value,
@@ -579,9 +535,7 @@ class TestAgentComponentWithClient(ComponentTestBaseWithClient):
             if "4" not in response.data.get("text"):
                 failed_models.append(model_name)
 
-        assert not failed_models, (
-            f"The following models failed the test: {failed_models}"
-        )
+        assert not failed_models, f"The following models failed the test: {failed_models}"
 
     @pytest.mark.api_key_required
     @pytest.mark.no_blockbuster
@@ -620,9 +574,7 @@ class TestAgentComponentWithClient(ComponentTestBaseWithClient):
                 response_text = response.data.get("text", "")
 
                 if "4" not in response_text:
-                    failed_models[model_name] = (
-                        f"Expected '4' in response but got: {response_text}"
-                    )
+                    failed_models[model_name] = f"Expected '4' in response but got: {response_text}"
             except Exception as e:
                 failed_models[model_name] = f"Exception occurred: {e!s}"
 
@@ -737,9 +689,7 @@ class TestAgentComponentWithClient(ComponentTestBaseWithClient):
         from px.schema.message import Message
 
         # Create a Message object as input (simulating ChatInput component output)
-        message_input = Message(
-            text="What is 5 + 3?", sender="User", sender_name="User"
-        )
+        message_input = Message(text="What is 5 + 3?", sender="User", sender_name="User")
 
         tools = [CalculatorToolComponent().build_tool()]
         agent = AgentComponent(
@@ -766,9 +716,7 @@ class TestAgentComponentWithClient(ComponentTestBaseWithClient):
         from px.schema.message import Message
 
         # Create a Message object as input (simulating ChatInput component output)
-        message_input = Message(
-            text="What is 7 + 2?", sender="User", sender_name="User"
-        )
+        message_input = Message(text="What is 7 + 2?", sender="User", sender_name="User")
 
         tools = [CalculatorToolComponent().build_tool()]
         agent = AgentComponent(
@@ -824,9 +772,7 @@ class TestAgentComponentWithClient(ComponentTestBaseWithClient):
         except Exception as e:
             # If an error occurs, make sure it's NOT the empty content error
             error_message = str(e)
-            assert "messages.2" not in error_message, (
-                f"Empty content error still occurs: {error_message}"
-            )
+            assert "messages.2" not in error_message, f"Empty content error still occurs: {error_message}"
             assert "must have non-empty content" not in error_message, (
                 f"Empty content error still occurs: {error_message}"
             )
@@ -869,9 +815,7 @@ class TestAgentComponentWithClient(ComponentTestBaseWithClient):
         except Exception as e:
             # If an error occurs, make sure it's NOT the empty content error
             error_message = str(e)
-            assert "messages.2" not in error_message, (
-                f"Empty content error still occurs: {error_message}"
-            )
+            assert "messages.2" not in error_message, f"Empty content error still occurs: {error_message}"
             assert "must have non-empty content" not in error_message, (
                 f"Empty content error still occurs: {error_message}"
             )

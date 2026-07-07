@@ -41,16 +41,12 @@ def mock_dependencies():
     # 3. Encoder Mock - create a mock instance with a mocked encode method
     mock_encoder_instance = MagicMock()
     # The encode method should return a string (SSE format)
-    mock_encoder_instance.encode = MagicMock(
-        side_effect=lambda payload: f"data: {payload}\n\n"
-    )
+    mock_encoder_instance.encode = MagicMock(side_effect=lambda payload: f"data: {payload}\n\n")
 
     # Patch the actual imports in the lifecycle_events module
     with (
         patch("px.events.observability.lifecycle_events.logger", mock_logger_instance),
-        patch(
-            "px.events.observability.lifecycle_events.encoder", mock_encoder_instance
-        ),
+        patch("px.events.observability.lifecycle_events.encoder", mock_encoder_instance),
     ):
         yield {
             "event_manager": mock_event_manager,
@@ -84,7 +80,7 @@ class TestClassWithCallbacks:
             },
         )
 
-    def after_callback_event(self, result: Any, *args, **kwargs):  # noqa: ARG002
+    def after_callback_event(self, result: Any, *args, **kwargs):
         return StepFinishedEvent(
             step_name=self.display_name,
             raw_event={
@@ -94,7 +90,7 @@ class TestClassWithCallbacks:
             },
         )
 
-    def error_callback_event(self, exception: Exception, *args, **kwargs):  # noqa: ARG002
+    def error_callback_event(self, exception: Exception, *args, **kwargs):
         return CustomEvent(
             name="error",
             value={
@@ -106,12 +102,12 @@ class TestClassWithCallbacks:
 
     # Mock observable method
     @observable
-    async def run_success(self, event_manager: MockEventManager, data: str) -> str:  # noqa: ARG002
+    async def run_success(self, event_manager: MockEventManager, data: str) -> str:
         await asyncio.sleep(0.001)
         return f"Processed:{data}"
 
     @observable
-    async def run_exception(self, event_manager: MockEventManager, data: str) -> str:  # noqa: ARG002
+    async def run_exception(self, event_manager: MockEventManager, data: str) -> str:
         await asyncio.sleep(0.001)
         raise ValueError
 
@@ -120,7 +116,7 @@ class TestClassWithoutCallbacks:
     display_name = "NonObservableTest"
 
     @observable
-    async def run_success(self, event_manager: MockEventManager, data: str) -> str:  # noqa: ARG002
+    async def run_success(self, event_manager: MockEventManager, data: str) -> str:
         await asyncio.sleep(0.001)
         return f"Processed:{data}"
 
@@ -186,9 +182,7 @@ async def test_exception_run_with_callbacks(mock_dependencies):
 
     # 1. Assert error was logged
     mock_dependencies["logger"].aerror.assert_called_once()
-    mock_dependencies["logger"].aerror.assert_called_with(
-        "Exception in TestClassWithCallbacks: "
-    )
+    mock_dependencies["logger"].aerror.assert_called_with("Exception in TestClassWithCallbacks: ")
 
     # 2. Assert encoder was called twice (once for BEFORE event, once for ERROR event)
     assert mock_dependencies["encoder"].encode.call_count == 2

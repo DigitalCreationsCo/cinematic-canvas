@@ -4,6 +4,7 @@ from typing import Any
 
 import pandas as pd
 from PIL import Image
+
 from portals.services.base import Service
 
 
@@ -76,15 +77,9 @@ class CacheService(Subject, Service):
             yield
         finally:
             self.current_client_id = previous_client_id
-            self.current_cache = (
-                self._cache.setdefault(previous_client_id, {})
-                if previous_client_id
-                else {}
-            )
+            self.current_cache = self._cache.setdefault(previous_client_id, {}) if previous_client_id else {}
 
-    def add(
-        self, name: str, obj: Any, obj_type: str, extension: str | None = None
-    ) -> None:
+    def add(self, name: str, obj: Any, obj_type: str, extension: str | None = None) -> None:
         """Add an object to the current client's cache.
 
         Args:
@@ -97,11 +92,7 @@ class CacheService(Subject, Service):
             "image": "png",
             "pandas": "csv",
         }
-        extension_ = (
-            object_extensions[obj_type]
-            if obj_type in object_extensions
-            else type(obj).__name__.lower()
-        )
+        extension_ = object_extensions[obj_type] if obj_type in object_extensions else type(obj).__name__.lower()
         self.current_cache[name] = {
             "obj": obj,
             "type": obj_type,

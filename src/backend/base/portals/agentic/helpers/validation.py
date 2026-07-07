@@ -9,9 +9,10 @@ component is loaded into a flow via the standard create_class() path.
 import ast
 import re
 
-from portals.agentic.api.schemas import ValidationResult
 from px.custom.validate import extract_class_name
 from pydantic import ValidationError
+
+from portals.agentic.api.schemas import ValidationResult
 
 CLASS_NAME_PATTERN = re.compile(r"class\s+(\w+)\s*\([^)]*Component[^)]*\)")
 
@@ -61,11 +62,7 @@ def _find_list_assign(class_node: ast.ClassDef, attr_name: str) -> ast.List | No
         if not isinstance(node, ast.Assign):
             continue
         for target in node.targets:
-            if (
-                isinstance(target, ast.Name)
-                and target.id == attr_name
-                and isinstance(node.value, ast.List)
-            ):
+            if isinstance(target, ast.Name) and target.id == attr_name and isinstance(node.value, ast.List):
                 return node.value
     return None
 
@@ -73,11 +70,7 @@ def _find_list_assign(class_node: ast.ClassDef, attr_name: str) -> ast.List | No
 def _extract_str_kwarg(call_node: ast.Call, kwarg_name: str) -> str | None:
     """Extract a string keyword argument value from a Call node."""
     for kw in call_node.keywords:
-        if (
-            kw.arg == kwarg_name
-            and isinstance(kw.value, ast.Constant)
-            and isinstance(kw.value.value, str)
-        ):
+        if kw.arg == kwarg_name and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
             return kw.value.value
     return None
 
@@ -162,11 +155,7 @@ def _format_root_error(exc: BaseException) -> str:
         return _format_validation_error(root)
 
     error_type = type(root).__name__
-    error_msg = (
-        str(root).split("\n")[0].strip()
-        if str(root)
-        else str(exc).split("\n")[0].strip()
-    )
+    error_msg = str(root).split("\n")[0].strip() if str(root) else str(exc).split("\n")[0].strip()
     return f"{error_type}: {error_msg}" if error_msg else error_type
 
 
@@ -207,9 +196,7 @@ async def _execute_output_methods_for_validation(cc_instance) -> str | None:
     return None
 
 
-async def validate_component_runtime(
-    code: str, user_id: str | None = None
-) -> str | None:
+async def validate_component_runtime(code: str, user_id: str | None = None) -> str | None:
     """Try to instantiate and execute the component at runtime.
 
     Returns None if validation passes, or a compact error message string if
@@ -236,9 +223,7 @@ async def validate_component_runtime(
         from px.custom.utils import build_custom_component_template
 
         component_instance = ComponentClass(_code=code)
-        _, cc_instance = build_custom_component_template(
-            component_instance, user_id=user_id
-        )
+        _, cc_instance = build_custom_component_template(component_instance, user_id=user_id)
     except Exception as e:  # noqa: BLE001 — compact one-line error for the retry prompt
         return _format_root_error(e)
 

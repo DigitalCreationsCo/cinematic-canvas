@@ -8,7 +8,7 @@ def _compute_non_prerelease_version(prerelease_version: str) -> str:
     prerelease_keywords = ["a", "b", "rc", "dev", "post"]
     for keyword in prerelease_keywords:
         if keyword in prerelease_version:
-            return prerelease_version.split(keyword)[0][:-1]
+            return prerelease_version.split(keyword, maxsplit=1)[0][:-1]
     return prerelease_version
 
 
@@ -78,9 +78,7 @@ def fetch_latest_version(package_name: str, *, include_prerelease: bool) -> str 
     try:
         response = httpx.get(f"https://pypi.org/pypi/{package_name}/json")
         versions = response.json()["releases"].keys()
-        valid_versions = [
-            v for v in versions if include_prerelease or not is_pre_release(v)
-        ]
+        valid_versions = [v for v in versions if include_prerelease or not is_pre_release(v)]
         if not valid_versions:
             return None  # Handle case where no valid versions are found
         return max(valid_versions, key=pkg_version.parse)

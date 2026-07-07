@@ -122,11 +122,7 @@ const SideBarFoldersButtonsComponent = ({
   });
 
   const isUpdatingFolder =
-    isFetchingFolders ||
-    isFetchingFolder ||
-    isPending ||
-    loading ||
-    isDeletingFolder;
+    isFetchingFolders || isFetchingFolder || isPending || isDeletingFolder;
 
   const handleUploadFlowsToFolder = () => {
     createFileUpload().then((files: File[]) => {

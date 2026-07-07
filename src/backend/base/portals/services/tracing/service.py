@@ -7,18 +7,20 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any
 
-from portals.services.base import Service
 from px.log.logger import logger
+
+from portals.services.base import Service
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from langchain_core.callbacks.base import BaseCallbackHandler
-    from portals.services.tracing.base import BaseTracer
-    from portals.services.tracing.schema import Log
     from px.custom.custom_component.component import Component
     from px.graph.vertex.base import Vertex
     from px.services.settings.service import SettingsService
+
+    from portals.services.tracing.base import BaseTracer
+    from portals.services.tracing.schema import Log
 
 
 def _get_langsmith_tracer():
@@ -69,12 +71,8 @@ def _get_openlayer_tracer():
     return OpenlayerTracer
 
 
-trace_context_var: ContextVar[TraceContext | None] = ContextVar(
-    "trace_context", default=None
-)
-component_context_var: ContextVar[ComponentTraceContext | None] = ContextVar(
-    "component_trace_context", default=None
-)
+trace_context_var: ContextVar[TraceContext | None] = ContextVar("trace_context", default=None)
+component_context_var: ContextVar[ComponentTraceContext | None] = ContextVar("component_trace_context", default=None)
 
 
 class TraceContext:
@@ -158,9 +156,7 @@ class TracingService(Service):
             return
         try:
             trace_context.running = True
-            trace_context.worker_task = asyncio.create_task(
-                self._trace_worker(trace_context)
-            )
+            trace_context.worker_task = asyncio.create_task(self._trace_worker(trace_context))
         except Exception:  # noqa: BLE001
             await logger.aexception("Error starting tracing service")
 
@@ -284,9 +280,7 @@ class TracingService(Service):
             return
         try:
             project_name = project_name or os.getenv("LANGCHAIN_PROJECT", "Portals")
-            trace_context = TraceContext(
-                run_id, run_name, project_name, user_id, session_id, flow_id
-            )
+            trace_context = TraceContext(run_id, run_name, project_name, user_id, session_id, flow_id)
             trace_context_var.set(trace_context)
             await self._start(trace_context)
             self._initialize_langsmith_tracer(trace_context)
@@ -313,9 +307,7 @@ class TracingService(Service):
         except Exception:  # noqa: BLE001
             await logger.aexception("Error stopping tracing service")
 
-    def _end_all_tracers(
-        self, trace_context: TraceContext, outputs: dict, error: Exception | None = None
-    ) -> None:
+    def _end_all_tracers(self, trace_context: TraceContext, outputs: dict, error: Exception | None = None) -> None:
         for tracer in trace_context.tracers.values():
             if tracer.ready:
                 try:
@@ -360,9 +352,7 @@ class TracingService(Service):
         def _mask(obj: Any):
             if isinstance(obj, dict):
                 return {
-                    k: "*****"
-                    if any(word in k.lower() for word in sensitive_keywords)
-                    else _mask(v)
+                    k: "*****" if any(word in k.lower() for word in sensitive_keywords) else _mask(v)
                     for k, v in obj.items()
                 }
             if isinstance(obj, list):
@@ -378,9 +368,7 @@ class TracingService(Service):
     ) -> None:
         inputs = self._cleanup_inputs(component_trace_context.inputs)
         component_trace_context.inputs = inputs
-        component_trace_context.inputs_metadata = (
-            component_trace_context.inputs_metadata or {}
-        )
+        component_trace_context.inputs_metadata = component_trace_context.inputs_metadata or {}
         for tracer in trace_context.tracers.values():
             if not tracer.ready:
                 continue
@@ -394,9 +382,7 @@ class TracingService(Service):
                     component_trace_context.vertex,
                 )
             except Exception:  # noqa: BLE001
-                logger.exception(
-                    f"Error starting trace {component_trace_context.trace_name}"
-                )
+                logger.exception(f"Error starting trace {component_trace_context.trace_name}")
 
     def _end_component_traces(
         self,
@@ -410,18 +396,12 @@ class TracingService(Service):
                     tracer.end_trace(
                         trace_id=component_trace_context.trace_id,
                         trace_name=component_trace_context.trace_name,
-                        outputs=trace_context.all_outputs[
-                            component_trace_context.trace_name
-                        ],
+                        outputs=trace_context.all_outputs[component_trace_context.trace_name],
                         error=error,
-                        logs=component_trace_context.logs[
-                            component_trace_context.trace_name
-                        ],
+                        logs=component_trace_context.logs[component_trace_context.trace_name],
                     )
                 except Exception:  # noqa: BLE001
-                    logger.exception(
-                        f"Error ending trace {component_trace_context.trace_name}"
-                    )
+                    logger.exception(f"Error ending trace {component_trace_context.trace_name}")
 
     @asynccontextmanager
     async def trace_component(
@@ -447,9 +427,7 @@ class TracingService(Service):
             trace_id = vertex.id
         trace_type = component.trace_type
         inputs = self._cleanup_inputs(inputs)
-        component_trace_context = ComponentTraceContext(
-            trace_id, trace_name, trace_type, vertex, inputs, metadata
-        )
+        component_trace_context = ComponentTraceContext(trace_id, trace_name, trace_type, vertex, inputs, metadata)
         component_context_var.set(component_trace_context)
         trace_context = trace_context_var.get()
         if trace_context is None:
@@ -458,9 +436,7 @@ class TracingService(Service):
             yield self
             return
         trace_context.all_inputs[trace_name] |= inputs or {}
-        await trace_context.traces_queue.put(
-            (self._start_component_traces, (component_trace_context, trace_context))
-        )
+        await trace_context.traces_queue.put((self._start_component_traces, (component_trace_context, trace_context)))
         try:
             yield self
         except Exception as e:

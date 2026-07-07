@@ -256,11 +256,7 @@ class TestCompressResponse:
         import random
         import string
 
-        random_data = {
-            "data": [
-                "".join(random.choices(string.ascii_letters, k=10)) for _ in range(100)
-            ]
-        }  # noqa: S311
+        random_data = {"data": ["".join(random.choices(string.ascii_letters, k=10)) for _ in range(100)]}
 
         rep_response = compress_response(repetitive_data)
         rand_response = compress_response(random_data)

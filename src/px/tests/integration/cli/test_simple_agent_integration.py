@@ -30,9 +30,8 @@ import urllib.request
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
-
 from px.__main__ import app as px_app
+from typer.testing import CliRunner
 
 runner = CliRunner()
 
@@ -40,9 +39,7 @@ runner = CliRunner()
 def has_integration_deps() -> bool:
     """Check if integration dependencies are installed."""
     required_modules = ["langchain_openai", "langchain_community", "bs4", "lxml"]
-    return all(
-        importlib.util.find_spec(module) is not None for module in required_modules
-    )
+    return all(importlib.util.find_spec(module) is not None for module in required_modules)
 
 
 # Skip all tests in this module if integration deps are not installed
@@ -57,15 +54,7 @@ def get_starter_projects_path() -> Path:
     test_file_path = Path(__file__).resolve()
     current = test_file_path.parent
     while current != current.parent:
-        starter_path = (
-            current
-            / "src"
-            / "backend"
-            / "base"
-            / "portals"
-            / "initial_setup"
-            / "starter_projects"
-        )
+        starter_path = current / "src" / "backend" / "base" / "portals" / "initial_setup" / "starter_projects"
         if starter_path.exists():
             return starter_path
         current = current.parent
@@ -144,9 +133,7 @@ class TestSimpleAgentFlowLoading:
         ]
 
         for error in critical_errors:
-            assert error not in output, (
-                f"Critical error found: {error}\nFull output:\n{output}"
-            )
+            assert error not in output, f"Critical error found: {error}\nFull output:\n{output}"
 
     def test_simple_agent_flow_loads_directly(self, simple_agent_flow_path: Path):
         """Test that Simple Agent flow loads correctly using load_flow_from_json."""
@@ -162,12 +149,10 @@ class TestSimpleAgentFlowLoading:
             graph.prepare()
 
             # Verify Agent component is in the graph
-            component_types = {
-                v.display_name for v in graph.vertices if hasattr(v, "display_name")
-            }
-            assert "Agent" in component_types or any(
-                "Agent" in ct for ct in component_types
-            ), f"Expected Agent in graph, found: {component_types}"
+            component_types = {v.display_name for v in graph.vertices if hasattr(v, "display_name")}
+            assert "Agent" in component_types or any("Agent" in ct for ct in component_types), (
+                f"Expected Agent in graph, found: {component_types}"
+            )
 
         except ModuleNotFoundError as e:
             pytest.fail(f"ModuleNotFoundError loading graph: {e}")
@@ -233,9 +218,7 @@ class TestSimpleAgentExecution:
 
         # Parse output
         output = result.stdout.strip() or result.stderr.strip()
-        output_json = parse_json_from_output(
-            output, context=f"stdout: {result.stdout}\nstderr: {result.stderr}"
-        )
+        output_json = parse_json_from_output(output, context=f"stdout: {result.stdout}\nstderr: {result.stderr}")
 
         # Assert successful execution
         assert output_json.get("success") is True, f"Execution failed: {output_json}"
@@ -376,23 +359,14 @@ class TestSimpleAgentServe:
                     output = "".join(output_chunks)
 
                     # Check for the specific asyncio errors we're regression testing
-                    if (
-                        "asyncio.run() cannot be called from a running event loop"
-                        in output
-                    ):
-                        pytest.fail(
-                            f"Regression: px serve failed with asyncio error.\nOutput:\n{output}"
-                        )
+                    if "asyncio.run() cannot be called from a running event loop" in output:
+                        pytest.fail(f"Regression: px serve failed with asyncio error.\nOutput:\n{output}")
 
                     if "coroutine 'Server.serve' was never awaited" in output:
-                        pytest.fail(
-                            f"Regression: Server.serve coroutine was never awaited.\nOutput:\n{output}"
-                        )
+                        pytest.fail(f"Regression: Server.serve coroutine was never awaited.\nOutput:\n{output}")
 
                     # Process exited for another reason
-                    pytest.fail(
-                        f"Server process exited with code {exit_code}.\nOutput:\n{output}"
-                    )
+                    pytest.fail(f"Server process exited with code {exit_code}.\nOutput:\n{output}")
 
                 # Try to read available output without blocking (Unix only)
                 if proc.stdout:
@@ -412,9 +386,7 @@ class TestSimpleAgentServe:
 
                 # Try to connect to server on actual port
                 try:
-                    urllib.request.urlopen(
-                        f"http://127.0.0.1:{actual_port}/docs", timeout=1
-                    )
+                    urllib.request.urlopen(f"http://127.0.0.1:{actual_port}/docs", timeout=1)
                     server_ready = True
                     break
                 except Exception:
@@ -422,9 +394,7 @@ class TestSimpleAgentServe:
 
             if not server_ready:
                 output = "".join(output_chunks)
-                pytest.fail(
-                    f"Server did not become ready within {timeout}s.\nOutput:\n{output}"
-                )
+                pytest.fail(f"Server did not become ready within {timeout}s.\nOutput:\n{output}")
 
         finally:
             # Clean up - terminate the server
@@ -478,7 +448,5 @@ class TestAllStarterProjectsLoad:
                 # as px is designed to work with minimal dependencies
 
         if px_module_errors:
-            error_details = "\n".join(
-                [f"  {name}: {error}" for name, error in px_module_errors]
-            )
+            error_details = "\n".join([f"  {name}: {error}" for name, error in px_module_errors])
             pytest.fail(f"PX module errors in starter projects:\n{error_details}")

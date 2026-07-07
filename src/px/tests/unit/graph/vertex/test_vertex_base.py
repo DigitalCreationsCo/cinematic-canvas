@@ -9,7 +9,6 @@ from uuid import uuid4
 
 import pytest
 from ag_ui.core import StepFinishedEvent, StepStartedEvent
-
 from px.components.input_output import ChatInput
 from px.graph.edge.base import Edge
 from px.graph.vertex import base as vertex_base_module
@@ -126,15 +125,10 @@ def test_should_skip_field(parameter_handler):
     assert parameter_handler.should_skip_field("_type", {}, {}) is True
 
     # Test with hidden field
-    assert (
-        parameter_handler.should_skip_field("hidden_field", {"show": False}, {}) is True
-    )
+    assert parameter_handler.should_skip_field("hidden_field", {"show": False}, {}) is True
 
     # Test with visible field
-    assert (
-        parameter_handler.should_skip_field("visible_field", {"show": True}, {})
-        is False
-    )
+    assert parameter_handler.should_skip_field("visible_field", {"show": True}, {}) is False
 
 
 def test_process_non_list_edge_param(parameter_handler, mock_edge):
@@ -202,9 +196,7 @@ def test_process_field_parameters_valid(parameter_handler, mock_vertex):
     }
     # Override the vertex template for this test
     mock_vertex.data["node"]["template"] = new_template
-    parameter_handler.template_dict = {
-        key: value for key, value in new_template.items() if isinstance(value, dict)
-    }
+    parameter_handler.template_dict = {key: value for key, value in new_template.items() if isinstance(value, dict)}
 
     params, load_from_db_fields = parameter_handler.process_field_parameters()
 
@@ -231,9 +223,7 @@ def test_process_field_parameters_valid(parameter_handler, mock_vertex):
 
 def test_process_field_parameters_invalid(parameter_handler, mock_vertex):
     """Test that an invalid field type raises a ValueError."""
-    new_template = {
-        "invalid_field": {"type": "unknown", "value": "something", "show": True}
-    }
+    new_template = {"invalid_field": {"type": "unknown", "value": "something", "show": True}}
     mock_vertex.data["node"]["template"] = new_template
     parameter_handler.template_dict = new_template
 
@@ -243,9 +233,7 @@ def test_process_field_parameters_invalid(parameter_handler, mock_vertex):
 
 def test_process_field_parameters_code_error(parameter_handler, mock_vertex):
     """Test that a faulty code field gracefully returns the original value on evaluation error."""
-    new_template = {
-        "faulty_code": {"type": "code", "value": "illegal_code", "show": True}
-    }
+    new_template = {"faulty_code": {"type": "code", "value": "illegal_code", "show": True}}
     mock_vertex.data["node"]["template"] = new_template
     parameter_handler.template_dict = new_template
 
@@ -256,9 +244,7 @@ def test_process_field_parameters_code_error(parameter_handler, mock_vertex):
 
 def test_process_field_parameters_dict_field_list(parameter_handler, mock_vertex):
     """Test processing a dict field when the value is a list of dictionaries."""
-    new_template = {
-        "list_dict_field": {"type": "dict", "value": [{"a": 1}, {"b": 2}], "show": True}
-    }
+    new_template = {"list_dict_field": {"type": "dict", "value": [{"a": 1}, {"b": 2}], "show": True}}
     mock_vertex.data["node"]["template"] = new_template
     parameter_handler.template_dict = new_template
 
@@ -280,9 +266,7 @@ def test_process_field_parameters_bool_field(parameter_handler, mock_vertex):
 def test_process_field_parameters_table_field(parameter_handler, mock_vertex):
     """Test processing for a valid table field."""
     sample_data = [{"col1": 1, "col2": 2}, {"col1": 3, "col2": 4}]
-    new_template = {
-        "table_field": {"type": "table", "value": sample_data, "show": True}
-    }
+    new_template = {"table_field": {"type": "table", "value": sample_data, "show": True}}
     mock_vertex.data["node"]["template"] = new_template
     parameter_handler.template_dict = new_template
 
@@ -294,9 +278,7 @@ def test_process_field_parameters_table_field(parameter_handler, mock_vertex):
 
 def test_process_field_parameters_table_field_invalid(parameter_handler, mock_vertex):
     """Test that an invalid value for a table field raises a ValueError."""
-    new_template = {
-        "table_field": {"type": "table", "value": "not a list", "show": True}
-    }
+    new_template = {"table_field": {"type": "table", "value": "not a list", "show": True}}
     mock_vertex.data["node"]["template"] = new_template
     parameter_handler.template_dict = new_template
 
@@ -451,9 +433,7 @@ def test_component_vertex_extract_messages_coerces_uuid_session_id():
         }
     }
 
-    messages = vertex_types_module.ComponentVertex.extract_messages_from_artifacts(
-        vertex, artifacts
-    )
+    messages = vertex_types_module.ComponentVertex.extract_messages_from_artifacts(vertex, artifacts)
     assert messages[0]["session_id"] == str(session_id)
 
 
@@ -472,9 +452,7 @@ def test_vertex_base_extract_messages_coerces_uuid_session_id():
         "files": [],
     }
 
-    messages = vertex_base_module.Vertex.extract_messages_from_artifacts(
-        vertex, artifacts
-    )
+    messages = vertex_base_module.Vertex.extract_messages_from_artifacts(vertex, artifacts)
     assert messages[0]["session_id"] == str(session_id)
 
 
@@ -487,9 +465,7 @@ class TestStrFieldWithNonStringListElements:
     v was a dict, causing 'dict' object has no attribute 'replace'.
     """
 
-    def test_str_field_with_list_of_dicts_extracts_text(
-        self, parameter_handler, mock_vertex
-    ):
+    def test_str_field_with_list_of_dicts_extracts_text(self, parameter_handler, mock_vertex):
         """A str field with list of Message dicts must extract text, not crash."""
         message_dict = {
             "text_key": "text",
@@ -530,9 +506,7 @@ class TestStrFieldWithNonStringListElements:
         params, _ = parameter_handler.process_field_parameters()
         assert params["input_value"] == ["nested hello"]
 
-    def test_str_field_with_list_of_strings_still_unescapes(
-        self, parameter_handler, mock_vertex
-    ):
+    def test_str_field_with_list_of_strings_still_unescapes(self, parameter_handler, mock_vertex):
         """A str field with list of strings must still unescape."""
         new_template = {
             "input_value": {

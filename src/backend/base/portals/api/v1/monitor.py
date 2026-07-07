@@ -4,6 +4,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlmodel import apaginate
+from sqlmodel import col, delete, select
+
 from portals.api.utils import DbSession, custom_params
 from portals.api.utils.flow_utils import compute_virtual_flow_id
 from portals.schema.message import MessageResponse
@@ -33,7 +35,6 @@ from portals.services.database.models.vertex_builds.crud import (
     get_vertex_builds_by_flow_id,
 )
 from portals.services.database.models.vertex_builds.model import VertexBuildMapModel
-from sqlmodel import col, delete, select
 
 router = APIRouter(prefix="/monitor", tags=["Monitor"])
 
@@ -48,17 +49,13 @@ async def get_vertex_builds(
         # Ownership is enforced in the data access layer.
         # Foreign flow IDs intentionally resolve to an empty payload (200)
         # to avoid leaking whether the target flow exists.
-        vertex_builds = await get_vertex_builds_by_flow_id(
-            session, flow_id, user_id=current_user.id
-        )
+        vertex_builds = await get_vertex_builds_by_flow_id(session, flow_id, user_id=current_user.id)
         return VertexBuildMapModel.from_list_of_dicts(vertex_builds)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.delete(
-    "/builds", status_code=204, dependencies=[Depends(get_current_active_user)]
-)
+@router.delete("/builds", status_code=204, dependencies=[Depends(get_current_active_user)])
 async def delete_vertex_builds(
     flow_id: Annotated[UUID, Query()],
     session: DbSession,
@@ -125,16 +122,12 @@ async def get_messages(
             order_col = getattr(MessageTable, order_by).asc()
             stmt = stmt.order_by(order_col)
         messages = await session.exec(stmt)
-        return [
-            MessageResponse.model_validate(d, from_attributes=True) for d in messages
-        ]
+        return [MessageResponse.model_validate(d, from_attributes=True) for d in messages]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.delete(
-    "/messages", status_code=204, dependencies=[Depends(get_current_active_user)]
-)
+@router.delete("/messages", status_code=204, dependencies=[Depends(get_current_active_user)])
 async def delete_messages(
     message_ids: list[UUID],
     session: DbSession,
@@ -195,9 +188,7 @@ async def update_message(
 )
 async def update_session_id(
     old_session_id: str,
-    new_session_id: Annotated[
-        str, Query(..., description="The new session ID to update to")
-    ],
+    new_session_id: Annotated[str, Query(..., description="The new session ID to update to")],
     session: DbSession,
     current_user: Annotated[User, Depends(get_current_active_user)],
 ) -> list[MessageResponse]:
@@ -205,17 +196,13 @@ async def update_session_id(
         # Session updates are ownership-scoped to prevent session hijacking
         # across users that might share or guess a session_id value.
         # This endpoint is sensitive because a single call can move many rows.
-        messages = await get_messages_for_user_by_session(
-            session, current_user.id, old_session_id
-        )
+        messages = await get_messages_for_user_by_session(session, current_user.id, old_session_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
     if not messages:
         # Same response for "session does not exist" and "session exists but is foreign".
-        raise HTTPException(
-            status_code=404, detail="No messages found with the given session ID"
-        )
+        raise HTTPException(status_code=404, detail="No messages found with the given session ID")
 
     try:
         # Update all messages with the new session ID
@@ -228,9 +215,7 @@ async def update_session_id(
         message_responses = []
         for message in messages:
             await session.refresh(message)
-            message_responses.append(
-                MessageResponse.model_validate(message, from_attributes=True)
-            )
+            message_responses.append(MessageResponse.model_validate(message, from_attributes=True))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -319,9 +304,7 @@ async def delete_messages_sessions(
         msg_stmt = select(MessageTable.id)
         msg_stmt = msg_stmt.join(Flow, MessageTable.flow_id == Flow.id)
         msg_stmt = msg_stmt.where(Flow.user_id == current_user.id)
-        msg_stmt = msg_stmt.where(
-            col(MessageTable.session_id).in_(affected_session_ids)
-        )
+        msg_stmt = msg_stmt.where(col(MessageTable.session_id).in_(affected_session_ids))
 
         msg_result = await session.exec(msg_stmt)
         message_ids = list(msg_result)
@@ -398,16 +381,12 @@ async def get_shared_messages(
         }
         if order_by:
             if order_by not in allowed_order_fields:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid order_by field: {order_by}"
-                )
+                raise HTTPException(status_code=400, detail=f"Invalid order_by field: {order_by}")
             order_col = getattr(MessageTable, order_by).asc()
             stmt = stmt.order_by(order_col)
 
         messages = await session.exec(stmt)
-        return [
-            MessageResponse.model_validate(d, from_attributes=True) for d in messages
-        ]
+        return [MessageResponse.model_validate(d, from_attributes=True) for d in messages]
     except HTTPException:
         raise
     except Exception as e:
@@ -493,9 +472,7 @@ async def rename_shared_session(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
     if not messages:
-        raise HTTPException(
-            status_code=404, detail="No messages found with the given session ID"
-        )
+        raise HTTPException(status_code=404, detail="No messages found with the given session ID")
 
     try:
         for message in messages:

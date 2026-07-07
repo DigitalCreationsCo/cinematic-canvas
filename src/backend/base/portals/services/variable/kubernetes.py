@@ -5,6 +5,8 @@ import os
 from typing import TYPE_CHECKING
 
 from px.log.logger import logger
+from typing_extensions import override
+
 from portals.services.auth import utils as auth_utils
 from portals.services.base import Service
 from portals.services.database.models.variable.model import (
@@ -19,7 +21,6 @@ from portals.services.variable.kubernetes_secrets import (
     KubernetesSecretManager,
     encode_user_id,
 )
-from typing_extensions import override
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -36,18 +37,10 @@ class KubernetesSecretService(VariableService, Service):
         self.kubernetes_secrets = KubernetesSecretManager()
 
     @override
-    async def initialize_user_variables(
-        self, user_id: UUID | str, session: AsyncSession
-    ) -> None:
+    async def initialize_user_variables(self, user_id: UUID | str, session: AsyncSession) -> None:
         # Check for environment variables that should be stored in the database
-        should_or_should_not = (
-            "Should"
-            if self.settings_service.settings.store_environment_variables
-            else "Should not"
-        )
-        await logger.ainfo(
-            f"{should_or_should_not} store environment variables in the kubernetes."
-        )
+        should_or_should_not = "Should" if self.settings_service.settings.store_environment_variables else "Should not"
+        await logger.ainfo(f"{should_or_should_not} store environment variables in the kubernetes.")
         if self.settings_service.settings.store_environment_variables:
             variables = {}
             for var in self.settings_service.settings.variables_to_get_from_environment:
@@ -93,13 +86,9 @@ class KubernetesSecretService(VariableService, Service):
         raise ValueError(msg)
 
     @override
-    async def get_variable(
-        self, user_id: UUID | str, name: str, field: str, session: AsyncSession
-    ) -> str:
+    async def get_variable(self, user_id: UUID | str, name: str, field: str, session: AsyncSession) -> str:
         secret_name = encode_user_id(user_id)
-        key, value = await asyncio.to_thread(
-            self.resolve_variable, secret_name, user_id, name
-        )
+        key, value = await asyncio.to_thread(self.resolve_variable, secret_name, user_id, name)
         if key.startswith(CREDENTIAL_TYPE + "_") and field == "session_id":
             msg = (
                 f"variable {name} of type 'Credential' cannot be used in a Session ID field "
@@ -114,9 +103,7 @@ class KubernetesSecretService(VariableService, Service):
         user_id: UUID | str,
         session: Session,
     ) -> list[str | None]:
-        variables = await asyncio.to_thread(
-            self.kubernetes_secrets.get_secret, name=encode_user_id(user_id)
-        )
+        variables = await asyncio.to_thread(self.kubernetes_secrets.get_secret, name=encode_user_id(user_id))
         if not variables:
             return []
 
@@ -136,9 +123,7 @@ class KubernetesSecretService(VariableService, Service):
     ):
         secret_name = encode_user_id(user_id)
         secret_key, _ = self.resolve_variable(secret_name, user_id, name)
-        return self.kubernetes_secrets.update_secret(
-            name=secret_name, data={secret_key: value}
-        )
+        return self.kubernetes_secrets.update_secret(name=secret_name, data={secret_key: value})
 
     @override
     async def update_variable(
@@ -156,15 +141,11 @@ class KubernetesSecretService(VariableService, Service):
         self.kubernetes_secrets.delete_secret_key(name=secret_name, key=secret_key)
 
     @override
-    async def delete_variable(
-        self, user_id: UUID | str, name: str, session: AsyncSession
-    ) -> None:
+    async def delete_variable(self, user_id: UUID | str, name: str, session: AsyncSession) -> None:
         await asyncio.to_thread(self._delete_variable, user_id, name)
 
     @override
-    async def delete_variable_by_id(
-        self, user_id: UUID | str, variable_id: UUID | str, session: AsyncSession
-    ) -> None:
+    async def delete_variable_by_id(self, user_id: UUID | str, variable_id: UUID | str, session: AsyncSession) -> None:
         await self.delete_variable(user_id, str(variable_id), session)
 
     @override
@@ -197,18 +178,12 @@ class KubernetesSecretService(VariableService, Service):
             value=auth_utils.encrypt_api_key(value),
             default_fields=default_fields,
         )
-        return Variable.model_validate(
-            variable_base, from_attributes=True, update={"user_id": user_id}
-        )
+        return Variable.model_validate(variable_base, from_attributes=True, update={"user_id": user_id})
 
     @override
-    async def get_all(
-        self, user_id: UUID | str, session: AsyncSession
-    ) -> list[VariableRead]:
+    async def get_all(self, user_id: UUID | str, session: AsyncSession) -> list[VariableRead]:
         secret_name = encode_user_id(user_id)
-        variables = await asyncio.to_thread(
-            self.kubernetes_secrets.get_secret, name=secret_name
-        )
+        variables = await asyncio.to_thread(self.kubernetes_secrets.get_secret, name=secret_name)
         if not variables:
             return []
 
@@ -230,9 +205,7 @@ class KubernetesSecretService(VariableService, Service):
                 value=auth_utils.encrypt_api_key(value),
                 default_fields=[],
             )
-            variable = Variable.model_validate(
-                variable_base, from_attributes=True, update={"user_id": user_id}
-            )
+            variable = Variable.model_validate(variable_base, from_attributes=True, update={"user_id": user_id})
             variable_read = VariableRead.model_validate(variable, from_attributes=True)
             variable_read.value = decrypted_value
             variables_read.append(variable_read)
@@ -240,17 +213,13 @@ class KubernetesSecretService(VariableService, Service):
         return variables_read
 
     @override
-    async def get_variable_by_id(
-        self, user_id: UUID | str, variable_id: UUID | str, session: AsyncSession
-    ) -> Variable:
+    async def get_variable_by_id(self, user_id: UUID | str, variable_id: UUID | str, session: AsyncSession) -> Variable:
         """Get a variable by ID.
 
         Note: Kubernetes secrets don't have IDs, so we use the variable_id as the name.
         """
         secret_name = encode_user_id(user_id)
-        key, value = await asyncio.to_thread(
-            self.resolve_variable, secret_name, user_id, str(variable_id)
-        )
+        key, value = await asyncio.to_thread(self.resolve_variable, secret_name, user_id, str(variable_id))
 
         name = key
         type_ = GENERIC_TYPE
@@ -264,19 +233,13 @@ class KubernetesSecretService(VariableService, Service):
             value=auth_utils.encrypt_api_key(value),
             default_fields=[],
         )
-        return Variable.model_validate(
-            variable_base, from_attributes=True, update={"user_id": user_id}
-        )
+        return Variable.model_validate(variable_base, from_attributes=True, update={"user_id": user_id})
 
     @override
-    async def get_variable_object(
-        self, user_id: UUID | str, name: str, session: AsyncSession
-    ) -> Variable:
+    async def get_variable_object(self, user_id: UUID | str, name: str, session: AsyncSession) -> Variable:
         """Get a variable object by name."""
         secret_name = encode_user_id(user_id)
-        key, value = await asyncio.to_thread(
-            self.resolve_variable, secret_name, user_id, name
-        )
+        key, value = await asyncio.to_thread(self.resolve_variable, secret_name, user_id, name)
 
         var_name = key
         type_ = GENERIC_TYPE
@@ -290,9 +253,7 @@ class KubernetesSecretService(VariableService, Service):
             value=auth_utils.encrypt_api_key(value),
             default_fields=[],
         )
-        return Variable.model_validate(
-            variable_base, from_attributes=True, update={"user_id": user_id}
-        )
+        return Variable.model_validate(variable_base, from_attributes=True, update={"user_id": user_id})
 
     @override
     async def update_variable_fields(

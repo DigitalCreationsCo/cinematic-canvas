@@ -8,18 +8,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from px.graph.graph.base import Graph
+from px.graph.schema import ResultData, RunOutputs
+from px.schema.workflow import WorkflowExecutionRequest
+
 from portals.api.v1.schemas import RunResponse
 from portals.api.v2.converters import run_response_to_workflow_response
 from portals.services.database.models.vertex_builds.crud import (
     get_vertex_builds_by_job_id,
 )
-from px.graph.graph.base import Graph
-from px.graph.schema import ResultData, RunOutputs
-from px.schema.workflow import WorkflowExecutionRequest
 
 if TYPE_CHECKING:
-    from portals.services.database.models.flow.model import FlowRead
     from sqlmodel.ext.asyncio.session import AsyncSession
+
+    from portals.services.database.models.flow.model import FlowRead
 
 
 async def reconstruct_workflow_response_from_job_id(
@@ -55,24 +57,17 @@ async def reconstruct_workflow_response_from_job_id(
 
     # Build graph to identify terminal nodes
     flow_id_str = str(flow.id)
-    graph = Graph.from_payload(
-        flow.data, flow_id=flow_id_str, user_id=user_id, flow_name=flow.name
-    )
+    graph = Graph.from_payload(flow.data, flow_id=flow_id_str, user_id=user_id, flow_name=flow.name)
     terminal_node_ids = graph.get_terminal_nodes()
 
     # Filter to terminal vertices with data
-    terminal_vertex_builds = [
-        vb for vb in vertex_builds if vb.id in terminal_node_ids and vb.data
-    ]
+    terminal_vertex_builds = [vb for vb in vertex_builds if vb.id in terminal_node_ids and vb.data]
     if not terminal_vertex_builds:
         msg = f"No terminal vertex builds found for job_id {job_id}"
         raise ValueError(msg)
 
     # Convert vertex_build data to RunOutputs format
-    run_outputs_list = [
-        RunOutputs(inputs={}, outputs=[ResultData(**vb.data)])
-        for vb in terminal_vertex_builds
-    ]
+    run_outputs_list = [RunOutputs(inputs={}, outputs=[ResultData(**vb.data)]) for vb in terminal_vertex_builds]
 
     # Create RunResponse and convert to WorkflowExecutionResponse
     run_response = RunResponse(outputs=run_outputs_list, session_id=None)

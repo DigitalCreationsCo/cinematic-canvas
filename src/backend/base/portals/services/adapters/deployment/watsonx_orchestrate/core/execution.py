@@ -12,6 +12,7 @@ from px.services.adapters.deployment.exceptions import (
     DeploymentNotFoundError,
     InvalidContentError,
 )
+
 from portals.services.adapters.deployment.watsonx_orchestrate.utils import (
     extract_error_detail,
 )
@@ -87,9 +88,7 @@ def resolve_execution_message(
         if "role" in execution_input and "content" in execution_input:
             return execution_input
 
-        if "message" in execution_input and isinstance(
-            execution_input["message"], dict
-        ):
+        if "message" in execution_input and isinstance(execution_input["message"], dict):
             return execution_input["message"]
 
         content = execution_input.get("content")
@@ -105,9 +104,7 @@ def resolve_execution_message(
 
 def create_agent_run_result(payload: dict[str, Any] | None) -> dict[str, Any]:
     if not payload:
-        msg = (
-            "Watsonx Orchestrate returned an empty response for the execution request."
-        )
+        msg = "Watsonx Orchestrate returned an empty response for the execution request."
         raise DeploymentError(message=msg, error_code="empty_provider_response")
 
     result: dict[str, Any] = {"status": payload.get("status") or "accepted"}
@@ -145,8 +142,6 @@ async def get_agent_run(client: WxOClient, *, run_id: str) -> dict[str, Any]:
         "last_error",
         "result",
     ]
-    result.update(
-        {k: v for k in passthrough_fields if (v := payload.get(k)) is not None}
-    )
+    result.update({k: v for k in passthrough_fields if (v := payload.get(k)) is not None})
 
     return result

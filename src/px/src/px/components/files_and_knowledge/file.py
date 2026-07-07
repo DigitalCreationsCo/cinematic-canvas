@@ -109,9 +109,7 @@ class FileComponent(BaseFileComponent):
         if isinstance(input_item, FileInput) and input_item.name == "path":
             input_item.real_time_refresh = True
             input_item.tool_mode = False  # Disable tool mode for file upload input
-            input_item.required = (
-                False  # Make it optional so it doesn't error in tool mode
-            )
+            input_item.required = False  # Make it optional so it doesn't error in tool mode
             break
 
     inputs = [
@@ -191,9 +189,7 @@ class FileComponent(BaseFileComponent):
         StrInput(
             name="file_id",
             display_name="Google Drive File ID",
-            info=(
-                "The Google Drive file ID to read. The file must be shared with the service account email."
-            ),
+            info=("The Google Drive file ID to read. The file must be shared with the service account email."),
             show=False,
             advanced=False,
             required=True,
@@ -412,11 +408,7 @@ class FileComponent(BaseFileComponent):
         # Handle storage location selection
         if field_name == "storage_location":
             # Extract selected storage location
-            selected = (
-                [location["name"] for location in field_value]
-                if isinstance(field_value, list)
-                else []
-            )
+            selected = [location["name"] for location in field_value] if isinstance(field_value, list) else []
 
             # Hide all storage-specific fields first
             storage_fields = [
@@ -483,10 +475,7 @@ class FileComponent(BaseFileComponent):
                 self._disable_docling_fields_in_cloud(build_config)
             else:
                 # If all files can be processed by docling, do so
-                allow_advanced = all(
-                    not file_path.endswith((".csv", ".xlsx", ".parquet"))
-                    for file_path in paths
-                )
+                allow_advanced = all(not file_path.endswith((".csv", ".xlsx", ".parquet")) for file_path in paths)
                 build_config["advanced_mode"]["show"] = allow_advanced
                 if not allow_advanced:
                     build_config["advanced_mode"]["value"] = False
@@ -533,9 +522,7 @@ class FileComponent(BaseFileComponent):
 
         return build_config
 
-    def update_outputs(
-        self, frontend_node: dict[str, Any], field_name: str, field_value: Any
-    ) -> dict[str, Any]:  # noqa: ARG002
+    def update_outputs(self, frontend_node: dict[str, Any], field_name: str, field_value: Any) -> dict[str, Any]:
         """Dynamically show outputs based on file count/type and advanced mode."""
         if field_name not in ["path", "advanced_mode", "pipeline"]:
             return frontend_node
@@ -547,11 +534,7 @@ class FileComponent(BaseFileComponent):
 
         frontend_node["outputs"] = []
         if len(paths) == 1:
-            file_path = (
-                paths[0]
-                if field_name == "path"
-                else frontend_node["template"]["path"]["file_path"][0]
-            )
+            file_path = paths[0] if field_name == "path" else frontend_node["template"]["path"]["file_path"][0]
             if file_path.endswith((".csv", ".xlsx", ".parquet")):
                 frontend_node["outputs"].append(
                     Output(
@@ -571,11 +554,7 @@ class FileComponent(BaseFileComponent):
                     ),
                 )
 
-            advanced_mode = (
-                frontend_node.get("template", {})
-                .get("advanced_mode", {})
-                .get("value", False)
-            )
+            advanced_mode = frontend_node.get("template", {}).get("advanced_mode", {}).get("value", False)
             if advanced_mode:
                 frontend_node["outputs"].append(
                     Output(
@@ -636,10 +615,7 @@ class FileComponent(BaseFileComponent):
     def _get_selected_storage_location(self) -> str:
         """Get the selected storage location from the SortableListInput."""
         if hasattr(self, "storage_location") and self.storage_location:
-            if (
-                isinstance(self.storage_location, list)
-                and len(self.storage_location) > 0
-            ):
+            if isinstance(self.storage_location, list) and len(self.storage_location) > 0:
                 return self.storage_location[0].get("name", "")
             if isinstance(self.storage_location, dict):
                 return self.storage_location.get("name", "")
@@ -690,11 +666,7 @@ class FileComponent(BaseFileComponent):
                 return []
 
             data_obj = Data(data={self.SERVER_FILE_PATH_FIELDNAME: str(resolved_path)})
-            return [
-                BaseFileComponent.BaseFile(
-                    data_obj, resolved_path, delete_after_processing=False
-                )
-            ]
+            return [BaseFileComponent.BaseFile(data_obj, resolved_path, delete_after_processing=False)]
 
         # Otherwise use the default implementation (uses path FileInput)
         return super()._validate_and_resolve_paths()
@@ -721,14 +693,10 @@ class FileComponent(BaseFileComponent):
         # Get file extension from S3 key
         file_extension = Path(self.s3_file_key).suffix or ""
 
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=file_extension, delete=False
-        ) as temp_file:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=file_extension, delete=False) as temp_file:
             temp_file_path = temp_file.name
             try:
-                s3_client.download_fileobj(
-                    self.bucket_name, self.s3_file_key, temp_file
-                )
+                s3_client.download_fileobj(self.bucket_name, self.s3_file_key, temp_file)
             except Exception as e:
                 # Clean up temp file on failure
                 with contextlib.suppress(OSError):
@@ -741,11 +709,7 @@ class FileComponent(BaseFileComponent):
 
         temp_path = Path(temp_file_path)
         data_obj = Data(data={self.SERVER_FILE_PATH_FIELDNAME: str(temp_path)})
-        return [
-            BaseFileComponent.BaseFile(
-                data_obj, temp_path, delete_after_processing=True
-            )
-        ]
+        return [BaseFileComponent.BaseFile(data_obj, temp_path, delete_after_processing=True)]
 
     def _read_from_google_drive(self) -> list[BaseFileComponent.BaseFile]:
         """Read file from Google Drive."""
@@ -771,11 +735,7 @@ class FileComponent(BaseFileComponent):
 
         # Get file metadata to determine file name and extension
         try:
-            file_metadata = (
-                drive_service.files()
-                .get(fileId=self.file_id, fields="name,mimeType")
-                .execute()
-            )
+            file_metadata = drive_service.files().get(fileId=self.file_id, fields="name,mimeType").execute()
             file_name = file_metadata.get("name", "download")
         except Exception as e:
             msg = (
@@ -788,9 +748,7 @@ class FileComponent(BaseFileComponent):
 
         # Download file to temp location
         file_extension = Path(file_name).suffix or ""
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=file_extension, delete=False
-        ) as temp_file:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=file_extension, delete=False) as temp_file:
             temp_file_path = temp_file.name
             try:
                 request = drive_service.files().get_media(fileId=self.file_id)
@@ -810,11 +768,7 @@ class FileComponent(BaseFileComponent):
 
         temp_path = Path(temp_file_path)
         data_obj = Data(data={self.SERVER_FILE_PATH_FIELDNAME: str(temp_path)})
-        return [
-            BaseFileComponent.BaseFile(
-                data_obj, temp_path, delete_after_processing=True
-            )
-        ]
+        return [BaseFileComponent.BaseFile(data_obj, temp_path, delete_after_processing=True)]
 
     def _is_docling_compatible(self, file_path: str) -> bool:
         """Lightweight extension gate for Docling-compatible types."""
@@ -898,9 +852,7 @@ class FileComponent(BaseFileComponent):
 
         settings = get_settings_service().settings
         if settings.storage_type == "s3":
-            local_path, should_delete = run_until_complete(
-                self._get_local_file_for_docling(file_path)
-            )
+            local_path, should_delete = run_until_complete(self._get_local_file_for_docling(file_path))
         else:
             local_path = file_path
             should_delete = False
@@ -913,9 +865,7 @@ class FileComponent(BaseFileComponent):
                 with contextlib.suppress(Exception):
                     Path(local_path).unlink()  # Ignore cleanup errors
 
-    def _process_docling_subprocess_impl(
-        self, local_file_path: str, original_file_path: str
-    ) -> Data | None:
+    def _process_docling_subprocess_impl(self, local_file_path: str, original_file_path: str) -> Data | None:
         """Implementation of Docling subprocess processing.
 
         Args:
@@ -932,11 +882,7 @@ class FileComponent(BaseFileComponent):
             "md_page_break_placeholder": str(self.md_page_break_placeholder),
             "pipeline": str(self.pipeline),
             "ocr_engine": (
-                self.ocr_engine
-                if self.ocr_engine
-                and self.ocr_engine != "None"
-                and self.pipeline != "vlm"
-                else None
+                self.ocr_engine if self.ocr_engine and self.ocr_engine != "None" and self.pipeline != "vlm" else None
             ),
         }
 
@@ -1132,9 +1078,7 @@ class FileComponent(BaseFileComponent):
         # Validate file_path to avoid command injection or unsafe input.
         # Note: $ is intentionally not blocked here because the path is passed as JSON via
         # stdin to the subprocess, not interpolated in a shell command.
-        if not isinstance(args["file_path"], str) or any(
-            c in args["file_path"] for c in [";", "|", "&", "`"]
-        ):
+        if not isinstance(args["file_path"], str) or any(c in args["file_path"] for c in [";", "|", "&", "`"]):
             return Data(
                 data={
                     "error": "Unsafe file path detected.",
@@ -1184,11 +1128,7 @@ class FileComponent(BaseFileComponent):
         proc.stderr.close()
 
         if not stdout_bytes:
-            err_msg = (
-                stderr_bytes.decode("utf-8", errors="replace")
-                if stderr_bytes
-                else "no output from child process"
-            )
+            err_msg = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else "no output from child process"
             return Data(
                 data={
                     "error": f"Docling subprocess error: {err_msg}",
@@ -1292,9 +1232,7 @@ class FileComponent(BaseFileComponent):
                     self.log(msg)
                     raise ValueError(msg)
 
-        def process_file_standard(
-            file_path: str, *, silent_errors: bool = False
-        ) -> Data | None:
+        def process_file_standard(file_path: str, *, silent_errors: bool = False) -> Data | None:
             try:
                 return parse_text_file_to_data(file_path, silent_errors=silent_errors)
             except FileNotFoundError as e:
@@ -1308,18 +1246,14 @@ class FileComponent(BaseFileComponent):
                     raise
                 return None
 
-        docling_compatible = all(
-            self._is_docling_compatible(str(f.path)) for f in file_list
-        )
+        docling_compatible = all(self._is_docling_compatible(str(f.path)) for f in file_list)
 
         # Advanced path: Check if ALL files are compatible with Docling
         if self.advanced_mode and docling_compatible:
             final_return: list[BaseFileComponent.BaseFile] = []
             for file in file_list:
                 file_path = str(file.path)
-                advanced_data: Data | None = self._process_docling_in_subprocess(
-                    file_path
-                )
+                advanced_data: Data | None = self._process_docling_in_subprocess(file_path)
 
                 # Handle None case - Docling processing failed or returned None
                 if advanced_data is None:
@@ -1342,11 +1276,7 @@ class FileComponent(BaseFileComponent):
                         data={
                             "file_path": file_path,
                             "error": error_msg,
-                            **{
-                                k: v
-                                for k, v in payload.items()
-                                if k not in ("error", "file_path")
-                            },
+                            **{k: v for k, v in payload.items() if k not in ("error", "file_path")},
                         },
                     )
                     final_return.extend(self.rollup_data([file], [error_data]))
@@ -1368,9 +1298,7 @@ class FileComponent(BaseFileComponent):
                 elif isinstance(doc_rows, list) and not doc_rows:
                     # Empty list - file was processed but no text content found
                     # Create a Data object indicating no content was extracted
-                    self.log(
-                        f"No text extracted from '{file_path}', creating placeholder data"
-                    )
+                    self.log(f"No text extracted from '{file_path}', creating placeholder data")
                     empty_data = Data(
                         data={
                             "file_path": file_path,
@@ -1397,9 +1325,7 @@ class FileComponent(BaseFileComponent):
         concurrency = max(1, self.concurrency_multithreading)
 
         file_paths = [str(f.path) for f in file_list]
-        self.log(
-            f"Starting parallel processing of {len(file_paths)} files with concurrency: {concurrency}."
-        )
+        self.log(f"Starting parallel processing of {len(file_paths)} files with concurrency: {concurrency}.")
         my_data = parallel_load_data(
             file_paths,
             silent_errors=self.silent_errors,
@@ -1421,9 +1347,7 @@ class FileComponent(BaseFileComponent):
         # Check for error column with error messages
         if "error" in result.columns:
             errors = result["error"].dropna().tolist()
-            if errors and not any(
-                col in result.columns for col in ["text", "doc", "exported_content"]
-            ):
+            if errors and not any(col in result.columns for col in ["text", "doc", "exported_content"]):
                 raise ValueError(errors[0])
 
         return result
@@ -1444,10 +1368,7 @@ class FileComponent(BaseFileComponent):
             if text_values:
                 return Message(text=str(text_values[0]))
 
-        if (
-            "exported_content" in result.columns
-            and not result["exported_content"].isna().all()
-        ):
+        if "exported_content" in result.columns and not result["exported_content"].isna().all():
             content_values = result["exported_content"].dropna().tolist()
             if content_values:
                 return Message(text=str(content_values[0]))

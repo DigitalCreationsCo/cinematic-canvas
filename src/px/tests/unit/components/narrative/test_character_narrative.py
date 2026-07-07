@@ -1,6 +1,5 @@
 """Tests for Character Narrative component."""
 
-import pytest
 from portals.schema import Data
 from px.components.narrative.character_narrative import NarrativeCharacterComponent
 

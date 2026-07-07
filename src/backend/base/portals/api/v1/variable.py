@@ -8,6 +8,8 @@ from px.base.models.unified_models import (
     get_model_provider_variable_mapping,
     validate_model_provider_key,
 )
+from sqlalchemy.exc import NoResultFound
+
 from portals.api.utils import CurrentActiveUser, DbSession
 from portals.api.v1.models import (
     DISABLED_MODELS_VAR,
@@ -27,7 +29,6 @@ from portals.services.database.models.variable.model import (
 from portals.services.deps import get_variable_service
 from portals.services.variable.constants import CREDENTIAL_TYPE, GENERIC_TYPE
 from portals.services.variable.service import DatabaseVariableService
-from sqlalchemy.exc import NoResultFound
 
 router = APIRouter(prefix="/variables", tags=["Variables"])
 model_provider_variable_mapping = get_model_provider_variable_mapping()
@@ -86,9 +87,7 @@ async def _cleanup_model_list_variable(
             )
     else:
         # No models left, delete the variable
-        await variable_service.delete_variable(
-            user_id=user_id, name=variable_name, session=session
-        )
+        await variable_service.delete_variable(user_id=user_id, name=variable_name, session=session)
 
 
 async def _cleanup_provider_models(
@@ -105,12 +104,8 @@ async def _cleanup_provider_models(
         return
 
     # Clean up disabled and enabled models
-    await _cleanup_model_list_variable(
-        variable_service, user_id, DISABLED_MODELS_VAR, provider_models, session
-    )
-    await _cleanup_model_list_variable(
-        variable_service, user_id, ENABLED_MODELS_VAR, provider_models, session
-    )
+    await _cleanup_model_list_variable(variable_service, user_id, DISABLED_MODELS_VAR, provider_models, session)
+    await _cleanup_model_list_variable(variable_service, user_id, ENABLED_MODELS_VAR, provider_models, session)
 
 
 @router.post("/", response_model=VariableRead, status_code=201, include_in_schema=False)
@@ -123,9 +118,7 @@ async def create_variable(
     """Create a new variable."""
     variable_service = get_variable_service()
     if not variable.name and not variable.value:
-        raise HTTPException(
-            status_code=400, detail="Variable name and value cannot be empty"
-        )
+        raise HTTPException(status_code=400, detail="Variable name and value cannot be empty")
 
     if not variable.name:
         raise HTTPException(status_code=400, detail="Variable name cannot be empty")
@@ -133,9 +126,7 @@ async def create_variable(
     if not variable.value:
         raise HTTPException(status_code=400, detail="Variable value cannot be empty")
 
-    if variable.name in await variable_service.list_variables(
-        user_id=current_user.id, session=session
-    ):
+    if variable.name in await variable_service.list_variables(user_id=current_user.id, session=session):
         raise HTTPException(status_code=400, detail="Variable name already exists")
 
     # Check if the variable is a reserved model provider variable
@@ -168,9 +159,7 @@ async def create_variable(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get(
-    "/", response_model=list[VariableRead], status_code=200, include_in_schema=False
-)
+@router.get("/", response_model=list[VariableRead], status_code=200, include_in_schema=False)
 async def read_variables(
     *,
     session: DbSession,
@@ -188,25 +177,17 @@ async def read_variables(
         msg = "Variable service is not an instance of DatabaseVariableService"
         raise TypeError(msg)
     try:
-        all_variables = await variable_service.get_all(
-            user_id=current_user.id, session=session
-        )
+        all_variables = await variable_service.get_all(user_id=current_user.id, session=session)
 
         # Filter out internal variables (those starting and ending with __)
         filtered_variables = [
-            var
-            for var in all_variables
-            if not (var.name and var.name.startswith("__") and var.name.endswith("__"))
+            var for var in all_variables if not (var.name and var.name.startswith("__") and var.name.endswith("__"))
         ]
 
         # Mark model provider credentials - validation status is based on existence
         # (actual validation happens on create/update)
         for var in filtered_variables:
-            if (
-                var.name
-                and var.name in model_provider_variable_mapping.values()
-                and var.type == CREDENTIAL_TYPE
-            ):
+            if var.name and var.name in model_provider_variable_mapping.values() and var.type == CREDENTIAL_TYPE:
                 # Credential exists and was validated on save
                 var.is_valid = True
                 var.validation_error = None
@@ -246,10 +227,7 @@ async def update_variable(
         )
 
         # Validate API key if updating a model provider variable
-        if (
-            existing_variable.name in model_provider_variable_mapping.values()
-            and variable.value
-        ):
+        if existing_variable.name in model_provider_variable_mapping.values() and variable.value:
             provider = get_provider_from_variable_name(existing_variable.name)
             if provider is not None:
                 # Run validation off the event loop to avoid blocking
@@ -301,15 +279,11 @@ async def delete_variable(
         provider = get_provider_from_variable_name(variable_to_delete.name)
 
         # Delete the variable
-        await variable_service.delete_variable_by_id(
-            user_id=current_user.id, variable_id=variable_id, session=session
-        )
+        await variable_service.delete_variable_by_id(user_id=current_user.id, variable_id=variable_id, session=session)
 
         # If this was a provider credential, clean up disabled and enabled models for that provider
         if provider and isinstance(variable_service, DatabaseVariableService):
-            await _cleanup_provider_models(
-                variable_service, current_user.id, provider, session
-            )
+            await _cleanup_provider_models(variable_service, current_user.id, provider, session)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -328,9 +302,7 @@ def _collect_candidate_variable_keys_from_flow_data(data: dict) -> set[str]:
                 continue
             if field.get("load_from_db") is True:
                 var_name = field.get("value")
-                normalized_var_name = (
-                    var_name.strip() if isinstance(var_name, str) else None
-                )
+                normalized_var_name = var_name.strip() if isinstance(var_name, str) else None
                 if normalized_var_name:
                     candidate_keys.add(normalized_var_name)
 
@@ -339,9 +311,7 @@ def _collect_candidate_variable_keys_from_flow_data(data: dict) -> set[str]:
 
 def _validate_flow_or_422(*, version_id: UUID, data: object) -> dict:
     """Validate flow version data structure and raise HTTP 422 on malformed input."""
-    if not (
-        isinstance(data, dict) and "nodes" in data and isinstance(data["nodes"], list)
-    ):
+    if not (isinstance(data, dict) and "nodes" in data and isinstance(data["nodes"], list)):
         raise HTTPException(
             status_code=422,
             detail=(
@@ -370,9 +340,7 @@ async def detect_env_vars(
     variable_service = get_variable_service()
     existing_variable_names = {
         name
-        for name in await variable_service.list_variables(
-            user_id=current_user.id, session=session
-        )
+        for name in await variable_service.list_variables(user_id=current_user.id, session=session)
         if isinstance(name, str) and name
     }
 
@@ -386,13 +354,9 @@ async def detect_env_vars(
     for version_id in payload.flow_version_ids:
         version = versions_by_id.get(version_id)
         if version is None:
-            raise HTTPException(
-                status_code=404, detail=f"Flow version {version_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"Flow version {version_id} not found")
 
         data = _validate_flow_or_422(version_id=version_id, data=version.data)
         candidate_keys.update(_collect_candidate_variable_keys_from_flow_data(data))
 
-    return DetectVarsResponse(
-        variables=sorted(existing_variable_names.intersection(candidate_keys))
-    )
+    return DetectVarsResponse(variables=sorted(existing_variable_names.intersection(candidate_keys)))

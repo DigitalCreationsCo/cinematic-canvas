@@ -6,6 +6,7 @@ import logging
 from http import HTTPStatus
 
 import httpx
+
 from portals_sdk.exceptions import (
     PortalsAuthError,
     PortalsConnectionError,

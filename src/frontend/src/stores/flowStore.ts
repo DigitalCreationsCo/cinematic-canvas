@@ -9,7 +9,6 @@ import {
 import { cloneDeep, zip } from "lodash";
 import { create } from "zustand";
 import { checkCodeValidity } from "@/CustomNodes/helpers/check-code-validity";
-import i18n from "../i18n";
 import {
   ENABLE_DATASTAX_PORTALS,
   ENABLE_INSPECTION_PANEL,
@@ -21,6 +20,7 @@ import {
 } from "@/customization/utils/analytics";
 import { brokenEdgeMessage } from "@/utils/utils";
 import { BuildStatus, EventDeliveryType } from "../constants/enums";
+import i18n from "../i18n";
 import type { LogsLogType, VertexBuildTypeAPI } from "../types/api";
 import type { ChatInputType, ChatOutputType } from "../types/chat";
 import type {
@@ -86,9 +86,7 @@ export function completeNodeUpdate(nodeId: string): void {
   }
 }
 
-export async function waitForNodeUpdates(
-  timeoutMs: number = 10_000,
-): Promise<void> {
+export async function waitForNodeUpdates(timeoutMs = 10_000): Promise<void> {
   if (pendingNodeUpdates.size === 0) return;
   const pendingIds = Array.from(pendingNodeUpdates.keys());
   const promises = Array.from(pendingNodeUpdates.values()).map(
@@ -297,21 +295,20 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
     const newFlowPool = cloneDeep({ ...get().flowPool });
     if (!newFlowPool[nodeId]) {
       return;
-    } else {
-      let index = newFlowPool[nodeId].length - 1;
-      if (buildId) {
-        index = newFlowPool[nodeId].findIndex((flow) => flow.id === buildId);
-      }
-      //check if the data is a flowpool object
-      if ((data as VertexBuildTypeAPI).valid !== undefined) {
-        newFlowPool[nodeId][index] = data as VertexBuildTypeAPI;
-      }
-      //update data results
-      else {
-        newFlowPool[nodeId][index].data.message = data as
-          | ChatOutputType
-          | ChatInputType;
-      }
+    }
+    let index = newFlowPool[nodeId].length - 1;
+    if (buildId) {
+      index = newFlowPool[nodeId].findIndex((flow) => flow.id === buildId);
+    }
+    //check if the data is a flowpool object
+    if ((data as VertexBuildTypeAPI).valid !== undefined) {
+      newFlowPool[nodeId][index] = data as VertexBuildTypeAPI;
+    }
+    //update data results
+    else {
+      newFlowPool[nodeId][index].data.message = data as
+        | ChatOutputType
+        | ChatInputType;
     }
     get().setFlowPool(newFlowPool);
   },
@@ -440,7 +437,7 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
   setNode: (
     id: string,
     change: AllNodeType | ((oldState: AllNodeType) => AllNodeType),
-    isUserChange: boolean = true,
+    isUserChange = true,
     callback?: () => void,
   ) => {
     if (!get().nodes.find((node) => node.id === id)) {
@@ -567,8 +564,8 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
       "You can only have one Webhook component in a flow.",
     );
 
-    let minimumX = Infinity;
-    let minimumY = Infinity;
+    let minimumX = Number.POSITIVE_INFINITY;
+    let minimumY = Number.POSITIVE_INFINITY;
     const idsMap = {};
     let newNodes: AllNodeType[] = get().nodes;
     let newEdges = get().edges;
@@ -792,6 +789,7 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
     session,
     stream = true,
     eventDelivery = EventDeliveryType.STREAMING,
+    nap_payload,
   }: {
     startNodeId?: string;
     stopNodeId?: string;
@@ -801,6 +799,19 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
     session?: string;
     stream?: boolean;
     eventDelivery?: EventDeliveryType;
+    /** NAP entity payload for BaseStateAwareComponent injection. */
+    nap_payload?: {
+      universe: string;
+      entities: Array<{
+        uri: string;
+        name: string;
+        type: string;
+        version: number;
+        properties: Record<string, unknown>;
+        references: Record<string, unknown>;
+        representations: Record<string, unknown>;
+      }>;
+    };
   }) => {
     set({
       pastBuildFlowParams: {
@@ -812,6 +823,7 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
         session,
         stream,
         eventDelivery,
+        nap_payload,
       },
       buildInfo: null,
     });
@@ -1032,6 +1044,7 @@ const useFlowStore = create<FlowStoreType>((set, get) => ({
       flowId: currentFlow!.id,
       startNodeId,
       stopNodeId,
+      nap_payload,
       onGetOrderSuccess: () => {},
       onBuildComplete: (allNodesValid) => {
         if (!silent) {

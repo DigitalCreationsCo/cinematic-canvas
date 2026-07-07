@@ -188,6 +188,19 @@ export type FlowStoreType = {
     session?: string;
     stream?: boolean;
     eventDelivery?: EventDeliveryType;
+    /** NAP entity payload for BaseStateAwareComponent injection. */
+    nap_payload?: {
+      universe: string;
+      entities: Array<{
+        uri: string;
+        name: string;
+        type: string;
+        version: number;
+        properties: Record<string, unknown>;
+        references: Record<string, unknown>;
+        representations: Record<string, unknown>;
+      }>;
+    };
   } | null;
   buildFlow: ({
     startNodeId,
@@ -198,6 +211,7 @@ export type FlowStoreType = {
     session,
     stream,
     eventDelivery,
+    nap_payload,
   }: {
     startNodeId?: string;
     stopNodeId?: string;
@@ -207,6 +221,19 @@ export type FlowStoreType = {
     session?: string;
     stream?: boolean;
     eventDelivery?: EventDeliveryType;
+    /** NAP entity payload for BaseStateAwareComponent injection. */
+    nap_payload?: {
+      universe: string;
+      entities: Array<{
+        uri: string;
+        name: string;
+        type: string;
+        version: number;
+        properties: Record<string, unknown>;
+        references: Record<string, unknown>;
+        representations: Record<string, unknown>;
+      }>;
+    };
   }) => Promise<void>;
   getFlow: () => { nodes: Node[]; edges: EdgeType[]; viewport: Viewport };
   updateVerticesBuild: (

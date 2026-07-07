@@ -19,6 +19,22 @@ import httpx
 import orjson
 import sqlalchemy as sa
 from emoji import demojize, purely_emoji
+from px.base.constants import (
+    FIELD_FORMAT_ATTRIBUTES,
+    NODE_FORMAT_ATTRIBUTES,
+    ORJSON_OPTIONS,
+    SKIPPED_COMPONENTS,
+    SKIPPED_FIELD_ATTRIBUTES,
+)
+from px.log.logger import logger
+from px.template.field.prompt import DEFAULT_PROMPT_INTUT_TYPES
+from px.utils.component_aliases import flatten_components_with_aliases
+from px.utils.util import escape_json_dump
+from sqlalchemy.exc import NoResultFound
+from sqlalchemy.orm import selectinload
+from sqlmodel import col, select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from portals.initial_setup.constants import (
     ASSISTANT_FOLDER_DESCRIPTION,
     ASSISTANT_FOLDER_NAME,
@@ -43,30 +59,13 @@ from portals.services.deps import (
     get_variable_service,
     session_scope,
 )
-from px.base.constants import (
-    FIELD_FORMAT_ATTRIBUTES,
-    NODE_FORMAT_ATTRIBUTES,
-    ORJSON_OPTIONS,
-    SKIPPED_COMPONENTS,
-    SKIPPED_FIELD_ATTRIBUTES,
-)
-from px.log.logger import logger
-from px.template.field.prompt import DEFAULT_PROMPT_INTUT_TYPES
-from px.utils.component_aliases import flatten_components_with_aliases
-from px.utils.util import escape_json_dump
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import selectinload
-from sqlmodel import col, select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 # In the folder ./starter_projects we have a few JSON files that represent
 # starter projects. We want to load these into the database so that users
 # can use them as a starting point for their own projects.
 
 
-def update_projects_components_with_latest_component_versions(
-    project_data, all_types_dict
-):
+def update_projects_components_with_latest_component_versions(project_data, all_types_dict):
     all_types_dict_flat = flatten_components_with_aliases(all_types_dict)
 
     node_changes_log = defaultdict(list)
@@ -91,22 +90,13 @@ def update_projects_components_with_latest_component_versions(
             if node_type in SKIPPED_COMPONENTS:
                 continue
 
-            is_tool_or_agent = node_data.get("tool_mode", False) or node_data.get(
-                "key"
-            ) in {
+            is_tool_or_agent = node_data.get("tool_mode", False) or node_data.get("key") in {
                 "Agent",
                 "LanguageModelComponent",
                 "TypeConverterComponent",
             }
-            has_tool_outputs = any(
-                output.get("types") == ["Tool"]
-                for output in node_data.get("outputs", [])
-            )
-            if (
-                "outputs" in latest_node
-                and not has_tool_outputs
-                and not is_tool_or_agent
-            ):
+            has_tool_outputs = any(output.get("types") == ["Tool"] for output in node_data.get("outputs", []))
+            if "outputs" in latest_node and not has_tool_outputs and not is_tool_or_agent:
                 # Deep copy to avoid mutating the shared latest_node template across flows
                 new_outputs = deepcopy(latest_node["outputs"])
                 # Set selected output as the previous selected output with type migration support
@@ -116,20 +106,14 @@ def update_projects_components_with_latest_component_versions(
                 }
                 for output in new_outputs:
                     node_data_output = next(
-                        (
-                            output_
-                            for output_ in node_data["outputs"]
-                            if output_["name"] == output["name"]
-                        ),
+                        (output_ for output_ in node_data["outputs"] if output_["name"] == output["name"]),
                         None,
                     )
                     if node_data_output:
                         old_selected = node_data_output.get("selected")
                         if old_selected:
                             # Old flows may use Data/DataFrame; map to JSON/Table for backward compatibility
-                            migrated_selected = type_migrations.get(
-                                old_selected, old_selected
-                            )
+                            migrated_selected = type_migrations.get(old_selected, old_selected)
                             if migrated_selected in output.get("types", []):
                                 output["selected"] = migrated_selected
                 node_data["outputs"] = new_outputs
@@ -160,9 +144,7 @@ def update_projects_components_with_latest_component_versions(
                             node_data["template"][key]["value"] = value["value"]
                     for key in node_data["template"]:
                         if key not in latest_template:
-                            node_data["template"][key]["input_types"] = (
-                                DEFAULT_PROMPT_INTUT_TYPES
-                            )
+                            node_data["template"][key]["input_types"] = DEFAULT_PROMPT_INTUT_TYPES
                 node_changes_log[node_type].append(
                     {
                         "attr": "_type",
@@ -209,32 +191,23 @@ def update_projects_components_with_latest_component_versions(
                             attr in field_dict
                             and attr in node_data["template"].get(field_name)
                             # Check if it needs to be updated
-                            and field_dict[attr]
-                            != node_data["template"][field_name][attr]
+                            and field_dict[attr] != node_data["template"][field_name][attr]
                         ):
                             node_changes_log[node_type].append(
                                 {
                                     "attr": f"{field_name}.{attr}",
-                                    "old_value": node_data["template"][field_name][
-                                        attr
-                                    ],
+                                    "old_value": node_data["template"][field_name][attr],
                                     "new_value": field_dict[attr],
                                 }
                             )
-                            node_data["template"][field_name][attr] = deepcopy(
-                                field_dict[attr]
-                            )
+                            node_data["template"][field_name][attr] = deepcopy(field_dict[attr])
             # Remove fields that are not in the latest template
             if node_type != "Prompt":
                 for field_name in list(node_data["template"].keys()):
                     is_tool_mode_and_field_is_tools_metadata = (
-                        node_data.get("tool_mode", False)
-                        and field_name == "tools_metadata"
+                        node_data.get("tool_mode", False) and field_name == "tools_metadata"
                     )
-                    if (
-                        field_name not in latest_template
-                        and not is_tool_mode_and_field_is_tools_metadata
-                    ):
+                    if field_name not in latest_template and not is_tool_mode_and_field_is_tools_metadata:
                         node_data["template"].pop(field_name)
     log_node_changes(node_changes_log)
     return project_data_copy
@@ -258,45 +231,29 @@ def update_new_output(data):
             new_source_handle = scape_json_parse(edge["sourceHandle"])
             new_target_handle = scape_json_parse(edge["targetHandle"])
             id_ = new_source_handle["id"]
-            source_node_index = next(
-                (index for (index, d) in enumerate(nodes) if d["id"] == id_), -1
-            )
+            source_node_index = next((index for (index, d) in enumerate(nodes) if d["id"] == id_), -1)
             source_node = nodes[source_node_index] if source_node_index != -1 else None
 
             if "baseClasses" in new_source_handle:
                 if "output_types" not in new_source_handle:
-                    if (
-                        source_node
-                        and "node" in source_node["data"]
-                        and "output_types" in source_node["data"]["node"]
-                    ):
-                        new_source_handle["output_types"] = source_node["data"]["node"][
-                            "output_types"
-                        ]
+                    if source_node and "node" in source_node["data"] and "output_types" in source_node["data"]["node"]:
+                        new_source_handle["output_types"] = source_node["data"]["node"]["output_types"]
                     else:
-                        new_source_handle["output_types"] = new_source_handle[
-                            "baseClasses"
-                        ]
+                        new_source_handle["output_types"] = new_source_handle["baseClasses"]
                 del new_source_handle["baseClasses"]
 
             if new_target_handle.get("inputTypes"):
                 intersection = [
-                    type_
-                    for type_ in new_source_handle["output_types"]
-                    if type_ in new_target_handle["inputTypes"]
+                    type_ for type_ in new_source_handle["output_types"] if type_ in new_target_handle["inputTypes"]
                 ]
             else:
                 intersection = [
-                    type_
-                    for type_ in new_source_handle["output_types"]
-                    if type_ == new_target_handle["type"]
+                    type_ for type_ in new_source_handle["output_types"] if type_ == new_target_handle["type"]
                 ]
 
             selected = intersection[0] if intersection else None
             if "name" not in new_source_handle:
-                new_source_handle["name"] = " | ".join(
-                    new_source_handle["output_types"]
-                )
+                new_source_handle["name"] = " | ".join(new_source_handle["output_types"])
             new_source_handle["output_types"] = [selected] if selected else []
 
             if source_node and not source_node["data"]["node"].get("outputs"):
@@ -305,10 +262,7 @@ def update_new_output(data):
                 types = source_node["data"]["node"].get(
                     "output_types", source_node["data"]["node"].get("base_classes", [])
                 )
-                if not any(
-                    output.get("selected") == selected
-                    for output in source_node["data"]["node"]["outputs"]
-                ):
+                if not any(output.get("selected") == selected for output in source_node["data"]["node"]["outputs"]):
                     source_node["data"]["node"]["outputs"].append(
                         {
                             "types": types,
@@ -339,10 +293,7 @@ def update_new_output(data):
                     if node["id"] != edge["source"] or output.get("method") is None:
                         continue
                     source_handle = scape_json_parse(edge["sourceHandle"])
-                    if (
-                        source_handle["output_types"] == output.get("types")
-                        and source_handle["name"] != output["name"]
-                    ):
+                    if source_handle["output_types"] == output.get("types") and source_handle["name"] != output["name"]:
                         source_handle["name"] = output["name"]
                         if isinstance(source_handle, str):
                             source_handle = scape_json_parse(source_handle)
@@ -401,19 +352,11 @@ def update_edges_with_latest_component_versions(project_data):
 
         # Find the corresponding source and target nodes
         source_node = next(
-            (
-                node
-                for node in project_data_copy.get("nodes", [])
-                if node.get("id") == edge.get("source")
-            ),
+            (node for node in project_data_copy.get("nodes", []) if node.get("id") == edge.get("source")),
             None,
         )
         target_node = next(
-            (
-                node
-                for node in project_data_copy.get("nodes", [])
-                if node.get("id") == edge.get("target")
-            ),
+            (node for node in project_data_copy.get("nodes", []) if node.get("id") == edge.get("target")),
             None,
         )
 
@@ -423,9 +366,7 @@ def update_edges_with_latest_component_versions(project_data):
             if node_type_map.get(node_type):
                 # Use the first node of matching type as replacement
                 new_node_id = node_type_map[node_type][0]
-                logger.info(
-                    f"Reconciling missing source node: replacing {edge.get('source')} with {new_node_id}"
-                )
+                logger.info(f"Reconciling missing source node: replacing {edge.get('source')} with {new_node_id}")
 
                 # Update edge source
                 edge["source"] = new_node_id
@@ -435,11 +376,7 @@ def update_edges_with_latest_component_versions(project_data):
 
                 # Find the new source node
                 source_node = next(
-                    (
-                        node
-                        for node in project_data_copy.get("nodes", [])
-                        if node.get("id") == new_node_id
-                    ),
+                    (node for node in project_data_copy.get("nodes", []) if node.get("id") == new_node_id),
                     None,
                 )
 
@@ -447,12 +384,8 @@ def update_edges_with_latest_component_versions(project_data):
                 # This is a simplified approach - in production you'd need to parse and rebuild the ID
                 old_id_prefix = edge.get("id", "").split("{")[0]
                 if old_id_prefix:
-                    new_id_prefix = old_id_prefix.replace(
-                        edge.get("source"), new_node_id
-                    )
-                    edge["id"] = edge.get("id", "").replace(
-                        old_id_prefix, new_id_prefix
-                    )
+                    new_id_prefix = old_id_prefix.replace(edge.get("source"), new_node_id)
+                    edge["id"] = edge.get("id", "").replace(old_id_prefix, new_id_prefix)
 
         if target_node is None and target_handle and "id" in target_handle:
             # Extract node type from target handle ID (e.g., "AstraDBGraph-jr8pY" -> "AstraDBGraph")
@@ -462,9 +395,7 @@ def update_edges_with_latest_component_versions(project_data):
                 if node_type_map.get(node_type):
                     # Use the first node of matching type as replacement
                     new_node_id = node_type_map[node_type][0]
-                    logger.info(
-                        f"Reconciling missing target node: replacing {edge.get('target')} with {new_node_id}"
-                    )
+                    logger.info(f"Reconciling missing target node: replacing {edge.get('target')} with {new_node_id}")
 
                     # Update edge target
                     edge["target"] = new_node_id
@@ -474,27 +405,15 @@ def update_edges_with_latest_component_versions(project_data):
 
                     # Find the new target node
                     target_node = next(
-                        (
-                            node
-                            for node in project_data_copy.get("nodes", [])
-                            if node.get("id") == new_node_id
-                        ),
+                        (node for node in project_data_copy.get("nodes", []) if node.get("id") == new_node_id),
                         None,
                     )
 
                     # Update edge ID (simplified approach)
-                    old_id_suffix = (
-                        edge.get("id", "").split("}-")[1]
-                        if "}-" in edge.get("id", "")
-                        else ""
-                    )
+                    old_id_suffix = edge.get("id", "").split("}-")[1] if "}-" in edge.get("id", "") else ""
                     if old_id_suffix:
-                        new_id_suffix = old_id_suffix.replace(
-                            edge.get("target"), new_node_id
-                        )
-                        edge["id"] = edge.get("id", "").replace(
-                            old_id_suffix, new_id_suffix
-                        )
+                        new_id_suffix = old_id_suffix.replace(edge.get("target"), new_node_id)
+                        edge["id"] = edge.get("id", "").replace(old_id_suffix, new_id_suffix)
 
         if source_node and target_node:
             # Extract node data for easier access
@@ -531,9 +450,7 @@ def update_edges_with_latest_component_versions(project_data):
             if output_data:
                 if len(output_data.get("types", [])) == 1:
                     new_output_types = output_data.get("types", [])
-                elif len(output_data.get("types", [])) > 1 and output_data.get(
-                    "selected"
-                ):
+                elif len(output_data.get("types", [])) > 1 and output_data.get("selected"):
                     # Only use "selected" if there are multiple types available
                     # and selected is present
                     selected = output_data.get("selected")
@@ -556,9 +473,7 @@ def update_edges_with_latest_component_versions(project_data):
 
             # Update output types if they've changed and log the change
             if source_handle.get("output_types", []) != new_output_types:
-                edge_changes_log[
-                    source_node_data.get("display_name", "unknown")
-                ].append(
+                edge_changes_log[source_node_data.get("display_name", "unknown")].append(
                     {
                         "attr": "output_types",
                         "old_value": source_handle.get("output_types", []),
@@ -571,24 +486,16 @@ def update_edges_with_latest_component_versions(project_data):
             field_name = target_handle.get("fieldName")
             if field_name in target_node_data.get("template", {}) and target_handle.get(
                 "inputTypes", []
-            ) != target_node_data.get("template", {}).get(field_name, {}).get(
-                "input_types", []
-            ):
-                edge_changes_log[
-                    target_node_data.get("display_name", "unknown")
-                ].append(
+            ) != target_node_data.get("template", {}).get(field_name, {}).get("input_types", []):
+                edge_changes_log[target_node_data.get("display_name", "unknown")].append(
                     {
                         "attr": "inputTypes",
                         "old_value": target_handle.get("inputTypes", []),
-                        "new_value": target_node_data.get("template", {})
-                        .get(field_name, {})
-                        .get("input_types", []),
+                        "new_value": target_node_data.get("template", {}).get(field_name, {}).get("input_types", []),
                     }
                 )
                 target_handle["inputTypes"] = (
-                    target_node_data.get("template", {})
-                    .get(field_name, {})
-                    .get("input_types", [])
+                    target_node_data.get("template", {}).get(field_name, {}).get("input_types", [])
                 )
 
             # Escape the updated handles for JSON storage
@@ -597,24 +504,18 @@ def update_edges_with_latest_component_versions(project_data):
 
             # Try to parse and escape the old handles for comparison
             try:
-                old_escape_source_handle = escape_json_dump(
-                    json.loads(edge.get("sourceHandle", "{}"))
-                )
+                old_escape_source_handle = escape_json_dump(json.loads(edge.get("sourceHandle", "{}")))
             except (json.JSONDecodeError, TypeError):
                 old_escape_source_handle = edge.get("sourceHandle", "")
 
             try:
-                old_escape_target_handle = escape_json_dump(
-                    json.loads(edge.get("targetHandle", "{}"))
-                )
+                old_escape_target_handle = escape_json_dump(json.loads(edge.get("targetHandle", "{}")))
             except (json.JSONDecodeError, TypeError):
                 old_escape_target_handle = edge.get("targetHandle", "")
 
             # Update source handle if it's changed and log the change
             if old_escape_source_handle != escaped_source_handle:
-                edge_changes_log[
-                    source_node_data.get("display_name", "unknown")
-                ].append(
+                edge_changes_log[source_node_data.get("display_name", "unknown")].append(
                     {
                         "attr": "sourceHandle",
                         "old_value": old_escape_source_handle,
@@ -627,9 +528,7 @@ def update_edges_with_latest_component_versions(project_data):
 
             # Update target handle if it's changed and log the change
             if old_escape_target_handle != escaped_target_handle:
-                edge_changes_log[
-                    target_node_data.get("display_name", "unknown")
-                ].append(
+                edge_changes_log[target_node_data.get("display_name", "unknown")].append(
                     {
                         "attr": "targetHandle",
                         "old_value": old_escape_target_handle,
@@ -659,9 +558,7 @@ def log_node_changes(node_changes_log) -> None:
     for node_name, changes in node_changes_log.items():
         message = f"\nNode: {node_name} was updated with the following changes:"
         for change in changes:
-            message += (
-                f"\n- {change['attr']}: {change['old_value']} -> {change['new_value']}"
-            )
+            message += f"\n- {change['attr']}: {change['old_value']} -> {change['new_value']}"
         formatted_messages.append(message)
     if formatted_messages:
         logger.debug("\n".join(formatted_messages))
@@ -724,11 +621,7 @@ async def copy_profile_pictures() -> None:
 
     try:
         # Get set of existing files in target to avoid redundant checks
-        target_files = {
-            str(f.relative_to(target))
-            async for f in target.rglob("*")
-            if await f.is_file()
-        }
+        target_files = {str(f.relative_to(target)) async for f in target.rglob("*") if await f.is_file()}
 
         # Define a helper coroutine to copy a single file concurrently
         async def copy_file(src_file, dst_file, rel_path):
@@ -768,11 +661,7 @@ def get_project_data(project):
         updated_at_datetime = datetime.fromisoformat(project_updated_at)
     project_data = project.get("data")
     project_icon = project.get("icon")
-    project_icon = (
-        demojize(project_icon)
-        if project_icon and purely_emoji(project_icon)
-        else project_icon
-    )
+    project_icon = demojize(project_icon) if project_icon and purely_emoji(project_icon) else project_icon
     project_icon_bg_color = project.get("icon_bg_color")
     project_gradient = project.get("gradient")
     project_tags = project.get("tags")
@@ -789,9 +678,7 @@ def get_project_data(project):
     )
 
 
-async def update_project_file(
-    project_path: anyio.Path, project: dict, updated_project_data
-) -> None:
+async def update_project_file(project_path: anyio.Path, project: dict, updated_project_data) -> None:
     """Update starter project JSON file with new data.
 
     This function attempts to write updated project data back to the source file.
@@ -867,12 +754,8 @@ def create_new_project(
     session.add(db_flow)
 
 
-async def get_all_flows_similar_to_project(
-    session: AsyncSession, folder_id: UUID
-) -> list[Flow]:
-    stmt = (
-        select(Folder).options(selectinload(Folder.flows)).where(Folder.id == folder_id)
-    )
+async def get_all_flows_similar_to_project(session: AsyncSession, folder_id: UUID) -> list[Flow]:
+    stmt = select(Folder).options(selectinload(Folder.flows)).where(Folder.id == folder_id)
     return list((await session.exec(stmt)).first().flows)
 
 
@@ -890,9 +773,7 @@ async def folder_exists(session, folder_name):
 
 async def get_or_create_starter_folder(session):
     if not await folder_exists(session, STARTER_FOLDER_NAME):
-        new_folder = FolderCreate(
-            name=STARTER_FOLDER_NAME, description=STARTER_FOLDER_DESCRIPTION
-        )
+        new_folder = FolderCreate(name=STARTER_FOLDER_NAME, description=STARTER_FOLDER_DESCRIPTION)
         db_folder = Folder.model_validate(new_folder, from_attributes=True)
         session.add(db_folder)
         await session.flush()
@@ -914,16 +795,12 @@ async def get_or_create_assistant_folder(session, user_id: UUID):
     Returns:
         The Portals Assistant folder
     """
-    stmt = select(Folder).where(
-        Folder.user_id == user_id, Folder.name == ASSISTANT_FOLDER_NAME
-    )
+    stmt = select(Folder).where(Folder.user_id == user_id, Folder.name == ASSISTANT_FOLDER_NAME)
     result = await session.exec(stmt)
     folder = result.first()
 
     if not folder:
-        new_folder = FolderCreate(
-            name=ASSISTANT_FOLDER_NAME, description=ASSISTANT_FOLDER_DESCRIPTION
-        )
+        new_folder = FolderCreate(name=ASSISTANT_FOLDER_NAME, description=ASSISTANT_FOLDER_DESCRIPTION)
         db_folder = Folder.model_validate(new_folder, from_attributes=True)
         db_folder.user_id = user_id
         session.add(db_folder)
@@ -982,9 +859,7 @@ async def create_or_update_agentic_flows(session: AsyncSession, user_id: UUID) -
     # Only configure if agentic experience is enabled
     settings_service = get_settings_service()
     if not settings_service.settings.agentic_experience:
-        await logger.adebug(
-            "Agentic experience disabled, skipping agentic flows creation"
-        )
+        await logger.adebug("Agentic experience disabled, skipping agentic flows creation")
         return
 
     try:
@@ -1024,21 +899,15 @@ async def create_or_update_agentic_flows(session: AsyncSession, user_id: UUID) -
                 try:
                     flow_id = UUID(flow_id)
                 except ValueError:
-                    await logger.awarning(
-                        f"Invalid UUID for flow {flow_name}: {flow_id}, will use auto-generated ID"
-                    )
+                    await logger.awarning(f"Invalid UUID for flow {flow_name}: {flow_id}, will use auto-generated ID")
                     flow_id = None
 
             # Try to find an existing flow by ID or endpoint_name
-            existing_flow = await find_existing_flow(
-                session, flow_id, flow_endpoint_name
-            )
+            existing_flow = await find_existing_flow(session, flow_id, flow_endpoint_name)
 
             if existing_flow:
                 # Skip update if flow already exists
-                await logger.adebug(
-                    f"Agentic flow already exists, skipping: {flow_name}"
-                )
+                await logger.adebug(f"Agentic flow already exists, skipping: {flow_name}")
                 flows_updated += 1
             else:
                 try:
@@ -1057,9 +926,7 @@ async def create_or_update_agentic_flows(session: AsyncSession, user_id: UUID) -
                         tags=flow_tags,
                         endpoint_name=flow_endpoint_name,  # Set endpoint_name from JSON
                     )
-                    db_flow = Flow.model_validate(
-                        new_project.model_dump(exclude={"id"})
-                    )
+                    db_flow = Flow.model_validate(new_project.model_dump(exclude={"id"}))
 
                     # Set the ID from JSON if provided
                     if flow_id:
@@ -1068,9 +935,7 @@ async def create_or_update_agentic_flows(session: AsyncSession, user_id: UUID) -
                     session.add(db_flow)
                     flows_created += 1
                 except Exception:  # noqa: BLE001
-                    await logger.aexception(
-                        f"Error while creating agentic flow {flow_name}"
-                    )
+                    await logger.aexception(f"Error while creating agentic flow {flow_name}")
 
         if flows_created > 0 or flows_updated > 0:
             await session.commit()
@@ -1126,9 +991,7 @@ async def load_flows_from_directory() -> None:
 
 
 async def detect_github_url(url: str) -> str:
-    if matched := re.match(
-        r"https?://(?:www\.)?github\.com/([\w.-]+)/([\w.-]+)?/?$", url
-    ):
+    if matched := re.match(r"https?://(?:www\.)?github\.com/([\w.-]+)/([\w.-]+)?/?$", url):
         owner, repo = matched.groups()
 
         repo = repo.removesuffix(".git")
@@ -1139,9 +1002,7 @@ async def detect_github_url(url: str) -> str:
             default_branch = response.json().get("default_branch")
             return f"https://github.com/{owner}/{repo}/archive/refs/heads/{default_branch}.zip"
 
-    if matched := re.match(
-        r"https?://(?:www\.)?github\.com/([\w.-]+)/([\w.-]+)/tree/([\w\\/.-]+)", url
-    ):
+    if matched := re.match(r"https?://(?:www\.)?github\.com/([\w.-]+)/([\w.-]+)/tree/([\w\\/.-]+)", url):
         owner, repo, branch = matched.groups()
         if branch[-1] == "/":
             branch = branch[:-1]
@@ -1156,9 +1017,7 @@ async def detect_github_url(url: str) -> str:
             tag = tag[:-1]
         return f"https://github.com/{owner}/{repo}/archive/refs/tags/{tag}.zip"
 
-    if matched := re.match(
-        r"https?://(?:www\.)?github\.com/([\w.-]+)/([\w.-]+)/commit/(\w+)/?$", url
-    ):
+    if matched := re.match(r"https?://(?:www\.)?github\.com/([\w.-]+)/([\w.-]+)/commit/(\w+)/?$", url):
         owner, repo, commit = matched.groups()
         return f"https://github.com/{owner}/{repo}/archive/{commit}.zip"
 
@@ -1193,40 +1052,25 @@ async def load_bundles_from_urls() -> tuple[list[TemporaryDirectory], list[str]]
                 response.raise_for_status()
 
             with zipfile.ZipFile(io.BytesIO(response.content)) as zfile:
-                dir_names = [
-                    f.filename
-                    for f in zfile.infolist()
-                    if f.is_dir() and "/" not in f.filename[:-1]
-                ]
+                dir_names = [f.filename for f in zfile.infolist() if f.is_dir() and "/" not in f.filename[:-1]]
                 temp_dir = None
                 for filename in zfile.namelist():
                     path = Path(filename)
                     for dir_name in dir_names:
-                        if (
-                            path.is_relative_to(f"{dir_name}flows/")
-                            and path.suffix == ".json"
-                        ):
+                        if path.is_relative_to(f"{dir_name}flows/") and path.suffix == ".json":
                             file_content = zfile.read(filename)
-                            await upsert_flow_from_file(
-                                file_content, path.stem, session, user_id
-                            )
+                            await upsert_flow_from_file(file_content, path.stem, session, user_id)
                         elif path.is_relative_to(f"{dir_name}components/"):
                             if temp_dir is None:
                                 temp_dir = await asyncio.to_thread(TemporaryDirectory)
                                 temp_dirs.append(temp_dir)
-                            component_paths.add(
-                                str(Path(temp_dir.name) / f"{dir_name}components")
-                            )
-                            await asyncio.to_thread(
-                                zfile.extract, filename, temp_dir.name
-                            )
+                            component_paths.add(str(Path(temp_dir.name) / f"{dir_name}components"))
+                            await asyncio.to_thread(zfile.extract, filename, temp_dir.name)
 
     return temp_dirs, list(component_paths)
 
 
-async def upsert_flow_from_file(
-    file_content: AnyStr, filename: str, session: AsyncSession, user_id: UUID
-) -> None:
+async def upsert_flow_from_file(file_content: AnyStr, filename: str, session: AsyncSession, user_id: UUID) -> None:
     flow = orjson.loads(file_content)
     flow_endpoint_name = flow.get("endpoint_name")
     if _is_valid_uuid(filename):
@@ -1243,9 +1087,7 @@ async def upsert_flow_from_file(
     existing = await find_existing_flow(session, flow_id, flow_endpoint_name)
     if existing:
         await logger.adebug(f"Found existing flow: {existing.name}")
-        await logger.ainfo(
-            f"Updating existing flow: {flow_id} with endpoint name {flow_endpoint_name}"
-        )
+        await logger.ainfo(f"Updating existing flow: {flow_id} with endpoint name {flow_endpoint_name}")
         for key, value in flow.items():
             if hasattr(existing, key):
                 # flow dict from json and db representation are not 100% the same
@@ -1267,9 +1109,7 @@ async def upsert_flow_from_file(
 
         session.add(existing)
     else:
-        await logger.ainfo(
-            f"Creating new flow: {flow_id} with endpoint name {flow_endpoint_name}"
-        )
+        await logger.ainfo(f"Creating new flow: {flow_id} with endpoint name {flow_endpoint_name}")
 
         # Assign the newly created flow to the default folder
         folder = await get_or_create_default_folder(session, user_id)
@@ -1286,9 +1126,7 @@ async def find_existing_flow(session, flow_id, flow_endpoint_name):
         await logger.adebug(f"flow_endpoint_name: {flow_endpoint_name}")
         stmt = select(Flow).where(Flow.endpoint_name == flow_endpoint_name)
         if existing := (await session.exec(stmt)).first():
-            await logger.adebug(
-                f"Found existing flow by endpoint name: {existing.name}"
-            )
+            await logger.adebug(f"Found existing flow by endpoint name: {existing.name}")
             return existing
 
     stmt = select(Flow).where(Flow.id == flow_id)
@@ -1335,19 +1173,13 @@ async def create_or_update_starter_projects(all_types_dict: dict) -> None:
                     project_gradient,
                     project_tags,
                 ) = get_project_data(project)
-                updated_project_data = (
-                    update_projects_components_with_latest_component_versions(
-                        project_data.copy(), all_types_dict
-                    )
+                updated_project_data = update_projects_components_with_latest_component_versions(
+                    project_data.copy(), all_types_dict
                 )
-                updated_project_data = update_edges_with_latest_component_versions(
-                    updated_project_data
-                )
+                updated_project_data = update_edges_with_latest_component_versions(updated_project_data)
                 if updated_project_data != project_data:
                     project_data = updated_project_data
-                    await update_project_file(
-                        project_path, project, updated_project_data
-                    )
+                    await update_project_file(project_path, project, updated_project_data)
 
                 try:
                     # Create the updated starter project
@@ -1365,24 +1197,16 @@ async def create_or_update_starter_projects(all_types_dict: dict) -> None:
                         new_folder_id=new_folder.id,
                     )
                 except Exception:  # noqa: BLE001
-                    await logger.aexception(
-                        f"Error while creating starter project {project_name}"
-                    )
+                    await logger.aexception(f"Error while creating starter project {project_name}")
 
                 successfully_updated_projects += 1
-            await logger.adebug(
-                f"Successfully updated {successfully_updated_projects} starter projects"
-            )
+            await logger.adebug(f"Successfully updated {successfully_updated_projects} starter projects")
         else:
             # Even if we're not updating starter projects, we still need to create any that don't exist
             await logger.adebug("Creating new starter projects")
             successfully_created_projects = 0
-            existing_flows = await get_all_flows_similar_to_project(
-                session, new_folder.id
-            )
-            existing_flow_names = [
-                existing_flow.name for existing_flow in existing_flows
-            ]
+            existing_flows = await get_all_flows_similar_to_project(session, new_folder.id)
+            existing_flow_names = [existing_flow.name for existing_flow in existing_flows]
             for _, project in starter_projects:
                 (
                     project_name,
@@ -1411,13 +1235,9 @@ async def create_or_update_starter_projects(all_types_dict: dict) -> None:
                             new_folder_id=new_folder.id,
                         )
                     except Exception:  # noqa: BLE001
-                        await logger.aexception(
-                            f"Error while creating starter project {project_name}"
-                        )
+                        await logger.aexception(f"Error while creating starter project {project_name}")
                     successfully_created_projects += 1
-                await logger.adebug(
-                    f"Successfully created {successfully_created_projects} starter projects"
-                )
+                await logger.adebug(f"Successfully created {successfully_created_projects} starter projects")
 
 
 async def initialize_auto_login_default_superuser() -> None:
@@ -1438,12 +1258,8 @@ async def initialize_auto_login_default_superuser() -> None:
         raise ValueError(msg)
 
     async with session_scope() as async_session:
-        super_user = await get_auth_service().create_super_user(
-            username, password, db=async_session
-        )
-        await get_variable_service().initialize_user_variables(
-            super_user.id, async_session
-        )
+        super_user = await get_auth_service().create_super_user(username, password, db=async_session)
+        await get_variable_service().initialize_user_variables(super_user.id, async_session)
         # Initialize agentic variables if agentic experience is enabled
         from portals.api.utils.mcp.agentic_mcp import initialize_agentic_user_variables
 
@@ -1453,9 +1269,7 @@ async def initialize_auto_login_default_superuser() -> None:
     await logger.adebug("Super user initialized")
 
 
-async def get_or_create_default_folder(
-    session: AsyncSession, user_id: UUID
-) -> FolderRead:
+async def get_or_create_default_folder(session: AsyncSession, user_id: UUID) -> FolderRead:
     """Ensure the default folder exists for the given user_id. If it doesn't exist, create it.
 
     Uses an idempotent insertion approach to handle concurrent creation gracefully.
@@ -1473,9 +1287,7 @@ async def get_or_create_default_folder(
         FolderRead: The default folder for the user.
     """
     # First, check if the current default folder exists
-    stmt = select(Folder).where(
-        Folder.user_id == user_id, Folder.name == DEFAULT_FOLDER_NAME
-    )
+    stmt = select(Folder).where(Folder.user_id == user_id, Folder.name == DEFAULT_FOLDER_NAME)
     result = await session.exec(stmt)
     folder = result.first()
     if folder:
@@ -1487,9 +1299,7 @@ async def get_or_create_default_folder(
             if legacy_name == DEFAULT_FOLDER_NAME:
                 continue  # Skip if legacy name is the same as current default
 
-            legacy_stmt = select(Folder).where(
-                Folder.user_id == user_id, Folder.name == legacy_name
-            )
+            legacy_stmt = select(Folder).where(Folder.user_id == user_id, Folder.name == legacy_name)
             legacy_result = await session.exec(legacy_stmt)
             legacy_folder = legacy_result.first()
 
@@ -1504,9 +1314,7 @@ async def get_or_create_default_folder(
                 try:
                     await session.flush()
                     await session.refresh(legacy_folder)
-                    return FolderRead.model_validate(
-                        legacy_folder, from_attributes=True
-                    )
+                    return FolderRead.model_validate(legacy_folder, from_attributes=True)
                 except sa.exc.IntegrityError:
                     # If there's a conflict, rollback and proceed to create new folder
                     await session.rollback()
@@ -1536,9 +1344,7 @@ async def get_or_create_default_folder(
 
 async def sync_flows_from_fs():
     flow_mtimes = {}
-    fs_flows_polling_interval = (
-        get_settings_service().settings.fs_flows_polling_interval / 1000
-    )
+    fs_flows_polling_interval = get_settings_service().settings.fs_flows_polling_interval / 1000
     storage_service = get_storage_service()
     try:
         while True:
@@ -1552,12 +1358,7 @@ async def sync_flows_from_fs():
                         fs_path_str = flow.fs_path
                         if not Path(fs_path_str).is_absolute():
                             # Relative path - construct full path
-                            path = (
-                                storage_service.data_dir
-                                / "flows"
-                                / str(flow.user_id)
-                                / fs_path_str
-                            )
+                            path = storage_service.data_dir / "flows" / str(flow.user_id) / fs_path_str
                         else:
                             # Absolute path - use as-is
                             path = anyio.Path(fs_path_str)
@@ -1565,9 +1366,7 @@ async def sync_flows_from_fs():
                             if await path.exists():
                                 new_mtime = (await path.stat()).st_mtime
                                 if new_mtime > mtime:
-                                    update_data = orjson.loads(
-                                        await path.read_text(encoding="utf-8")
-                                    )
+                                    update_data = orjson.loads(await path.read_text(encoding="utf-8"))
                                     try:
                                         for field_name in (
                                             "name",
@@ -1587,9 +1386,7 @@ async def sync_flows_from_fs():
                                         )
                                     flow_mtimes[flow.id] = new_mtime
                         except Exception:  # noqa: BLE001
-                            await logger.aexception(
-                                f"Error while handling flow file {path}"
-                            )
+                            await logger.aexception(f"Error while handling flow file {path}")
             except asyncio.CancelledError:
                 await logger.adebug("Flow sync cancelled")
                 break

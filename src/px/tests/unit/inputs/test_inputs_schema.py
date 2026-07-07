@@ -3,8 +3,6 @@ from types import NoneType
 from typing import Union
 
 import pytest
-from pydantic import BaseModel, Field, ValidationError
-
 from px.inputs.inputs import (
     BoolInput,
     DictInput,
@@ -20,6 +18,7 @@ from px.schema.json_schema import create_input_schema_from_json_schema
 from px.template import Input, Output
 from px.template.field.base import UNDEFINED
 from px.type_extraction.type_extraction import post_process_type
+from pydantic import BaseModel, Field, ValidationError
 
 
 class TestInput:
@@ -67,7 +66,7 @@ class TestInput:
             int,
             str,
             float,
-        }  # noqa: UP007
+        }
 
         # Custom data types
         assert set(post_process_type(Data)) == {Data}
@@ -87,12 +86,12 @@ class TestInput:
             int,
             str,
             float,
-        }  # noqa: UP007
+        }
         assert set(post_process_type(Union[int | list[str] | list[float], str])) == {
             int,
             str,
             float,
-        }  # noqa: UP007
+        }
 
         # Non-generic types should return as is
         assert set(post_process_type(dict)) == {dict}
@@ -115,7 +114,7 @@ class TestInput:
             Data,
             float,
             type(None),
-        }  # noqa: UP007
+        }
 
         # Multiple Data types combined
         assert set(post_process_type(Union[Data, str | float])) == {Data, str, float}  # noqa: UP007
@@ -124,14 +123,14 @@ class TestInput:
             int,
             float,
             str,
-        }  # noqa: UP007
+        }
 
         # Testing with nested unions and lists
         assert set(post_process_type(Union[list[Data], list[int | str]])) == {
             Data,
             int,
             str,
-        }  # noqa: UP007
+        }
         assert set(post_process_type(Data | list[float | str])) == {Data, float, str}
 
     def test_input_to_dict(self):
@@ -244,9 +243,7 @@ def test_schema_to_portals_inputs():
     text_input = find_input("text_field")
     assert text_input.display_name == "Custom Text Title"
     assert text_input.info == "A text field"
-    assert isinstance(
-        text_input, MessageTextInput
-    )  # Check the instance type instead of field_type
+    assert isinstance(text_input, MessageTextInput)  # Check the instance type instead of field_type
 
     # Test number field
     number_input = find_input("number_field")

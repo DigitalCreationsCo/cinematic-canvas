@@ -483,6 +483,17 @@ async def generate_flow_events(
 
     event_manager.on_vertices_sorted(data={"ids": ids, "to_run": vertices_to_run})
 
+    # ── Inject NAP narrative payload ──────────────────────────────
+    # The frontend reads entities from the local NAP repository and
+    # includes them in the build request as `nap_payload`.  We extract
+    # it here and place it on the graph's flow_state so that
+    # BaseStateAwareComponent._get_nap_context() can read it from
+    # self.graph.flow_state["nap_payload"].
+    #
+    # This is a remote backend — the frontend does the filesystem I/O.
+    if inputs is not None and inputs.nap_payload is not None:
+        graph.flow_state["nap_payload"] = inputs.nap_payload
+
     vertex_timedeltas: list[float] = []
     event_manager.on_build_start(data={})
     tasks = []

@@ -24,6 +24,7 @@ interface HeaderComponentProps {
   view: "list" | "grid";
   setView: (view: "list" | "grid") => void;
   setNewProjectModal: (newProjectModal: boolean) => void;
+  setTemplatesModal?: (templatesModal: boolean) => void;
   folderName?: string;
   setSearch: (search: string) => void;
   isEmptyFolder: boolean;
@@ -37,6 +38,7 @@ const HeaderComponent = ({
   view,
   setView,
   setNewProjectModal,
+  setTemplatesModal,
   setSearch,
   isEmptyFolder,
   selectedFlows,
@@ -196,7 +198,7 @@ const HeaderComponent = ({
                         ? "left-[2px] translate-x-0"
                         : "left-[6px] translate-x-full"
                     }`}
-                  ></div>
+                  />
 
                   {/* Buttons */}
                   {["list", "grid"].map((viewType) => (
@@ -266,7 +268,13 @@ const HeaderComponent = ({
                     variant="default"
                     size="iconMd"
                     className="z-50 px-2.5 !text-mmd"
-                    onClick={() => setNewProjectModal(true)}
+                    onClick={() => {
+                      if (setTemplatesModal) {
+                        setTemplatesModal(true);
+                      } else {
+                        setNewProjectModal(true);
+                      }
+                    }}
                     id="new-project-btn"
                     data-testid="new-project-btn"
                   >

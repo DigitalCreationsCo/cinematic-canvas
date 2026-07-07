@@ -1,8 +1,9 @@
 from fastapi import HTTPException
+from pydantic import BaseModel
+
 from portals.api.utils import get_suggestion_message
 from portals.services.database.models.flow.model import Flow
 from portals.services.database.models.flow.utils import get_outdated_components
-from pydantic import BaseModel
 
 
 class InvalidChatInputError(Exception):
@@ -43,16 +44,12 @@ class ExceptionBody(BaseModel):
 
 
 class APIException(HTTPException):
-    def __init__(
-        self, exception: Exception, flow: Flow | None = None, status_code: int = 500
-    ):
+    def __init__(self, exception: Exception, flow: Flow | None = None, status_code: int = 500):
         body = self.build_exception_body(exception, flow)
         super().__init__(status_code=status_code, detail=body.model_dump_json())
 
     @staticmethod
-    def build_exception_body(
-        exc: str | list[str] | Exception, flow: Flow | None
-    ) -> ExceptionBody:
+    def build_exception_body(exc: str | list[str] | Exception, flow: Flow | None) -> ExceptionBody:
         body = {"message": str(exc)}
         if flow:
             outdated_components = get_outdated_components(flow)

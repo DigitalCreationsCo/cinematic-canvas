@@ -17,11 +17,12 @@ from opentelemetry.sdk.trace.export import SpanProcessor
 from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
 from opentelemetry.trace import Span, Status, StatusCode, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from portals.schema.message import Message
-from portals.services.tracing.base import BaseTracer
 from px.log.logger import logger
 from px.schema.data import Data
 from typing_extensions import override
+
+from portals.schema.message import Message
+from portals.services.tracing.base import BaseTracer
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -30,8 +31,9 @@ if TYPE_CHECKING:
     from langchain_core.callbacks.base import BaseCallbackHandler
     from opentelemetry.propagators.textmap import CarrierT
     from opentelemetry.util.types import AttributeValue
-    from portals.services.tracing.schema import Log
     from px.graph.vertex.base import Vertex
+
+    from portals.services.tracing.schema import Log
 
 
 class CollectingSpanProcessor(SpanProcessor):
@@ -82,8 +84,8 @@ class ArizePhoenixTracer(BaseTracer):
         self.project_name = project_name
         self.trace_id = trace_id
         self.session_id = session_id
-        self.flow_name = trace_name.split(" - ")[0]
-        self.flow_id = trace_name.split(" - ")[-1]
+        self.flow_name = trace_name.split(" - ", maxsplit=1)[0]
+        self.flow_id = trace_name.rsplit(" - ", maxsplit=1)[-1]
         self.chat_input_value = ""
         self.chat_output_value = ""
 
@@ -100,12 +102,8 @@ class ArizePhoenixTracer(BaseTracer):
                 name="Portals",
                 start_time=self._get_current_timestamp(),
             )
-            self.root_span.set_attribute(
-                SpanAttributes.SESSION_ID, self.session_id or self.flow_id
-            )
-            self.root_span.set_attribute(
-                SpanAttributes.OPENINFERENCE_SPAN_KIND, self.trace_type
-            )
+            self.root_span.set_attribute(SpanAttributes.SESSION_ID, self.session_id or self.flow_id)
+            self.root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, self.trace_type)
             self.root_span.set_attribute("portals.trace_name", self.trace_name)
             self.root_span.set_attribute("portals.trace_type", self.trace_type)
             self.root_span.set_attribute("portals.project_name", self.project_name)
@@ -120,9 +118,7 @@ class ArizePhoenixTracer(BaseTracer):
             self.child_spans: dict[str, Span] = {}
 
         except Exception as e:  # noqa: BLE001
-            logger.error(
-                "[Arize/Phoenix] Error Setting Up Tracer: %s", str(e), exc_info=True
-            )
+            logger.error("[Arize/Phoenix] Error Setting Up Tracer: %s", str(e), exc_info=True)
             self._ready = False
 
     @property
@@ -143,9 +139,7 @@ class ArizePhoenixTracer(BaseTracer):
         # Arize Config
         arize_api_key = os.getenv("ARIZE_API_KEY", None)
         arize_space_id = os.getenv("ARIZE_SPACE_ID", None)
-        arize_collector_endpoint = os.getenv(
-            "ARIZE_COLLECTOR_ENDPOINT", "https://otlp.arize.com"
-        )
+        arize_collector_endpoint = os.getenv("ARIZE_COLLECTOR_ENDPOINT", "https://otlp.arize.com")
         enable_arize_tracing = bool(arize_api_key and arize_space_id)
         arize_endpoint = f"{arize_collector_endpoint}/v1"
         arize_headers = {
@@ -156,13 +150,8 @@ class ArizePhoenixTracer(BaseTracer):
 
         # Phoenix Config
         phoenix_api_key = os.getenv("PHOENIX_API_KEY", None)
-        phoenix_collector_endpoint = os.getenv(
-            "PHOENIX_COLLECTOR_ENDPOINT", "https://app.phoenix.arize.com"
-        )
-        phoenix_auth_disabled = (
-            "localhost" in phoenix_collector_endpoint
-            or "127.0.0.1" in phoenix_collector_endpoint
-        )
+        phoenix_collector_endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "https://app.phoenix.arize.com")
+        phoenix_auth_disabled = "localhost" in phoenix_collector_endpoint or "127.0.0.1" in phoenix_collector_endpoint
         enable_phoenix_tracing = bool(phoenix_api_key) or phoenix_auth_disabled
         phoenix_endpoint = f"{phoenix_collector_endpoint}/v1/traces"
         phoenix_headers = (
@@ -189,24 +178,16 @@ class ArizePhoenixTracer(BaseTracer):
             )
 
             name_without_space = self.flow_name.replace(" ", "-")
-            project_name = (
-                self.project_name
-                if name_without_space == "None"
-                else name_without_space
-            )
+            project_name = self.project_name if name_without_space == "None" else name_without_space
             attributes = {PROJECT_NAME: project_name, "model_id": project_name}
             resource = Resource.create(attributes=attributes)
             tracer_provider = TracerProvider(resource=resource, verbose=False)
-            span_processor = (
-                BatchSpanProcessor if arize_phoenix_batch else SimpleSpanProcessor
-            )
+            span_processor = BatchSpanProcessor if arize_phoenix_batch else SimpleSpanProcessor
 
             if enable_arize_tracing:
                 tracer_provider.add_span_processor(
                     span_processor=span_processor(
-                        span_exporter=GRPCSpanExporter(
-                            endpoint=arize_endpoint, headers=arize_headers
-                        ),
+                        span_exporter=GRPCSpanExporter(endpoint=arize_endpoint, headers=arize_headers),
                     )
                 )
 
@@ -232,9 +213,7 @@ class ArizePhoenixTracer(BaseTracer):
         try:
             from openinference.instrumentation.langchain import LangChainInstrumentor
 
-            LangChainInstrumentor().instrument(
-                tracer_provider=self.tracer_provider, skip_dep_check=True
-            )
+            LangChainInstrumentor().instrument(tracer_provider=self.tracer_provider, skip_dep_check=True)
         except ImportError:
             logger.exception(
                 "[Arize/Phoenix] Could not import LangChainInstrumentor."
@@ -270,20 +249,12 @@ class ArizePhoenixTracer(BaseTracer):
         else:
             child_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, trace_type)
 
-        processed_inputs = (
-            self._convert_to_arize_phoenix_types(inputs) if inputs else {}
-        )
+        processed_inputs = self._convert_to_arize_phoenix_types(inputs) if inputs else {}
         if processed_inputs:
-            child_span.set_attribute(
-                SpanAttributes.INPUT_VALUE, self._safe_json_dumps(processed_inputs)
-            )
-            child_span.set_attribute(
-                SpanAttributes.INPUT_MIME_TYPE, OpenInferenceMimeTypeValues.JSON.value
-            )
+            child_span.set_attribute(SpanAttributes.INPUT_VALUE, self._safe_json_dumps(processed_inputs))
+            child_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, OpenInferenceMimeTypeValues.JSON.value)
 
-        processed_metadata = (
-            self._convert_to_arize_phoenix_types(metadata) if metadata else {}
-        )
+        processed_metadata = self._convert_to_arize_phoenix_types(metadata) if metadata else {}
         if processed_metadata:
             for key, value in processed_metadata.items():
                 child_span.set_attribute(f"{SpanAttributes.METADATA}.{key}", value)
@@ -291,7 +262,7 @@ class ArizePhoenixTracer(BaseTracer):
         if vertex and vertex.id is not None:
             child_span.set_attribute("vertex_id", vertex.id)
 
-        component_name = trace_id.split("-")[0]
+        component_name = trace_id.split("-", maxsplit=1)[0]
         if component_name == "ChatInput":
             self.chat_input_value = processed_inputs["input_value"]
         elif component_name == "ChatOutput":
@@ -314,26 +285,14 @@ class ArizePhoenixTracer(BaseTracer):
 
         child_span = self.child_spans[trace_id]
 
-        processed_outputs = (
-            self._convert_to_arize_phoenix_types(outputs) if outputs else {}
-        )
+        processed_outputs = self._convert_to_arize_phoenix_types(outputs) if outputs else {}
         if processed_outputs:
-            child_span.set_attribute(
-                SpanAttributes.OUTPUT_VALUE, self._safe_json_dumps(processed_outputs)
-            )
-            child_span.set_attribute(
-                SpanAttributes.OUTPUT_MIME_TYPE, OpenInferenceMimeTypeValues.JSON.value
-            )
+            child_span.set_attribute(SpanAttributes.OUTPUT_VALUE, self._safe_json_dumps(processed_outputs))
+            child_span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, OpenInferenceMimeTypeValues.JSON.value)
 
-        logs_dicts = [
-            log if isinstance(log, dict) else log.model_dump() for log in logs
-        ]
+        logs_dicts = [log if isinstance(log, dict) else log.model_dump() for log in logs]
         processed_logs = (
-            self._convert_to_arize_phoenix_types(
-                {log.get("name"): log for log in logs_dicts}
-            )
-            if logs
-            else {}
+            self._convert_to_arize_phoenix_types({log.get("name"): log for log in logs_dicts}) if logs else {}
         )
         if processed_logs:
             child_span.set_attribute("logs", self._safe_json_dumps(processed_logs))
@@ -355,59 +314,38 @@ class ArizePhoenixTracer(BaseTracer):
             return
 
         if self.root_span:
-            self.root_span.set_attribute(
-                SpanAttributes.INPUT_VALUE, self.chat_input_value
-            )
-            self.root_span.set_attribute(
-                SpanAttributes.INPUT_MIME_TYPE, OpenInferenceMimeTypeValues.TEXT.value
-            )
-            self.root_span.set_attribute(
-                SpanAttributes.OUTPUT_VALUE, self.chat_output_value
-            )
-            self.root_span.set_attribute(
-                SpanAttributes.OUTPUT_MIME_TYPE, OpenInferenceMimeTypeValues.TEXT.value
-            )
+            self.root_span.set_attribute(SpanAttributes.INPUT_VALUE, self.chat_input_value)
+            self.root_span.set_attribute(SpanAttributes.INPUT_MIME_TYPE, OpenInferenceMimeTypeValues.TEXT.value)
+            self.root_span.set_attribute(SpanAttributes.OUTPUT_VALUE, self.chat_output_value)
+            self.root_span.set_attribute(SpanAttributes.OUTPUT_MIME_TYPE, OpenInferenceMimeTypeValues.TEXT.value)
 
-            processed_metadata = (
-                self._convert_to_arize_phoenix_types(metadata) if metadata else {}
-            )
+            processed_metadata = self._convert_to_arize_phoenix_types(metadata) if metadata else {}
             if processed_metadata:
                 for key, value in processed_metadata.items():
-                    self.root_span.set_attribute(
-                        f"{SpanAttributes.METADATA}.{key}", value
-                    )
+                    self.root_span.set_attribute(f"{SpanAttributes.METADATA}.{key}", value)
 
             self._set_span_status(self.root_span, error)
             self.root_span.end(end_time=self._get_current_timestamp())
         try:
             from openinference.instrumentation.langchain import LangChainInstrumentor
 
-            LangChainInstrumentor().uninstrument(
-                tracer_provider=self.tracer_provider, skip_dep_check=True
-            )
+            LangChainInstrumentor().uninstrument(tracer_provider=self.tracer_provider, skip_dep_check=True)
         except ImportError:
             logger.exception(
                 "[Arize/Phoenix] Could not import LangChainInstrumentor."
                 "Please install it with `pip install openinference-instrumentation-langchain`."
             )
 
-    def _convert_to_arize_phoenix_types(
-        self, io_dict: dict[str | Any, Any]
-    ) -> dict[str, Any]:
+    def _convert_to_arize_phoenix_types(self, io_dict: dict[str | Any, Any]) -> dict[str, Any]:
         """Converts data types to Arize/Phoenix compatible formats."""
         return {
-            str(key): self._convert_to_arize_phoenix_type(value)
-            for key, value in io_dict.items()
-            if key is not None
+            str(key): self._convert_to_arize_phoenix_type(value) for key, value in io_dict.items() if key is not None
         }
 
     def _convert_to_arize_phoenix_type(self, value):
         """Recursively converts a value to a Arize/Phoenix compatible type."""
         if isinstance(value, dict):
-            value = {
-                key: self._convert_to_arize_phoenix_type(val)
-                for key, val in value.items()
-            }
+            value = {key: self._convert_to_arize_phoenix_type(val) for key, val in value.items()}
 
         elif isinstance(value, list):
             value = [self._convert_to_arize_phoenix_type(v) for v in value]
@@ -438,9 +376,7 @@ class ArizePhoenixTracer(BaseTracer):
         error_message = None
         if error:
             string_stacktrace = traceback.format_exception(error)
-            error_message = (
-                f"{error.__class__.__name__}: {error}\n\n{string_stacktrace}"
-            )
+            error_message = f"{error.__class__.__name__}: {error}\n\n{string_stacktrace}"
         return error_message
 
     @staticmethod
@@ -485,14 +421,10 @@ class ArizePhoenixTracer(BaseTracer):
     def close(self):
         """Flush tracer provider spans safely before shutdown."""
         try:
-            if hasattr(self, "tracer_provider") and hasattr(
-                self.tracer_provider, "force_flush"
-            ):
+            if hasattr(self, "tracer_provider") and hasattr(self.tracer_provider, "force_flush"):
                 self.tracer_provider.force_flush(timeout_millis=3000)
         except (ValueError, RuntimeError, OSError) as e:
-            logger.error(
-                "[Arize/Phoenix] Error Flushing Spans: %s", str(e), exc_info=True
-            )
+            logger.error("[Arize/Phoenix] Error Flushing Spans: %s", str(e), exc_info=True)
 
     def __del__(self):
         """Ensure tracer provider flushes on object destruction."""

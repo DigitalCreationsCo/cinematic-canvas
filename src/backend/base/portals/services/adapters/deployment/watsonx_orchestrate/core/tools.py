@@ -16,6 +16,13 @@ from cachetools import func
 from fastapi import HTTPException
 from ibm_watsonx_orchestrate_clients.tools.tool_client import ClientAPIException
 from ibm_watsonx_orchestrate_core.types.tools.portals_tool import create_portals_tool
+from px.log.logger import logger
+from px.services.adapters.deployment.exceptions import (
+    InvalidContentError,
+    InvalidDeploymentOperationError,
+)
+from px.utils.flow_requirements import generate_requirements_from_flow
+
 from portals.services.adapters.deployment.watsonx_orchestrate.constants import (
     ErrorPrefix,
 )
@@ -33,21 +40,16 @@ from portals.services.adapters.deployment.watsonx_orchestrate.utils import (
     require_tool_id,
 )
 from portals.utils.version import get_version_info
-from px.log.logger import logger
-from px.services.adapters.deployment.exceptions import (
-    InvalidContentError,
-    InvalidDeploymentOperationError,
-)
-from px.utils.flow_requirements import generate_requirements_from_flow
 
 if TYPE_CHECKING:
     from ibm_watsonx_orchestrate_core.types.tools.portals_tool import PortalsTool
-    from portals.services.adapters.deployment.watsonx_orchestrate.types import WxOClient
     from px.services.adapters.deployment.schema import (
         BaseFlowArtifact,
         SnapshotItems,
         SnapshotListResult,
     )
+
+    from portals.services.adapters.deployment.watsonx_orchestrate.types import WxOClient
 
 # TODO: ensure all fields from here are used
 #  https://developer.watson-orchestrate.ibm.com/apis/tools/patch-a-tool
@@ -84,11 +86,7 @@ class ToolUploadBatchError(RuntimeError):
 
 def to_writable_tool_payload(tool: dict[str, Any]) -> dict[str, Any]:
     """Build tool payload accepted by wxO tool update endpoint."""
-    return {
-        field: copy.deepcopy(tool[field])
-        for field in _WRITABLE_TOOL_FIELDS
-        if field in tool
-    }
+    return {field: copy.deepcopy(tool[field]) for field in _WRITABLE_TOOL_FIELDS if field in tool}
 
 
 def _ensure_dict(parent: dict[str, Any], key: str) -> dict[str, Any]:
@@ -164,17 +162,9 @@ async def update_existing_tool_connection_bindings(
     if not existing_target_tool_ids:
         return
 
-    tools = await asyncio.to_thread(
-        clients.tool.get_drafts_by_ids, existing_target_tool_ids
-    )
-    tool_by_id = {
-        str(tool.get("id")): tool
-        for tool in tools
-        if isinstance(tool, dict) and tool.get("id")
-    }
-    missing_tool_ids = [
-        tool_id for tool_id in existing_target_tool_ids if tool_id not in tool_by_id
-    ]
+    tools = await asyncio.to_thread(clients.tool.get_drafts_by_ids, existing_target_tool_ids)
+    tool_by_id = {str(tool.get("id")): tool for tool in tools if isinstance(tool, dict) and tool.get("id")}
+    missing_tool_ids = [tool_id for tool_id in existing_target_tool_ids if tool_id not in tool_by_id]
     if missing_tool_ids:
         missing_ids = ", ".join(missing_tool_ids)
         msg = f"Snapshot tool(s) not found: {missing_ids}"
@@ -200,17 +190,11 @@ async def update_existing_tool_connection_bindings(
     )
 
 
-def extract_portals_artifact_from_zip(
-    artifact_zip_bytes: bytes, *, snapshot_id: str
-) -> dict[str, Any]:
+def extract_portals_artifact_from_zip(artifact_zip_bytes: bytes, *, snapshot_id: str) -> dict[str, Any]:
     """Read and parse the Portals flow JSON from a wxO snapshot artifact zip."""
     try:
         with zipfile.ZipFile(io.BytesIO(artifact_zip_bytes), "r") as zip_artifact:
-            json_members = [
-                name
-                for name in zip_artifact.namelist()
-                if name.lower().endswith(".json")
-            ]
+            json_members = [name for name in zip_artifact.namelist() if name.lower().endswith(".json")]
             if not json_members:
                 msg = f"Snapshot '{snapshot_id}' artifact does not include a flow JSON file."
                 raise InvalidContentError(message=msg)
@@ -275,9 +259,7 @@ def upload_tool_artifact_bytes(
     file_obj = io.BytesIO(artifact_bytes)
     return clients.upload_tool_artifact(
         tool_id,
-        files={
-            "file": (f"{tool_id}.zip", file_obj, "application/zip", {"Expires": "0"})
-        },
+        files={"file": (f"{tool_id}.zip", file_obj, "application/zip", {"Expires": "0"})},
     )
 
 
@@ -350,9 +332,7 @@ def create_wxo_flow_tool(
     if current_name:
         tool_payload["name"] = normalize_wxo_name(current_name)
 
-    (
-        tool_payload.setdefault("binding", {}).setdefault("portals", {})["project_id"]
-    ) = project_id
+    (tool_payload.setdefault("binding", {}).setdefault("portals", {})["project_id"]) = project_id
     logger.debug(
         "create_wxo_flow_tool: tool name='%s', project_id='%s', binding=%s",
         tool_payload.get("name"),
@@ -423,17 +403,11 @@ async def create_and_upload_wxo_flow_tools_with_bindings(
             if isinstance(result, Exception):
                 errors.append(result)
             else:
-                errors.append(
-                    RuntimeError(
-                        f"Tool upload failed with non-standard exception: {type(result).__name__}"
-                    )
-                )
+                errors.append(RuntimeError(f"Tool upload failed with non-standard exception: {type(result).__name__}"))
             continue
         created_tool_ids.append(result)
     if errors:
-        raise ToolUploadBatchError(
-            created_tool_ids=dedupe_list(created_tool_ids_journal), errors=errors
-        )
+        raise ToolUploadBatchError(created_tool_ids=dedupe_list(created_tool_ids_journal), errors=errors)
     return created_tool_ids
 
 
@@ -446,9 +420,7 @@ async def upload_wxo_flow_tool(
 ) -> str:
     tool_name = tool_payload.get("name")
     try:
-        tool_response = await retry_create(
-            asyncio.to_thread, clients.tool.create, tool_payload
-        )
+        tool_response = await retry_create(asyncio.to_thread, clients.tool.create, tool_payload)
     except (ClientAPIException, HTTPException) as exc:
         raise_as_deployment_error(
             exc,

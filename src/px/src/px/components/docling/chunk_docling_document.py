@@ -20,9 +20,7 @@ from px.schema import Data, DataFrame
 
 class ChunkDoclingDocumentComponent(Component):
     display_name: str = "Chunk DoclingDocument"
-    description: str = (
-        "Use the DocumentDocument chunkers to split the document into chunks."
-    )
+    description: str = "Use the DocumentDocument chunkers to split the document into chunks."
     documentation = "https://docling-project.github.io/docling/concepts/chunking/"
     icon = "Docling"
     name = "ChunkDoclingDocument"
@@ -69,9 +67,7 @@ class ChunkDoclingDocumentComponent(Component):
         StrInput(
             name="openai_model_name",
             display_name="OpenAI model name",
-            info=(
-                "Model name of the tokenizer to use with the HybridChunker when OpenAI is chosen as a tokenizer."
-            ),
+            info=("Model name of the tokenizer to use with the HybridChunker when OpenAI is chosen as a tokenizer."),
             value="gpt-4o",
             show=False,
             advanced=True,
@@ -118,9 +114,7 @@ class ChunkDoclingDocumentComponent(Component):
         Output(display_name="Table", name="dataframe", method="chunk_documents"),
     ]
 
-    def update_build_config(
-        self, build_config: dict, field_value: str, field_name: str | None = None
-    ) -> dict:
+    def update_build_config(self, build_config: dict, field_value: str, field_name: str | None = None) -> dict:
         """Update build_config to show/hide fields based on chunker and provider selection."""
         if field_name == "chunker":
             provider_type = build_config["provider"]["value"]
@@ -140,10 +134,7 @@ class ChunkDoclingDocumentComponent(Component):
                 build_config["max_tokens"]["show"] = False
                 build_config["merge_peers"]["show"] = False
                 build_config["always_emit_headings"]["show"] = False
-        elif (
-            field_name == "provider"
-            and build_config["chunker"]["value"] == "HybridChunker"
-        ):
+        elif field_name == "provider" and build_config["chunker"]["value"] == "HybridChunker":
             if field_value == "Hugging Face":
                 build_config["hf_model_name"]["show"] = True
                 build_config["openai_model_name"]["show"] = False
@@ -171,7 +162,7 @@ class ChunkDoclingDocumentComponent(Component):
                     "or `uv pip install transformers`"
                 )
                 raise ImportError(msg) from e
-            max_tokens: int | None = self.max_tokens if self.max_tokens else None
+            max_tokens: int | None = self.max_tokens or None
             if self.provider == "Hugging Face":
                 try:
                     from docling_core.transforms.chunker.tokenizer.huggingface import (
@@ -200,9 +191,7 @@ class ChunkDoclingDocumentComponent(Component):
                     )
                     raise ImportError(msg) from e
                 if max_tokens is None:
-                    max_tokens = (
-                        128 * 1024
-                    )  # context window length required for OpenAI tokenizers
+                    max_tokens = 128 * 1024  # context window length required for OpenAI tokenizers
                 tokenizer = OpenAITokenizer(
                     tokenizer=tiktoken.encoding_for_model(self.openai_model_name),
                     max_tokens=max_tokens,
@@ -231,9 +220,7 @@ class ChunkDoclingDocumentComponent(Component):
                             data={
                                 "text": enriched_text,
                                 "document_id": f"{doc.origin.binary_hash}",
-                                "doc_items": json.dumps(
-                                    [item.self_ref for item in meta.doc_items]
-                                ),
+                                "doc_items": json.dumps([item.self_ref for item in meta.doc_items]),
                             }
                         )
                     )

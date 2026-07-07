@@ -111,9 +111,7 @@ def mock_sse_transport():
 @pytest.fixture
 def mock_streamable_http_manager():
     """Mock StreamableHTTPSessionManager used by ProjectMCPServer."""
-    with patch(
-        "portals.api.v1.mcp_projects.StreamableHTTPSessionManager"
-    ) as mock_class:
+    with patch("portals.api.v1.mcp_projects.StreamableHTTPSessionManager") as mock_class:
         manager_instance = MagicMock()
 
         # Mock the run() method to return an async context manager
@@ -178,9 +176,7 @@ async def other_test_project(other_test_user):
     """Fixture for creating a project for another test user."""
     project_id = uuid4()
     async with session_scope() as session:
-        project = Folder(
-            id=project_id, name="Other Test Project", user_id=other_test_user.id
-        )
+        project = Folder(id=project_id, name="Other Test Project", user_id=other_test_user.id)
         session.add(project)
         await session.flush()
         await session.refresh(project)
@@ -261,9 +257,7 @@ async def test_handle_project_messages_success(
     mock_sse_transport.handle_post_message.assert_called_once()
 
 
-async def test_update_project_mcp_settings_invalid_json(
-    client: AsyncClient, user_test_project, logged_in_headers
-):
+async def test_update_project_mcp_settings_invalid_json(client: AsyncClient, user_test_project, logged_in_headers):
     """Test updating MCP settings with invalid JSON."""
     response = await client.patch(
         f"api/v1/mcp/project/{user_test_project.id}",
@@ -351,18 +345,14 @@ async def test_update_project_mcp_settings_success(
         assert updated_flow.mcp_enabled is False
 
 
-async def test_update_project_mcp_settings_invalid_project(
-    client: AsyncClient, logged_in_headers
-):
+async def test_update_project_mcp_settings_invalid_project(client: AsyncClient, logged_in_headers):
     """Test accessing an invalid project ID."""
     # We're using the GET endpoint since it works correctly and tests the same security constraints
     # Generate a random UUID that doesn't exist in the database
     nonexistent_project_id = uuid4()
 
     # Try to access the project
-    response = await client.get(
-        f"api/v1/mcp/project/{nonexistent_project_id}/sse", headers=logged_in_headers
-    )
+    response = await client.get(f"api/v1/mcp/project/{nonexistent_project_id}/sse", headers=logged_in_headers)
 
     # Verify the response
     assert response.status_code == 404
@@ -377,9 +367,7 @@ async def test_update_project_mcp_settings_other_user_project(
     # This test disables MCP Composer to test JWT token-based access control
 
     # Try to access the other user's project using active_user's credentials
-    response = await client.get(
-        f"api/v1/mcp/project/{other_test_project.id}/sse", headers=logged_in_headers
-    )
+    response = await client.get(f"api/v1/mcp/project/{other_test_project.id}/sse", headers=logged_in_headers)
 
     # Verify the response
     assert response.status_code == 404
@@ -394,18 +382,14 @@ async def test_update_project_mcp_settings_other_user_project_with_composer(
     assert enable_mcp_composer  # Fixture ensures MCP Composer is enabled
 
     # Try to access the other user's project using active_user's JWT credentials
-    response = await client.get(
-        f"api/v1/mcp/project/{other_test_project.id}/sse", headers=logged_in_headers
-    )
+    response = await client.get(f"api/v1/mcp/project/{other_test_project.id}/sse", headers=logged_in_headers)
 
     # Verify the response - should get 401 because JWT tokens aren't accepted
     assert response.status_code == 401
     assert "API key required" in response.json()["detail"]
 
 
-async def test_update_project_mcp_settings_empty_settings(
-    client: AsyncClient, user_test_project, logged_in_headers
-):
+async def test_update_project_mcp_settings_empty_settings(client: AsyncClient, user_test_project, logged_in_headers):
     """Test updating MCP settings with empty settings list."""
     # Use real database objects instead of mocks to avoid the coroutine issue
 
@@ -434,14 +418,10 @@ async def test_update_project_mcp_settings_empty_settings(
     assert "Updated MCP settings for 0 flows" in response.json()["message"]
 
 
-async def test_user_can_only_access_own_projects(
-    client: AsyncClient, other_test_project, logged_in_headers
-):
+async def test_user_can_only_access_own_projects(client: AsyncClient, other_test_project, logged_in_headers):
     """Test that a user can only access their own projects."""
     # Try to access the other user's project using first user's credentials
-    response = await client.get(
-        f"api/v1/mcp/project/{other_test_project.id}/sse", headers=logged_in_headers
-    )
+    response = await client.get(f"api/v1/mcp/project/{other_test_project.id}/sse", headers=logged_in_headers)
     # Should fail with 404 as first user cannot see second user's project
     assert response.status_code == 404
     assert response.json()["detail"] == "Project not found"
@@ -473,9 +453,7 @@ async def test_user_data_isolation_with_real_db(
 
     try:
         # Test that first user can't see the project
-        response = await client.get(
-            f"api/v1/mcp/project/{other_test_project.id}/sse", headers=logged_in_headers
-        )
+        response = await client.get(f"api/v1/mcp/project/{other_test_project.id}/sse", headers=logged_in_headers)
 
         # Should fail with 404
         assert response.status_code == 404
@@ -498,9 +476,7 @@ async def user_test_project(active_user):
     """Fixture for creating a project for the active user."""
     project_id = uuid4()
     async with session_scope() as session:
-        project = Folder(
-            id=project_id, name="User Test Project", user_id=active_user.id
-        )
+        project = Folder(id=project_id, name="User Test Project", user_id=active_user.id)
         session.add(project)
         await session.flush()
         await session.refresh(project)
@@ -656,9 +632,7 @@ async def test_update_project_auth_settings_encryption(
     async with session_scope() as session:
         project = await session.get(Folder, user_test_project.id)
         decrypted_settings = decrypt_auth_settings(project.auth_settings)
-        assert (
-            decrypted_settings["oauth_client_secret"] == "test-oauth-secret-value-456"
-        )  # noqa: S105
+        assert decrypted_settings["oauth_client_secret"] == "test-oauth-secret-value-456"
 
 
 async def test_project_sse_creation(user_test_project):
@@ -703,9 +677,7 @@ async def test_project_sse_creation(user_test_project):
     await asyncio.sleep(0)
 
 
-async def test_project_session_manager_lifespan_handles_cleanup(
-    user_test_project, monkeypatch
-):
+async def test_project_session_manager_lifespan_handles_cleanup(user_test_project, monkeypatch):
     """Session manager contexts should be cleaned up automatically via shared lifespan stack."""
     project_mcp_servers.clear()
     lifecycle_events: list[str] = []
@@ -735,20 +707,14 @@ def _prepare_install_test_env(monkeypatch, tmp_path, filename="cursor.json"):
     config_path = tmp_path / filename
     config_path.parent.mkdir(parents=True, exist_ok=True)
 
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.get_client_ip", lambda request: "127.0.0.1"
-    )  # noqa: ARG005
+    monkeypatch.setattr("portals.api.v1.mcp_projects.get_client_ip", lambda request: "127.0.0.1")
 
     async def fake_get_config_path(client_name):  # noqa: ARG001
         return config_path
 
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.get_config_path", fake_get_config_path
-    )
+    monkeypatch.setattr("portals.api.v1.mcp_projects.get_config_path", fake_get_config_path)
     monkeypatch.setattr("portals.api.v1.mcp_projects.platform.system", lambda: "Linux")
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.should_use_mcp_composer", lambda project: False
-    )  # noqa: ARG005
+    monkeypatch.setattr("portals.api.v1.mcp_projects.should_use_mcp_composer", lambda project: False)
 
     async def fake_streamable(project_id):
         return f"https://portals.local/api/v1/mcp/project/{project_id}/streamable"
@@ -756,22 +722,16 @@ def _prepare_install_test_env(monkeypatch, tmp_path, filename="cursor.json"):
     async def fake_sse(project_id):
         return f"https://portals.local/api/v1/mcp/project/{project_id}/sse"
 
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.get_project_streamable_http_url", fake_streamable
-    )
+    monkeypatch.setattr("portals.api.v1.mcp_projects.get_project_streamable_http_url", fake_streamable)
     monkeypatch.setattr("portals.api.v1.mcp_projects.get_project_sse_url", fake_sse)
 
     class DummyAuth:
         AUTO_LOGIN = True
         SUPERUSER = True
 
-    dummy_settings = SimpleNamespace(
-        host="localhost", port=9999, mcp_composer_enabled=False
-    )
+    dummy_settings = SimpleNamespace(host="localhost", port=9999, mcp_composer_enabled=False)
     dummy_service = SimpleNamespace(settings=dummy_settings, auth_settings=DummyAuth())
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.get_settings_service", lambda: dummy_service
-    )
+    monkeypatch.setattr("portals.api.v1.mcp_projects.get_settings_service", lambda: dummy_service)
 
     return config_path
 
@@ -806,9 +766,7 @@ async def test_install_mcp_config_streamable_transport(
     tmp_path,
     monkeypatch,
 ):
-    config_path = _prepare_install_test_env(
-        monkeypatch, tmp_path, "cursor_streamable.json"
-    )
+    config_path = _prepare_install_test_env(monkeypatch, tmp_path, "cursor_streamable.json")
 
     response = await client.post(
         f"/api/v1/mcp/project/{user_test_project.id}/install",
@@ -873,9 +831,7 @@ async def test_init_mcp_servers_error_handling():
         return original_get_project_sse(project_id)
 
     # Apply the patch
-    with patch(
-        "portals.api.v1.mcp_projects.get_project_sse", side_effect=mock_get_project_sse
-    ):
+    with patch("portals.api.v1.mcp_projects.get_project_sse", side_effect=mock_get_project_sse):
         # This should not raise any exception, as the error should be caught
         await init_mcp_servers()
 
@@ -990,9 +946,7 @@ async def test_list_project_tools_with_mcp_enabled_filter(
                 await session.delete(disabled_flow)
 
 
-async def test_list_project_tools_response_structure(
-    client: AsyncClient, user_test_project, logged_in_headers
-):
+async def test_list_project_tools_response_structure(client: AsyncClient, user_test_project, logged_in_headers):
     """Test that the list_project_tools endpoint returns the correct MCPProjectResponse structure."""
     response = await client.get(
         f"/api/v1/mcp/project/{user_test_project.id}",
@@ -1035,9 +989,7 @@ async def test_mcp_longterm_token_fails_without_superuser():
 
     # Now attempt to create long-term token -> expect HTTPException 400
     async with session_scope() as session:
-        with pytest.raises(
-            HTTPException, match="Auto login required to create a long-term token"
-        ):
+        with pytest.raises(HTTPException, match="Auto login required to create a long-term token"):
             await create_user_longterm_token(session)
 
 
@@ -1060,12 +1012,8 @@ def _prepare_installed_check_env(monkeypatch, tmp_path):
     async def fake_get_config_path(client_name):
         return client_paths[client_name]
 
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.get_config_path", fake_get_config_path
-    )
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.should_use_mcp_composer", lambda project: False
-    )  # noqa: ARG005
+    monkeypatch.setattr("portals.api.v1.mcp_projects.get_config_path", fake_get_config_path)
+    monkeypatch.setattr("portals.api.v1.mcp_projects.should_use_mcp_composer", lambda project: False)
 
     async def fake_streamable(project_id):
         return f"https://portals.local/api/v1/mcp/project/{project_id}/streamable"
@@ -1073,9 +1021,7 @@ def _prepare_installed_check_env(monkeypatch, tmp_path):
     async def fake_sse(project_id):
         return f"https://portals.local/api/v1/mcp/project/{project_id}/sse"
 
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.get_project_streamable_http_url", fake_streamable
-    )
+    monkeypatch.setattr("portals.api.v1.mcp_projects.get_project_streamable_http_url", fake_streamable)
     monkeypatch.setattr("portals.api.v1.mcp_projects.get_project_sse_url", fake_sse)
 
     return client_paths
@@ -1111,9 +1057,7 @@ async def test_should_report_available_true_when_app_directory_exists_but_config
         assert entry["available"] is True, (
             f"{entry['name']} should be available (directory exists) even when config file is missing"
         )
-        assert entry["installed"] is False, (
-            f"{entry['name']} should not be installed (config file doesn't exist)"
-        )
+        assert entry["installed"] is False, f"{entry['name']} should not be installed (config file doesn't exist)"
 
 
 async def test_should_report_installed_true_when_config_file_contains_matching_url(
@@ -1134,15 +1078,7 @@ async def test_should_report_installed_true_when_config_file_contains_matching_u
     # Write config files with matching URLs for all clients
     project_id = user_test_project.id
     for path in client_paths.values():
-        config = {
-            "mcpServers": {
-                "lf-test": {
-                    "args": [
-                        f"https://portals.local/api/v1/mcp/project/{project_id}/sse"
-                    ]
-                }
-            }
-        }
+        config = {"mcpServers": {"lf-test": {"args": [f"https://portals.local/api/v1/mcp/project/{project_id}/sse"]}}}
         path.write_text(json.dumps(config))
 
     response = await client.get(
@@ -1155,9 +1091,7 @@ async def test_should_report_installed_true_when_config_file_contains_matching_u
 
     for entry in results:
         assert entry["available"] is True, f"{entry['name']} should be available"
-        assert entry["installed"] is True, (
-            f"{entry['name']} should be installed (config has matching URL)"
-        )
+        assert entry["installed"] is True, f"{entry['name']} should be installed (config has matching URL)"
 
 
 async def test_should_report_installed_false_when_config_file_has_no_matching_url(
@@ -1176,11 +1110,7 @@ async def test_should_report_installed_false_when_config_file_has_no_matching_ur
     client_paths = _prepare_installed_check_env(monkeypatch, tmp_path)
 
     for path in client_paths.values():
-        config = {
-            "mcpServers": {
-                "other-server": {"args": ["https://other-server.example.com/sse"]}
-            }
-        }
+        config = {"mcpServers": {"other-server": {"args": ["https://other-server.example.com/sse"]}}}
         path.write_text(json.dumps(config))
 
     response = await client.get(
@@ -1193,9 +1123,7 @@ async def test_should_report_installed_false_when_config_file_has_no_matching_ur
 
     for entry in results:
         assert entry["available"] is True, f"{entry['name']} should be available"
-        assert entry["installed"] is False, (
-            f"{entry['name']} should not be installed (URL doesn't match)"
-        )
+        assert entry["installed"] is False, f"{entry['name']} should not be installed (URL doesn't match)"
 
 
 async def test_should_report_available_false_when_app_directory_does_not_exist(
@@ -1221,12 +1149,8 @@ async def test_should_report_available_false_when_app_directory_does_not_exist(
     async def fake_get_config_path(client_name):
         return nonexistent_paths[client_name]
 
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.get_config_path", fake_get_config_path
-    )
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.should_use_mcp_composer", lambda project: False
-    )  # noqa: ARG005
+    monkeypatch.setattr("portals.api.v1.mcp_projects.get_config_path", fake_get_config_path)
+    monkeypatch.setattr("portals.api.v1.mcp_projects.should_use_mcp_composer", lambda project: False)
 
     async def fake_streamable(project_id):
         return f"https://portals.local/api/v1/mcp/project/{project_id}/streamable"
@@ -1234,9 +1158,7 @@ async def test_should_report_available_false_when_app_directory_does_not_exist(
     async def fake_sse(project_id):
         return f"https://portals.local/api/v1/mcp/project/{project_id}/sse"
 
-    monkeypatch.setattr(
-        "portals.api.v1.mcp_projects.get_project_streamable_http_url", fake_streamable
-    )
+    monkeypatch.setattr("portals.api.v1.mcp_projects.get_project_streamable_http_url", fake_streamable)
     monkeypatch.setattr("portals.api.v1.mcp_projects.get_project_sse_url", fake_sse)
 
     response = await client.get(
@@ -1248,9 +1170,7 @@ async def test_should_report_available_false_when_app_directory_does_not_exist(
     results = response.json()
 
     for entry in results:
-        assert entry["available"] is False, (
-            f"{entry['name']} should not be available (directory doesn't exist)"
-        )
+        assert entry["available"] is False, f"{entry['name']} should not be available (directory doesn't exist)"
         assert entry["installed"] is False
 
 
@@ -1281,9 +1201,5 @@ async def test_should_report_available_true_when_config_file_has_corrupt_json(
     results = response.json()
 
     for entry in results:
-        assert entry["available"] is True, (
-            f"{entry['name']} should be available (directory exists)"
-        )
-        assert entry["installed"] is False, (
-            f"{entry['name']} should not be installed (JSON is corrupt)"
-        )
+        assert entry["available"] is True, f"{entry['name']} should be available (directory exists)"
+        assert entry["installed"] is False, f"{entry['name']} should not be installed (JSON is corrupt)"

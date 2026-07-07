@@ -12,6 +12,7 @@ from px.services.adapters.deployment.exceptions import (
     InvalidContentError,
     InvalidDeploymentOperationError,
 )
+
 from portals.services.adapters.deployment.watsonx_orchestrate.constants import (
     ErrorPrefix,
 )
@@ -63,8 +64,9 @@ if TYPE_CHECKING:
         DeploymentUpdate,
         IdLike,
     )
-    from portals.services.adapters.deployment.watsonx_orchestrate.types import WxOClient
     from sqlalchemy.ext.asyncio import AsyncSession
+
+    from portals.services.adapters.deployment.watsonx_orchestrate.types import WxOClient
 
 
 class ToolConnectionOps:
@@ -145,8 +147,7 @@ def build_provider_update_plan(
     #   when the raw tool is created. Initialize with all declared raw tools so
     #   unbound tools are still created and attached with empty connections.
     raw_tool_app_ids: dict[str, OrderedUniqueStrs] = {
-        raw_payload.name: OrderedUniqueStrs()
-        for raw_payload in (provider_update.tools.raw_payloads or [])
+        raw_payload.name: OrderedUniqueStrs() for raw_payload in (provider_update.tools.raw_payloads or [])
     }
     # operation_app_ids: every app_id referenced by bind/unbind operations.
     #   Used later to derive existing_app_ids by subtracting raw connection
@@ -169,20 +170,14 @@ def build_provider_update_plan(
                 tool_id = ref.tool_id
                 if tool_id not in agent_tool_ids:
                     added_existing_tool_refs.append(
-                        WatsonxResultToolRefBinding(
-                            source_ref=ref.source_ref, tool_id=tool_id, created=False
-                        )
+                        WatsonxResultToolRefBinding(source_ref=ref.source_ref, tool_id=tool_id, created=False)
                     )
                 final_existing_tool_ids.add(tool_id)
                 existing_tool_refs.append(
-                    WatsonxResultToolRefBinding(
-                        source_ref=ref.source_ref, tool_id=tool_id, created=False
-                    )
+                    WatsonxResultToolRefBinding(source_ref=ref.source_ref, tool_id=tool_id, created=False)
                 )
                 if operation.app_ids:
-                    delta = _get_or_create_tool_connection_ops(
-                        existing_tool_deltas, tool_id=tool_id
-                    )
+                    delta = _get_or_create_tool_connection_ops(existing_tool_deltas, tool_id=tool_id)
                     delta.bind.extend(operation.app_ids)
                 continue
 
@@ -203,9 +198,7 @@ def build_provider_update_plan(
                 )
             final_existing_tool_ids.add(tool_id)
             existing_tool_refs.append(
-                WatsonxResultToolRefBinding(
-                    source_ref=operation.tool.source_ref, tool_id=tool_id, created=False
-                )
+                WatsonxResultToolRefBinding(source_ref=operation.tool.source_ref, tool_id=tool_id, created=False)
             )
             continue
 
@@ -213,13 +206,9 @@ def build_provider_update_plan(
             operation_app_ids.extend(operation.app_ids)
             tool_id = operation.tool.tool_id
             existing_tool_refs.append(
-                WatsonxResultToolRefBinding(
-                    source_ref=operation.tool.source_ref, tool_id=tool_id, created=False
-                )
+                WatsonxResultToolRefBinding(source_ref=operation.tool.source_ref, tool_id=tool_id, created=False)
             )
-            delta = _get_or_create_tool_connection_ops(
-                existing_tool_deltas, tool_id=tool_id
-            )
+            delta = _get_or_create_tool_connection_ops(existing_tool_deltas, tool_id=tool_id)
             delta.unbind.extend(operation.app_ids)
             continue
 
@@ -254,10 +243,7 @@ def build_provider_update_plan(
         for raw_payload in (provider_update.connections.raw_payloads or [])
     ]
 
-    raw_tool_pool = {
-        raw_payload.name: raw_payload
-        for raw_payload in (provider_update.tools.raw_payloads or [])
-    }
+    raw_tool_pool = {raw_payload.name: raw_payload for raw_payload in (provider_update.tools.raw_payloads or [])}
     raw_tools_to_create = [
         RawToolCreatePlan(
             raw_name=raw_name,
@@ -282,13 +268,8 @@ def build_provider_update_plan(
         seen_removed_ref_ids.setdefault(ref.tool_id, ref)
     deduped_removed_existing_tool_refs = list(seen_removed_ref_ids.values())
 
-    raw_app_ids = {
-        raw_payload.app_id
-        for raw_payload in (provider_update.connections.raw_payloads or [])
-    }
-    existing_app_ids = [
-        app_id for app_id in operation_app_ids.to_list() if app_id not in raw_app_ids
-    ]
+    raw_app_ids = {raw_payload.app_id for raw_payload in (provider_update.connections.raw_payloads or [])}
+    existing_app_ids = [app_id for app_id in operation_app_ids.to_list() if app_id not in raw_app_ids]
 
     return ProviderUpdatePlan(
         existing_app_ids=existing_app_ids,
@@ -316,11 +297,7 @@ async def _update_existing_tool_connection_deltas(
 
     tool_ids = list(existing_tool_deltas.keys())
     tools = await asyncio.to_thread(clients.tool.get_drafts_by_ids, tool_ids)
-    tool_by_id = {
-        str(tool.get("id")): tool
-        for tool in tools
-        if isinstance(tool, dict) and tool.get("id")
-    }
+    tool_by_id = {str(tool.get("id")): tool for tool in tools if isinstance(tool, dict) and tool.get("id")}
     missing_tool_ids = [tool_id for tool_id in tool_ids if tool_id not in tool_by_id]
     if missing_tool_ids:
         missing_ids = ", ".join(missing_tool_ids)
@@ -388,9 +365,7 @@ async def _apply_tool_renames(
 
     tool_ids = list(tool_renames.keys())
     tools = await asyncio.to_thread(clients.tool.get_drafts_by_ids, tool_ids)
-    tool_by_id = {
-        str(t.get("id")): t for t in tools if isinstance(t, dict) and t.get("id")
-    }
+    tool_by_id = {str(t.get("id")): t for t in tools if isinstance(t, dict) and t.get("id")}
 
     missing = [tid for tid in tool_ids if tid not in tool_by_id]
     if missing:
@@ -415,19 +390,12 @@ async def _apply_tool_renames(
         tool_updates.append((tool_id, writable))
 
     await asyncio.gather(
-        *(
-            retry_update(asyncio.to_thread, clients.tool.update, tool_id, writable)
-            for tool_id, writable in tool_updates
-        )
+        *(retry_update(asyncio.to_thread, clients.tool.update, tool_id, writable) for tool_id, writable in tool_updates)
     )
-    logger.debug(
-        "_apply_tool_renames: renamed %d tools: %s", len(tool_updates), tool_renames
-    )
+    logger.debug("_apply_tool_renames: renamed %d tools: %s", len(tool_updates), tool_renames)
 
 
-def _build_agent_rollback_payload(
-    *, agent: dict[str, Any], final_update_payload: dict[str, Any]
-) -> dict[str, Any]:
+def _build_agent_rollback_payload(*, agent: dict[str, Any], final_update_payload: dict[str, Any]) -> dict[str, Any]:
     rollback_payload: dict[str, Any] = {}
     if "tools" in final_update_payload:
         rollback_payload["tools"] = extract_agent_tool_ids(agent)
@@ -446,13 +414,9 @@ async def _rollback_agent_update(
     if not rollback_agent_payload:
         return
     try:
-        await retry_rollback(
-            asyncio.to_thread, clients.agent.update, agent_id, rollback_agent_payload
-        )
+        await retry_rollback(asyncio.to_thread, clients.agent.update, agent_id, rollback_agent_payload)
     except Exception:  # noqa: BLE001
-        logger.exception(
-            "Rollback failed for agent_id=%s — resource may be orphaned", agent_id
-        )
+        logger.exception("Rollback failed for agent_id=%s — resource may be orphaned", agent_id)
 
 
 async def apply_provider_update_plan_with_rollback(
@@ -502,9 +466,7 @@ async def apply_provider_update_plan_with_rollback(
     #     provider connection creation; used to ensure rollback sees partial
     #     successes even if create later fails before returning.
     resolved_connections: dict[str, str] = {}
-    operation_to_provider_app_id: dict[str, str] = {
-        app_id: app_id for app_id in plan.existing_app_ids
-    }
+    operation_to_provider_app_id: dict[str, str] = {app_id: app_id for app_id in plan.existing_app_ids}
     created_snapshot_ids: list[str] = []
     added_snapshot_ids: list[str] = []
     created_snapshot_bindings: list[WatsonxResultToolRefBinding] = []
@@ -530,15 +492,11 @@ async def apply_provider_update_plan_with_rollback(
     #   they diverge, the explicit operation result will overwrite it.
     agent_tool_ids = extract_agent_tool_ids(agent)
     if agent_tool_ids:
-        existing_tools = await asyncio.to_thread(
-            clients.tool.get_drafts_by_ids, agent_tool_ids
-        )
+        existing_tools = await asyncio.to_thread(clients.tool.get_drafts_by_ids, agent_tool_ids)
         for tool in existing_tools or []:
             if not isinstance(tool, dict):
                 continue
-            for app_id, connection_id in extract_portals_connections_binding(
-                tool
-            ).items():
+            for app_id, connection_id in extract_portals_connections_binding(tool).items():
                 if app_id and connection_id:
                     operation_to_provider_app_id.setdefault(app_id, app_id)
                     resolved_connections.setdefault(app_id, connection_id)
@@ -560,16 +518,12 @@ async def apply_provider_update_plan_with_rollback(
                 validate_connection_fn=validate_connection,
                 created_app_ids_journal=created_app_ids_journal,
             )
-            operation_to_provider_app_id.update(
-                connection_result.operation_to_provider_app_id
-            )
+            operation_to_provider_app_id.update(connection_result.operation_to_provider_app_id)
             resolved_connections.update(connection_result.resolved_connections)
             created_app_ids.extend(connection_result.created_app_ids)
         except ConnectionCreateBatchError as exc:
             created_app_ids.extend(exc.created_app_ids)
-            log_batch_errors(
-                error_label="Connection create batch error", errors=exc.errors
-            )
+            log_batch_errors(error_label="Connection create batch error", errors=exc.errors)
             raise exc.errors[0] from exc
 
         try:
@@ -616,9 +570,7 @@ async def apply_provider_update_plan_with_rollback(
             final_update_payload=final_update_payload,
         )
         if final_update_payload:
-            await retry_update(
-                asyncio.to_thread, clients.agent.update, agent_id, final_update_payload
-            )
+            await retry_update(asyncio.to_thread, clients.agent.update, agent_id, final_update_payload)
     except Exception:
         logger.warning(
             "Provider update failed for agent_id=%s — initiating rollback (tools=%s, apps=%s)",
@@ -660,9 +612,7 @@ async def apply_provider_update_plan_with_rollback(
     )
 
 
-def build_update_payload_from_spec(
-    spec: BaseDeploymentDataUpdate | None, *, llm: str | None = None
-) -> dict[str, Any]:
+def build_update_payload_from_spec(spec: BaseDeploymentDataUpdate | None, *, llm: str | None = None) -> dict[str, Any]:
     """Build agent update payload from deployment spec updates.
 
     Uses ``exclude_unset=True`` so that fields the caller did not explicitly

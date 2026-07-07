@@ -14,6 +14,13 @@ from urllib.parse import quote, unquote, urlparse
 from uuid import UUID, uuid4
 
 from mcp import types
+from px.base.mcp.constants import MAX_MCP_TOOL_NAME_LENGTH
+from px.base.mcp.util import get_flow_snake_case, get_unique_name, sanitize_mcp_name
+from px.log.logger import logger
+from px.utils.flow_validation import CustomComponentValidationError
+from px.utils.helpers import build_content_type_from_extension
+from sqlmodel import select
+
 from portals.api.v1.endpoints import simple_run_flow
 from portals.api.v1.schemas import SimplifiedAPIRequest
 from portals.helpers.flow import json_schema_from_flow
@@ -26,12 +33,6 @@ from portals.services.deps import (
     get_storage_service,
     session_scope,
 )
-from px.base.mcp.constants import MAX_MCP_TOOL_NAME_LENGTH
-from px.base.mcp.util import get_flow_snake_case, get_unique_name, sanitize_mcp_name
-from px.log.logger import logger
-from px.utils.flow_validation import CustomComponentValidationError
-from px.utils.helpers import build_content_type_from_extension
-from sqlmodel import select
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -108,17 +109,13 @@ async def handle_list_resources(project_id=None):
         # Without it we cannot safely list files from any flow because the
         # global server previously leaked every user's flow URIs (PVR0754098).
         if current_user is None:
-            await logger.awarning(
-                "handle_list_resources called without a current user; returning empty list"
-            )
+            await logger.awarning("handle_list_resources called without a current user; returning empty list")
             return resources
 
         async with session_scope() as session:
             # SECURITY: Always scope to the calling user to prevent cross-user enumeration.
             if project_id:
-                flows_query = select(Flow).where(
-                    Flow.folder_id == project_id, Flow.user_id == current_user.id
-                )
+                flows_query = select(Flow).where(Flow.folder_id == project_id, Flow.user_id == current_user.id)
             else:
                 flows_query = select(Flow).where(Flow.user_id == current_user.id)
 
@@ -157,25 +154,16 @@ async def handle_list_resources(project_id=None):
             # the project. Only include them on the global (project_id is None) server.
             ###################################################
             if project_id is None:
-                user_files_stmt = select(UserFile).where(
-                    UserFile.user_id == current_user.id
-                )
+                user_files_stmt = select(UserFile).where(UserFile.user_id == current_user.id)
                 user_files = (await session.exec(user_files_stmt)).all()
                 for user_file in user_files:
                     stored_path = getattr(user_file, "path", "") or ""
-                    stored_filename = (
-                        Path(stored_path).name if stored_path else user_file.name
-                    )
+                    stored_filename = Path(stored_path).name if stored_path else user_file.name
                     safe_filename = quote(stored_filename)
-                    if stored_filename.startswith(
-                        f"{MCP_SERVERS_FILE}_{current_user.id}"
-                    ):
+                    if stored_filename.startswith(f"{MCP_SERVERS_FILE}_{current_user.id}"):
                         # reserved file name for portals MCP server config file(s)
                         continue
-                    description = (
-                        getattr(user_file, "provider", None)
-                        or "User file uploaded via File Manager"
-                    )
+                    description = getattr(user_file, "provider", None) or "User file uploaded via File Manager"
                     resource = types.Resource(
                         uri=f"{base_url}/api/v1/files/download/{current_user.id}/{safe_filename}",
                         name=stored_filename,
@@ -221,9 +209,7 @@ async def handle_read_resource(uri: str, project_id: UUID | str | None = None) -
         # keeps error logs from the storage layer off the hot path and closes the gap
         # between the MCP decode step and the storage layer for future refactors.
         if not filename or ".." in filename or "/" in filename or "\\" in filename:
-            await logger.awarning(
-                f"Rejected MCP resource read with invalid filename: {filename!r}"
-            )
+            await logger.awarning(f"Rejected MCP resource read with invalid filename: {filename!r}")
             msg = "Invalid filename"
             raise ValueError(msg)
 
@@ -237,9 +223,7 @@ async def handle_read_resource(uri: str, project_id: UUID | str | None = None) -
             raise ValueError(msg) from exc
 
         async with session_scope() as session:
-            flow_query = select(Flow).where(
-                Flow.id == namespace_id, Flow.user_id == current_user.id
-            )
+            flow_query = select(Flow).where(Flow.id == namespace_id, Flow.user_id == current_user.id)
             if project_id is not None:
                 flow_query = flow_query.where(Flow.folder_id == project_id)
             flow = (await session.exec(flow_query)).first()
@@ -258,9 +242,7 @@ async def handle_read_resource(uri: str, project_id: UUID | str | None = None) -
         storage_service = get_storage_service()
 
         # Read the file content
-        content = await storage_service.get_file(
-            flow_id=namespace_id, file_name=filename
-        )
+        content = await storage_service.get_file(flow_id=namespace_id, file_name=filename)
         if not content:
             msg = f"File {filename} not found in flow {namespace_id}"
             raise ValueError(msg)
@@ -290,22 +272,16 @@ async def handle_call_tool(
     mcp_config = get_mcp_config()
     if mcp_config.enable_progress_notifications is None:
         settings_service = get_settings_service()
-        mcp_config.enable_progress_notifications = (
-            settings_service.settings.mcp_server_enable_progress_notifications
-        )
+        mcp_config.enable_progress_notifications = settings_service.settings.mcp_server_enable_progress_notifications
 
     current_user = current_user_ctx.get()
     # Build execution context with request-level variables if present
     request_variables = current_request_variables_ctx.get()
-    exec_context = (
-        {"request_variables": request_variables} if request_variables else None
-    )
+    exec_context = {"request_variables": request_variables} if request_variables else None
 
     async def execute_tool(session):
         # Get flow id from name
-        flow = await get_flow_snake_case(
-            name, current_user.id, session, is_action=is_action
-        )
+        flow = await get_flow_snake_case(name, current_user.id, session, is_action=is_action)
         if not flow:
             msg = f"Flow with name '{name}' not found"
             raise ValueError(msg)
@@ -319,9 +295,7 @@ async def handle_call_tool(
         processed_inputs = dict(arguments)
 
         # Initial progress notification
-        if mcp_config.enable_progress_notifications and (
-            progress_token := server.request_context.meta.progressToken
-        ):
+        if mcp_config.enable_progress_notifications and (progress_token := server.request_context.meta.progressToken):
             await server.request_context.session.send_progress_notification(
                 progress_token=progress_token, progress=0.0, total=1.0
             )
@@ -353,13 +327,8 @@ async def handle_call_tool(
         collected_results = []
         try:
             progress_task = None
-            if (
-                mcp_config.enable_progress_notifications
-                and server.request_context.meta.progressToken
-            ):
-                progress_task = asyncio.create_task(
-                    send_progress_updates(server.request_context.meta.progressToken)
-                )
+            if mcp_config.enable_progress_notifications and server.request_context.meta.progressToken:
+                progress_task = asyncio.create_task(send_progress_updates(server.request_context.meta.progressToken))
 
             try:
                 try:
@@ -376,9 +345,7 @@ async def handle_call_tool(
                     def add_result(text: str):
                         if text not in processed_texts:
                             processed_texts.add(text)
-                            collected_results.append(
-                                types.TextContent(type="text", text=text)
-                            )
+                            collected_results.append(types.TextContent(type="text", text=text))
 
                     for run_output in result.outputs:
                         for component_output in run_output.outputs:
@@ -393,21 +360,13 @@ async def handle_call_tool(
                                     add_result(str(value))
                 except CustomComponentValidationError as exc:
                     logger.warning(f"MCP tool call blocked for flow {flow.id}: {exc!s}")
-                    collected_results.append(
-                        types.TextContent(
-                            type="text", text=f"Flow build blocked: {exc!s}"
-                        )
-                    )
+                    collected_results.append(types.TextContent(type="text", text=f"Flow build blocked: {exc!s}"))
                 except ValueError as exc:
                     error_msg = f"Error Executing the {flow.name} tool. Error: {exc!s}"
-                    collected_results.append(
-                        types.TextContent(type="text", text=error_msg)
-                    )
+                    collected_results.append(types.TextContent(type="text", text=error_msg))
                 except Exception as e:  # noqa: BLE001
                     error_msg = f"Error Executing the {flow.name} tool. Error: {e!s}"
-                    collected_results.append(
-                        types.TextContent(type="text", text=error_msg)
-                    )
+                    collected_results.append(types.TextContent(type="text", text=error_msg))
 
                 return collected_results
             finally:
@@ -452,9 +411,7 @@ async def handle_list_tools(project_id=None, *, mcp_enabled_only=False):
             # Build query based on parameters
             if project_id:
                 # Filter flows by project and optionally by MCP enabled status
-                flows_query = select(Flow).where(
-                    Flow.folder_id == project_id, Flow.is_component == False
-                )  # noqa: E712
+                flows_query = select(Flow).where(Flow.folder_id == project_id, Flow.is_component == False)
                 if mcp_enabled_only:
                     flows_query = flows_query.where(Flow.mcp_enabled == True)  # noqa: E712
             elif current_user is not None:
@@ -476,18 +433,10 @@ async def handle_list_tools(project_id=None, *, mcp_enabled_only=False):
                 # For project-specific tools, use action names if available
                 if project_id:
                     base_name = (
-                        sanitize_mcp_name(flow.action_name)
-                        if flow.action_name
-                        else sanitize_mcp_name(flow.name)
+                        sanitize_mcp_name(flow.action_name) if flow.action_name else sanitize_mcp_name(flow.name)
                     )
-                    name = get_unique_name(
-                        base_name, MAX_MCP_TOOL_NAME_LENGTH, existing_names
-                    )
-                    description = flow.action_description or (
-                        flow.description
-                        if flow.description
-                        else f"Tool generated from flow: {name}"
-                    )
+                    name = get_unique_name(base_name, MAX_MCP_TOOL_NAME_LENGTH, existing_names)
+                    description = flow.action_description or (flow.description or f"Tool generated from flow: {name}")
                 else:
                     # For global tools, use simple sanitized names
                     base_name = sanitize_mcp_name(flow.name)
@@ -496,18 +445,14 @@ async def handle_list_tools(project_id=None, *, mcp_enabled_only=False):
                         i = 1
                         while True:
                             suffix = f"_{i}"
-                            truncated_base = base_name[
-                                : MAX_MCP_TOOL_NAME_LENGTH - len(suffix)
-                            ]
+                            truncated_base = base_name[: MAX_MCP_TOOL_NAME_LENGTH - len(suffix)]
                             candidate = f"{truncated_base}{suffix}"
                             if candidate not in existing_names:
                                 name = candidate
                                 break
                             i += 1
                     description = (
-                        f"{flow.id}: {flow.description}"
-                        if flow.description
-                        else f"Tool generated from flow: {name}"
+                        f"{flow.id}: {flow.description}" if flow.description else f"Tool generated from flow: {name}"
                     )
 
                 try:

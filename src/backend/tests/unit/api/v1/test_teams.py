@@ -8,10 +8,8 @@ Uses the same fixture patterns as ``test_users.py``:
   * ``logged_in_headers_super_user`` — bearer token for a superuser.
 """
 
-import pytest
 from fastapi import status
 from httpx import AsyncClient
-
 
 # ======================================================================
 # Helpers
@@ -62,9 +60,7 @@ class TestListTeams:
         assert data["total_count"] == 0
         assert data["teams"] == []
 
-    async def test_list_teams_shows_owned_team(
-        self, client: AsyncClient, logged_in_headers
-    ):
+    async def test_list_teams_shows_owned_team(self, client: AsyncClient, logged_in_headers):
         """A team the user created appears in their list."""
         team = await _create_team(client, logged_in_headers)
 
@@ -75,9 +71,7 @@ class TestListTeams:
         team_ids = [t["id"] for t in data["teams"]]
         assert team["id"] in team_ids
 
-    async def test_list_teams_pagination(
-        self, client: AsyncClient, logged_in_headers
-    ):
+    async def test_list_teams_pagination(self, client: AsyncClient, logged_in_headers):
         """Pagination parameters are respected."""
         for i in range(3):
             await _create_team(client, logged_in_headers, name=f"Team {i}")
@@ -87,9 +81,7 @@ class TestListTeams:
         data = resp.json()
         assert len(data["teams"]) <= 2
 
-    async def test_list_teams_search(
-        self, client: AsyncClient, logged_in_headers
-    ):
+    async def test_list_teams_search(self, client: AsyncClient, logged_in_headers):
         """Search filter narrows results by team name."""
         await _create_team(client, logged_in_headers, name="Alpha Squad")
         await _create_team(client, logged_in_headers, name="Beta Squad")
@@ -116,9 +108,7 @@ class TestGetTeam:
         assert data["id"] == team["id"]
         assert data["name"] == team["name"]
 
-    async def test_get_team_non_member_404(
-        self, client: AsyncClient, logged_in_headers, logged_in_headers_super_user
-    ):
+    async def test_get_team_non_member_404(self, client: AsyncClient, logged_in_headers, logged_in_headers_super_user):
         """Non-members get 404 (team existence is hidden)."""
         team = await _create_team(client, logged_in_headers)
 
@@ -162,9 +152,7 @@ class TestUpdateTeam:
         )
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    async def test_update_name_not_modified(
-        self, client: AsyncClient, logged_in_headers
-    ):
+    async def test_update_name_not_modified(self, client: AsyncClient, logged_in_headers):
         """Empty update returns 304."""
         team = await _create_team(client, logged_in_headers)
 
@@ -251,9 +239,7 @@ class TestAddMember:
         )
         assert resp.status_code == status.HTTP_409_CONFLICT
 
-    async def test_add_nonexistent_user_404(
-        self, client: AsyncClient, logged_in_headers
-    ):
+    async def test_add_nonexistent_user_404(self, client: AsyncClient, logged_in_headers):
         """Adding a non-existent user returns 404."""
         team = await _create_team(client, logged_in_headers)
         fake_id = "00000000-0000-0000-0000-000000000000"
@@ -267,9 +253,7 @@ class TestAddMember:
 
 
 class TestListMembers:
-    async def test_list_members_includes_owner(
-        self, client: AsyncClient, logged_in_headers, active_user
-    ):
+    async def test_list_members_includes_owner(self, client: AsyncClient, logged_in_headers, active_user):
         """Member list includes the creator (owner)."""
         team = await _create_team(client, logged_in_headers)
 
@@ -323,9 +307,7 @@ class TestUpdateMemberRole:
         assert resp.status_code == 200
         assert resp.json()["role"] == "admin"
 
-    async def test_cannot_demote_last_owner(
-        self, client: AsyncClient, logged_in_headers, active_user
-    ):
+    async def test_cannot_demote_last_owner(self, client: AsyncClient, logged_in_headers, active_user):
         """Demoting the last owner returns 409."""
         team = await _create_team(client, logged_in_headers)
         owner_user_id = str(active_user.id)
@@ -426,9 +408,7 @@ class TestRemoveMember:
         )
         assert resp.status_code == status.HTTP_204_NO_CONTENT
 
-    async def test_cannot_remove_last_owner(
-        self, client: AsyncClient, logged_in_headers, active_user
-    ):
+    async def test_cannot_remove_last_owner(self, client: AsyncClient, logged_in_headers, active_user):
         """Removing the last owner returns 409."""
         team = await _create_team(client, logged_in_headers)
         owner_user_id = str(active_user.id)
@@ -495,9 +475,7 @@ class TestRemoveMember:
         )
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    async def test_non_member_removal_404(
-        self, client: AsyncClient, logged_in_headers, logged_in_headers_super_user
-    ):
+    async def test_non_member_removal_404(self, client: AsyncClient, logged_in_headers, logged_in_headers_super_user):
         """A non-member cannot remove others (404, not 403)."""
         team = await _create_team(client, logged_in_headers)
 

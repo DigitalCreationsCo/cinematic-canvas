@@ -1,7 +1,8 @@
 from px.services.settings.service import SettingsService
+from typing_extensions import override
+
 from portals.services.factory import ServiceFactory
 from portals.services.task.service import TaskService
-from typing_extensions import override
 
 
 class TaskServiceFactory(ServiceFactory):

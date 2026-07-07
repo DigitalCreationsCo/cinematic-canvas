@@ -1,8 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from px.components.models_and_agents.policies.tool_invoker import ToolInvoker
 from mcp.types import CallToolResult
+from px.components.models_and_agents.policies.tool_invoker import ToolInvoker
 from pydantic import BaseModel
 
 

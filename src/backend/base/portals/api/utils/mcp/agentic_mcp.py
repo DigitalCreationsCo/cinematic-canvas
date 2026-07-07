@@ -4,16 +4,17 @@ import sys
 from uuid import UUID
 
 from fastapi import HTTPException
-from portals.api.v2.mcp import get_server_list, update_server
-from portals.services.database.models.user.model import User
-from portals.services.deps import get_service, get_variable_service
-from portals.services.schema import ServiceType
-from portals.services.variable.constants import CREDENTIAL_TYPE, GENERIC_TYPE
 from px.log.logger import logger
 from px.services.deps import get_settings_service
 from sqlalchemy import exc as sqlalchemy_exc
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+
+from portals.api.v2.mcp import get_server_list, update_server
+from portals.services.database.models.user.model import User
+from portals.services.deps import get_service, get_variable_service
+from portals.services.schema import ServiceType
+from portals.services.variable.constants import CREDENTIAL_TYPE, GENERIC_TYPE
 
 
 async def auto_configure_agentic_mcp_server(session: AsyncSession) -> None:
@@ -30,9 +31,7 @@ async def auto_configure_agentic_mcp_server(session: AsyncSession) -> None:
 
     # Only configure if agentic experience is enabled
     if not settings_service.settings.agentic_experience:
-        await logger.adebug(
-            "Agentic experience disabled, skipping agentic MCP server configuration"
-        )
+        await logger.adebug("Agentic experience disabled, skipping agentic MCP server configuration")
         return
 
     await logger.ainfo("Auto-configuring Portals Agentic MCP server for all users...")
@@ -43,9 +42,7 @@ async def auto_configure_agentic_mcp_server(session: AsyncSession) -> None:
         await logger.adebug(f"Found {len(users)} users in the system")
 
         if not users:
-            await logger.adebug(
-                "No users found, skipping agentic MCP server configuration"
-            )
+            await logger.adebug("No users found, skipping agentic MCP server configuration")
             return
 
         # Get services
@@ -71,21 +68,15 @@ async def auto_configure_agentic_mcp_server(session: AsyncSession) -> None:
 
         for user in users:
             try:
-                await logger.adebug(
-                    f"Configuring agentic MCP server for user: {user.username}"
-                )
+                await logger.adebug(f"Configuring agentic MCP server for user: {user.username}")
 
                 # Check if server already exists for this user
                 try:
-                    server_list = await get_server_list(
-                        user, session, storage_service, settings_service
-                    )
+                    server_list = await get_server_list(user, session, storage_service, settings_service)
                     server_exists = server_name in server_list.get("mcpServers", {})
 
                     if server_exists:
-                        await logger.adebug(
-                            f"Agentic MCP server already exists for user {user.username}, skipping"
-                        )
+                        await logger.adebug(f"Agentic MCP server already exists for user {user.username}, skipping")
                         servers_skipped += 1
                         continue
 
@@ -109,14 +100,10 @@ async def auto_configure_agentic_mcp_server(session: AsyncSession) -> None:
                 )
 
                 servers_added += 1
-                await logger.adebug(
-                    f"Added agentic MCP server for user: {user.username}"
-                )
+                await logger.adebug(f"Added agentic MCP server for user: {user.username}")
 
             except (HTTPException, sqlalchemy_exc.SQLAlchemyError) as e:
-                await logger.aexception(
-                    f"Failed to configure agentic MCP server for user {user.username}: {e}"
-                )
+                await logger.aexception(f"Failed to configure agentic MCP server for user {user.username}: {e}")
                 continue
 
         await logger.ainfo(
@@ -133,9 +120,7 @@ async def auto_configure_agentic_mcp_server(session: AsyncSession) -> None:
         ValueError,
         AttributeError,
     ) as e:
-        await logger.aexception(
-            f"Error during agentic MCP server auto-configuration: {e}"
-        )
+        await logger.aexception(f"Error during agentic MCP server auto-configuration: {e}")
 
 
 async def remove_agentic_mcp_server(session: AsyncSession) -> None:
@@ -177,14 +162,10 @@ async def remove_agentic_mcp_server(session: AsyncSession) -> None:
                 )
 
                 servers_removed += 1
-                await logger.adebug(
-                    f"Removed agentic MCP server for user: {user.username}"
-                )
+                await logger.adebug(f"Removed agentic MCP server for user: {user.username}")
 
             except (HTTPException, sqlalchemy_exc.SQLAlchemyError) as e:
-                await logger.adebug(
-                    f"Could not remove agentic MCP server for user {user.username}: {e}"
-                )
+                await logger.adebug(f"Could not remove agentic MCP server for user {user.username}: {e}")
                 continue
 
         await logger.ainfo(f"Removed agentic MCP server from {servers_removed} users")
@@ -216,9 +197,7 @@ async def initialize_agentic_global_variables(session: AsyncSession) -> None:
 
     # Only initialize if agentic experience is enabled
     if not settings_service.settings.agentic_experience:
-        await logger.adebug(
-            "Agentic experience disabled, skipping agentic variables initialization"
-        )
+        await logger.adebug("Agentic experience disabled, skipping agentic variables initialization")
         return
 
     await logger.ainfo("Initializing agentic global variables for all users...")
@@ -226,14 +205,10 @@ async def initialize_agentic_global_variables(session: AsyncSession) -> None:
     try:
         # Get all users in the system
         users = (await session.exec(select(User))).all()
-        await logger.adebug(
-            f"Found {len(users)} users for agentic variables initialization"
-        )
+        await logger.adebug(f"Found {len(users)} users for agentic variables initialization")
 
         if not users:
-            await logger.adebug(
-                "No users found, skipping agentic variables initialization"
-            )
+            await logger.adebug("No users found, skipping agentic variables initialization")
             return
 
         variable_service = get_variable_service()
@@ -251,9 +226,7 @@ async def initialize_agentic_global_variables(session: AsyncSession) -> None:
 
         for user in users:
             try:
-                await logger.adebug(
-                    f"Initializing agentic variables for user: {user.username}"
-                )
+                await logger.adebug(f"Initializing agentic variables for user: {user.username}")
 
                 # Get existing variables for this user
                 existing_vars = await variable_service.list_variables(user.id, session)
@@ -271,9 +244,7 @@ async def initialize_agentic_global_variables(session: AsyncSession) -> None:
                                 session=session,
                             )
                             variables_created += 1
-                            await logger.adebug(
-                                f"Created agentic variable {var_name} for user {user.username}"
-                            )
+                            await logger.adebug(f"Created agentic variable {var_name} for user {user.username}")
                         else:
                             variables_skipped += 1
                             await logger.adebug(
@@ -304,9 +275,7 @@ async def initialize_agentic_global_variables(session: AsyncSession) -> None:
                 ValueError,
                 AttributeError,
             ) as e:
-                await logger.aexception(
-                    f"Failed to initialize agentic variables for user {user.username}: {e}"
-                )
+                await logger.aexception(f"Failed to initialize agentic variables for user {user.username}: {e}")
                 continue
 
         await logger.ainfo(
@@ -326,9 +295,7 @@ async def initialize_agentic_global_variables(session: AsyncSession) -> None:
         await logger.aexception(f"Error during agentic variables initialization: {e}")
 
 
-async def initialize_agentic_user_variables(
-    user_id: UUID | str, session: AsyncSession
-) -> None:
+async def initialize_agentic_user_variables(user_id: UUID | str, session: AsyncSession) -> None:
     """Initialize agentic-specific global variables for a single user if they don't exist.
 
     This function is called during user login or creation to ensure each user has the
@@ -342,9 +309,7 @@ async def initialize_agentic_user_variables(
 
     # Only initialize if agentic experience is enabled
     if not settings_service.settings.agentic_experience:
-        await logger.adebug(
-            f"Agentic experience disabled, skipping agentic variables for user {user_id}"
-        )
+        await logger.adebug(f"Agentic experience disabled, skipping agentic variables for user {user_id}")
         return
 
     await logger.adebug(f"Initializing agentic variables for user {user_id}")
@@ -359,17 +324,13 @@ async def initialize_agentic_user_variables(
         )
 
         # Create a dict with agentic variable names and default values as empty strings
-        agentic_variables = dict.fromkeys(
-            AGENTIC_VARIABLES, DEFAULT_AGENTIC_VARIABLE_VALUE
-        )
+        agentic_variables = dict.fromkeys(AGENTIC_VARIABLES, DEFAULT_AGENTIC_VARIABLE_VALUE)
         await logger.adebug(f"Agentic variables: {list(agentic_variables.keys())}")
 
         existing_vars = await variable_service.list_variables(user_id, session)
 
         for var_name, default_value in agentic_variables.items():
-            logger.adebug(
-                f"Checking if agentic variable {var_name} exists for user {user_id}"
-            )
+            logger.adebug(f"Checking if agentic variable {var_name} exists for user {user_id}")
             if var_name not in existing_vars:
                 try:
                     await variable_service.create_variable(
@@ -380,9 +341,7 @@ async def initialize_agentic_user_variables(
                         type_=CREDENTIAL_TYPE,
                         session=session,
                     )
-                    await logger.adebug(
-                        f"Created agentic variable {var_name} for user {user_id}"
-                    )
+                    await logger.adebug(f"Created agentic variable {var_name} for user {user_id}")
                 except (
                     HTTPException,
                     sqlalchemy_exc.SQLAlchemyError,
@@ -393,13 +352,9 @@ async def initialize_agentic_user_variables(
                     ValueError,
                     AttributeError,
                 ) as e:
-                    await logger.aexception(
-                        f"Error creating agentic variable {var_name} for user {user_id}: {e}"
-                    )
+                    await logger.aexception(f"Error creating agentic variable {var_name} for user {user_id}: {e}")
             else:
-                await logger.adebug(
-                    f"Agentic variable {var_name} already exists for user {user_id}, skipping"
-                )
+                await logger.adebug(f"Agentic variable {var_name} already exists for user {user_id}, skipping")
 
     except (
         HTTPException,
@@ -411,6 +366,4 @@ async def initialize_agentic_user_variables(
         ValueError,
         AttributeError,
     ) as e:
-        await logger.aexception(
-            f"Error initializing agentic variables for user {user_id}: {e}"
-        )
+        await logger.aexception(f"Error initializing agentic variables for user {user_id}: {e}")

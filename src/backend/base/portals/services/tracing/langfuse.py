@@ -5,9 +5,10 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Any
 
 from px.log.logger import logger
+from typing_extensions import override
+
 from portals.serialization.serialization import serialize
 from portals.services.tracing.base import BaseTracer
-from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
     from langfuse._client.span import LangfuseSpan
     from langfuse.types import TraceContext
     from px.graph.vertex.base import Vertex
+
     from portals.services.tracing.schema import Log
 
 
@@ -45,7 +47,7 @@ class LangFuseTracer(BaseTracer):
         self.trace_id = trace_id
         self.user_id = user_id
         self.session_id = session_id
-        self.flow_id = trace_name.split(" - ")[-1]
+        self.flow_id = trace_name.rsplit(" - ", maxsplit=1)[-1]
         self.spans: dict[str, LangfuseSpan] = OrderedDict()
 
         config = self._get_config()
@@ -96,9 +98,7 @@ class LangFuseTracer(BaseTracer):
             )
 
         except ImportError:
-            logger.exception(
-                "Could not import langfuse. Please install it with `pip install langfuse`."
-            )
+            logger.exception("Could not import langfuse. Please install it with `pip install langfuse`.")
             return False
 
         except Exception as e:  # noqa: BLE001

@@ -13,9 +13,9 @@ import time
 
 import psutil
 import pytest
+from mcp import StdioServerParameters
 from px.base.mcp.util import MCPSessionManager
 from px.log.logger import logger
-from mcp import StdioServerParameters
 
 pytestmark = [
     pytest.mark.timeout(300, method="thread"),

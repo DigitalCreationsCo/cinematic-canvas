@@ -16,6 +16,9 @@ from fastapi import (
 )
 from fastapi.security import APIKeyHeader, APIKeyQuery, OAuth2PasswordBearer
 from fastapi.security.utils import get_authorization_scheme_param
+from px.log.logger import logger
+from px.services.deps import injectable_session_scope
+
 from portals.services.auth.exceptions import (
     AuthenticationError,
     InsufficientPermissionsError,
@@ -23,16 +26,15 @@ from portals.services.auth.exceptions import (
     MissingCredentialsError,
 )
 from portals.services.deps import get_auth_service
-from px.log.logger import logger
-from px.services.deps import injectable_session_scope
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine
     from datetime import timedelta
 
-    from portals.services.database.models.user.model import User, UserRead
     from px.services.settings.service import SettingsService
     from sqlmodel.ext.asyncio.session import AsyncSession
+
+    from portals.services.database.models.user.model import User, UserRead
 
 
 class OAuth2PasswordBearerCookie(OAuth2PasswordBearer):
@@ -64,12 +66,8 @@ oauth2_login = OAuth2PasswordBearerCookie(tokenUrl="api/v1/login", auto_error=Fa
 
 API_KEY_NAME = "x-api-key"
 
-api_key_query = APIKeyQuery(
-    name=API_KEY_NAME, scheme_name="API key query", auto_error=False
-)
-api_key_header = APIKeyHeader(
-    name=API_KEY_NAME, scheme_name="API key header", auto_error=False
-)
+api_key_query = APIKeyQuery(name=API_KEY_NAME, scheme_name="API key query", auto_error=False)
+api_key_header = APIKeyHeader(name=API_KEY_NAME, scheme_name="API key header", auto_error=False)
 
 
 def _auth_service():
@@ -89,9 +87,7 @@ ACCESS_TOKEN_TYPE: Final[str] = "access"  # noqa: S105
 PUBLIC_KEY_NOT_CONFIGURED_ERROR: Final[str] = (
     "Server configuration error: Public key not configured for asymmetric JWT algorithm."
 )
-SECRET_KEY_NOT_CONFIGURED_ERROR: Final[str] = (
-    "Server configuration error: Secret key not configured."  # noqa: S105
-)
+SECRET_KEY_NOT_CONFIGURED_ERROR: Final[str] = "Server configuration error: Secret key not configured."  # noqa: S105
 
 
 class JWTKeyError(HTTPException):
@@ -177,9 +173,7 @@ async def get_current_user(
     db: AsyncSession = Depends(injectable_session_scope),
 ) -> User:
     try:
-        return await _auth_service().get_current_user(
-            token, query_param, header_param, db
-        )
+        return await _auth_service().get_current_user(token, query_param, header_param, db)
     except AuthenticationError as e:
         raise _auth_error_to_http(e) from e
 
@@ -211,9 +205,7 @@ async def get_current_user_for_websocket(
     db: AsyncSession,
 ) -> User | UserRead:
     """Extracts credentials from WebSocket and delegates to auth service."""
-    token = websocket.cookies.get("access_token_lf") or websocket.query_params.get(
-        "token"
-    )
+    token = websocket.cookies.get("access_token_lf") or websocket.query_params.get("token")
     api_key = (
         websocket.query_params.get("x-api-key")
         or websocket.query_params.get("api_key")
@@ -224,9 +216,7 @@ async def get_current_user_for_websocket(
     try:
         return await _auth_service().get_current_user_for_websocket(token, api_key, db)
     except AuthenticationError as e:
-        raise WebSocketException(
-            code=status.WS_1008_POLICY_VIOLATION, reason=WS_AUTH_REASON
-        ) from e
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason=WS_AUTH_REASON) from e
 
 
 async def get_current_user_for_sse(
@@ -264,9 +254,7 @@ async def get_optional_user(
         User | None: The authenticated user if valid credentials are provided, None otherwise.
     """
     try:
-        user = await _auth_service().get_current_user(
-            token, query_param, header_param, db
-        )
+        user = await _auth_service().get_current_user(token, query_param, header_param, db)
     except (AuthenticationError, HTTPException):
         return None
     else:
@@ -383,9 +371,7 @@ def get_fernet(settings_service: SettingsService) -> Fernet:
     return Fernet(ensure_fernet_key(secret_key))
 
 
-def encrypt_api_key(
-    api_key: str, settings_service: SettingsService | None = None
-) -> str:  # noqa: ARG001
+def encrypt_api_key(api_key: str, settings_service: SettingsService | None = None) -> str:
     return _auth_service().encrypt_api_key(api_key)
 
 
@@ -429,9 +415,7 @@ async def get_current_user_mcp(
     db: AsyncSession = Depends(injectable_session_scope),
 ) -> User:
     try:
-        return await _auth_service().get_current_user_mcp(
-            token, query_param, header_param, db
-        )
+        return await _auth_service().get_current_user_mcp(token, query_param, header_param, db)
     except AuthenticationError as e:
         raise _auth_error_to_http(e) from e
 

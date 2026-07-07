@@ -274,7 +274,7 @@ class NormalUser(BasePxUser):
             [w[0] for w in MESSAGE_WEIGHTS],
             weights=[w[1] for w in MESSAGE_WEIGHTS],
             k=1,
-        )[0]  # noqa: S311
+        )[0]
         self.make_request(message_type=message_type)
 
     @task(15)

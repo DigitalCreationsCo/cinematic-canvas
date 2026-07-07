@@ -1,4 +1,4 @@
-""" backwards compatibility layer.
+"""backwards compatibility layer.
 
 This module provides backwards compatibility by forwarding imports from
 portals.* to px.* to maintain compatibility with existing code that

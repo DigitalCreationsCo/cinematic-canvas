@@ -10,9 +10,8 @@ This ensures backwards compatibility with existing starter projects.
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
-
 from px.__main__ import app
+from typer.testing import CliRunner
 
 runner = CliRunner()
 
@@ -51,9 +50,7 @@ class TestRunStarterProjectsBackwardCompatibility:
         if len(templates) == 0:
             pytest.fail(f"No 1.6.0 starter project files found in cache: {path}")
 
-    @pytest.mark.parametrize(
-        "template_file", get_starter_project_files(), ids=lambda x: x.name
-    )
+    @pytest.mark.parametrize("template_file", get_starter_project_files(), ids=lambda x: x.name)
     def test_run_1_6_0_starter_project_no_import_errors(self, template_file):
         """Test that 1.6.0 starter project can be loaded without portals or px import errors.
 
@@ -70,9 +67,7 @@ class TestRunStarterProjectsBackwardCompatibility:
         }
 
         if template_file.name in known_failing_projects:
-            pytest.xfail(
-                f"Known 1.6.0 component bug: {known_failing_projects[template_file.name]}"
-            )
+            pytest.xfail(f"Known 1.6.0 component bug: {known_failing_projects[template_file.name]}")
         # Run the command with --no-check-variables to skip variable validation
         # Use verbose mode to get detailed error messages in stderr
         result = runner.invoke(
@@ -93,27 +88,16 @@ class TestRunStarterProjectsBackwardCompatibility:
         all_output = result.output
 
         # Check for import errors related to portals or px
-        if (
-            "ModuleNotFoundError" in all_output
-            or "ImportError" in all_output
-            or "Module" in all_output
-        ):
+        if "ModuleNotFoundError" in all_output or "ImportError" in all_output or "Module" in all_output:
             # Check for portals import errors
-            if (
-                "No module named 'portals'" in all_output
-                or "Module portals" in all_output
-            ):
+            if "No module named 'portals'" in all_output or "Module portals" in all_output:
                 # Extract the specific error for better debugging
                 error_line = ""
                 for line in all_output.split("\n"):
-                    if "portals" in line and (
-                        "No module named" in line or "Module" in line
-                    ):
+                    if "portals" in line and ("No module named" in line or "Module" in line):
                         error_line = line.strip()
                         break
-                pytest.fail(
-                    f"Portals import error found in 1.6.0 template {template_file.name}.\nError: {error_line}"
-                )
+                pytest.fail(f"Portals import error found in 1.6.0 template {template_file.name}.\nError: {error_line}")
 
             # Check for px import errors (these indicate structural issues)
             if "No module named 'px." in all_output or "Module px." in all_output:
@@ -125,24 +109,16 @@ class TestRunStarterProjectsBackwardCompatibility:
 
                 error_lines = []
                 for line in clean_output.split("\n"):
-                    if "px" in line and (
-                        "No module named" in line or "Module px." in line
-                    ):
+                    if "px" in line and ("No module named" in line or "Module px." in line):
                         # Extract just the module name from various error formats
                         if "No module named" in line:
-                            match = re.search(
-                                r"No module named ['\"]([^'\"]+)['\"]", line
-                            )
+                            match = re.search(r"No module named ['\"]([^'\"]+)['\"]", line)
                             if match:
-                                error_lines.append(
-                                    f"  - Missing module: {match.group(1)}"
-                                )
+                                error_lines.append(f"  - Missing module: {match.group(1)}")
                         elif "Module px." in line and "not found" in line:
                             match = re.search(r"Module (px\.[^\s]+)", line)
                             if match:
-                                error_lines.append(
-                                    f"  - Missing module: {match.group(1)}"
-                                )
+                                error_lines.append(f"  - Missing module: {match.group(1)}")
 
                 # Deduplicate while preserving order
                 seen = set()
@@ -152,9 +128,7 @@ class TestRunStarterProjectsBackwardCompatibility:
                         seen.add(error)
                         unique_errors.append(error)
 
-                error_detail = "\n".join(
-                    unique_errors[:5]
-                )  # Show first 5 unique px errors
+                error_detail = "\n".join(unique_errors[:5])  # Show first 5 unique px errors
                 pytest.fail(
                     f"PX import error found in 1.6.0 template {template_file.name}.\n"
                     f"This indicates px internal structure issues.\n"
@@ -162,22 +136,16 @@ class TestRunStarterProjectsBackwardCompatibility:
                 )
 
             # Check for other critical import errors
-            if "cannot import name" in all_output and (
-                "portals" in all_output or "px" in all_output
-            ):
+            if "cannot import name" in all_output and ("portals" in all_output or "px" in all_output):
                 # Extract the specific import error
                 error_line = ""
                 for line in all_output.split("\n"):
                     if "cannot import name" in line:
                         error_line = line.strip()
                         break
-                pytest.fail(
-                    f"Import error found in 1.6.0 template {template_file.name}.\nError: {error_line}"
-                )
+                pytest.fail(f"Import error found in 1.6.0 template {template_file.name}.\nError: {error_line}")
 
-    @pytest.mark.parametrize(
-        "template_file", get_starter_project_files(), ids=lambda x: x.name
-    )
+    @pytest.mark.parametrize("template_file", get_starter_project_files(), ids=lambda x: x.name)
     def test_run_1_6_0_starter_project_format_options(self, template_file):
         """Test that 1.6.0 starter projects can be run with different output formats.
 
@@ -203,14 +171,10 @@ class TestRunStarterProjectsBackwardCompatibility:
 
             # Check that we got some output (even if it's an error)
             if len(result.output) == 0:
-                pytest.fail(
-                    f"No output for 1.6.0 template {template_file.name} with format {fmt}"
-                )
+                pytest.fail(f"No output for 1.6.0 template {template_file.name} with format {fmt}")
 
     @pytest.mark.xfail(reason="CLI --format option doesn't apply to error messages")
-    @pytest.mark.parametrize(
-        "template_file", get_starter_project_files()[:1], ids=lambda x: x.name
-    )
+    @pytest.mark.parametrize("template_file", get_starter_project_files()[:1], ids=lambda x: x.name)
     def test_run_1_6_0_format_option_applies_to_errors(self, template_file):
         """Test that --format option applies to error messages.
 
@@ -245,12 +209,8 @@ class TestRunStarterProjectsBackwardCompatibility:
                 # This is the expected behavior - plain text error
                 pass
 
-    @pytest.mark.xfail(
-        reason="CLI --format option doesn't apply when --verbose is used"
-    )
-    @pytest.mark.parametrize(
-        "template_file", get_starter_project_files()[:1], ids=lambda x: x.name
-    )
+    @pytest.mark.xfail(reason="CLI --format option doesn't apply when --verbose is used")
+    @pytest.mark.parametrize("template_file", get_starter_project_files()[:1], ids=lambda x: x.name)
     def test_run_1_6_0_format_option_applies_with_verbose(self, template_file):
         """Test that --format option applies even when --verbose is used.
 
@@ -324,19 +284,11 @@ class TestRunStarterProjectsBackwardCompatibility:
 
             # Check for module not found errors specifically related to portals
             # (Settings service errors are runtime errors, not import errors)
-            if (
-                "ModuleNotFoundError" in all_output
-                and "portals" in all_output
-                and "px.services" not in all_output
-            ):
+            if "ModuleNotFoundError" in all_output and "portals" in all_output and "px.services" not in all_output:
                 # This is an actual portals import error, not an internal px error
-                pytest.fail(
-                    f"Module not found error for portals in 1.6.0 template {template_name}"
-                )
+                pytest.fail(f"Module not found error for portals in 1.6.0 template {template_name}")
 
-    @pytest.mark.parametrize(
-        "template_file", get_starter_project_files(), ids=lambda x: x.name
-    )
+    @pytest.mark.parametrize("template_file", get_starter_project_files(), ids=lambda x: x.name)
     def test_run_1_6_0_starter_project_with_stdin(self, template_file):
         """Test loading 1.6.0 starter projects via stdin."""
         with template_file.open(encoding="utf-8") as f:
@@ -357,9 +309,7 @@ class TestRunStarterProjectsBackwardCompatibility:
         if "No module named 'portals'" in all_output:
             pytest.fail("Portals import error in 1.6.0 stdin test")
 
-    @pytest.mark.parametrize(
-        "template_file", get_starter_project_files(), ids=lambda x: x.name
-    )
+    @pytest.mark.parametrize("template_file", get_starter_project_files(), ids=lambda x: x.name)
     def test_run_1_6_0_starter_project_inline_json(self, template_file):
         """Test loading 1.6.0 starter projects via --flow-json option."""
         with template_file.open(encoding="utf-8") as f:

@@ -23,9 +23,7 @@ class LMStudioModelComponent(LCModelComponent):
     icon = "LMStudio"
     name = "LMStudioModel"
 
-    async def update_build_config(
-        self, build_config: dict, field_value: Any, field_name: str | None = None
-    ):  # noqa: ARG002
+    async def update_build_config(self, build_config: dict, field_value: Any, field_name: str | None = None):
         if field_name == "model_name":
             base_url_dict = build_config.get("base_url", {})
             base_url_load_from_db = base_url_dict.get("load_from_db", False)
@@ -34,9 +32,7 @@ class LMStudioModelComponent(LCModelComponent):
                 base_url_value = await self.get_variables(base_url_value, field_name)
             try:
                 async with httpx.AsyncClient() as client:
-                    response = await client.get(
-                        urljoin(base_url_value, "/v1/models"), timeout=2.0
-                    )
+                    response = await client.get(urljoin(base_url_value, "/v1/models"), timeout=2.0)
                     response.raise_for_status()
             except httpx.HTTPError:
                 msg = "Could not access the default LM Studio URL. Please, specify the 'Base URL' field."

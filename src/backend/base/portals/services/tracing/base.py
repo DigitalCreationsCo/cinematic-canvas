@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
     from langchain_core.callbacks.base import BaseCallbackHandler
     from px.graph.vertex.base import Vertex
+
     from portals.services.tracing.schema import Log
 
 

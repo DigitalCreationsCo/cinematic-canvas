@@ -22,9 +22,7 @@ except ImportError:
 def test_set_invalid_output():
     chatinput = ChatInput()
     chatoutput = ChatOutput()
-    with pytest.raises(
-        ValueError, match="Method build_config is not a valid output of ChatInput"
-    ):
+    with pytest.raises(ValueError, match="Method build_config is not a valid output of ChatInput"):
         chatoutput.set(input_value=chatinput.build_config)
 
 
@@ -45,9 +43,7 @@ def _output_required_inputs_are_in_inputs(output: Output, inputs: list[str]):
 
 def _assert_all_outputs_have_different_required_inputs(outputs: list[Output]):
     required_inputs = [tuple(output.required_inputs) for output in outputs]
-    assert len(required_inputs) == len(set(required_inputs)), (
-        "All outputs must have different required inputs"
-    )
+    assert len(required_inputs) == len(set(required_inputs)), "All outputs must have different required inputs"
     return True
 
 
@@ -86,8 +82,8 @@ async def test_update_component_build_config_sync():
         def update_build_config(
             self,
             build_config: dotdict,
-            field_value: Any,  # noqa: ARG002
-            field_name: str | None = None,  # noqa: ARG002
+            field_value: Any,
+            field_name: str | None = None,
         ):
             build_config["foo"] = "bar"
             return build_config
@@ -104,8 +100,8 @@ async def test_update_component_build_config_async():
         async def update_build_config(
             self,
             build_config: dotdict,
-            field_value: Any,  # noqa: ARG002
-            field_name: str | None = None,  # noqa: ARG002
+            field_value: Any,
+            field_name: str | None = None,
         ):
             build_config["foo"] = "bar"
             return build_config

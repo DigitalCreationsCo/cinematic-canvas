@@ -30,9 +30,7 @@ def delete_fields(build_config: dotdict, fields: dict[str, Any] | list[str]) -> 
     return build_config
 
 
-def get_fields(
-    build_config: dotdict, fields: list[str] | None = None
-) -> dict[str, Any]:
+def get_fields(build_config: dotdict, fields: list[str] | None = None) -> dict[str, Any]:
     """Get fields from build_config.If fields is None, return all fields."""
     if fields is None:
         return dict(build_config)
@@ -55,15 +53,9 @@ def update_input_types(build_config: dotdict) -> dotdict:
     return build_config
 
 
-def set_field_display(
-    build_config: dotdict, field: str, value: bool | None = None
-) -> dotdict:  # noqa: FBT001
+def set_field_display(build_config: dotdict, field: str, value: bool | None = None) -> dotdict:
     """Set whether a field should be displayed in the UI."""
-    if (
-        field in build_config
-        and isinstance(build_config[field], dict)
-        and "show" in build_config[field]
-    ):
+    if field in build_config and isinstance(build_config[field], dict) and "show" in build_config[field]:
         build_config[field]["show"] = value
     return build_config
 
@@ -85,9 +77,7 @@ def set_multiple_field_display(
     return build_config
 
 
-def set_field_advanced(
-    build_config: dotdict, field: str, *, value: bool | None = None
-) -> dotdict:
+def set_field_advanced(build_config: dotdict, field: str, *, value: bool | None = None) -> dotdict:
     """Set whether a field is considered 'advanced' in the UI."""
     if value is None:
         value = False

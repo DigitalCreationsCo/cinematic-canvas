@@ -13,6 +13,7 @@ import {
   ENABLE_MCP,
 } from "@/customization/feature-flags";
 import { useCustomNavigate } from "@/customization/hooks/use-custom-navigate";
+import NewProjectModal from "@/modals/newProjectModal";
 import useFlowsManagerStore from "@/stores/flowsManagerStore";
 import { useFolderStore } from "@/stores/foldersStore";
 import HeaderComponent from "../../components/header";
@@ -32,6 +33,7 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
     return savedView === "grid" || savedView === "list" ? savedView : "list";
   });
   const [newProjectModal, setNewProjectModal] = useState(false);
+  const [templatesModal, setTemplatesModal] = useState(false);
   const { folderId } = useParams();
   const location = useLocation();
   const [pageIndex, setPageIndex] = useState(1);
@@ -307,13 +309,14 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
                 view={view}
                 setView={setView}
                 setNewProjectModal={setNewProjectModal}
+                setTemplatesModal={setTemplatesModal}
                 setSearch={onSearch}
                 isEmptyFolder={isEmptyFolder}
                 selectedFlows={selectedFlows}
               />
               {isEmptyFolder ? (
                 <EmptyFolder
-                  setOpenModal={setNewProjectModal}
+                  setOpenModal={setTemplatesModal}
                   setOpenNewProjectModal={setNewProjectModal}
                 />
               ) : (
@@ -395,12 +398,19 @@ const HomePage = ({ type }: { type: "flows" | "components" | "mcp" }) => {
       </div>
 
       <ModalsComponent
-        openModal={newProjectModal}
-        setOpenModal={setNewProjectModal}
+        openModal={templatesModal}
+        setOpenModal={setTemplatesModal}
         openDeleteFolderModal={false}
         setOpenDeleteFolderModal={() => {}}
         handleDeleteFolder={() => {}}
       />
+      {newProjectModal && (
+        <NewProjectModal
+          open={newProjectModal}
+          setOpen={setNewProjectModal}
+          onProjectCreated={() => setTemplatesModal(true)}
+        />
+      )}
     </CardsWrapComponent>
   );
 };

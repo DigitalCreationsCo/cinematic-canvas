@@ -4,6 +4,7 @@ from typing import Any
 
 from cryptography.fernet import InvalidToken
 from px.log.logger import logger
+
 from portals.services.auth import utils as auth_utils
 
 # Fields that should be encrypted when stored
@@ -86,9 +87,7 @@ def decrypt_auth_settings(
                     raise ValueError(msg) from e
 
                 # Value doesn't appear encrypted, assume it's plaintext (backward compatibility)
-                logger.debug(
-                    f"Field {field} appears to be plaintext, keeping original value"
-                )
+                logger.debug(f"Field {field} appears to be plaintext, keeping original value")
 
     return decrypted_settings
 

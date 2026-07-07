@@ -6,6 +6,8 @@ from uuid import UUID
 
 import httpx
 from httpx import HTTPError, HTTPStatusError
+from px.log.logger import logger
+
 from portals.services.base import Service
 from portals.services.store.exceptions import APIKeyError, FilterError, ForbiddenError
 from portals.services.store.schema import (
@@ -20,7 +22,6 @@ from portals.services.store.utils import (
     process_tags_for_post,
     update_components_with_user_data,
 )
-from px.log.logger import logger
 
 if TYPE_CHECKING:
     from px.services.settings.service import SettingsService
@@ -62,7 +63,7 @@ def get_id_from_search_string(search_string: str) -> str | None:
     """
     possible_id: str | None = search_string
     if "www.portals.store/store/" in search_string:
-        possible_id = search_string.split("/")[-1]
+        possible_id = search_string.rsplit("/", maxsplit=1)[-1]
 
     try:
         possible_id = str(UUID(search_string))
@@ -111,9 +112,7 @@ class StoreService(Service):
         # If it is, return True
         # If it is not, return False
         try:
-            user_data, _ = await self.get(
-                f"{self.base_url}/users/me", api_key, params={"fields": "id"}
-            )
+            user_data, _ = await self.get(f"{self.base_url}/users/me", api_key, params={"fields": "id"})
 
             return "id" in user_data[0]
         except HTTPStatusError as exc:
@@ -132,9 +131,7 @@ class StoreService(Service):
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.get(
-                    url, headers=headers, params=params, timeout=self.timeout
-                )
+                response = await client.get(url, headers=headers, params=params, timeout=self.timeout)
                 response.raise_for_status()
             except HTTPError:
                 raise
@@ -151,9 +148,7 @@ class StoreService(Service):
             return [result], metadata
         return result, metadata
 
-    async def call_webhook(
-        self, api_key: str, webhook_url: str, component_id: UUID
-    ) -> None:
+    async def call_webhook(self, api_key: str, webhook_url: str, component_id: UUID) -> None:
         # The webhook is a POST request with the data in the body
         # For now we are calling it just for testing
         try:
@@ -176,9 +171,7 @@ class StoreService(Service):
     def build_tags_filter(tags: list[str]):
         tags_filter: dict[str, Any] = {"tags": {"_and": []}}
         for tag in tags:
-            tags_filter["tags"]["_and"].append(
-                {"_some": {"tags_id": {"name": {"_eq": tag}}}}
-            )
+            tags_filter["tags"]["_and"].append({"_some": {"tags_id": {"name": {"_eq": tag}}}})
         return tags_filter
 
     async def count_components(
@@ -283,9 +276,7 @@ class StoreService(Service):
         params: dict[str, Any] = {
             "page": page,
             "limit": limit,
-            "fields": ",".join(fields)
-            if fields is not None
-            else ",".join(self.default_fields),
+            "fields": ",".join(fields) if fields is not None else ",".join(self.default_fields),
             "meta": "filter_count",  # !This is DEPRECATED so we should remove it ASAP
         }
         # ?aggregate[count]=likes
@@ -311,9 +302,7 @@ class StoreService(Service):
 
         return results_objects, metadata
 
-    async def get_liked_by_user_components(
-        self, component_ids: list[str], api_key: str
-    ) -> list[str]:
+    async def get_liked_by_user_components(self, component_ids: list[str], api_key: str) -> list[str]:
         # Get fields id
         # filter should be "id is in component_ids AND liked_by directus_users_id token is api_key"
         # return the ids
@@ -336,9 +325,7 @@ class StoreService(Service):
         return [result["id"] for result in results]
 
     # Which of the components is parent of the user's components
-    async def get_components_in_users_collection(
-        self, component_ids: list[str], api_key: str
-    ):
+    async def get_components_in_users_collection(self, component_ids: list[str], api_key: str):
         user_data = user_data_var.get()
         if not user_data:
             msg = "No user data"
@@ -357,9 +344,7 @@ class StoreService(Service):
         results, _ = await self.get(self.components_url, api_key, params)
         return [result["id"] for result in results]
 
-    async def download(
-        self, api_key: str, component_id: UUID
-    ) -> DownloadComponentResponse:
+    async def download(self, api_key: str, component_id: UUID) -> DownloadComponentResponse:
         url = f"{self.components_url}/{component_id}"
         params = {"fields": "id,name,description,data,is_component,metadata"}
         if not self.download_webhook_url:
@@ -374,23 +359,16 @@ class StoreService(Service):
 
         download_component = DownloadComponentResponse(**component_dict)
         # Check if metadata is an empty dict
-        if (
-            download_component.metadata in [None, {}]
-            and download_component.data is not None
-        ):
+        if download_component.metadata in [None, {}] and download_component.data is not None:
             # If it is, we need to build the metadata
             try:
-                download_component.metadata = process_component_data(
-                    download_component.data.get("nodes", [])
-                )
+                download_component.metadata = process_component_data(download_component.data.get("nodes", []))
             except KeyError as e:
                 msg = "Invalid component data. No nodes found"
                 raise ValueError(msg) from e
         return download_component
 
-    async def upload(
-        self, api_key: str, component_data: StoreComponentCreate
-    ) -> CreateComponentResponse:
+    async def upload(self, api_key: str, component_data: StoreComponentCreate) -> CreateComponentResponse:
         headers = {"Authorization": f"Bearer {api_key}"}
         component_dict = component_data.model_dump(exclude_unset=True)
         # Parent is a UUID, but the store expects a string
@@ -481,9 +459,7 @@ class StoreService(Service):
         likes, _ = await self.get(url, api_key, params)
         return likes
 
-    async def get_component_likes_count(
-        self, component_id: str, api_key: str | None = None
-    ) -> int:
+    async def get_component_likes_count(self, component_id: str, api_key: str | None = None) -> int:
         url = f"{self.components_url}/{component_id}"
 
         params = {
@@ -627,11 +603,7 @@ class StoreService(Service):
                         authorized = True
                         result = updated_result
                     except Exception:  # noqa: BLE001
-                        logger.debug(
-                            "Error updating components with user data", exc_info=True
-                        )
+                        logger.debug("Error updating components with user data", exc_info=True)
                         # If we get an error here, it means the user is not authorized
                         authorized = False
-        return ListComponentResponseModel(
-            results=result, authorized=authorized, count=comp_count
-        )
+        return ListComponentResponseModel(results=result, authorized=authorized, count=comp_count)

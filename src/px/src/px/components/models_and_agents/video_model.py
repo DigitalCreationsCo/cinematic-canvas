@@ -1,8 +1,8 @@
 from px.base.data.utils import IMG_FILE_TYPES
 from px.base.models.model import LCModelComponent
 from px.base.models.unified_models import (
-    get_video_generation_model_options,
     get_llm,
+    get_video_generation_model_options,
     handle_model_input_update,
 )
 from px.base.models.watsonx_constants import IBM_WATSONX_URLS
@@ -10,9 +10,9 @@ from px.field_typing.constants import LanguageModel
 from px.field_typing.range_spec import RangeSpec
 from px.inputs.inputs import DropdownInput, StrInput
 from px.io import (
+    FileInput,
     IntInput,
     MessageTextInput,
-    FileInput,
     ModelInput,
     SecretStrInput,
     SliderInput,

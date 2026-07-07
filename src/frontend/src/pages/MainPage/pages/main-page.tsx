@@ -19,6 +19,7 @@ export default function CollectionPage(): JSX.Element {
   const [openModal, setOpenModal] = useState(false);
   const [openDeleteFolderModal, setOpenDeleteFolderModal] = useState(false);
   const [openNewProjectModal, setOpenNewProjectModal] = useState(false);
+  const [openTemplatesModal, setOpenTemplatesModal] = useState(false);
   const setFolderToEdit = useFolderStore((state) => state.setFolderToEdit);
   const navigate = useCustomNavigate();
   const flows = useFlowsManagerStore((state) => state.flows);
@@ -85,7 +86,7 @@ export default function CollectionPage(): JSX.Element {
               <Outlet />
             ) : (
               <CustomEmptyPageCommunity
-                setOpenModal={setOpenModal}
+                setOpenModal={setOpenTemplatesModal}
                 setOpenNewProjectModal={setOpenNewProjectModal}
               />
             )}
@@ -97,8 +98,8 @@ export default function CollectionPage(): JSX.Element {
         )}
       </main>
       <ModalsComponent
-        openModal={openModal}
-        setOpenModal={setOpenModal}
+        openModal={openTemplatesModal}
+        setOpenModal={setOpenTemplatesModal}
         openDeleteFolderModal={openDeleteFolderModal}
         setOpenDeleteFolderModal={setOpenDeleteFolderModal}
         handleDeleteFolder={handleDeleteFolder}
@@ -107,6 +108,7 @@ export default function CollectionPage(): JSX.Element {
         <NewProjectWizard
           open={openNewProjectModal}
           setOpen={setOpenNewProjectModal}
+          onProjectCreated={() => setOpenTemplatesModal(true)}
         />
       )}
     </SidebarProvider>

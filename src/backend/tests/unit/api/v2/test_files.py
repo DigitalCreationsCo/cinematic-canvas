@@ -43,9 +43,7 @@ async def files_created_api_key(files_client, files_active_user):  # noqa: ARG00
     async with session_scope() as session:
         stmt = select(ApiKey).where(ApiKey.api_key == api_key.api_key)
         if existing_api_key := (await session.exec(stmt)).first():
-            existing_api_key = UnmaskedApiKeyRead.model_validate(
-                existing_api_key, from_attributes=True
-            )
+            existing_api_key = UnmaskedApiKeyRead.model_validate(existing_api_key, from_attributes=True)
             yield existing_api_key
             return
         session.add(api_key)
@@ -127,9 +125,7 @@ async def files_client_fixture(
 
         async with (
             LifespanManager(app, startup_timeout=None, shutdown_timeout=60) as manager,
-            AsyncClient(
-                transport=ASGITransport(app=manager.app), base_url="http://testserver/"
-            ) as client,
+            AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://testserver/") as client,
         ):
             yield client
         # app.dependency_overrides.clear()
@@ -147,17 +143,13 @@ async def test_upload_file(files_client, files_created_api_key):
         files={"file": ("test.txt", b"test content")},
         headers=headers,
     )
-    assert response.status_code == 201, (
-        f"Expected 201, got {response.status_code}: {response.json()}"
-    )
+    assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.json()}"
 
     response_json = response.json()
     assert "id" in response_json
 
 
-async def test_should_not_persist_in_my_files_when_upload_is_ephemeral(
-    files_client, files_created_api_key
-):
+async def test_should_not_persist_in_my_files_when_upload_is_ephemeral(files_client, files_created_api_key):
     """Ephemeral uploads save the file to storage but do NOT create a UserFile DB record.
 
     This is the expected behavior for chat playground uploads in Desktop,
@@ -173,9 +165,7 @@ async def test_should_not_persist_in_my_files_when_upload_is_ephemeral(
         params={"ephemeral": "true"},
         headers=headers,
     )
-    assert response.status_code == 201, (
-        f"Expected 201, got {response.status_code}: {response.text}"
-    )
+    assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
 
     upload_response = response.json()
     assert "path" in upload_response
@@ -196,9 +186,7 @@ async def test_should_not_persist_in_my_files_when_upload_is_ephemeral(
     assert len(parts) == 2, f"Expected path format 'user_id/filename', got: {file_path}"
 
 
-async def test_should_return_path_with_forward_slashes_when_uploading_file(
-    files_client, files_created_api_key
-):
+async def test_should_return_path_with_forward_slashes_when_uploading_file(files_client, files_created_api_key):
     """Upload response path must use forward slashes on all platforms.
 
     On Windows, pathlib.Path serializes with backslashes, but the GET list
@@ -245,9 +233,7 @@ async def test_download_file(files_client, files_created_api_key):
     upload_response = response.json()
 
     # Then try to download it
-    response = await files_client.get(
-        f"api/v2/files/{upload_response['id']}", headers=headers
-    )
+    response = await files_client.get(f"api/v2/files/{upload_response['id']}", headers=headers)
 
     assert response.status_code == 200
     assert response.content == b"test content"
@@ -295,9 +281,7 @@ async def test_delete_file(files_client, files_created_api_key):
     assert response.status_code == 201
     upload_response = response.json()
 
-    response = await files_client.delete(
-        f"api/v2/files/{upload_response['id']}", headers=headers
-    )
+    response = await files_client.delete(f"api/v2/files/{upload_response['id']}", headers=headers)
     assert response.status_code == 200
     assert response.json() == {"detail": "File test deleted successfully"}
 
@@ -315,17 +299,13 @@ async def test_edit_file(files_client, files_created_api_key):
     upload_response = response.json()
 
     # Then list the files
-    response = await files_client.put(
-        f"api/v2/files/{upload_response['id']}?name=potato.txt", headers=headers
-    )
+    response = await files_client.put(f"api/v2/files/{upload_response['id']}?name=potato.txt", headers=headers)
     assert response.status_code == 200
     file = response.json()
     assert file["name"] == "potato.txt"
 
 
-async def test_upload_list_delete_and_validate_files(
-    files_client, files_created_api_key
-):
+async def test_upload_list_delete_and_validate_files(files_client, files_created_api_key):
     headers = {"x-api-key": files_created_api_key.api_key}
 
     # Upload two files
@@ -374,9 +354,7 @@ async def test_upload_list_delete_and_validate_files(
     assert len(files) == 1
 
 
-async def test_upload_files_with_same_name_creates_unique_names(
-    files_client, files_created_api_key
-):
+async def test_upload_files_with_same_name_creates_unique_names(files_client, files_created_api_key):
     """Test that uploading files with the same name creates unique filenames."""
     headers = {"x-api-key": files_created_api_key.api_key}
 
@@ -434,9 +412,7 @@ async def test_upload_files_with_same_name_creates_unique_names(
     assert len(files) == 3
 
 
-async def test_upload_files_without_extension_creates_unique_names(
-    files_client, files_created_api_key
-):
+async def test_upload_files_without_extension_creates_unique_names(files_client, files_created_api_key):
     """Test that uploading files without extensions also creates unique filenames."""
     headers = {"x-api-key": files_created_api_key.api_key}
 
@@ -470,9 +446,7 @@ async def test_upload_files_without_extension_creates_unique_names(
     assert download2.content == b"content2"
 
 
-async def test_upload_files_with_different_extensions_same_name(
-    files_client, files_created_api_key
-):
+async def test_upload_files_with_different_extensions_same_name(files_client, files_created_api_key):
     """Test that files with same root name but different extensions create unique names."""
     headers = {"x-api-key": files_created_api_key.api_key}
 
@@ -507,9 +481,7 @@ async def test_upload_files_with_different_extensions_same_name(
     assert file3["name"] == "document (2)"
 
 
-async def test_mcp_servers_file_replacement(
-    files_client, files_created_api_key, files_active_user
-):
+async def test_mcp_servers_file_replacement(files_client, files_created_api_key, files_active_user):
     """Test that _mcp_servers file gets replaced instead of creating unique names."""
     headers = {"x-api-key": files_created_api_key.api_key}
 
@@ -557,9 +529,7 @@ async def test_mcp_servers_file_replacement(
     assert file1["id"] != file2["id"]
 
 
-async def test_unique_filename_counter_handles_gaps(
-    files_client, files_created_api_key
-):
+async def test_unique_filename_counter_handles_gaps(files_client, files_created_api_key):
     """Test that the unique filename counter properly handles gaps in sequence."""
     headers = {"x-api-key": files_created_api_key.api_key}
 
@@ -594,9 +564,7 @@ async def test_unique_filename_counter_handles_gaps(
     assert file3["name"] == "gaptest (2)"
 
     # Delete the middle file (gaptest (1))
-    delete_response = await files_client.delete(
-        f"api/v2/files/{file2['id']}", headers=headers
-    )
+    delete_response = await files_client.delete(f"api/v2/files/{file2['id']}", headers=headers)
     assert delete_response.status_code == 200
 
     # Upload another file - should be gaptest (3), not filling the gap
@@ -664,9 +632,7 @@ def aws_credentials():
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
 
     if missing_vars:
-        pytest.skip(
-            f"Missing required environment variables: {', '.join(missing_vars)}"
-        )
+        pytest.skip(f"Missing required environment variables: {', '.join(missing_vars)}")
 
     # Set default region if not provided
     if not os.environ.get("AWS_DEFAULT_REGION"):
@@ -687,9 +653,7 @@ async def s3_files_created_api_key(s3_files_client, s3_files_active_user):  # no
     async with session_scope() as session:
         stmt = select(ApiKey).where(ApiKey.api_key == api_key.api_key)
         if existing_api_key := (await session.exec(stmt)).first():
-            existing_api_key = UnmaskedApiKeyRead.model_validate(
-                existing_api_key, from_attributes=True
-            )
+            existing_api_key = UnmaskedApiKeyRead.model_validate(existing_api_key, from_attributes=True)
             yield existing_api_key
             return
         session.add(api_key)
@@ -771,9 +735,7 @@ async def s3_files_client_fixture(
 
         async with (
             LifespanManager(app, startup_timeout=None, shutdown_timeout=60) as manager,
-            AsyncClient(
-                transport=ASGITransport(app=manager.app), base_url="http://testserver/"
-            ) as client,
+            AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://testserver/") as client,
         ):
             yield client
 
@@ -782,9 +744,7 @@ async def s3_files_client_fixture(
             import boto3
 
             s3 = boto3.client("s3")
-            bucket_name = os.environ.get(
-                "PORTALS_OBJECT_STORAGE_BUCKET_NAME", "portals-ci"
-            )
+            bucket_name = os.environ.get("PORTALS_OBJECT_STORAGE_BUCKET_NAME", "portals-ci")
 
             # List and delete all objects with our test prefix
             with contextlib.suppress(Exception):
@@ -822,17 +782,13 @@ class TestS3FileOperations:
             files={"file": ("s3_test.txt", b"S3 test content")},
             headers=headers,
         )
-        assert response.status_code == 201, (
-            f"Expected 201, got {response.status_code}: {response.json()}"
-        )
+        assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.json()}"
 
         response_json = response.json()
         assert "id" in response_json
         assert response_json["name"] == "s3_test"
 
-    async def test_s3_upload_and_download_file(
-        self, s3_files_client, s3_files_created_api_key
-    ):
+    async def test_s3_upload_and_download_file(self, s3_files_client, s3_files_created_api_key):
         """Test uploading and downloading a file with S3 storage."""
         headers = {"x-api-key": s3_files_created_api_key.api_key}
 
@@ -846,9 +802,7 @@ class TestS3FileOperations:
         upload_response = response.json()
 
         # Download file
-        response = await s3_files_client.get(
-            f"api/v2/files/{upload_response['id']}", headers=headers
-        )
+        response = await s3_files_client.get(f"api/v2/files/{upload_response['id']}", headers=headers)
 
         assert response.status_code == 200
         assert response.content == b"S3 download content"
@@ -887,9 +841,7 @@ class TestS3FileOperations:
         upload_response = response.json()
 
         # Delete the file
-        response = await s3_files_client.delete(
-            f"api/v2/files/{upload_response['id']}", headers=headers
-        )
+        response = await s3_files_client.delete(f"api/v2/files/{upload_response['id']}", headers=headers)
         assert response.status_code == 200
         assert response.json() == {"detail": "File s3_delete_test deleted successfully"}
 
@@ -901,14 +853,10 @@ class TestS3FileOperations:
         assert "s3_delete_test" not in file_names
 
         # Verify file is deleted from S3 (should return 404)
-        response = await s3_files_client.get(
-            f"api/v2/files/{upload_response['id']}", headers=headers
-        )
+        response = await s3_files_client.get(f"api/v2/files/{upload_response['id']}", headers=headers)
         assert response.status_code == 404
 
-    async def test_s3_upload_list_delete_multiple_files(
-        self, s3_files_client, s3_files_created_api_key
-    ):
+    async def test_s3_upload_list_delete_multiple_files(self, s3_files_client, s3_files_created_api_key):
         """Test uploading, listing, and deleting multiple files with S3 storage."""
         headers = {"x-api-key": s3_files_created_api_key.api_key}
 
@@ -941,9 +889,7 @@ class TestS3FileOperations:
         assert file2["id"] in file_ids
 
         # Delete one file
-        response = await s3_files_client.delete(
-            f"api/v2/files/{file1['id']}", headers=headers
-        )
+        response = await s3_files_client.delete(f"api/v2/files/{file1['id']}", headers=headers)
         assert response.status_code == 200
 
         # List files again and validate only the other remains
@@ -957,9 +903,7 @@ class TestS3FileOperations:
         assert file2["name"] in file_names
         assert file2["id"] in file_ids
 
-    async def test_s3_upload_binary_file(
-        self, s3_files_client, s3_files_created_api_key
-    ):
+    async def test_s3_upload_binary_file(self, s3_files_client, s3_files_created_api_key):
         """Test uploading and downloading binary data with S3 storage."""
         headers = {"x-api-key": s3_files_created_api_key.api_key}
 
@@ -976,15 +920,11 @@ class TestS3FileOperations:
         upload_response = response.json()
 
         # Download and verify binary data
-        response = await s3_files_client.get(
-            f"api/v2/files/{upload_response['id']}", headers=headers
-        )
+        response = await s3_files_client.get(f"api/v2/files/{upload_response['id']}", headers=headers)
         assert response.status_code == 200
         assert response.content == binary_data
 
-    async def test_s3_delete_verifies_s3_cleanup(
-        self, s3_files_client, s3_files_created_api_key
-    ):
+    async def test_s3_delete_verifies_s3_cleanup(self, s3_files_client, s3_files_created_api_key):
         """Test that delete properly cleans up S3 storage (verifies the bug fix)."""
         headers = {"x-api-key": s3_files_created_api_key.api_key}
 
@@ -1002,18 +942,14 @@ class TestS3FileOperations:
         user_id = file_path.split("/")[0]
 
         # Delete the file
-        response = await s3_files_client.delete(
-            f"api/v2/files/{upload_response['id']}", headers=headers
-        )
+        response = await s3_files_client.delete(f"api/v2/files/{upload_response['id']}", headers=headers)
         assert response.status_code == 200
 
         # Verify file is actually deleted from S3 by checking directly
         import boto3
 
         s3 = boto3.client("s3")
-        bucket_name = os.environ.get(
-            "PORTALS_OBJECT_STORAGE_BUCKET_NAME", "portals-ci"
-        )
+        bucket_name = os.environ.get("PORTALS_OBJECT_STORAGE_BUCKET_NAME", "portals-ci")
 
         # Extract file name from path
         file_name = file_path.split("/")[-1]
@@ -1025,9 +961,7 @@ class TestS3FileOperations:
         # Try to get the object - should raise NoSuchKey
         try:
             s3.head_object(Bucket=bucket_name, Key=s3_key)
-            pytest.fail(
-                f"File {s3_key} should have been deleted from S3 but still exists"
-            )
+            pytest.fail(f"File {s3_key} should have been deleted from S3 but still exists")
         except s3.exceptions.NoSuchKey:
             pass  # Expected - file was properly deleted
         except Exception as e:
@@ -1066,9 +1000,7 @@ class TestStorageFailureHandling:
         # Mock S3 error with NoSuchKey code
         class MockS3Error(Exception):
             def __init__(self):
-                self.response = {
-                    "Error": {"Code": "NoSuchKey", "Message": "Key does not exist"}
-                }
+                self.response = {"Error": {"Code": "NoSuchKey", "Message": "Key does not exist"}}
 
         error = MockS3Error()
         assert is_permanent_storage_failure(error) is True
@@ -1087,14 +1019,8 @@ class TestStorageFailureHandling:
             pass
 
         assert is_permanent_storage_failure(NetworkError("Connection failed")) is False
-        assert (
-            is_permanent_storage_failure(CustomTimeoutError("Request timed out"))
-            is False
-        )
-        assert (
-            is_permanent_storage_failure(CustomPermissionError("Access denied"))
-            is False
-        )
+        assert is_permanent_storage_failure(CustomTimeoutError("Request timed out")) is False
+        assert is_permanent_storage_failure(CustomPermissionError("Access denied")) is False
 
     def test_is_permanent_storage_failure_fallback_string_matching(self):
         """Test fallback string matching for edge cases."""
@@ -1106,10 +1032,7 @@ class TestStorageFailureHandling:
         assert is_permanent_storage_failure(CustomError("NoSuchBucket error")) is True
         assert is_permanent_storage_failure(CustomError("NoSuchKey error")) is True
         assert is_permanent_storage_failure(CustomError("File not found")) is True
-        assert (
-            is_permanent_storage_failure(CustomError("FileNotFoundError occurred"))
-            is True
-        )
+        assert is_permanent_storage_failure(CustomError("FileNotFoundError occurred")) is True
 
     async def test_delete_file_with_permanent_failure_deletes_from_db(self):
         """Test that permanent storage failures still delete from database."""
@@ -1138,9 +1061,7 @@ class TestStorageFailureHandling:
         mock_session.delete = AsyncMock()
 
         mock_storage_service = AsyncMock()
-        mock_storage_service.delete_file = AsyncMock(
-            side_effect=FileNotFoundError(f"File {file_path} not found")
-        )
+        mock_storage_service.delete_file = AsyncMock(side_effect=FileNotFoundError(f"File {file_path} not found"))
 
         result = await delete_file(
             file_id=file_id,
@@ -1149,7 +1070,7 @@ class TestStorageFailureHandling:
             storage_service=mock_storage_service,
         )
 
-        expected_file_name = file_path.split("/")[-1]
+        expected_file_name = file_path.rsplit("/", maxsplit=1)[-1]
         mock_storage_service.delete_file.assert_called_once_with(
             flow_id=str(user_id),
             file_name=expected_file_name,
@@ -1185,9 +1106,7 @@ class TestStorageFailureHandling:
         mock_session.delete = AsyncMock()
 
         mock_storage_service = AsyncMock()
-        mock_storage_service.delete_file = AsyncMock(
-            side_effect=ConnectionError("Network connection failed")
-        )
+        mock_storage_service.delete_file = AsyncMock(side_effect=ConnectionError("Network connection failed"))
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_file(
@@ -1200,7 +1119,7 @@ class TestStorageFailureHandling:
         assert exc_info.value.status_code == 500
         assert "Failed to delete file from storage" in exc_info.value.detail
 
-        expected_file_name = file_path.split("/")[-1]
+        expected_file_name = file_path.rsplit("/", maxsplit=1)[-1]
         mock_storage_service.delete_file.assert_called_once_with(
             flow_id=str(user_id),
             file_name=expected_file_name,
@@ -1237,9 +1156,7 @@ class TestStorageFailureHandling:
 
         deleted_file_ids = set()
 
-        async def mock_delete_file(
-            *, flow_id: str | None = None, file_name: str | None = None
-        ) -> None:  # noqa: ARG001
+        async def mock_delete_file(*, flow_id: str | None = None, file_name: str | None = None) -> None:
             if file_name == f"{file_ids[0]}.txt":
                 msg = f"File {file_name} not found"
                 raise FileNotFoundError(msg)
@@ -1334,9 +1251,7 @@ class TestStorageFailureHandling:
 
         call_count = 0
 
-        async def mock_delete_file(
-            *, flow_id: str | None = None, file_name: str | None = None
-        ) -> None:  # noqa: ARG001
+        async def mock_delete_file(*, flow_id: str | None = None, file_name: str | None = None) -> None:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
@@ -1352,10 +1267,7 @@ class TestStorageFailureHandling:
             storage_service=mock_storage_service,
         )
 
-        assert (
-            result["message"]
-            == "2 files deleted successfully, 1 files failed to delete. See logs for details."
-        )
+        assert result["message"] == "2 files deleted successfully, 1 files failed to delete. See logs for details."
 
     async def test_batch_delete_message_all_successful(self):
         """Test batch delete returns correct message when all files deleted successfully."""
@@ -1423,9 +1335,7 @@ class TestStorageFailureHandling:
 
         call_count = 0
 
-        async def mock_delete_file(
-            *, flow_id: str | None = None, file_name: str | None = None
-        ) -> None:  # noqa: ARG001
+        async def mock_delete_file(*, flow_id: str | None = None, file_name: str | None = None) -> None:
             nonlocal call_count
             call_count += 1
             if call_count == 1:

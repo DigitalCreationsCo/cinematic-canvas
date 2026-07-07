@@ -1,6 +1,6 @@
 import pytest
-from px.components.flow_controls.notify import NotifyComponent
 from portals.schema.data import Data
+from px.components.flow_controls.notify import NotifyComponent
 
 from tests.base import ComponentTestBaseWithoutClient
 
@@ -31,10 +31,7 @@ class TestNotifyComponent(ComponentTestBaseWithoutClient):
         """Test proper initialization of NotifyComponent."""
         component = await self.component_setup(component_class, default_kwargs)
         assert component.display_name == "Notify"
-        assert (
-            component.description
-            == "A component to generate a notification to Get Notified component."
-        )
+        assert component.description == "A component to generate a notification to Get Notified component."
         assert component.icon == "Notify"
         assert component.name == "Notify"
         assert component.beta is True
@@ -48,27 +45,19 @@ class TestNotifyComponent(ComponentTestBaseWithoutClient):
         assert expected_input_names.issubset(input_names)
         assert len(component.inputs) >= 3
 
-    async def test_context_key_input_configuration(
-        self, component_class, default_kwargs
-    ):
+    async def test_context_key_input_configuration(self, component_class, default_kwargs):
         """Test context_key input configuration."""
         component = await self.component_setup(component_class, default_kwargs)
-        context_key_input = next(
-            (inp for inp in component.inputs if inp.name == "context_key"), None
-        )
+        context_key_input = next((inp for inp in component.inputs if inp.name == "context_key"), None)
 
         assert context_key_input is not None
         assert context_key_input.display_name == "Context Key"
         assert context_key_input.required is True
 
-    async def test_input_value_input_configuration(
-        self, component_class, default_kwargs
-    ):
+    async def test_input_value_input_configuration(self, component_class, default_kwargs):
         """Test input_value input configuration."""
         component = await self.component_setup(component_class, default_kwargs)
-        input_value_input = next(
-            (inp for inp in component.inputs if inp.name == "input_value"), None
-        )
+        input_value_input = next((inp for inp in component.inputs if inp.name == "input_value"), None)
 
         assert input_value_input is not None
         assert input_value_input.display_name == "Input Data"
@@ -85,9 +74,7 @@ class TestNotifyComponent(ComponentTestBaseWithoutClient):
     async def test_append_input_configuration(self, component_class, default_kwargs):
         """Test append input configuration."""
         component = await self.component_setup(component_class, default_kwargs)
-        append_input = next(
-            (inp for inp in component.inputs if inp.name == "append"), None
-        )
+        append_input = next((inp for inp in component.inputs if inp.name == "append"), None)
         assert append_input is not None
 
     async def test_outputs_configuration(self, component_class, default_kwargs):
@@ -113,18 +100,14 @@ class TestNotifyComponent(ComponentTestBaseWithoutClient):
         assert isinstance(component, Component)
 
     @pytest.mark.asyncio
-    async def test_notify_components_method_exists(
-        self, component_class, default_kwargs
-    ):
+    async def test_notify_components_method_exists(self, component_class, default_kwargs):
         """Test that notify_components method exists and is callable."""
         component = await self.component_setup(component_class, default_kwargs)
         assert hasattr(component, "notify_components")
         assert callable(component.notify_components)
 
     @pytest.mark.asyncio
-    async def test_notify_components_no_vertex_raises_error(
-        self, component_class, default_kwargs
-    ):
+    async def test_notify_components_no_vertex_raises_error(self, component_class, default_kwargs):
         """Test notify_components raises ValueError when component not in graph."""
         component = await self.component_setup(component_class, default_kwargs)
         component.context_key = "test_key"
@@ -132,9 +115,7 @@ class TestNotifyComponent(ComponentTestBaseWithoutClient):
         component.append = False
         component._vertex = None
 
-        with pytest.raises(
-            ValueError, match="Notify component must be used in a graph"
-        ):
+        with pytest.raises(ValueError, match="Notify component must be used in a graph"):
             await component.notify_components()
 
     async def test_notify_components_is_async(self, component_class, default_kwargs):

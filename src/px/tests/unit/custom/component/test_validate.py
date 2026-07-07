@@ -2,7 +2,6 @@ import ast
 from textwrap import dedent
 
 import pytest
-
 from px.custom.validate import (
     _get_module_fallbacks,
     _resolve_attribute,
@@ -47,10 +46,7 @@ import urllib.request as request
 def to_url(path):
     return request.pathname2url(path)
 """)
-    assert (
-        execute_function(code, "to_url", "folder name/file.txt")
-        == "folder%20name/file.txt"
-    )
+    assert execute_function(code, "to_url", "folder name/file.txt") == "folder%20name/file.txt"
 
 
 def test_execute_function_supports_non_aliased_dotted_imports():
@@ -61,10 +57,7 @@ import urllib.request
 def to_url(path):
     return urllib.request.pathname2url(path)
 """)
-    assert (
-        execute_function(code, "to_url", "folder name/file.txt")
-        == "folder%20name/file.txt"
-    )
+    assert execute_function(code, "to_url", "folder name/file.txt") == "folder%20name/file.txt"
 
 
 def test_execute_function_supports_deep_dotted_imports():
@@ -101,10 +94,7 @@ def to_url(path):
     scope = prepare_global_scope(module)
 
     assert "urllib" in scope
-    assert (
-        scope["urllib"].request.pathname2url("folder name/file.txt")
-        == "folder%20name/file.txt"
-    )
+    assert scope["urllib"].request.pathname2url("folder name/file.txt") == "folder%20name/file.txt"
 
 
 def test_prepare_global_scope_supports_aliased_from_imports():
@@ -163,14 +153,10 @@ class TestGetModuleFallbacks:
         assert result == ["langchain.chains.base", "langchain_classic.chains.base"]
 
     def test_langchain_community_not_remapped(self):
-        assert _get_module_fallbacks("langchain_community.tools") == [
-            "langchain_community.tools"
-        ]
+        assert _get_module_fallbacks("langchain_community.tools") == ["langchain_community.tools"]
 
     def test_langchain_core_not_remapped(self):
-        assert _get_module_fallbacks("langchain_core.messages") == [
-            "langchain_core.messages"
-        ]
+        assert _get_module_fallbacks("langchain_core.messages") == ["langchain_core.messages"]
 
     def test_bare_langchain_no_fallback(self):
         assert _get_module_fallbacks("langchain") == ["langchain"]

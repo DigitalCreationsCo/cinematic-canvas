@@ -206,3 +206,34 @@ export type MergePreviewState = {
   /** Resolved choices from the user {path: value} */
   resolutions: Record<string, unknown>;
 };
+
+// ─── NapPayload (injected into flow execution requests) ─────────────────
+
+/**
+ * Shape of a single entity in the `nap_payload` sent to the backend.
+ *
+ * The backend's BaseStateAwareComponent receives this via
+ * `graph.flow_state["nap_payload"]` — strictly in-memory, never
+ * from the filesystem.
+ */
+export interface NapPayloadEntity {
+  uri: string;
+  name: string;
+  type: string;
+  version: number;
+  properties: Record<string, unknown>;
+  references: Record<string, unknown>;
+  representations: Record<string, unknown>;
+}
+
+/**
+ * The `nap_payload` dict the backend's InjectedNapContext expects.
+ *
+ * @see BaseStateAwareComponent (Python) — reads this from flow_state
+ * @see BuildVerticesParams.nap_payload (frontend) — injects it into
+ *      the build request
+ */
+export interface NapPayload {
+  universe: string;
+  entities: NapPayloadEntity[];
+}

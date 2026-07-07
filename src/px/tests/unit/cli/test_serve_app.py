@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-
 from px.cli.serve_app import (
     FlowMeta,
     create_multi_serve_app,
@@ -56,9 +55,7 @@ def allow_custom_components_by_default(monkeypatch):
     """Keep constructor-level validation aligned with the serve_app test default path."""
     from px.services.deps import get_settings_service
 
-    monkeypatch.setattr(
-        get_settings_service().settings, "allow_custom_components", True
-    )
+    monkeypatch.setattr(get_settings_service().settings, "allow_custom_components", True)
 
 
 class TestSecurityFunctions:
@@ -66,25 +63,19 @@ class TestSecurityFunctions:
 
     def test_verify_api_key_with_query_param(self):
         """Test API key verification with query parameter."""
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-key-123"}
-        ):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-key-123"}):  # pragma: allowlist secret
             result = verify_api_key("test-key-123", None)
             assert result == "test-key-123"
 
     def test_verify_api_key_with_header_param(self):
         """Test API key verification with header parameter."""
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-key-123"}
-        ):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-key-123"}):  # pragma: allowlist secret
             result = verify_api_key(None, "test-key-123")
             assert result == "test-key-123"
 
     def test_verify_api_key_header_takes_precedence(self):
         """Test that query parameter is used when both are provided."""
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-key-123"}
-        ):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-key-123"}):  # pragma: allowlist secret
             result = verify_api_key("test-key-123", "wrong-key")
             assert result == "test-key-123"
 
@@ -97,9 +88,7 @@ class TestSecurityFunctions:
 
     def test_verify_api_key_invalid(self):
         """Test error when API key is invalid."""
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "correct-key"}
-        ):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "correct-key"}):  # pragma: allowlist secret
             with pytest.raises(HTTPException) as exc_info:
                 verify_api_key("wrong-key", None)
             assert exc_info.value.status_code == 401
@@ -111,10 +100,7 @@ class TestSecurityFunctions:
             with pytest.raises(HTTPException) as exc_info:
                 verify_api_key("any-key", None)
             assert exc_info.value.status_code == 500
-            assert (
-                "PORTALS_API_KEY environment variable is not set"
-                in exc_info.value.detail
-            )
+            assert "PORTALS_API_KEY environment variable is not set" in exc_info.value.detail
 
 
 class TestCreateServeApp:
@@ -132,9 +118,7 @@ class TestCreateServeApp:
     def real_graph(self, simple_chat_json):
         """Create a real graph using Graph.from_payload to match serve_app expectations."""
         # Create graph using from_payload with real test data
-        return Graph.from_payload(
-            simple_chat_json, flow_id="00000000-0000-0000-0000-000000000001"
-        )
+        return Graph.from_payload(simple_chat_json, flow_id="00000000-0000-0000-0000-000000000001")
 
     @pytest.fixture
     def mock_meta(self):
@@ -166,13 +150,9 @@ class TestCreateServeApp:
         routes = [route.path for route in app.routes]
         assert "/health" in routes
         assert "/flows" in routes  # Multi-flow always has this
-        assert (
-            "/flows/00000000-0000-0000-0000-000000000001/run" in routes
-        )  # Flow-specific endpoint
+        assert "/flows/00000000-0000-0000-0000-000000000001/run" in routes  # Flow-specific endpoint
 
-    def test_create_multi_serve_app_multiple_flows(
-        self, real_graph, mock_meta, simple_chat_json
-    ):
+    def test_create_multi_serve_app_multiple_flows(self, real_graph, mock_meta, simple_chat_json):
         """Test creating app with multiple flows."""
         # Create second real graph using from_payload
         graph2 = Graph.from_payload(simple_chat_json, flow_id="flow-2")
@@ -213,9 +193,7 @@ class TestCreateServeApp:
         metas = {"different-id": mock_meta}
         verbose_print = Mock()
 
-        with pytest.raises(
-            ValueError, match="graphs and metas must contain the same keys"
-        ):
+        with pytest.raises(ValueError, match="graphs and metas must contain the same keys"):
             create_multi_serve_app(
                 root_dir=Path("/test"),
                 graphs=graphs,
@@ -239,9 +217,7 @@ class TestServeAppEndpoints:
     def real_graph_with_async(self, simple_chat_json):
         """Create a real graph with async execution capability."""
         # Create graph using from_payload with real test data
-        graph = Graph.from_payload(
-            simple_chat_json, flow_id="00000000-0000-0000-0000-000000000001"
-        )
+        graph = Graph.from_payload(simple_chat_json, flow_id="00000000-0000-0000-0000-000000000001")
 
         # Store original async_start to restore later if needed
         original_async_start = graph.async_start
@@ -292,14 +268,10 @@ class TestServeAppEndpoints:
             verbose_print=verbose_print,
         )
 
-        monkeypatch.setattr(
-            get_settings_service().settings, "allow_custom_components", True
-        )
+        monkeypatch.setattr(get_settings_service().settings, "allow_custom_components", True)
 
         # Set up test API key
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-api-key"}
-        ):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}):  # pragma: allowlist secret
             return TestClient(app)
 
     @pytest.fixture
@@ -343,13 +315,9 @@ class TestServeAppEndpoints:
             verbose_print=verbose_print,
         )
 
-        monkeypatch.setattr(
-            get_settings_service().settings, "allow_custom_components", True
-        )
+        monkeypatch.setattr(get_settings_service().settings, "allow_custom_components", True)
 
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-api-key"}
-        ):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}):  # pragma: allowlist secret
             return TestClient(app)
 
     def test_health_endpoint(self, app_client):
@@ -366,9 +334,7 @@ class TestServeAppEndpoints:
         headers = {"x-api-key": "test-api-key"}
 
         with (
-            patch.dict(
-                os.environ, {"PORTALS_API_KEY": "test-api-key"}
-            ),  # pragma: allowlist secret
+            patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}),  # pragma: allowlist secret
             patch("px.cli.common.extract_structured_result") as mock_extract,
         ):
             mock_extract.return_value = {
@@ -393,12 +359,8 @@ class TestServeAppEndpoints:
         """Test flow execution without authentication."""
         request_data = {"input_value": "Test input"}
 
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-api-key"}
-        ):  # pragma: allowlist secret
-            response = app_client.post(
-                "/flows/00000000-0000-0000-0000-000000000001/run", json=request_data
-            )
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}):  # pragma: allowlist secret
+            response = app_client.post("/flows/00000000-0000-0000-0000-000000000001/run", json=request_data)
 
         assert response.status_code == 401
         assert response.json()["detail"] == "API key required"
@@ -408,9 +370,7 @@ class TestServeAppEndpoints:
         request_data = {"input_value": "Test input"}
         headers = {"x-api-key": "wrong-key"}
 
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-api-key"}
-        ):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}):  # pragma: allowlist secret
             response = app_client.post(
                 "/flows/00000000-0000-0000-0000-000000000001/run",
                 json=request_data,
@@ -441,20 +401,14 @@ class TestServeAppEndpoints:
         headers = {"x-api-key": "test-api-key"}
 
         with (
-            patch.dict(
-                os.environ, {"PORTALS_API_KEY": "test-api-key"}
-            ),  # pragma: allowlist secret
+            patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}),  # pragma: allowlist secret
             patch(
                 "px.services.deps.get_settings_service",
                 return_value=_make_settings_service(allow_custom_components=False),
             ),
             patch(
                 "px.utils.flow_validation.ensure_component_hash_lookups_loaded",
-                new=AsyncMock(
-                    return_value={
-                        "ChatInput": {hashlib.sha256(b"known").hexdigest()[:12]}
-                    }
-                ),
+                new=AsyncMock(return_value={"ChatInput": {hashlib.sha256(b"known").hexdigest()[:12]}}),
             ),
             patch.object(
                 component_cache,
@@ -483,9 +437,7 @@ class TestServeAppEndpoints:
         request_data = {"input_value": "Test input"}
 
         with (
-            patch.dict(
-                os.environ, {"PORTALS_API_KEY": "test-api-key"}
-            ),  # pragma: allowlist secret
+            patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}),  # pragma: allowlist secret
             patch("px.cli.common.extract_structured_result") as mock_extract,
         ):
             mock_extract.return_value = {
@@ -513,9 +465,7 @@ class TestServeAppEndpoints:
             raise RuntimeError(msg)
 
         with (
-            patch.dict(
-                os.environ, {"PORTALS_API_KEY": "test-api-key"}
-            ),  # pragma: allowlist secret
+            patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}),  # pragma: allowlist secret
             patch("px.cli.serve_app.execute_graph_with_capture", mock_execute_error),
         ):
             response = app_client.post(
@@ -543,9 +493,7 @@ class TestServeAppEndpoints:
             return [], ""  # Empty results and logs
 
         with (
-            patch.dict(
-                os.environ, {"PORTALS_API_KEY": "test-api-key"}
-            ),  # pragma: allowlist secret
+            patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}),  # pragma: allowlist secret
             patch("px.cli.serve_app.execute_graph_with_capture", mock_execute_empty),
         ):
             response = app_client.post(
@@ -572,9 +520,7 @@ class TestServeAppEndpoints:
         headers = {"x-api-key": "test-api-key"}
 
         with (
-            patch.dict(
-                os.environ, {"PORTALS_API_KEY": "test-api-key"}
-            ),  # pragma: allowlist secret
+            patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}),  # pragma: allowlist secret
             patch("px.cli.serve_app.execute_graph_with_capture", mock_execute_capture),
         ):
             response = app_client.post(
@@ -601,9 +547,7 @@ class TestServeAppEndpoints:
         headers = {"x-api-key": "test-api-key"}
 
         with (
-            patch.dict(
-                os.environ, {"PORTALS_API_KEY": "test-api-key"}
-            ),  # pragma: allowlist secret
+            patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}),  # pragma: allowlist secret
             patch("px.cli.serve_app.execute_graph_with_capture", mock_execute_capture),
             # Drain the streaming response so the background task completes before we assert.
             app_client.stream(
@@ -633,12 +577,8 @@ class TestServeAppEndpoints:
         """Test getting flow info in multi-flow mode."""
         headers = {"x-api-key": "test-api-key"}
 
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-api-key"}
-        ):  # pragma: allowlist secret
-            response = multi_flow_client.get(
-                "/flows/00000000-0000-0000-0000-000000000001/info", headers=headers
-            )
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}):  # pragma: allowlist secret
+            response = multi_flow_client.get("/flows/00000000-0000-0000-0000-000000000001/info", headers=headers)
 
         assert response.status_code == 200
         info = response.json()
@@ -652,9 +592,7 @@ class TestServeAppEndpoints:
         headers = {"x-api-key": "test-api-key"}
 
         with (
-            patch.dict(
-                os.environ, {"PORTALS_API_KEY": "test-api-key"}
-            ),  # pragma: allowlist secret
+            patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}),  # pragma: allowlist secret
             patch("px.cli.common.extract_structured_result") as mock_extract,
         ):
             mock_extract.return_value = {
@@ -678,9 +616,7 @@ class TestServeAppEndpoints:
         """Test with invalid request body."""
         headers = {"x-api-key": "test-api-key"}
 
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-api-key"}
-        ):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}):  # pragma: allowlist secret
             response = app_client.post(
                 "/flows/00000000-0000-0000-0000-000000000001/run",
                 json={},
@@ -689,9 +625,7 @@ class TestServeAppEndpoints:
 
         assert response.status_code == 422  # Validation error
 
-    def test_flow_execution_with_message_output(
-        self, app_client, real_graph_with_async
-    ):
+    def test_flow_execution_with_message_output(self, app_client, real_graph_with_async):
         """Test flow execution with message-type output."""
 
         # Create a real message output scenario
@@ -720,9 +654,7 @@ class TestServeAppEndpoints:
         headers = {"x-api-key": "test-api-key"}
 
         with (
-            patch.dict(
-                os.environ, {"PORTALS_API_KEY": "test-api-key"}
-            ),  # pragma: allowlist secret
+            patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}),  # pragma: allowlist secret
             patch("px.cli.common.extract_structured_result") as mock_extract,
         ):
             mock_extract.return_value = {

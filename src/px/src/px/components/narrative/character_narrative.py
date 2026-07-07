@@ -423,10 +423,7 @@ class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
             if not characters:
                 return []
             # Build name-to-URI mapping for existing character detection
-            self._name_to_uri = {
-                c.get("name", c.get("id", "(unnamed)")): c.get("uri", "")
-                for c in characters
-            }
+            self._name_to_uri = {c.get("name", c.get("id", "(unnamed)")): c.get("uri", "") for c in characters}
             names = list(self._name_to_uri.keys())
             return sorted(names)
         except Exception as exc:
@@ -506,15 +503,17 @@ class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
             except json.JSONDecodeError as exc:
                 logger.error(f"Failed to parse LLM response as JSON: {exc}")
                 # Return the raw text as a fallback
-                return Data(data={
-                    "name": "Draft Character",
-                    "description": result.content if hasattr(result, "content") else str(result),
-                    "info": "LLM response could not be parsed as JSON. Raw text returned."
-                })
+                return Data(
+                    data={
+                        "name": "Draft Character",
+                        "description": result.content if hasattr(result, "content") else str(result),
+                        "info": "LLM response could not be parsed as JSON. Raw text returned.",
+                    }
+                )
 
         except Exception as exc:
             logger.error(f"Failed to generate character draft: {exc}")
-            return Data(data={"error": f"Failed to generate character draft: {str(exc)}"})
+            return Data(data={"error": f"Failed to generate character draft: {exc!s}"})
 
     def _fetch_character_data(self, entity_name: str) -> dict:
         """Fetch character data from the NAP universe with instance-level caching.

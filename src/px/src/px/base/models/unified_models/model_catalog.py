@@ -95,7 +95,6 @@ def get_unified_models_detailed(
             Arbitrary key/value pairs to match against the model's metadata.
             Example: ``get_unified_models_detailed(tool_calling=True)``
     """
-
     if include_unsupported is None:
         include_unsupported = False
     if include_deprecated is None:
@@ -126,9 +125,7 @@ def get_unified_models_detailed(
 
         # Provisioned filter — compare at model level first, then provider level
         if provisioned is not None:
-            model_provisioned = md.get(
-                "provisioned", is_provisioned_provider(md.get("provider", ""))
-            )
+            model_provisioned = md.get("provisioned", is_provisioned_provider(md.get("provider", "")))
             if model_provisioned != provisioned:
                 continue
 
@@ -145,9 +142,7 @@ def get_unified_models_detailed(
         provider_map.setdefault(prov, []).append(
             {
                 "model_name": metadata.get("name"),
-                "metadata": {
-                    k: v for k, v in metadata.items() if k not in ("provider", "name")
-                },
+                "metadata": {k: v for k, v in metadata.items() if k not in ("provider", "name")},
             }
         )
 
@@ -164,9 +159,7 @@ def get_unified_models_detailed(
 
         # If only_defaults is True, filter to only default models
         if only_defaults:
-            provider_map[prov] = [
-                m for m in models if m["metadata"].get("default", False)
-            ]
+            provider_map[prov] = [m for m in models if m["metadata"].get("default", False)]
 
     # Format as requested; attach provider-level provisioned flag for callers
     return [
@@ -212,23 +205,17 @@ def get_language_model_options(
     explicitly_enabled_models: set[str] = set()
     if user_id:
         with contextlib.suppress(Exception):
-            disabled_models, explicitly_enabled_models = run_until_complete(
-                _get_model_status(user_id)
-            )
+            disabled_models, explicitly_enabled_models = run_until_complete(_get_model_status(user_id))
 
     # Get enabled providers (those with credentials configured and validated)
     enabled_providers = set()
     if user_id:
         with contextlib.suppress(Exception):
-            enabled_providers = run_until_complete(
-                _fetch_enabled_providers_for_user(user_id)
-            )
+            enabled_providers = run_until_complete(_fetch_enabled_providers_for_user(user_id))
 
     # Replace static defaults with actual available models from configured instances
     if enabled_providers:
-        replace_with_live_models(
-            all_models, user_id, enabled_providers, "llm", model_provider_metadata
-        )
+        replace_with_live_models(all_models, user_id, enabled_providers, "llm", model_provider_metadata)
 
     options = []
 
@@ -267,15 +254,11 @@ def get_language_model_options(
                 "model_class": param_mapping.get("model_class", "ChatOpenAI"),
                 "model_name_param": param_mapping.get("model_param", "model"),
                 "api_key_param": param_mapping.get("api_key_param", "api_key"),
-                "provisioned": metadata.get(
-                    "provisioned", is_provisioned_provider(provider)
-                ),
+                "provisioned": metadata.get("provisioned", is_provisioned_provider(provider)),
             }
 
             if "max_tokens_field_name" in provider_meta:
-                option_metadata["max_tokens_field_name"] = provider_meta[
-                    "max_tokens_field_name"
-                ]
+                option_metadata["max_tokens_field_name"] = provider_meta["max_tokens_field_name"]
 
             option: dict[str, Any] = {
                 "name": model_name,
@@ -293,9 +276,7 @@ def get_language_model_options(
             if "url_param" in param_mapping:
                 option["metadata"]["url_param"] = param_mapping["url_param"]
             if "project_id_param" in param_mapping:
-                option["metadata"]["project_id_param"] = param_mapping[
-                    "project_id_param"
-                ]
+                option["metadata"]["project_id_param"] = param_mapping["project_id_param"]
 
             options.append(option)
 
@@ -324,16 +305,12 @@ def get_embedding_model_options(
     explicitly_enabled_models: set[str] = set()
     if user_id:
         with contextlib.suppress(Exception):
-            disabled_models, explicitly_enabled_models = run_until_complete(
-                _get_model_status(user_id)
-            )
+            disabled_models, explicitly_enabled_models = run_until_complete(_get_model_status(user_id))
 
     enabled_providers: set[str] = set()
     if user_id:
         with contextlib.suppress(Exception):
-            enabled_providers = run_until_complete(
-                _fetch_enabled_providers_for_user(user_id)
-            )
+            enabled_providers = run_until_complete(_fetch_enabled_providers_for_user(user_id))
 
     if enabled_providers:
         replace_with_live_models(
@@ -410,16 +387,10 @@ def get_embedding_model_options(
                 "category": provider,
                 "provider": provider,
                 "metadata": {
-                    "embedding_class": EMBEDDING_PROVIDER_CLASS_MAPPING.get(
-                        provider, "OpenAIEmbeddings"
-                    ),
-                    "param_mapping": param_mappings.get(
-                        provider, param_mappings["OpenAI"]
-                    ),
+                    "embedding_class": EMBEDDING_PROVIDER_CLASS_MAPPING.get(provider, "OpenAIEmbeddings"),
+                    "param_mapping": param_mappings.get(provider, param_mappings["OpenAI"]),
                     "model_type": MODEL_TYPE_EMBEDDINGS,
-                    "provisioned": metadata.get(
-                        "provisioned", is_provisioned_provider(provider)
-                    ),
+                    "provisioned": metadata.get("provisioned", is_provisioned_provider(provider)),
                 },
             }
 
@@ -451,16 +422,12 @@ def get_image_generation_model_options(
     explicitly_enabled_models: set[str] = set()
     if user_id:
         with contextlib.suppress(Exception):
-            disabled_models, explicitly_enabled_models = run_until_complete(
-                _get_model_status(user_id)
-            )
+            disabled_models, explicitly_enabled_models = run_until_complete(_get_model_status(user_id))
 
     enabled_providers: set[str] = set()
     if user_id:
         with contextlib.suppress(Exception):
-            enabled_providers = run_until_complete(
-                _fetch_enabled_providers_for_user(user_id)
-            )
+            enabled_providers = run_until_complete(_fetch_enabled_providers_for_user(user_id))
 
     options = []
 
@@ -491,14 +458,10 @@ def get_image_generation_model_options(
                 "provider": provider,
                 "metadata": {
                     "model_type": MODEL_TYPE_IMAGE_GENERATION,
-                    "model_class": param_mapping.get(
-                        "model_class", "OpenAIImageGeneration"
-                    ),
+                    "model_class": param_mapping.get("model_class", "OpenAIImageGeneration"),
                     "model_name_param": param_mapping.get("model_param", "model"),
                     "api_key_param": param_mapping.get("api_key_param", "api_key"),
-                    "provisioned": metadata.get(
-                        "provisioned", is_provisioned_provider(provider)
-                    ),
+                    "provisioned": metadata.get("provisioned", is_provisioned_provider(provider)),
                     # Image-generation-specific capabilities from model metadata
                     "supported_sizes": metadata.get("supported_sizes", []),
                     "supported_qualities": metadata.get("supported_qualities", []),
@@ -534,16 +497,12 @@ def get_video_generation_model_options(
     explicitly_enabled_models: set[str] = set()
     if user_id:
         with contextlib.suppress(Exception):
-            disabled_models, explicitly_enabled_models = run_until_complete(
-                _get_model_status(user_id)
-            )
+            disabled_models, explicitly_enabled_models = run_until_complete(_get_model_status(user_id))
 
     enabled_providers: set[str] = set()
     if user_id:
         with contextlib.suppress(Exception):
-            enabled_providers = run_until_complete(
-                _fetch_enabled_providers_for_user(user_id)
-            )
+            enabled_providers = run_until_complete(_fetch_enabled_providers_for_user(user_id))
 
     options = []
 
@@ -574,14 +533,10 @@ def get_video_generation_model_options(
                 "provider": provider,
                 "metadata": {
                     "model_type": MODEL_TYPE_VIDEO_GENERATION,
-                    "model_class": param_mapping.get(
-                        "model_class", "ProvisionedVideoGeneration"
-                    ),
+                    "model_class": param_mapping.get("model_class", "ProvisionedVideoGeneration"),
                     "model_name_param": param_mapping.get("model_param", "model"),
                     "api_key_param": param_mapping.get("api_key_param", "api_key"),
-                    "provisioned": metadata.get(
-                        "provisioned", is_provisioned_provider(provider)
-                    ),
+                    "provisioned": metadata.get("provisioned", is_provisioned_provider(provider)),
                     # Video-generation-specific capabilities from model metadata
                     "max_duration_seconds": metadata.get("max_duration_seconds"),
                     "supported_resolutions": metadata.get("supported_resolutions", []),
@@ -627,15 +582,11 @@ def normalize_model_names_to_dicts(
                 "model_class": param_mapping.get("model_class", "ChatOpenAI"),
                 "model_name_param": param_mapping.get("model_param", "model"),
                 "api_key_param": param_mapping.get("api_key_param", "api_key"),
-                "provisioned": base_metadata.get(
-                    "provisioned", is_provisioned_provider(provider)
-                ),
+                "provisioned": base_metadata.get("provisioned", is_provisioned_provider(provider)),
             }
 
             if "max_tokens_field_name" in provider_meta:
-                runtime_metadata["max_tokens_field_name"] = provider_meta[
-                    "max_tokens_field_name"
-                ]
+                runtime_metadata["max_tokens_field_name"] = provider_meta["max_tokens_field_name"]
 
             if provider == "OpenAI" and base_metadata.get("reasoning"):
                 runtime_metadata["reasoning_models"] = [model_name]

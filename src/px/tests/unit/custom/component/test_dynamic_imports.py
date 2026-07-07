@@ -12,7 +12,6 @@ This module tests the new langchain-style dynamic import system to ensure:
 from unittest.mock import patch
 
 import pytest
-
 from px.components._importing import import_mod
 
 
@@ -23,9 +22,7 @@ class TestImportUtils:
         """Test importing specific attribute from a module with missing dependencies."""
         # Test importing a class that has missing dependencies - should raise ModuleNotFoundError
         with pytest.raises(ModuleNotFoundError, match="No module named"):
-            import_mod(
-                "OpenAIModelComponent", "openai_chat_model", "px.components.openai"
-            )
+            import_mod("OpenAIModelComponent", "openai_chat_model", "px.components.openai")
 
     def test_import_mod_without_module_name(self):
         """Test importing entire module when module_name is None."""
@@ -37,17 +34,13 @@ class TestImportUtils:
     def test_import_mod_module_not_found(self):
         """Test error handling when module doesn't exist."""
         with pytest.raises(ImportError, match="not found"):
-            import_mod(
-                "NonExistentComponent", "nonexistent_module", "px.components.openai"
-            )
+            import_mod("NonExistentComponent", "nonexistent_module", "px.components.openai")
 
     def test_import_mod_attribute_not_found(self):
         """Test error handling when module has missing dependencies."""
         # The openai_chat_model module can't be imported due to missing dependencies
         with pytest.raises(ModuleNotFoundError, match="No module named"):
-            import_mod(
-                "NonExistentComponent", "openai_chat_model", "px.components.openai"
-            )
+            import_mod("NonExistentComponent", "openai_chat_model", "px.components.openai")
 
 
 class TestComponentDynamicImports:
@@ -90,9 +83,7 @@ class TestComponentDynamicImports:
         """Test error handling for non-existent component category."""
         from px import components
 
-        with pytest.raises(
-            AttributeError, match="has no attribute 'nonexistent_category'"
-        ):
+        with pytest.raises(AttributeError, match="has no attribute 'nonexistent_category'"):
             _ = components.nonexistent_category
 
     def test_category_module_dynamic_import(self):
@@ -104,15 +95,11 @@ class TestComponentDynamicImports:
         assert "OpenAIEmbeddingsComponent" in openai_components.__all__
 
         # Access component - this should raise AttributeError due to missing langchain-openai
-        with pytest.raises(
-            AttributeError, match="Could not import 'OpenAIModelComponent'"
-        ):
+        with pytest.raises(AttributeError, match="Could not import 'OpenAIModelComponent'"):
             _ = openai_components.OpenAIModelComponent
 
         # Test that the error is properly cached - second access should also fail
-        with pytest.raises(
-            AttributeError, match="Could not import 'OpenAIModelComponent'"
-        ):
+        with pytest.raises(AttributeError, match="Could not import 'OpenAIModelComponent'"):
             _ = openai_components.OpenAIModelComponent
 
     def test_category_module_dir(self):
@@ -127,9 +114,7 @@ class TestComponentDynamicImports:
         """Test error handling for non-existent component in category."""
         import px.components.openai as openai_components
 
-        with pytest.raises(
-            AttributeError, match="has no attribute 'NonExistentComponent'"
-        ):
+        with pytest.raises(AttributeError, match="has no attribute 'NonExistentComponent'"):
             _ = openai_components.NonExistentComponent
 
     def test_multiple_category_modules(self):
@@ -243,9 +228,7 @@ class TestPerformanceCharacteristics:
         from px.components import chroma as chromamodules
 
         # Test that we can access a component
-        with pytest.raises(
-            AttributeError, match=r"Could not import.*ChromaVectorStoreComponent"
-        ):
+        with pytest.raises(AttributeError, match=r"Could not import.*ChromaVectorStoreComponent"):
             chromamodules.ChromaVectorStoreComponent  # noqa: B018
 
     def test_memory_usage_multiple_accesses(self):
@@ -305,9 +288,7 @@ class TestSpecialCases:
 
         # Test that we can access nested components through the hierarchy
         # OpenAI component requires langchain_openai which isn't installed
-        with pytest.raises(
-            AttributeError, match=r"Could not import.*OpenAIModelComponent"
-        ):
+        with pytest.raises(AttributeError, match=r"Could not import.*OpenAIModelComponent"):
             _ = components.openai.OpenAIModelComponent
 
         # APIRequestComponent should work now that validators is installed

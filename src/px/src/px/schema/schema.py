@@ -154,6 +154,14 @@ class InputValueRequest(BaseModel):
         description="Client-side timestamp in milliseconds when the request was initiated. "
         "Used to calculate accurate end-to-end duration.",
     )
+    nap_payload: dict | None = Field(
+        None,
+        description="Narrative entity payload injected by the frontend. "
+        "On desktop the frontend reads entities from the local NAP repository "
+        "and passes them here. The generate_flow_events handler extracts this "
+        "and sets it on graph.flow_state['nap_payload'] for "
+        "BaseStateAwareComponent._get_nap_context() to consume.",
+    )
 
     # add an example
     model_config = ConfigDict(

@@ -7,13 +7,12 @@ import re
 from enum import Enum
 
 from px.services.adapters.deployment.schema import DeploymentType
+
 from portals.services.database.models.deployment_provider_account.schemas import (
     DeploymentProviderKey,
 )
 
-SUPPORTED_ADAPTER_DEPLOYMENT_TYPES: frozenset[DeploymentType] = frozenset(
-    {DeploymentType.AGENT}
-)
+SUPPORTED_ADAPTER_DEPLOYMENT_TYPES: frozenset[DeploymentType] = frozenset({DeploymentType.AGENT})
 CREATE_MAX_RETRIES = 3
 UPDATE_MAX_RETRIES = 3
 ROLLBACK_MAX_RETRIES = 5
@@ -59,13 +58,8 @@ class WxOAuthURL(str, Enum):
     overrides if set.
     """
 
-    MCSP = (
-        os.getenv("IBM_IAM_MCSP_DEV_URL_OVERRIDE", "").strip()
-        or IBM_IAM_MCSP_PRODUCTION_URL
-    )
-    IBM_IAM = (
-        os.getenv("IBM_IAM_DEV_URL_OVERRIDE", "").strip() or IBM_IAM_PRODUCTION_URL
-    )
+    MCSP = os.getenv("IBM_IAM_MCSP_DEV_URL_OVERRIDE", "").strip() or IBM_IAM_MCSP_PRODUCTION_URL
+    IBM_IAM = os.getenv("IBM_IAM_DEV_URL_OVERRIDE", "").strip() or IBM_IAM_PRODUCTION_URL
 
 
 class ErrorPrefix(str, Enum):
@@ -83,12 +77,8 @@ class ErrorPrefix(str, Enum):
     UPDATE_CONFIG = f"{ERROR_PREFIX} updating a deployment config {ERROR_SUFFIX_IN}"
     DELETE_CONFIG = f"{ERROR_PREFIX} deleting a deployment config {ERROR_SUFFIX_IN}"
     LIST_LLMS = f"{ERROR_PREFIX} listing deployment LLMs {ERROR_SUFFIX_IN}"
-    CREATE_EXECUTION = (
-        f"{ERROR_PREFIX} creating a deployment execution {ERROR_SUFFIX_IN}"
-    )
+    CREATE_EXECUTION = f"{ERROR_PREFIX} creating a deployment execution {ERROR_SUFFIX_IN}"
     GET_EXECUTION = f"{ERROR_PREFIX} getting a deployment execution {ERROR_SUFFIX_IN}"
 
 
-WATSONX_ORCHESTRATE_DEPLOYMENT_ADAPTER_KEY = (
-    DeploymentProviderKey.WATSONX_ORCHESTRATE.value
-)
+WATSONX_ORCHESTRATE_DEPLOYMENT_ADAPTER_KEY = DeploymentProviderKey.WATSONX_ORCHESTRATE.value

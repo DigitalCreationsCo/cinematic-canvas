@@ -1,8 +1,8 @@
 from .model import (
     MemberAdd,
     MemberRead,
-    MemberUpdate,
     MembersResponse,
+    MemberUpdate,
     Team,
     TeamCreate,
     TeamRead,
@@ -20,8 +20,8 @@ __all__ = [
     "Team",
     "TeamCreate",
     "TeamRead",
-    "TeamsResponse",
     "TeamUpdate",
+    "TeamsResponse",
     "UserMinimal",
     "UserTeamLink",
 ]

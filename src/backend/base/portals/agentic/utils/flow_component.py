@@ -3,11 +3,12 @@
 from typing import Any
 from uuid import UUID
 
+from px.graph.graph.base import Graph
+from px.log.logger import logger
+
 from portals.helpers.flow import get_flow_by_id_or_endpoint_name
 from portals.services.database.models.flow.model import Flow
 from portals.services.deps import session_scope
-from px.graph.graph.base import Graph
-from px.log.logger import logger
 
 
 async def get_component_details(
@@ -88,30 +89,18 @@ async def get_component_details(
         return {
             "component_id": vertex.id,
             "node": component_data.get("data", {}).get("node", {}),
-            "component_type": component_data.get("data", {})
-            .get("node", {})
-            .get("type"),
-            "display_name": component_data.get("data", {})
-            .get("node", {})
-            .get("display_name"),
-            "description": component_data.get("data", {})
-            .get("node", {})
-            .get("description"),
-            "template": component_data.get("data", {})
-            .get("node", {})
-            .get("template", {}),
-            "outputs": component_data.get("data", {})
-            .get("node", {})
-            .get("outputs", []),
+            "component_type": component_data.get("data", {}).get("node", {}).get("type"),
+            "display_name": component_data.get("data", {}).get("node", {}).get("display_name"),
+            "description": component_data.get("data", {}).get("node", {}).get("description"),
+            "template": component_data.get("data", {}).get("node", {}).get("template", {}),
+            "outputs": component_data.get("data", {}).get("node", {}).get("outputs", []),
             "input_flow": serialize_edges(vertex.edges),
             "flow_id": flow_id_str,
             "flow_name": flow.name,
         }
 
     except Exception as e:  # noqa: BLE001
-        await logger.aerror(
-            f"Error getting component details for {component_id} in {flow_id_or_name}: {e}"
-        )
+        await logger.aerror(f"Error getting component details for {component_id} in {flow_id_or_name}: {e}")
         return {
             "error": str(e),
             "flow_id": flow_id_or_name,
@@ -183,8 +172,7 @@ async def get_component_field_value(
         return {
             "field_name": field_name,
             "value": field_config.get("value"),
-            "field_type": field_config.get("field_type")
-            or field_config.get("_input_type"),
+            "field_type": field_config.get("field_type") or field_config.get("_input_type"),
             "display_name": field_config.get("display_name"),
             "required": field_config.get("required", False),
             "component_id": component_id,
@@ -193,9 +181,7 @@ async def get_component_field_value(
         }
 
     except Exception as e:  # noqa: BLE001
-        await logger.aerror(
-            f"Error getting field {field_name} from {component_id} in {flow_id_or_name}: {e}"
-        )
+        await logger.aerror(f"Error getting field {field_name} from {component_id} in {flow_id_or_name}: {e}")
         return {"error": str(e)}
 
 
@@ -302,9 +288,7 @@ async def update_component_field_value(
             await session.refresh(db_flow)
 
     except Exception as e:  # noqa: BLE001
-        await logger.aerror(
-            f"Error updating field {field_name} in {component_id} of {flow_id_or_name}: {e}"
-        )
+        await logger.aerror(f"Error updating field {field_name} in {component_id} of {flow_id_or_name}: {e}")
         return {"error": str(e), "success": False}
     else:
         return {
@@ -373,8 +357,7 @@ async def list_component_fields(
         for field_name, field_config in template.items():
             fields_info[field_name] = {
                 "value": field_config.get("value"),
-                "field_type": field_config.get("field_type")
-                or field_config.get("_input_type"),
+                "field_type": field_config.get("field_type") or field_config.get("_input_type"),
                 "display_name": field_config.get("display_name"),
                 "required": field_config.get("required", False),
                 "advanced": field_config.get("advanced", False),
@@ -383,12 +366,8 @@ async def list_component_fields(
 
         return {
             "component_id": component_id,
-            "component_type": component_data.get("data", {})
-            .get("node", {})
-            .get("type"),
-            "display_name": component_data.get("data", {})
-            .get("node", {})
-            .get("display_name"),
+            "component_type": component_data.get("data", {}).get("node", {}).get("type"),
+            "display_name": component_data.get("data", {}).get("node", {}).get("display_name"),
             "flow_id": flow_id_str,
             "flow_name": flow.name,
             "fields": fields_info,
@@ -396,7 +375,5 @@ async def list_component_fields(
         }
 
     except Exception as e:  # noqa: BLE001
-        await logger.aerror(
-            f"Error listing fields for {component_id} in {flow_id_or_name}: {e}"
-        )
+        await logger.aerror(f"Error listing fields for {component_id} in {flow_id_or_name}: {e}")
         return {"error": str(e)}

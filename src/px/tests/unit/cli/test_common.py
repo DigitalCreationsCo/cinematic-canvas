@@ -9,7 +9,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 import typer
-
 from px.cli.common import (
     create_verbose_printer,
     execute_graph_with_capture,
@@ -116,18 +115,14 @@ class TestApiKey:
 
     def test_get_api_key_success(self):
         """Test getting API key when it exists."""
-        with patch.dict(
-            os.environ, {"PORTALS_API_KEY": "test-api-key"}
-        ):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"PORTALS_API_KEY": "test-api-key"}):  # pragma: allowlist secret
             assert get_api_key() == "test-api-key"
 
     def test_get_api_key_not_set(self):
         """Test error when API key is not set."""
         with (
             patch.dict(os.environ, {}, clear=True),
-            pytest.raises(
-                ValueError, match="PORTALS_API_KEY environment variable is not set"
-            ),
+            pytest.raises(ValueError, match="PORTALS_API_KEY environment variable is not set"),
         ):
             get_api_key()
 
@@ -135,9 +130,7 @@ class TestApiKey:
         """Test error when API key is empty string."""
         with (
             patch.dict(os.environ, {"PORTALS_API_KEY": ""}),
-            pytest.raises(
-                ValueError, match="PORTALS_API_KEY environment variable is not set"
-            ),
+            pytest.raises(ValueError, match="PORTALS_API_KEY environment variable is not set"),
         ):
             get_api_key()
 
@@ -180,15 +173,11 @@ class TestLoadGraph:
         mock_graph = MagicMock()
         mock_graph.nodes = [1, 2, 3]
 
-        with patch(
-            "px.cli.common.load_flow_from_json", return_value=mock_graph
-        ) as mock_load_flow:
+        with patch("px.cli.common.load_flow_from_json", return_value=mock_graph) as mock_load_flow:
             verbose_print = Mock()
             path = Path("/test/flow.json")
 
-            result = await load_graph_from_path(
-                path, ".json", verbose_print, verbose=True
-            )
+            result = await load_graph_from_path(path, ".json", verbose_print, verbose=True)
 
             assert result == mock_graph
             mock_load_flow.assert_called_once_with(path, disable_logs=False)
@@ -198,9 +187,7 @@ class TestLoadGraph:
     @pytest.mark.asyncio
     async def test_load_graph_from_path_failure(self):
         """Test graph loading failure."""
-        with patch(
-            "px.cli.common.load_flow_from_json", side_effect=Exception("Load error")
-        ) as mock_load_flow:
+        with patch("px.cli.common.load_flow_from_json", side_effect=Exception("Load error")) as mock_load_flow:
             verbose_print = Mock()
             path = Path("/test/flow.json")
 
@@ -297,9 +284,7 @@ class TestGraphExecution:
         mock_graph = MagicMock()
         mock_graph.async_start = mock_async_start
 
-        await execute_graph_with_capture(
-            mock_graph, "test input", session_id="fixed-session"
-        )
+        await execute_graph_with_capture(mock_graph, "test input", session_id="fixed-session")
 
         assert mock_graph.session_id == "fixed-session"
 
@@ -323,13 +308,9 @@ class TestGraphExecution:
         mock_graph.has_session_id_vertices = ["memory-1"]
         mock_graph.get_vertex = MagicMock(return_value=memory_vertex)
 
-        await execute_graph_with_capture(
-            mock_graph, "test input", session_id="my-conversation"
-        )
+        await execute_graph_with_capture(mock_graph, "test input", session_id="my-conversation")
 
-        memory_vertex.update_raw_params.assert_called_once_with(
-            {"session_id": "my-conversation"}, overwrite=True
-        )
+        memory_vertex.update_raw_params.assert_called_once_with({"session_id": "my-conversation"}, overwrite=True)
 
     @pytest.mark.asyncio
     async def test_execute_graph_does_not_overwrite_hardcoded_session_id(self):
@@ -349,9 +330,7 @@ class TestGraphExecution:
         mock_graph.has_session_id_vertices = ["memory-pinned"]
         mock_graph.get_vertex = MagicMock(return_value=pinned_vertex)
 
-        await execute_graph_with_capture(
-            mock_graph, "test input", session_id="from-request"
-        )
+        await execute_graph_with_capture(mock_graph, "test input", session_id="from-request")
 
         pinned_vertex.update_raw_params.assert_not_called()
 

@@ -3,6 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
+from px.log.logger import logger
+from sqlalchemy import and_, column, values
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import col, delete, func, select, update
+
 from portals.services.database.models.deployment.orm_guards import (
     ensure_attachment_project_match,
 )
@@ -10,20 +15,17 @@ from portals.services.database.models.flow_version_deployment_attachment.model i
     FlowVersionDeploymentAttachment,
 )
 from portals.services.database.utils import require_non_empty
-from px.log.logger import logger
-from sqlalchemy import and_, column, values
-from sqlalchemy.exc import IntegrityError
-from sqlmodel import col, delete, func, select, update
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
     from portals.api.v1.mappers.deployments.contracts import ProviderSnapshotBinding
     from portals.services.database.models.flow_version.model import FlowVersion
     from portals.services.database.models.flow_version_deployment_attachment.schema import (
         DeploymentAttachmentKeyBatch,
     )
-    from sqlmodel.ext.asyncio.session import AsyncSession
 
 _SNAPSHOT_ID_ERROR = "provider_snapshot_id must not be empty"
 
@@ -66,8 +68,7 @@ async def _check_snapshot_flow_version_conflict(
     stmt = (
         select(FlowVersionDeploymentAttachment.flow_version_id)
         .where(
-            FlowVersionDeploymentAttachment.provider_snapshot_id
-            == provider_snapshot_id,
+            FlowVersionDeploymentAttachment.provider_snapshot_id == provider_snapshot_id,
             FlowVersionDeploymentAttachment.flow_version_id != flow_version_id,
         )
         .limit(1)
@@ -109,9 +110,7 @@ async def create_deployment_attachment(
         user_id=user_id,
         flow_version_id=flow_version_id,
         deployment_id=deployment_id,
-        provider_snapshot_id=require_non_empty(
-            provider_snapshot_id, _SNAPSHOT_ID_ERROR
-        ),
+        provider_snapshot_id=require_non_empty(provider_snapshot_id, _SNAPSHOT_ID_ERROR),
     )
     db.add(row)
     try:
@@ -124,7 +123,9 @@ async def create_deployment_attachment(
             deployment_id,
             exc,
         )
-        msg = f"Attachment conflicts with an existing record (flow_version={flow_version_id}, deployment={deployment_id})"
+        msg = (
+            f"Attachment conflicts with an existing record (flow_version={flow_version_id}, deployment={deployment_id})"
+        )
         raise DeploymentAttachmentConflictError(msg) from exc
     await db.refresh(row)
     return row
@@ -304,10 +305,8 @@ async def delete_deployment_attachments_by_keys(
         .join(
             stale_keys_cte,
             and_(
-                FlowVersionDeploymentAttachment.deployment_id
-                == stale_keys_cte.c.deployment_id,
-                FlowVersionDeploymentAttachment.flow_version_id
-                == stale_keys_cte.c.flow_version_id,
+                FlowVersionDeploymentAttachment.deployment_id == stale_keys_cte.c.deployment_id,
+                FlowVersionDeploymentAttachment.flow_version_id == stale_keys_cte.c.flow_version_id,
             ),
         )
         .where(FlowVersionDeploymentAttachment.user_id == user_id)
@@ -370,9 +369,7 @@ async def list_attachments_for_flow_with_provider_info(
             Deployment.deployment_provider_account_id,
             DeploymentProviderAccount.provider_key,
         )
-        .join(
-            Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id
-        )
+        .join(Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id)
         .join(
             DeploymentProviderAccount,
             DeploymentProviderAccount.id == Deployment.deployment_provider_account_id,
@@ -386,10 +383,7 @@ async def list_attachments_for_flow_with_provider_info(
         .order_by(FlowVersionDeploymentAttachment.created_at)
     )
     rows = (await db.exec(stmt)).all()
-    return [
-        (attachment, provider_account_id, provider_key)
-        for attachment, provider_account_id, provider_key in rows
-    ]
+    return [(attachment, provider_account_id, provider_key) for attachment, provider_account_id, provider_key in rows]
 
 
 async def delete_unbound_attachments(
@@ -448,11 +442,7 @@ async def delete_unbound_attachments(
         result = await db.exec(stmt)
         return int(result.rowcount or 0)
 
-    deduped_bindings = list(
-        dict.fromkeys(
-            (binding.resource_key, binding.snapshot_id) for binding in bindings
-        )
-    )
+    deduped_bindings = list(dict.fromkeys((binding.resource_key, binding.snapshot_id) for binding in bindings))
     provider_bindings_cte = (
         values(
             column("resource_key", sa.String()),
@@ -464,24 +454,19 @@ async def delete_unbound_attachments(
 
     stale_attachment_ids = (
         select(FlowVersionDeploymentAttachment.id)
-        .join(
-            Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id
-        )
+        .join(Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id)
         .outerjoin(
             provider_bindings_cte,
             and_(
                 Deployment.resource_key == provider_bindings_cte.c.resource_key,
-                FlowVersionDeploymentAttachment.provider_snapshot_id
-                == provider_bindings_cte.c.snapshot_id,
+                FlowVersionDeploymentAttachment.provider_snapshot_id == provider_bindings_cte.c.snapshot_id,
             ),
         )
         .where(
             FlowVersionDeploymentAttachment.user_id == user_id,
             col(FlowVersionDeploymentAttachment.deployment_id).in_(deployment_ids),
             Deployment.deployment_provider_account_id == provider_account_id,
-            provider_bindings_cte.c.resource_key.is_(
-                None
-            ),  # No provider binding match => stale local attachment
+            provider_bindings_cte.c.resource_key.is_(None),  # No provider binding match => stale local attachment
         )
     )
 
@@ -522,9 +507,7 @@ async def list_attachments_for_flow_with_deployment_info(
             Deployment.deployment_type,
             DeploymentProviderAccount.provider_key,
         )
-        .join(
-            Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id
-        )
+        .join(Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id)
         .join(
             DeploymentProviderAccount,
             DeploymentProviderAccount.id == Deployment.deployment_provider_account_id,
@@ -578,8 +561,7 @@ async def update_flow_version_by_provider_snapshot_id(
         update(FlowVersionDeploymentAttachment)
         .where(
             FlowVersionDeploymentAttachment.user_id == user_id,
-            FlowVersionDeploymentAttachment.provider_snapshot_id
-            == provider_snapshot_id,
+            FlowVersionDeploymentAttachment.provider_snapshot_id == provider_snapshot_id,
         )
         .values(flow_version_id=flow_version_id)
     )
@@ -621,10 +603,7 @@ async def count_attachments_by_deployment_ids(
     )
     rows = (await db.exec(stmt)).all()
     counts_by_id = {deployment_id: int(count) for deployment_id, count in rows}
-    return {
-        deployment_id: counts_by_id.get(deployment_id, 0)
-        for deployment_id in deployment_ids
-    }
+    return {deployment_id: counts_by_id.get(deployment_id, 0) for deployment_id in deployment_ids}
 
 
 async def count_deployment_attachments(
@@ -676,9 +655,7 @@ async def delete_orphan_attachments_for_flow_ids(
             FlowVersion,
             FlowVersion.id == FlowVersionDeploymentAttachment.flow_version_id,
         )
-        .outerjoin(
-            Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id
-        )
+        .outerjoin(Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id)
         .where(
             FlowVersionDeploymentAttachment.user_id == user_id,
             col(FlowVersion.flow_id).in_(flow_ids),
@@ -686,9 +663,7 @@ async def delete_orphan_attachments_for_flow_ids(
         )
     )
     result = await db.exec(
-        delete(FlowVersionDeploymentAttachment).where(
-            col(FlowVersionDeploymentAttachment.id).in_(stale_attachment_ids)
-        )
+        delete(FlowVersionDeploymentAttachment).where(col(FlowVersionDeploymentAttachment.id).in_(stale_attachment_ids))
     )
     return int(result.rowcount or 0)
 
@@ -712,9 +687,7 @@ async def delete_orphan_attachments_for_project(
             FlowVersion.id == FlowVersionDeploymentAttachment.flow_version_id,
         )
         .join(Flow, Flow.id == FlowVersion.flow_id)
-        .outerjoin(
-            Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id
-        )
+        .outerjoin(Deployment, Deployment.id == FlowVersionDeploymentAttachment.deployment_id)
         .where(
             FlowVersionDeploymentAttachment.user_id == user_id,
             Flow.user_id == user_id,
@@ -723,8 +696,6 @@ async def delete_orphan_attachments_for_project(
         )
     )
     result = await db.exec(
-        delete(FlowVersionDeploymentAttachment).where(
-            col(FlowVersionDeploymentAttachment.id).in_(stale_attachment_ids)
-        )
+        delete(FlowVersionDeploymentAttachment).where(col(FlowVersionDeploymentAttachment.id).in_(stale_attachment_ids))
     )
     return int(result.rowcount or 0)

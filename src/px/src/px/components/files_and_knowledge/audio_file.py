@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from px.base.data.base_file import BaseFileComponent
 from px.base.data.storage_utils import (

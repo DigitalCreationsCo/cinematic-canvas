@@ -1,6 +1,6 @@
 import pytest
-from px.schema import Data
 from portals.helpers.data import data_to_text_list
+from px.schema import Data
 
 
 @pytest.mark.parametrize(

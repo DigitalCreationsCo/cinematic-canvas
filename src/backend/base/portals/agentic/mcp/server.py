@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from mcp.server.fastmcp import FastMCP
+
 from portals.agentic.mcp.support import replace_none_and_null_with_empty_str
 from portals.agentic.utils.component_search import (
     get_all_component_types,
@@ -46,9 +47,7 @@ DEFAULT_COMPONENT_FIELDS = ["name", "type", "display_name", "description"]
 
 
 @mcp.tool()
-def search_templates(
-    query: str | None = None, fields: list[str] = DEFAULT_TEMPLATE_FIELDS
-) -> list[dict[str, Any]]:
+def search_templates(query: str | None = None, fields: list[str] = DEFAULT_TEMPLATE_FIELDS) -> list[dict[str, Any]]:
     """Search and load template data with configurable field selection.
 
     Args:
@@ -293,9 +292,7 @@ async def count_components(component_type: str | None = None) -> int:
         >>> print(f"Found {llm_count} LLM components")
     """
     settings_service = get_settings_service()
-    return await get_components_count(
-        component_type=component_type, settings_service=settings_service
-    )
+    return await get_components_count(component_type=component_type, settings_service=settings_service)
 
 
 @mcp.tool()
@@ -521,9 +518,7 @@ async def get_flow_component_field_value(
         >>> result = get_flow_component_field_value("my-flow", "ChatInput-abc", "input_value")
         >>> print(f"Current value: {result['value']}")
     """
-    return await get_component_field_value(
-        flow_id_or_name, component_id, field_name, user_id
-    )
+    return await get_component_field_value(flow_id_or_name, component_id, field_name, user_id)
 
 
 @mcp.tool()
@@ -567,9 +562,7 @@ async def update_flow_component_field(
         >>> if result["success"]:
         ...     print(f"Updated from {result['old_value']} to {result['new_value']}")
     """
-    return await update_component_field_value(
-        flow_id_or_name, component_id, field_name, new_value, user_id
-    )
+    return await update_component_field_value(flow_id_or_name, component_id, field_name, new_value, user_id)
 
 
 @mcp.tool()

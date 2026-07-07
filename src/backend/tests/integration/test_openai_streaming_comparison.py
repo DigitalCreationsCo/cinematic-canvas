@@ -32,9 +32,7 @@ def load_env_vars():
 load_env_vars()
 
 
-async def create_global_variable(
-    client: AsyncClient, headers, name, value, variable_type="credential"
-):
+async def create_global_variable(client: AsyncClient, headers, name, value, variable_type="credential"):
     """Create a global variable in Portals."""
     payload = {
         "name": name,
@@ -75,9 +73,7 @@ async def load_and_prepare_flow(client: AsyncClient, created_api_key):
         / "Simple Agent.json"
     )
 
-    flow_data = await asyncio.to_thread(
-        lambda: json.loads(pathlib.Path(template_path).read_text())
-    )
+    flow_data = await asyncio.to_thread(lambda: json.loads(pathlib.Path(template_path).read_text()))
 
     # Add the flow
     response = await client.post("/api/v1/flows/", json=flow_data, headers=headers)
@@ -87,9 +83,7 @@ async def load_and_prepare_flow(client: AsyncClient, created_api_key):
     # Poll for flow builds to complete
     max_attempts = 10
     for attempt in range(max_attempts):
-        builds_response = await client.get(
-            f"/api/v1/monitor/builds?flow_id={flow['id']}", headers=headers
-        )
+        builds_response = await client.get(f"/api/v1/monitor/builds?flow_id={flow['id']}", headers=headers)
 
         if builds_response.status_code == 200:
             builds = builds_response.json().get("vertex_builds", {})
@@ -172,11 +166,7 @@ async def test_openai_streaming_format_comparison(client: AsyncClient, created_a
         openai_text = openai_content.decode("utf-8")
 
         openai_events = openai_text.strip().split("\n\n")
-        openai_data_events = [
-            evt
-            for evt in openai_events
-            if "data: " in evt and not evt.startswith("data: [DONE]")
-        ]
+        openai_data_events = [evt for evt in openai_events if "data: " in evt and not evt.startswith("data: [DONE]")]
 
     # === Test Our API's streaming format ===
     logger.info("=== Testing Our API Format ===")
@@ -190,20 +180,14 @@ async def test_openai_streaming_format_comparison(client: AsyncClient, created_a
         "include": ["tool_call.results"],
     }
 
-    our_response = await client.post(
-        "/api/v1/responses", json=our_payload, headers=headers
-    )
+    our_response = await client.post("/api/v1/responses", json=our_payload, headers=headers)
     assert our_response.status_code == 200
 
     our_content = await our_response.aread()
     our_text = our_content.decode("utf-8")
 
     our_events = our_text.strip().split("\n\n")
-    our_data_events = [
-        evt
-        for evt in our_events
-        if "data: " in evt and not evt.startswith("data: [DONE]")
-    ]
+    our_data_events = [evt for evt in our_events if "data: " in evt and not evt.startswith("data: [DONE]")]
 
     # === Parse and compare events ===
 
@@ -242,12 +226,8 @@ async def test_openai_streaming_format_comparison(client: AsyncClient, created_a
 
     # Check for tool call events with detailed logging
     logger.info("Detailed OpenAI event analysis:")
-    output_item_added_events = [
-        e for e in openai_parsed if e.get("type") == "response.output_item.added"
-    ]
-    logger.info(
-        f"  Found {len(output_item_added_events)} 'response.output_item.added' events"
-    )
+    output_item_added_events = [e for e in openai_parsed if e.get("type") == "response.output_item.added"]
+    logger.info(f"  Found {len(output_item_added_events)} 'response.output_item.added' events")
 
     for i, event in enumerate(output_item_added_events):
         item = event.get("item", {})
@@ -261,23 +241,17 @@ async def test_openai_streaming_format_comparison(client: AsyncClient, created_a
     openai_tool_events = [
         e
         for e in openai_parsed
-        if e.get("type") == "response.output_item.added"
-        and e.get("item", {}).get("type") == "tool_call"
+        if e.get("type") == "response.output_item.added" and e.get("item", {}).get("type") == "tool_call"
     ]
     openai_function_events = [
         e
         for e in openai_parsed
-        if e.get("type") == "response.output_item.added"
-        and e.get("item", {}).get("type") == "function_call"
+        if e.get("type") == "response.output_item.added" and e.get("item", {}).get("type") == "function_call"
     ]
 
     logger.info("Detailed Our API event analysis:")
-    our_output_item_added_events = [
-        e for e in our_parsed if e.get("type") == "response.output_item.added"
-    ]
-    logger.info(
-        f"  Found {len(our_output_item_added_events)} 'response.output_item.added' events"
-    )
+    our_output_item_added_events = [e for e in our_parsed if e.get("type") == "response.output_item.added"]
+    logger.info(f"  Found {len(our_output_item_added_events)} 'response.output_item.added' events")
 
     for i, event in enumerate(our_output_item_added_events):
         item = event.get("item", {})
@@ -291,8 +265,7 @@ async def test_openai_streaming_format_comparison(client: AsyncClient, created_a
     our_function_events = [
         e
         for e in our_parsed
-        if e.get("type") == "response.output_item.added"
-        and e.get("item", {}).get("type") == "function_call"
+        if e.get("type") == "response.output_item.added" and e.get("item", {}).get("type") == "function_call"
     ]
 
     logger.info("Tool call detection results:")
@@ -301,9 +274,7 @@ async def test_openai_streaming_format_comparison(client: AsyncClient, created_a
     logger.info(f"  Our function_call events: {len(our_function_events)}")
 
     # Use the correct event type for OpenAI (function_call vs tool_call)
-    openai_actual_tool_events = (
-        openai_function_events if openai_function_events else openai_tool_events
-    )
+    openai_actual_tool_events = openai_function_events or openai_tool_events
 
     logger.info("Function call events:")
     logger.info(f"  OpenAI: {len(openai_actual_tool_events)} function call events")
@@ -347,9 +318,7 @@ async def test_openai_streaming_format_comparison(client: AsyncClient, created_a
 
         if accumulated_pattern:
             logger.error("❌ DETECTED ACCUMULATED CONTENT PATTERN (BAD)")
-            logger.error(
-                "Each delta contains the full accumulated message instead of just new content"
-            )
+            logger.error("Each delta contains the full accumulated message instead of just new content")
             logger.error("Example:")
             for i, content in enumerate(delta_contents[:3]):
                 logger.error(f"  Delta {i}: '{content}'")
@@ -391,8 +360,6 @@ async def test_openai_streaming_format_comparison(client: AsyncClient, created_a
     logger.info(f"  OpenAI function events: {len(openai_actual_tool_events)}")
     logger.info(f"  Our function events: {len(our_function_events)}")
     compatibility_result = (
-        "✅ PASS"
-        if len(our_function_events) > 0 or len(openai_actual_tool_events) == 0
-        else "❌ FAIL"
+        "✅ PASS" if len(our_function_events) > 0 or len(openai_actual_tool_events) == 0 else "❌ FAIL"
     )
     logger.info(f"  Format compatibility: {compatibility_result}")

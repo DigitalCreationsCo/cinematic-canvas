@@ -7,6 +7,11 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, HTTPException, Path, Query
 from fastapi_pagination import Params
+from px.log.logger import logger
+from px.services.deps import injectable_session_scope, injectable_session_scope_readonly
+from px.utils.validate_cloud import raise_error_if_astra_cloud_disable_component
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from portals.services.auth.utils import (
     get_current_active_user,
     get_current_active_user_mcp,
@@ -15,10 +20,6 @@ from portals.services.database.models.flow.model import Flow
 from portals.services.database.models.user.model import User
 from portals.services.store.utils import get_lf_version_from_pypi
 from portals.utils.constants import PORTALS_GLOBAL_VAR_HEADER_PREFIX
-from px.log.logger import logger
-from px.services.deps import injectable_session_scope, injectable_session_scope_readonly
-from px.utils.validate_cloud import raise_error_if_astra_cloud_disable_component
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 if TYPE_CHECKING:
     from portals.services.store.schema import StoreComponentCreate
@@ -59,9 +60,7 @@ ValidatedFileName = Annotated[str, Depends(_get_validated_file_name)]
 ValidatedFolderName = Annotated[str, Depends(_get_validated_folder_name)]
 
 # Message to raise if we're in an Astra cloud environment and a component or endpoint is not supported
-disable_endpoint_in_astra_cloud_msg = (
-    "This endpoint is not supported in Astra cloud environment."
-)
+disable_endpoint_in_astra_cloud_msg = "This endpoint is not supported in Astra cloud environment."
 
 
 class EventDeliveryType(str, Enum):
@@ -71,9 +70,7 @@ class EventDeliveryType(str, Enum):
 
 
 def has_api_terms(word: str):
-    return "api" in word and (
-        "key" in word or ("token" in word and "tokens" not in word)
-    )
+    return "api" in word and ("key" in word or ("token" in word and "tokens" not in word))
 
 
 def _get_provider_from_template(template: dict) -> str | None:
@@ -100,12 +97,7 @@ def remove_api_keys(flow: dict):
         if not isinstance(template, dict):
             continue
         for value in template.values():
-            if (
-                isinstance(value, dict)
-                and "name" in value
-                and has_api_terms(value["name"])
-                and value.get("password")
-            ):
+            if isinstance(value, dict) and "name" in value and has_api_terms(value["name"]) and value.get("password"):
                 value["value"] = None
 
     return flow
@@ -121,9 +113,7 @@ _VOLATILE_TOP_LEVEL: frozenset[str] = frozenset(
 )
 
 # Node-level fields that track UI interaction state (position, drag, selection).
-_VOLATILE_NODE_FIELDS: frozenset[str] = frozenset(
-    {"positionAbsolute", "dragging", "selected"}
-)
+_VOLATILE_NODE_FIELDS: frozenset[str] = frozenset({"positionAbsolute", "dragging", "selected"})
 
 
 def _split_code_to_lines(flow: dict) -> None:
@@ -233,9 +223,7 @@ def build_input_keys_response(langchain_object, artifacts):
             input_keys_response["input_keys"][key] = value
     # If the object has memory, that memory will have a memory_variables attribute
     # memory variables should be removed from the input keys
-    if hasattr(langchain_object, "memory") and hasattr(
-        langchain_object.memory, "memory_variables"
-    ):
+    if hasattr(langchain_object, "memory") and hasattr(langchain_object.memory, "memory_variables"):
         # Remove memory variables from input keys
         input_keys_response["input_keys"] = {
             key: value
@@ -245,9 +233,7 @@ def build_input_keys_response(langchain_object, artifacts):
         # Add memory variables to memory_keys
         input_keys_response["memory_keys"] = langchain_object.memory.memory_variables
 
-    if hasattr(langchain_object, "prompt") and hasattr(
-        langchain_object.prompt, "template"
-    ):
+    if hasattr(langchain_object, "prompt") and hasattr(langchain_object.prompt, "template"):
         input_keys_response["template"] = langchain_object.prompt.template
 
     return input_keys_response
@@ -287,9 +273,7 @@ async def check_portals_version(component: StoreComponentCreate) -> None:
 
     portals_version = await get_lf_version_from_pypi()
     if portals_version is None:
-        raise HTTPException(
-            status_code=500, detail="Unable to verify the latest version of Portals"
-        )
+        raise HTTPException(status_code=500, detail="Unable to verify the latest version of Portals")
     if portals_version != component.last_tested_version:
         await logger.awarning(
             f"Your version of Portals ({component.last_tested_version}) is outdated. "
@@ -384,7 +368,9 @@ def get_suggestion_message(outdated_components: list[str]) -> str:
             f"We recommend updating the following component: {outdated_components[0]}."
         )
     components = ", ".join(outdated_components)
-    return f"The flow contains {count} outdated components. We recommend updating the following components: {components}."
+    return (
+        f"The flow contains {count} outdated components. We recommend updating the following components: {components}."
+    )
 
 
 def parse_value(value: Any, input_type: str) -> Any:
@@ -435,9 +421,7 @@ def extract_global_variables_from_headers(headers) -> dict[str, str]:
         for header_name, header_value in headers.items():
             header_lower = header_name.lower()
             if header_lower.startswith(PORTALS_GLOBAL_VAR_HEADER_PREFIX):
-                var_name = header_lower[
-                    len(PORTALS_GLOBAL_VAR_HEADER_PREFIX) :
-                ].upper()
+                var_name = header_lower[len(PORTALS_GLOBAL_VAR_HEADER_PREFIX) :].upper()
                 variables[var_name] = header_value
     except Exception as exc:  # noqa: BLE001
         # Log the error but don't raise - we want to continue execution
@@ -449,8 +433,6 @@ def extract_global_variables_from_headers(headers) -> dict[str, str]:
 def raise_error_if_astra_cloud_env():
     """Raise an error if we're in an Astra cloud environment."""
     try:
-        raise_error_if_astra_cloud_disable_component(
-            disable_endpoint_in_astra_cloud_msg
-        )
+        raise_error_if_astra_cloud_disable_component(disable_endpoint_in_astra_cloud_msg)
     except Exception as e:
         raise HTTPException(status_code=403, detail=str(e)) from e

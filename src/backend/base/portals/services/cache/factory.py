@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from px.log.logger import logger
+from typing_extensions import override
+
 from portals.services.cache.disk import AsyncDiskCache
 from portals.services.cache.service import (
     AsyncInMemoryCache,
@@ -10,8 +13,6 @@ from portals.services.cache.service import (
     ThreadingInMemoryCache,
 )
 from portals.services.factory import ServiceFactory
-from px.log.logger import logger
-from typing_extensions import override
 
 if TYPE_CHECKING:
     from px.services.settings.service import SettingsService
@@ -37,13 +38,9 @@ class CacheServiceFactory(ServiceFactory):
             )
 
         if settings_service.settings.cache_type == "memory":
-            return ThreadingInMemoryCache(
-                expiration_time=settings_service.settings.cache_expire
-            )
+            return ThreadingInMemoryCache(expiration_time=settings_service.settings.cache_expire)
         if settings_service.settings.cache_type == "async":
-            return AsyncInMemoryCache(
-                expiration_time=settings_service.settings.cache_expire
-            )
+            return AsyncInMemoryCache(expiration_time=settings_service.settings.cache_expire)
         if settings_service.settings.cache_type == "disk":
             return AsyncDiskCache(
                 cache_dir=settings_service.settings.config_dir,

@@ -14,6 +14,7 @@ import asyncio
 from typing import TYPE_CHECKING, Any
 
 import httpx
+
 from portals_sdk._client_common import _ClientCommon
 from portals_sdk._http import (
     _DEFAULT_TIMEOUT,
@@ -147,9 +148,7 @@ class AsyncPortalsClient(_ClientCommon):
         return self._validate_model(Flow, resp.json())
 
     async def create_flow(self, flow: FlowCreate) -> Flow:
-        resp = await self._request(
-            "POST", "/api/v1/flows/", json=self._model_payload(flow)
-        )
+        resp = await self._request("POST", "/api/v1/flows/", json=self._model_payload(flow))
         return self._validate_model(Flow, resp.json())
 
     async def update_flow(self, flow_id: UUID | str, update: FlowUpdate) -> Flow:
@@ -160,9 +159,7 @@ class AsyncPortalsClient(_ClientCommon):
         )
         return self._validate_model(Flow, resp.json())
 
-    async def upsert_flow(
-        self, flow_id: UUID | str, flow: FlowCreate
-    ) -> tuple[Flow, bool]:
+    async def upsert_flow(self, flow_id: UUID | str, flow: FlowCreate) -> tuple[Flow, bool]:
         """Create-or-update by stable ID. Returns ``(flow, created)``."""
         resp = await self._request(
             "PUT",
@@ -287,17 +284,13 @@ class AsyncPortalsClient(_ClientCommon):
             ),
         )
 
-    async def _aiter_stream(
-        self, path: str, payload: dict[str, Any]
-    ) -> AsyncIterator[StreamChunk]:
+    async def _aiter_stream(self, path: str, payload: dict[str, Any]) -> AsyncIterator[StreamChunk]:
         """Open a streaming POST request and async-yield parsed event chunks."""
         try:
             async with self._http.stream("POST", path, json=payload) as response:
                 if not response.is_success:
                     body = await response.aread()
-                    _raise_for_status_code(
-                        response.status_code, self._extract_error_detail(body)
-                    )
+                    _raise_for_status_code(response.status_code, self._extract_error_detail(body))
                 async for line in response.aiter_lines():
                     raw = line.strip()
                     if not raw:
@@ -321,14 +314,10 @@ class AsyncPortalsClient(_ClientCommon):
         return self._validate_model(ProjectWithFlows, resp.json())
 
     async def create_project(self, project: ProjectCreate) -> Project:
-        resp = await self._request(
-            "POST", "/api/v1/projects/", json=self._model_payload(project)
-        )
+        resp = await self._request("POST", "/api/v1/projects/", json=self._model_payload(project))
         return self._validate_model(Project, resp.json())
 
-    async def update_project(
-        self, project_id: UUID | str, update: ProjectUpdate
-    ) -> Project:
+    async def update_project(self, project_id: UUID | str, update: ProjectUpdate) -> Project:
         resp = await self._request(
             "PATCH",
             f"/api/v1/projects/{project_id}",
@@ -387,9 +376,7 @@ class AsyncPortalsClient(_ClientCommon):
             await client.pull("my-flow-id", output="flows/my-flow.json")
         """
         flow = await self.get_flow(flow_id)
-        return self._normalize_and_write_flow(
-            flow.model_dump(mode="json"), output=output
-        )
+        return self._normalize_and_write_flow(flow.model_dump(mode="json"), output=output)
 
     async def push_project(self, directory: str | Path) -> list[tuple[Flow, bool]]:
         """Push all ``*.json`` flow files in *directory* to the server concurrently.
@@ -398,11 +385,7 @@ class AsyncPortalsClient(_ClientCommon):
 
             results = await client.push_project("flows/my-project/")
         """
-        return list(
-            await asyncio.gather(
-                *[self.push(path) for path in self._project_json_paths(directory)]
-            )
-        )
+        return list(await asyncio.gather(*[self.push(path) for path in self._project_json_paths(directory)]))
 
     async def pull_project(
         self,
@@ -423,9 +406,7 @@ class AsyncPortalsClient(_ClientCommon):
 
             written = await client.pull_project("project-id", output_dir="flows/")
         """
-        return self._write_project_flows(
-            await self.download_project(project_id), output_dir=output_dir
-        )
+        return self._write_project_flows(await self.download_project(project_id), output_dir=output_dir)
 
 
 # ---------------------------------------------------------------------------

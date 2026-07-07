@@ -63,9 +63,7 @@ def _write_flow(tmp_path: Path, name: str, flow: dict | None = None) -> Path:
     return p
 
 
-def _fake_env_config(
-    url: str = _BASE_URL, api_key: str = _API_KEY, name: str = "test-env"
-) -> MagicMock:
+def _fake_env_config(url: str = _BASE_URL, api_key: str = _API_KEY, name: str = "test-env") -> MagicMock:
     """Return a MagicMock that looks like an px EnvConfig."""
     cfg = MagicMock()
     cfg.url = url
@@ -74,9 +72,7 @@ def _fake_env_config(
     return cfg
 
 
-def _fake_remote_flow(
-    flow_id: UUID = _FLOW_ID, flow_dict: dict | None = None
-) -> MagicMock:
+def _fake_remote_flow(flow_id: UUID = _FLOW_ID, flow_dict: dict | None = None) -> MagicMock:
     """Return a MagicMock that looks like a portals_sdk Flow model."""
     remote = MagicMock()
     remote.id = flow_id
@@ -108,12 +104,8 @@ def _make_client_mock(
     if get_flow_side_effect is not None:
         client.get_flow.side_effect = get_flow_side_effect
     else:
-        client.get_flow.return_value = (
-            remote_flow if remote_flow is not None else _fake_remote_flow()
-        )
-    client.list_flows.return_value = (
-        list_flows_result if list_flows_result is not None else []
-    )
+        client.get_flow.return_value = remote_flow if remote_flow is not None else _fake_remote_flow()
+    client.list_flows.return_value = list_flows_result if list_flows_result is not None else []
     return client
 
 
@@ -135,13 +127,9 @@ def _make_sdk_triple(
 class _CloseAwareClient:
     """Minimal client that raises if used after close()."""
 
-    def __init__(
-        self, remote_flow: MagicMock, list_flows_result: list | None = None
-    ) -> None:
+    def __init__(self, remote_flow: MagicMock, list_flows_result: list | None = None) -> None:
         self._remote_flow = remote_flow
-        self._list_flows_result = (
-            list_flows_result if list_flows_result is not None else []
-        )
+        self._list_flows_result = list_flows_result if list_flows_result is not None else []
         self.closed = False
         self.get_flow_calls: list[UUID] = []
         self.list_flows_calls: list[dict] = []
@@ -236,9 +224,7 @@ class TestFlowStatus:
         from px.cli.status import FlowStatus
 
         p = Path(tmp_path / "flow.json")
-        s = FlowStatus(
-            name="X", status="ahead", path=p, flow_id=_FLOW_ID, detail="local change"
-        )
+        s = FlowStatus(name="X", status="ahead", path=p, flow_id=_FLOW_ID, detail="local change")
         assert s.path == p
         assert s.flow_id == _FLOW_ID
         assert s.detail == "local change"
@@ -397,9 +383,8 @@ class TestRenderTable:
     @staticmethod
     def _capture_render(statuses, env_label):
         """Render the table to a string buffer and return the plain-text output."""
-        from rich.console import Console
-
         from px.cli.status import _render_table
+        from rich.console import Console
 
         buf = io.StringIO()
         fake_console = Console(file=buf, width=200, no_color=True)
@@ -445,11 +430,7 @@ class TestRenderTable:
     def test_new_status_contains_label(self, tmp_path):
         from px.cli.status import FlowStatus
 
-        statuses = [
-            FlowStatus(
-                name="NewFlow", status="new", path=tmp_path / "f.json", flow_id=_FLOW_ID
-            )
-        ]
+        statuses = [FlowStatus(name="NewFlow", status="new", path=tmp_path / "f.json", flow_id=_FLOW_ID)]
         output = self._capture_render(statuses, "test-env")
         assert "NewFlow" in output
         assert "new" in output.lower()
@@ -457,9 +438,7 @@ class TestRenderTable:
     def test_remote_only_status_contains_label(self):
         from px.cli.status import FlowStatus
 
-        statuses = [
-            FlowStatus(name="RemoteFlow", status="remote-only", flow_id=_FLOW_ID)
-        ]
+        statuses = [FlowStatus(name="RemoteFlow", status="remote-only", flow_id=_FLOW_ID)]
         output = self._capture_render(statuses, "test-env")
         assert "RemoteFlow" in output
         assert "remote only" in output.lower()
@@ -515,9 +494,7 @@ class TestRenderTable:
             FlowStatus(name="New", status="new", path=tmp_path / "n.json"),
             FlowStatus(name="Remote", status="remote-only", flow_id=_FLOW_ID),
             FlowStatus(name="NoId", status="no-id", path=tmp_path / "noid.json"),
-            FlowStatus(
-                name="Err", status="error", path=tmp_path / "e.json", detail="oops"
-            ),
+            FlowStatus(name="Err", status="error", path=tmp_path / "e.json", detail="oops"),
         ]
         output = self._capture_render(statuses, "production")
         for s in statuses:
@@ -526,11 +503,7 @@ class TestRenderTable:
     def test_env_label_appears_in_title(self, tmp_path):
         from px.cli.status import FlowStatus
 
-        statuses = [
-            FlowStatus(
-                name="F", status="synced", path=tmp_path / "f.json", flow_id=_FLOW_ID
-            )
-        ]
+        statuses = [FlowStatus(name="F", status="synced", path=tmp_path / "f.json", flow_id=_FLOW_ID)]
         output = self._capture_render(statuses, "my-staging")
         assert "my-staging" in output
 
@@ -544,9 +517,7 @@ class TestRenderTable:
     def test_status_with_no_flow_id_shows_dash(self, tmp_path):
         from px.cli.status import FlowStatus
 
-        statuses = [
-            FlowStatus(name="NoIdFlow", status="no-id", path=tmp_path / "f.json")
-        ]
+        statuses = [FlowStatus(name="NoIdFlow", status="no-id", path=tmp_path / "f.json")]
         output = self._capture_render(statuses, "env")
         assert "NoIdFlow" in output
 
@@ -593,9 +564,7 @@ class TestStatusCommandSynced:
         remote = _fake_remote_flow(flow_dict=_FLOW_DICT)
         client = _make_client_mock(remote_flow=remote)
         normalize_fn, to_json_fn, client_cls, not_found_error = _make_sdk_triple(client)
-        cfg = _fake_env_config(
-            url="http://custom.test", api_key="my-key"
-        )  # pragma: allowlist secret
+        cfg = _fake_env_config(url="http://custom.test", api_key="my-key")  # pragma: allowlist secret
 
         with (
             patch(
@@ -615,9 +584,7 @@ class TestStatusCommandSynced:
                 api_key="my-key",  # pragma: allowlist secret
                 show_remote_only=False,
             )
-        client_cls.assert_called_once_with(
-            base_url="http://custom.test", api_key="my-key"
-        )  # pragma: allowlist secret
+        client_cls.assert_called_once_with(base_url="http://custom.test", api_key="my-key")  # pragma: allowlist secret
 
     def test_client_is_closed_after_requests_finish(self, tmp_path):
         """The client stays usable during status checks and is closed at the end."""
@@ -685,9 +652,7 @@ class TestStatusCommandNew:
     def test_not_found_on_remote_gives_new_status(self, tmp_path):
         """Remote raises PortalsNotFoundError → status 'new' → exits 1."""
         p = _write_flow(tmp_path, "flow.json")
-        client = _make_client_mock(
-            get_flow_side_effect=_FakePortalsNotFoundError("not found")
-        )
+        client = _make_client_mock(get_flow_side_effect=_FakePortalsNotFoundError("not found"))
         triple = _make_sdk_triple(client)
 
         with pytest.raises(typer.Exit) as exc_info:
@@ -698,9 +663,7 @@ class TestStatusCommandNew:
         """When flow is new (not found), no model_dump call is made."""
         p = _write_flow(tmp_path, "flow.json")
         remote = _fake_remote_flow(flow_dict=_FLOW_DICT)
-        client = _make_client_mock(
-            get_flow_side_effect=_FakePortalsNotFoundError("not found")
-        )
+        client = _make_client_mock(get_flow_side_effect=_FakePortalsNotFoundError("not found"))
         triple = _make_sdk_triple(client)
 
         with pytest.raises(typer.Exit):
@@ -768,9 +731,7 @@ class TestStatusCommandErrors:
     def test_invalid_uuid_in_id_gives_error_status(self, tmp_path):
         """Flow with a non-UUID 'id' value → status 'error' → exits 1."""
         p = tmp_path / "bad_uuid.json"
-        p.write_text(
-            json.dumps({"id": "not-a-valid-uuid", "name": "BadId"}), encoding="utf-8"
-        )
+        p.write_text(json.dumps({"id": "not-a-valid-uuid", "name": "BadId"}), encoding="utf-8")
         client = _make_client_mock()
         triple = _make_sdk_triple(client)
 
@@ -904,9 +865,7 @@ class TestStatusCommandRemoteOnly:
         list_entry = MagicMock()
         list_entry.id = _FLOW_ID
         list_entry.name = "My Test Flow"
-        client = _make_client_mock(
-            remote_flow=remote_local, list_flows_result=[list_entry]
-        )
+        client = _make_client_mock(remote_flow=remote_local, list_flows_result=[list_entry])
         triple = _make_sdk_triple(client)
 
         # All synced, no remote-only → exits 0 (no Exit raised)
@@ -926,9 +885,7 @@ class TestStatusCommandRemoteOnly:
         local_entry.id = _FLOW_ID
         local_entry.name = "My Test Flow"
 
-        client = _make_client_mock(
-            remote_flow=remote_local, list_flows_result=[local_entry, remote_extra]
-        )
+        client = _make_client_mock(remote_flow=remote_local, list_flows_result=[local_entry, remote_extra])
         triple = _make_sdk_triple(client)
 
         with pytest.raises(typer.Exit) as exc_info:
@@ -963,9 +920,7 @@ class TestStatusCommandConfigError:
 
         with (
             patch("px.cli.status._load_sdk", return_value=triple),
-            patch(
-                "px.config.resolve_environment", side_effect=ConfigError("bad config")
-            ),
+            patch("px.config.resolve_environment", side_effect=ConfigError("bad config")),
             pytest.raises(typer.Exit) as exc_info,
         ):
             status_command(
@@ -1028,9 +983,7 @@ class TestStatusCommandAllSynced:
         try:
             _run_status([str(p)], sdk_triple=triple)
         except typer.Exit as exc:
-            pytest.fail(
-                f"Expected no Exit for all-synced but got Exit({exc.exit_code})"
-            )
+            pytest.fail(f"Expected no Exit for all-synced but got Exit({exc.exit_code})")
 
     def test_dir_with_all_synced_files_exits_0(self, tmp_path):
         """--dir with all synced flows → no Exit raised."""

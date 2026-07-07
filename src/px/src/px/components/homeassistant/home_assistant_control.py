@@ -101,9 +101,7 @@ class HomeAssistantControl(LCToolComponent):
             args_schema=self.ToolSchema,
         )
 
-    def _control_device_for_tool(
-        self, action: str, entity_id: str
-    ) -> dict[str, Any] | str:
+    def _control_device_for_tool(self, action: str, entity_id: str) -> dict[str, Any] | str:
         """Function called by the agent.
 
         -> Internally calls _control_device.
@@ -128,7 +126,7 @@ class HomeAssistantControl(LCToolComponent):
         Example: entity_id="switch.unknown_switch_3" -> domain="switch".
         """
         try:
-            domain = entity_id.split(".")[0]  # switch, light, cover, etc.
+            domain = entity_id.split(".", maxsplit=1)[0]  # switch, light, cover, etc.
             url = f"{base_url}/api/services/{domain}/{action}"
 
             headers = {

@@ -7,11 +7,6 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from portals.api.v1.mappers.deployments.contracts import CreateFlowArtifactProviderData
-from portals.api.v1.schemas.deployments import ValidatedUrl
-from portals.services.database.models.deployment_provider_account.utils import (
-    validate_provider_url,
-)
 from px.services.adapters.deployment.schema import DeploymentType
 from pydantic import (
     BaseModel,
@@ -19,6 +14,12 @@ from pydantic import (
     StringConstraints,
     field_validator,
     model_validator,
+)
+
+from portals.api.v1.mappers.deployments.contracts import CreateFlowArtifactProviderData
+from portals.api.v1.schemas.deployments import ValidatedUrl
+from portals.services.database.models.deployment_provider_account.utils import (
+    validate_provider_url,
 )
 
 WatsonxApiLlmName = Annotated[
@@ -51,9 +52,7 @@ class WatsonxApiProviderAccountCreate(BaseModel):
     model_config = {"extra": "forbid"}
 
     url: ValidatedUrl
-    tenant_id: Annotated[
-        str | None, StringConstraints(strip_whitespace=True, min_length=1)
-    ] = None
+    tenant_id: Annotated[str | None, StringConstraints(strip_whitespace=True, min_length=1)] = None
     api_key: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
@@ -106,9 +105,7 @@ class WatsonxApiAddFlowItem(BaseModel):
     )
     tool_name: str | None = Field(
         default=None,
-        description=(
-            "Optional user-provided tool name. When omitted, the tool name is derived from the flow name."
-        ),
+        description=("Optional user-provided tool name. When omitted, the tool name is derived from the flow name."),
     )
 
 
@@ -120,21 +117,15 @@ class WatsonxApiUpsertFlowItem(BaseModel):
     flow_version_id: UUID
     add_app_ids: list[str] = Field(
         default_factory=list,
-        description=(
-            "Connection app ids to bind. Use an empty list to avoid adding new bindings."
-        ),
+        description=("Connection app ids to bind. Use an empty list to avoid adding new bindings."),
     )
     remove_app_ids: list[str] = Field(
         default_factory=list,
-        description=(
-            "Connection app ids to unbind. Use an empty list to avoid removing bindings."
-        ),
+        description=("Connection app ids to unbind. Use an empty list to avoid removing bindings."),
     )
     tool_name: str | None = Field(
         default=None,
-        description=(
-            "Optional user-provided tool name. When omitted, the tool name is derived from the flow name."
-        ),
+        description=("Optional user-provided tool name. When omitted, the tool name is derived from the flow name."),
     )
 
 
@@ -146,9 +137,7 @@ class WatsonxApiCreateUpsertToolItem(BaseModel):
     tool_id: str = Field(min_length=1, description="Provider-owned tool identifier.")
     add_app_ids: list[str] = Field(
         default_factory=list,
-        description=(
-            "Connection app ids to bind. Use an empty list to attach the tool without connection bindings."
-        ),
+        description=("Connection app ids to bind. Use an empty list to attach the tool without connection bindings."),
     )
 
 
@@ -160,15 +149,11 @@ class WatsonxApiUpsertToolItem(BaseModel):
     tool_id: str = Field(min_length=1, description="Provider-owned tool identifier.")
     add_app_ids: list[str] = Field(
         default_factory=list,
-        description=(
-            "Connection app ids to bind. Use an empty list to avoid adding new bindings."
-        ),
+        description=("Connection app ids to bind. Use an empty list to avoid adding new bindings."),
     )
     remove_app_ids: list[str] = Field(
         default_factory=list,
-        description=(
-            "Connection app ids to unbind. Use an empty list to avoid removing bindings."
-        ),
+        description=("Connection app ids to unbind. Use an empty list to avoid removing bindings."),
     )
 
 
@@ -216,9 +201,7 @@ class WatsonxApiKeyValueConnectionPayload(BaseModel):
         return value
 
 
-def _collect_api_referenced_app_ids(
-    operations: list[Any], *, attr_name: str = "app_ids"
-) -> set[str]:
+def _collect_api_referenced_app_ids(operations: list[Any], *, attr_name: str = "app_ids") -> set[str]:
     referenced_app_ids: set[str] = set()
     for operation in operations:
         operation_app_ids = getattr(operation, attr_name, None)
@@ -228,9 +211,7 @@ def _collect_api_referenced_app_ids(
     return referenced_app_ids
 
 
-def _validate_api_remove_not_raw(
-    *, operations: list[Any], raw_app_ids: set[str], attr_name: str, label: str
-) -> None:
+def _validate_api_remove_not_raw(*, operations: list[Any], raw_app_ids: set[str], attr_name: str, label: str) -> None:
     for operation in operations:
         remove_app_ids = getattr(operation, attr_name, None)
         if not remove_app_ids:
@@ -258,9 +239,7 @@ def _validate_api_remove_conflicts(
     remove_label: str,
     upsert_attr_name: str,
 ) -> None:
-    normalized_remove_ids = {
-        str(remove_id).strip() for remove_id in remove_ids if str(remove_id).strip()
-    }
+    normalized_remove_ids = {str(remove_id).strip() for remove_id in remove_ids if str(remove_id).strip()}
     normalized_upsert_ids = {
         str(getattr(operation, upsert_attr_name, "")).strip()
         for operation in upsert_operations
@@ -272,18 +251,14 @@ def _validate_api_remove_conflicts(
         raise ValueError(msg)
 
 
-def _validate_api_unused_raw_app_ids(
-    *, raw_app_ids: set[str], referenced_app_ids: set[str]
-) -> None:
+def _validate_api_unused_raw_app_ids(*, raw_app_ids: set[str], referenced_app_ids: set[str]) -> None:
     unused_raw_app_ids = sorted(raw_app_ids.difference(referenced_app_ids))
     if unused_raw_app_ids:
         msg = f"connections contains app_id values not referenced by operations: {unused_raw_app_ids}"
         raise ValueError(msg)
 
 
-def _validate_api_unique_connection_app_ids(
-    *, connections: list[WatsonxApiKeyValueConnectionPayload]
-) -> None:
+def _validate_api_unique_connection_app_ids(*, connections: list[WatsonxApiKeyValueConnectionPayload]) -> None:
     app_id_counts = Counter(connection.app_id for connection in connections)
     duplicates = sorted(app_id for app_id, count in app_id_counts.items() if count > 1)
     if duplicates:
@@ -318,12 +293,8 @@ class WatsonxApiDeploymentUpdatePayload(BaseModel):
     def validate_operation_references(self) -> WatsonxApiDeploymentUpdatePayload:
         _validate_api_unique_connection_app_ids(connections=self.connections)
         raw_app_ids = {raw.app_id for raw in self.connections}
-        referenced_app_ids = _collect_api_referenced_app_ids(
-            self.upsert_flows, attr_name="add_app_ids"
-        )
-        referenced_app_ids.update(
-            _collect_api_referenced_app_ids(self.upsert_tools, attr_name="add_app_ids")
-        )
+        referenced_app_ids = _collect_api_referenced_app_ids(self.upsert_flows, attr_name="add_app_ids")
+        referenced_app_ids.update(_collect_api_referenced_app_ids(self.upsert_tools, attr_name="add_app_ids"))
         _validate_api_remove_not_raw(
             operations=self.upsert_flows,
             raw_app_ids=raw_app_ids,
@@ -336,12 +307,8 @@ class WatsonxApiDeploymentUpdatePayload(BaseModel):
             attr_name="remove_app_ids",
             label="upsert_tools.remove_app_ids",
         )
-        _validate_api_add_remove_overlap(
-            operations=self.upsert_flows, label="upsert_flows"
-        )
-        _validate_api_add_remove_overlap(
-            operations=self.upsert_tools, label="upsert_tools"
-        )
+        _validate_api_add_remove_overlap(operations=self.upsert_flows, label="upsert_flows")
+        _validate_api_add_remove_overlap(operations=self.upsert_tools, label="upsert_tools")
         _validate_api_remove_conflicts(
             remove_ids=self.remove_flows,
             upsert_operations=self.upsert_flows,
@@ -354,9 +321,7 @@ class WatsonxApiDeploymentUpdatePayload(BaseModel):
             remove_label="remove_tools",
             upsert_attr_name="tool_id",
         )
-        _validate_api_unused_raw_app_ids(
-            raw_app_ids=raw_app_ids, referenced_app_ids=referenced_app_ids
-        )
+        _validate_api_unused_raw_app_ids(raw_app_ids=raw_app_ids, referenced_app_ids=referenced_app_ids)
         return self
 
 
@@ -365,9 +330,7 @@ class WatsonxApiDeploymentCreatePayload(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    llm: WatsonxApiLlmName = Field(
-        description="Provider model identifier to use for the deployment agent."
-    )
+    llm: WatsonxApiLlmName = Field(description="Provider model identifier to use for the deployment agent.")
     connections: list[WatsonxApiKeyValueConnectionPayload] = Field(default_factory=list)
     add_flows: list[WatsonxApiAddFlowItem] = Field(default_factory=list)
     upsert_tools: list[WatsonxApiCreateUpsertToolItem] = Field(default_factory=list)
@@ -400,15 +363,9 @@ class WatsonxApiDeploymentCreatePayload(BaseModel):
             raise ValueError(msg)
         _validate_api_unique_connection_app_ids(connections=self.connections)
         raw_app_ids = {raw.app_id for raw in self.connections}
-        referenced_app_ids = _collect_api_referenced_app_ids(
-            self.add_flows, attr_name="app_ids"
-        )
-        referenced_app_ids.update(
-            _collect_api_referenced_app_ids(self.upsert_tools, attr_name="add_app_ids")
-        )
-        _validate_api_unused_raw_app_ids(
-            raw_app_ids=raw_app_ids, referenced_app_ids=referenced_app_ids
-        )
+        referenced_app_ids = _collect_api_referenced_app_ids(self.add_flows, attr_name="app_ids")
+        referenced_app_ids.update(_collect_api_referenced_app_ids(self.upsert_tools, attr_name="add_app_ids"))
+        _validate_api_unused_raw_app_ids(raw_app_ids=raw_app_ids, referenced_app_ids=referenced_app_ids)
         return self
 
 
@@ -451,18 +408,14 @@ class WatsonxApiDeploymentCreateResultData(BaseModel):
         return [normalized for app_id in value if (normalized := str(app_id).strip())]
 
     @classmethod
-    def from_provider_result(
-        cls, provider_result: Any
-    ) -> WatsonxApiDeploymentCreateResultData:
+    def from_provider_result(cls, provider_result: Any) -> WatsonxApiDeploymentCreateResultData:
         if not isinstance(provider_result, dict):
             return cls()
         return cls.model_validate(provider_result)
 
     def to_api_provider_data(self) -> dict[str, Any] | None:
         """Return API-safe provider_data subset for deployment create responses."""
-        payload = self.model_dump(
-            mode="json", include={"created_app_ids", "created_tools"}, exclude_none=True
-        )
+        payload = self.model_dump(mode="json", include={"created_app_ids", "created_tools"}, exclude_none=True)
         return payload or None
 
 
@@ -482,18 +435,14 @@ class WatsonxApiDeploymentUpdateResultData(BaseModel):
         return [normalized for app_id in value if (normalized := str(app_id).strip())]
 
     @classmethod
-    def from_provider_result(
-        cls, provider_result: Any
-    ) -> WatsonxApiDeploymentUpdateResultData:
+    def from_provider_result(cls, provider_result: Any) -> WatsonxApiDeploymentUpdateResultData:
         if not isinstance(provider_result, dict):
             return cls()
         return cls.model_validate(provider_result)
 
     def to_api_provider_data(self) -> dict[str, Any] | None:
         """Return API-safe provider_data subset for deployment update responses."""
-        payload = self.model_dump(
-            mode="json", include={"created_app_ids", "created_tools"}, exclude_none=True
-        )
+        payload = self.model_dump(mode="json", include={"created_app_ids", "created_tools"}, exclude_none=True)
         return payload or None
 
 
@@ -564,9 +513,7 @@ class WatsonxApiProviderDeploymentListItem(BaseModel):
 class WatsonxApiDeploymentListProviderData(BaseModel):
     """Provider-level metadata attached to DeploymentListResponse.provider_data."""
 
-    deployments: list[WatsonxApiProviderDeploymentListItem] = Field(
-        default_factory=list
-    )
+    deployments: list[WatsonxApiProviderDeploymentListItem] = Field(default_factory=list)
 
 
 class WatsonxApiConfigListItem(BaseModel):
@@ -693,9 +640,7 @@ class _WatsonxApiAgentExecutionResultBase(BaseModel):
         return normalized or None
 
     @classmethod
-    def from_provider_result(
-        cls, provider_result: Any
-    ) -> _WatsonxApiAgentExecutionResultBase:
+    def from_provider_result(cls, provider_result: Any) -> _WatsonxApiAgentExecutionResultBase:
         if not isinstance(provider_result, dict):
             return cls()
         return cls.model_validate(provider_result)

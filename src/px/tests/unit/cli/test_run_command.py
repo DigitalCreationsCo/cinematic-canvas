@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 import typer
-
 from px.cli.run import run
 
 
@@ -442,9 +441,7 @@ chat_input = ChatInput(
         temp_files_after = list(temp_dir.glob("*.json"))
 
         # Should not have more temp files than before (cleanup working)
-        assert (
-            len(temp_files_after) <= len(temp_files_before) + 1
-        )  # Allow for one potential leftover
+        assert len(temp_files_after) <= len(temp_files_before) + 1  # Allow for one potential leftover
 
     def test_execute_verbose_error_output(self, invalid_script, capsys):
         """Test that verbose mode shows error details."""

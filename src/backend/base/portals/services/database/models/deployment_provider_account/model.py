@@ -3,6 +3,12 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
+from pydantic import field_validator, model_validator
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, func
+from typing_extensions import Self
+
 from portals.schema.serialize import UUIDstr
 from portals.services.database.models.deployment_provider_account.schemas import (
     DeploymentProviderKey,
@@ -15,11 +21,6 @@ from portals.services.database.utils import (
     normalize_string_or_none,
     validate_non_empty_string,
 )
-from pydantic import field_validator, model_validator
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, UniqueConstraint
-from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, func
-from typing_extensions import Self
 
 if TYPE_CHECKING:
     from portals.services.database.models.deployment.model import Deployment
@@ -99,19 +100,13 @@ class DeploymentProviderAccount(SQLModel, table=True):  # type: ignore[call-arg]
     name: str = Field(
         description="User-chosen display name, unique per user within a provider_key (e.g. 'staging', 'prod')."
     )
-    provider_url: str = Field(
-        description="Provider service URL used for deployment crud in the account."
-    )
+    provider_url: str = Field(description="Provider service URL used for deployment crud in the account.")
     # MUST be stored encrypted; the CRUD layer encrypts via auth_utils before writing
     # and the Read schema intentionally excludes this field.
-    api_key: str = Field(
-        description="Provider credential material. Stored encrypted; never returned in API responses."
-    )
+    api_key: str = Field(description="Provider credential material. Stored encrypted; never returned in API responses.")
     created_at: datetime | None = Field(
         default=None,
-        sa_column=Column(
-            DateTime(timezone=True), server_default=func.now(), nullable=False
-        ),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False),
     )
     updated_at: datetime | None = Field(
         default=None,
@@ -146,9 +141,7 @@ class DeploymentProviderAccount(SQLModel, table=True):  # type: ignore[call-arg]
 
     @model_validator(mode="after")
     def validate_tenant_consistency(self) -> Self:
-        validate_tenant_url_consistency(
-            self.provider_url, self.provider_tenant_id, self.provider_key
-        )
+        validate_tenant_url_consistency(self.provider_url, self.provider_tenant_id, self.provider_key)
         return self
 
 

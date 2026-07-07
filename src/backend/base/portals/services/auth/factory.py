@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from portals.services.factory import ServiceFactory
-from portals.services.schema import ServiceType
 from px.services.auth.base import BaseAuthService  # noqa: TC002
 from px.services.settings.service import SettingsService  # noqa: TC002
+
+from portals.services.factory import ServiceFactory
+from portals.services.schema import ServiceType
 
 if TYPE_CHECKING:
     from portals.services.auth.service import AuthService

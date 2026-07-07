@@ -4,6 +4,7 @@ import IconComponent from "@/components/common/genericIconComponent";
 import { Button } from "@/components/ui/button";
 import { DISCORD_URL, GITHUB_URL } from "@/constants/constants";
 import { useGetUserData, useUpdateUser } from "@/controllers/API/queries/auth";
+import NewProjectModal from "@/modals/newProjectModal";
 import ModalsComponent from "@/pages/MainPage/components/modalsComponent";
 import useFlowsManagerStore from "@/stores/flowsManagerStore";
 import type { Users } from "@/types/api";
@@ -20,6 +21,7 @@ export const GetStartedProgress: FC<{
   const [isDiscordJoinedChild, setIsDiscordJoinedChild] =
     useState(isDiscordJoined);
   const [newProjectModal, setNewProjectModal] = useState(false);
+  const [templatesModal, setTemplatesModal] = useState(false);
 
   const flows = useFlowsManagerStore((state) => state.flows);
 
@@ -236,12 +238,19 @@ export const GetStartedProgress: FC<{
       </div>
 
       <ModalsComponent
-        openModal={newProjectModal}
-        setOpenModal={setNewProjectModal}
+        openModal={templatesModal}
+        setOpenModal={setTemplatesModal}
         openDeleteFolderModal={false}
         setOpenDeleteFolderModal={() => {}}
         handleDeleteFolder={() => {}}
       />
+      {newProjectModal && (
+        <NewProjectModal
+          open={newProjectModal}
+          setOpen={setNewProjectModal}
+          onProjectCreated={() => setTemplatesModal(true)}
+        />
+      )}
     </div>
   );
 };

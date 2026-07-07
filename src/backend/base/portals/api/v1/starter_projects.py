@@ -1,8 +1,9 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from portals.services.auth.utils import get_current_active_user
 from pydantic import BaseModel
+
+from portals.services.auth.utils import get_current_active_user
 
 router = APIRouter(prefix="/starter-projects", tags=["Flows"])
 
@@ -27,12 +28,8 @@ class EdgeData(BaseModel):
 
 
 class GraphData(BaseModel):
-    nodes: list[
-        dict[str, Any]
-    ]  # Use dict to be flexible with the complex NodeData structure
-    edges: list[
-        dict[str, Any]
-    ]  # Use dict to be flexible with the complex EdgeData structure
+    nodes: list[dict[str, Any]]  # Use dict to be flexible with the complex NodeData structure
+    edges: list[dict[str, Any]]  # Use dict to be flexible with the complex EdgeData structure
     viewport: ViewPort | None = None
 
 

@@ -26,20 +26,14 @@ class CurrentDateComponent(Component):
         ),
     ]
 
-    def update_build_config(
-        self, build_config: dict, field_value: str, field_name: str | None = None
-    ):  # noqa: ARG002
+    def update_build_config(self, build_config: dict, field_value: str, field_name: str | None = None):
         """Dynamically update build config with timezone options."""
         if field_name == "timezone" or field_name is None:
-            build_config["timezone"]["options"] = sorted(
-                tz for tz in available_timezones() if tz != "localtime"
-            )
+            build_config["timezone"]["options"] = sorted(tz for tz in available_timezones() if tz != "localtime")
         return build_config
 
     outputs = [
-        Output(
-            display_name="Current Date", name="current_date", method="get_current_date"
-        ),
+        Output(display_name="Current Date", name="current_date", method="get_current_date"),
     ]
 
     def get_current_date(self) -> Message:

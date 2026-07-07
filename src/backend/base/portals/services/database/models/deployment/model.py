@@ -3,13 +3,14 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
-from portals.schema.serialize import UUIDstr
-from portals.services.database.utils import validate_non_empty_string
 from px.services.adapters.deployment.schema import DeploymentType
 from pydantic import field_validator
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, func
+
+from portals.schema.serialize import UUIDstr
+from portals.services.database.utils import validate_non_empty_string
 
 if TYPE_CHECKING:
     from portals.services.database.models.deployment_provider_account.model import (
@@ -125,9 +126,7 @@ class Deployment(SQLModel, table=True):  # type: ignore[call-arg]
     )
     created_at: datetime | None = Field(
         default=None,
-        sa_column=Column(
-            DateTime(timezone=True), server_default=func.now(), nullable=False
-        ),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False),
     )
     updated_at: datetime | None = Field(
         default=None,
@@ -140,9 +139,7 @@ class Deployment(SQLModel, table=True):  # type: ignore[call-arg]
     )
 
     user: "User" = Relationship(back_populates="deployments")
-    deployment_provider_account: "DeploymentProviderAccount" = Relationship(
-        back_populates="deployments"
-    )
+    deployment_provider_account: "DeploymentProviderAccount" = Relationship(back_populates="deployments")
     folder: "Folder" = Relationship(back_populates="deployments")
 
     @field_validator("name", "resource_key")

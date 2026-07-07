@@ -10,13 +10,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
-from px.utils.flow_validation import CustomComponentValidationError
 from portals.agentic.services.helpers.flow_loader import (
     _load_graph_from_python,
     _temporary_sys_path,
     load_graph_for_execution,
     resolve_flow_path,
 )
+from px.utils.flow_validation import CustomComponentValidationError
 
 
 class TestTemporarySysPath:
@@ -66,9 +66,7 @@ class TestResolveFlowPath:
         json_file = tmp_path / "test.json"
         json_file.write_text("{}")
 
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path):
             result_path, result_type = resolve_flow_path("test.json")
 
             assert result_type == "json"
@@ -79,9 +77,7 @@ class TestResolveFlowPath:
         py_file = tmp_path / "test.py"
         py_file.write_text("# test")
 
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path):
             result_path, result_type = resolve_flow_path("test.py")
 
             assert result_type == "python"
@@ -94,9 +90,7 @@ class TestResolveFlowPath:
         json_file = tmp_path / "test.json"
         json_file.write_text("{}")
 
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path):
             result_path, result_type = resolve_flow_path("test")
 
             assert result_type == "python"
@@ -107,9 +101,7 @@ class TestResolveFlowPath:
         json_file = tmp_path / "test.json"
         json_file.write_text("{}")
 
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path):
             result_path, result_type = resolve_flow_path("test")
 
             assert result_type == "json"
@@ -117,9 +109,7 @@ class TestResolveFlowPath:
 
     def test_should_reject_filename_with_path_traversal_sequences(self, tmp_path):
         """Should reject filenames containing '..' before any path construction."""
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path):
             with pytest.raises(HTTPException) as exc_info:
                 resolve_flow_path("../../etc/passwd")
 
@@ -128,9 +118,7 @@ class TestResolveFlowPath:
 
     def test_should_reject_filename_with_backslash_traversal(self, tmp_path):
         """Should reject filenames containing backslash path separators."""
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path):
             with pytest.raises(HTTPException) as exc_info:
                 resolve_flow_path("..\\..\\etc\\passwd")
 
@@ -139,9 +127,7 @@ class TestResolveFlowPath:
 
     def test_should_raise_404_when_flow_not_found(self, tmp_path):
         """Should raise HTTPException 404 when flow file doesn't exist."""
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path):
             with pytest.raises(HTTPException) as exc_info:
                 resolve_flow_path("missing.json")
 
@@ -163,9 +149,7 @@ class TestLoadGraphFromPython:
             patch("importlib.util.spec_from_file_location") as mock_spec_from_file,
             patch("importlib.util.module_from_spec") as mock_module_from_spec,
             patch("portals.agentic.services.helpers.flow_loader._temporary_sys_path"),
-            patch(
-                "portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings"
-            ) as mock_validate,
+            patch("portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings") as mock_validate,
         ):
             mock_spec = MagicMock()
             mock_spec.loader = MagicMock()
@@ -199,12 +183,8 @@ class TestLoadGraphFromPython:
             patch("importlib.util.spec_from_file_location") as mock_spec_from_file,
             patch("importlib.util.module_from_spec") as mock_module_from_spec,
             patch("portals.agentic.services.helpers.flow_loader._temporary_sys_path"),
-            patch(
-                "portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings"
-            ),
-            patch.object(
-                inspect, "signature", return_value=inspect.signature(mock_get_graph)
-            ),
+            patch("portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings"),
+            patch.object(inspect, "signature", return_value=inspect.signature(mock_get_graph)),
         ):
             mock_spec = MagicMock()
             mock_spec.loader = MagicMock()
@@ -235,9 +215,7 @@ class TestLoadGraphFromPython:
             patch("importlib.util.spec_from_file_location") as mock_spec_from_file,
             patch("importlib.util.module_from_spec") as mock_module_from_spec,
             patch("portals.agentic.services.helpers.flow_loader._temporary_sys_path"),
-            patch(
-                "portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings"
-            ),
+            patch("portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings"),
         ):
             mock_spec = MagicMock()
             mock_spec.loader = MagicMock()
@@ -259,9 +237,7 @@ class TestLoadGraphFromPython:
             patch("importlib.util.spec_from_file_location") as mock_spec_from_file,
             patch("importlib.util.module_from_spec") as mock_module_from_spec,
             patch("portals.agentic.services.helpers.flow_loader._temporary_sys_path"),
-            patch(
-                "portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings"
-            ) as mock_validate,
+            patch("portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings") as mock_validate,
         ):
             mock_spec = MagicMock()
             mock_spec.loader = MagicMock()
@@ -363,9 +339,7 @@ class TestLoadGraphFromPython:
             patch("importlib.util.spec_from_file_location") as mock_spec_from_file,
             patch("importlib.util.module_from_spec") as mock_module_from_spec,
             patch("portals.agentic.services.helpers.flow_loader._temporary_sys_path"),
-            patch(
-                "portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings"
-            ),
+            patch("portals.agentic.services.helpers.flow_loader.validate_flow_for_current_settings"),
             patch.dict(sys.modules, {}, clear=False),
         ):
             mock_spec = MagicMock()
@@ -469,9 +443,7 @@ class TestBugsAndEdgeCases:
         secret = tmp_path / "secret.json"
         secret.write_text('{"secret": true}')
 
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", flows_dir
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", flows_dir):
             with pytest.raises(HTTPException) as exc_info:
                 resolve_flow_path("../secret.json")
 
@@ -484,9 +456,7 @@ class TestBugsAndEdgeCases:
         → exists() = True (it's a directory) → returned as 'json'.
         Downstream code will crash trying to read a directory as JSON.
         """
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path):
             result_path, result_type = resolve_flow_path("")
 
         assert result_path == tmp_path  # Returns directory as if it were a file
@@ -498,9 +468,7 @@ class TestBugsAndEdgeCases:
         dot_json = tmp_path / ".json"
         dot_json.write_text("{}")
 
-        with patch(
-            "portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path
-        ):
+        with patch("portals.agentic.services.helpers.flow_loader.FLOWS_BASE_PATH", tmp_path):
             result_path, result_type = resolve_flow_path(".json")
 
         assert result_path == dot_json

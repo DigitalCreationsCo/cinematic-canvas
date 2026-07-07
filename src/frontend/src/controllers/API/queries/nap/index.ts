@@ -1,8 +1,13 @@
 export { useCreateLoreProject } from "./useCreateLoreProject";
+export { useEnsureRepositoryCloned } from "./useEnsureRepositoryCloned";
 export { useRecentRepositories } from "./useRecentRepositories";
+export {
+  useRepositoryBranchesRecent,
+  useRepositoryBranchesSearch,
+} from "./useRepositoryBranches";
 export { useRepositorySearch } from "./useRepositorySearch";
-export { useRepositoryBranchesRecent, useRepositoryBranchesSearch } from "./useRepositoryBranches";
 
+import axios from "axios";
 import type { useQueryFunctionType } from "@/types/api";
 import type { NapRepositoryRead } from "@/types/nap";
 import { api } from "../../api";
@@ -82,6 +87,15 @@ interface IRepositoryByFolderParams {
   folderId: string;
 }
 
+/**
+ * Fetch the NAP repository linked to a folder.
+ *
+ * Returns `null` when the folder has no linked repository (HTTP 404) —
+ * this is an expected state, not an error.
+ *
+ * Real errors (network, 500, etc.) are logged and propagated so the
+ * caller can surface them to the user.
+ */
 export const useRepositoryByFolder: useQueryFunctionType<
   IRepositoryByFolderParams,
   NapRepositoryRead | null
@@ -89,14 +103,42 @@ export const useRepositoryByFolder: useQueryFunctionType<
   const { query } = UseRequestProcessor();
 
   const fn = async (): Promise<NapRepositoryRead | null> => {
-    const res = await api.get(
-      `${getURL("NAP")}/repositories/by-folder/${folderId}`,
-    );
-    return res.data;
+    try {
+      const res = await api.get(
+        `${getURL("NAP")}/repositories/by-folder/${folderId}`,
+      );
+      return res.data ?? null;
+    } catch (err) {
+      // HTTP 404 means "no repo linked" — return null, don't throw.
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        return null;
+      }
+      // Real errors propagate (network, 500, etc.).
+      console.error(
+        "[useRepositoryByFolder] Failed to fetch repository for folder",
+        folderId,
+        err,
+      );
+      throw err;
+    }
   };
+
+  // Determine retry behaviour.
+  // If the caller explicitly set retry (including `false`), respect that.
+  // Otherwise default to: 404 → no retry, other errors → up to 3 attempts.
+  const retry =
+    options?.retry !== undefined
+      ? options.retry
+      : (failureCount: number, error: unknown) => {
+          if (axios.isAxiosError(error) && error.response?.status === 404) {
+            return false;
+          }
+          return failureCount < 3;
+        };
 
   return query(["useRepositoryByFolder", folderId], fn, {
     ...options,
     enabled: !!folderId && (options?.enabled ?? true),
+    retry,
   });
 };

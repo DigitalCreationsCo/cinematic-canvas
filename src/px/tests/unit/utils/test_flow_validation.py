@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from px.utils.flow_validation import (
     ensure_component_hash_lookups_loaded,
     validate_flow_for_current_settings,
@@ -53,9 +52,7 @@ async def test_ensure_component_hash_lookups_loaded_surfaces_loader_failures(
     settings_service = SimpleNamespace(
         settings=SimpleNamespace(allow_custom_components=False),
     )
-    monkeypatch.setattr(
-        "px.services.deps.get_settings_service", lambda: settings_service
-    )
+    monkeypatch.setattr("px.services.deps.get_settings_service", lambda: settings_service)
     monkeypatch.setattr(component_cache, "type_to_current_hash", None)
 
     with (

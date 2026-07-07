@@ -22,9 +22,7 @@ TEST_MESSAGES = {
     "minimal": "Hi",
     "simple": "Can you help me?",
     "medium": "I need help understanding how machine learning works in this context.",
-    "complex": "Please analyze this data: "
-    + "x" * 500
-    + " and provide detailed insights.",
+    "complex": "Please analyze this data: " + "x" * 500 + " and provide detailed insights.",
     "large": "Here's a complex scenario: " + "data " * 1000,
 }
 
@@ -74,9 +72,7 @@ def on_test_start(environment, **_kwargs):
 
 
 @events.request.add_listener
-def on_request(
-    request_type, name, response_time, response_length, exception, context, **kwargs
-):  # noqa: ARG001
+def on_request(request_type, name, response_time, response_length, exception, context, **kwargs):
     """Track slow requests using Locust's built-in timing."""
     # response_time is in milliseconds from Locust
     bag = _env_bags.get(context.get("environment") if context else None)
@@ -117,9 +113,7 @@ class BasePortalsUser(FastHttpUser):
     REQUEST_TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "10"))
 
     def on_start(self):
-        self.session_id = (
-            f"step_{self.__class__.__name__}_{id(self)}_{int(time.time())}"
-        )
+        self.session_id = f"step_{self.__class__.__name__}_{id(self)}_{int(time.time())}"
         self.request_count = 0
 
     def make_request(self, message_type="simple", tag_suffix=""):
@@ -154,9 +148,7 @@ class BasePortalsUser(FastHttpUser):
 
                 # Application-level failure - success is False, None, or missing
                 msg = str(data.get("result", "Unknown error"))[:200]
-                success_status = (
-                    f"success={success}" if success is not None else "success=missing"
-                )
+                success_status = f"success={success}" if success is not None else "success=missing"
                 return response.failure(f"Flow failed ({success_status}): {msg}")
 
             if response.status_code in (429, 503):
@@ -164,9 +156,7 @@ class BasePortalsUser(FastHttpUser):
             if response.status_code == 401:
                 return response.failure("Unauthorized")
             if response.status_code == 404:
-                return response.failure(
-                    "Not Found - possible bad FLOW_ID or misconfiguration"
-                )
+                return response.failure("Not Found - possible bad FLOW_ID or misconfiguration")
             if response.status_code >= 500:
                 return response.failure(f"Server error {response.status_code}")
             return response.failure(f"HTTP {response.status_code}")

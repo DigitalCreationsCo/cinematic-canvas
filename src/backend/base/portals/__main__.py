@@ -59,9 +59,7 @@ try:
     from px.cli.run import run as px_run
 
     px_app = typer.Typer(name="px", help="Portals Executor commands")
-    px_app.command(name="serve", help="Serve a flow as an API", no_args_is_help=True)(
-        serve_command
-    )
+    px_app.command(name="serve", help="Serve a flow as an API", no_args_is_help=True)(serve_command)
     px_app.command(name="run", help="Run a flow directly", no_args_is_help=True)(px_run)
 
     app.add_typer(px_app, name="px")
@@ -123,9 +121,7 @@ class ProcessManager:
         sys.stdout.write("\r")  # Move cursor back to beginning
 
         click.echo()
-        farewell = click.style(
-            f"{self._farewell_emoji} See you next time!", fg="bright_blue", bold=True
-        )
+        farewell = click.style(f"{self._farewell_emoji} See you next time!", fg="bright_blue", bold=True)
         click.echo(farewell)
 
 
@@ -182,10 +178,7 @@ def wait_for_server_ready(host, port, protocol) -> None:
     status_code = 0
     while status_code != httpx.codes.OK:
         # If the server process died (e.g. database version check failed), stop waiting.
-        if (
-            process_manager.webapp_process
-            and not process_manager.webapp_process.is_alive()
-        ):
+        if process_manager.webapp_process and not process_manager.webapp_process.is_alive():
             sys.exit(process_manager.webapp_process.exitcode or 1)
         try:
             status_code = httpx.get(
@@ -195,27 +188,17 @@ def wait_for_server_ready(host, port, protocol) -> None:
         except HTTPError:
             time.sleep(1)
         except Exception:  # noqa: BLE001
-            logger.debug(
-                "Error while waiting for the server to become ready.", exc_info=True
-            )
+            logger.debug("Error while waiting for the server to become ready.", exc_info=True)
             time.sleep(1)
 
 
 @app.command()
 def run(
     *,
-    host: str | None = typer.Option(
-        None, help="Host to bind the server to.", show_default=False
-    ),
-    workers: int | None = typer.Option(
-        None, help="Number of worker processes.", show_default=False
-    ),
-    worker_timeout: int | None = typer.Option(
-        None, help="Worker timeout in seconds.", show_default=False
-    ),
-    port: int | None = typer.Option(
-        None, help="Port to listen on.", show_default=False
-    ),
+    host: str | None = typer.Option(None, help="Host to bind the server to.", show_default=False),
+    workers: int | None = typer.Option(None, help="Number of worker processes.", show_default=False),
+    worker_timeout: int | None = typer.Option(None, help="Worker timeout in seconds.", show_default=False),
+    port: int | None = typer.Option(None, help="Port to listen on.", show_default=False),
     components_path: Path | None = typer.Option(
         Path(__file__).parent / "components",
         help="Path to the directory containing custom components.",
@@ -232,20 +215,14 @@ def run(
         help="Logging level. One of: [debug, info, warning, error, critical]. Defaults to info.",
         show_default=False,
     ),
-    log_file: Path | None = typer.Option(
-        None, help="Path to the log file.", show_default=False
-    ),
-    log_rotation: str | None = typer.Option(
-        None, help="Log rotation(Time/Size).", show_default=False
-    ),
+    log_file: Path | None = typer.Option(None, help="Path to the log file.", show_default=False),
+    log_rotation: str | None = typer.Option(None, help="Log rotation(Time/Size).", show_default=False),
     cache: str | None = typer.Option(  # noqa: ARG001
         None,
         help="Type of cache to use. (InMemoryCache, SQLiteCache)",
         show_default=False,
     ),
-    dev: bool | None = typer.Option(
-        None, help="Run in development mode (may contain bugs)", show_default=False
-    ),  # noqa: ARG001
+    dev: bool | None = typer.Option(None, help="Run in development mode (may contain bugs)", show_default=False),
     frontend_path: str | None = typer.Option(
         None,
         help="Path to the frontend directory containing build files. This is for development purposes only.",
@@ -299,9 +276,7 @@ def run(
     ssl_cert_file_path: str | None = typer.Option(
         None, help="Defines the SSL certificate file path.", show_default=False
     ),
-    ssl_key_file_path: str | None = typer.Option(
-        None, help="Defines the SSL key file path.", show_default=False
-    ),
+    ssl_key_file_path: str | None = typer.Option(None, help="Defines the SSL key file path.", show_default=False),
 ) -> None:
     """Run Portals."""
     if env_file:
@@ -327,11 +302,7 @@ def run(
 
     # Step 0: Initializing Portals
     with progress.step(0):
-        logger.debug(
-            f"Loading config from file: '{env_file}'"
-            if env_file
-            else "No env_file provided."
-        )
+        logger.debug(f"Loading config from file: '{env_file}'" if env_file else "No env_file provided.")
         set_var_for_macos_issue()
         settings_service = get_settings_service()
 
@@ -351,9 +322,7 @@ def run(
 
         for arg in valid_args:
             if arg == "components_path":
-                settings_service.settings.update_settings(
-                    components_path=components_path
-                )
+                settings_service.settings.update_settings(components_path=components_path)
             elif hasattr(settings_service.settings, arg):
                 settings_service.set(arg, values[arg])
             elif hasattr(settings_service.auth_settings, arg):
@@ -369,24 +338,16 @@ def run(
         frontend_path = settings_service.settings.frontend_path
         backend_only = settings_service.settings.backend_only
         ssl_cert_file_path = (
-            settings_service.settings.ssl_cert_file
-            if ssl_cert_file_path is None
-            else ssl_cert_file_path
+            settings_service.settings.ssl_cert_file if ssl_cert_file_path is None else ssl_cert_file_path
         )
-        ssl_key_file_path = (
-            settings_service.settings.ssl_key_file
-            if ssl_key_file_path is None
-            else ssl_key_file_path
-        )
+        ssl_key_file_path = settings_service.settings.ssl_key_file if ssl_key_file_path is None else ssl_key_file_path
 
         # create path object if frontend_path is provided
         static_files_dir: Path | None = Path(frontend_path) if frontend_path else None
 
     # Step 2: Starting Core Services
     with progress.step(2):
-        app = setup_app(
-            static_files_dir=static_files_dir, backend_only=bool(backend_only)
-        )
+        app = setup_app(static_files_dir=static_files_dir, backend_only=bool(backend_only))
 
     # Step 3: Connecting Database (this happens inside setup_app via dependencies)
     with progress.step(3):
@@ -463,10 +424,7 @@ def run(
                 "certfile": ssl_cert_file_path,
                 "keyfile": ssl_key_file_path,
                 "log_level": log_level.lower() if log_level is not None else "info",
-                "preload_app": os.environ.get(
-                    "PORTALS_GUNICORN_PRELOAD", "false"
-                ).lower()
-                == "true",
+                "preload_app": os.environ.get("PORTALS_GUNICORN_PRELOAD", "false").lower() == "true",
             }
             server = PortalsApplication(app, options)
 
@@ -615,18 +573,10 @@ def build_version_notice(current_version: str, package_name: str) -> str:
         'A new version of portals is available: 1.1.0'
     """
     with suppress(httpx.ConnectError):
-        latest_version = fetch_latest_version(
-            package_name, include_prerelease=portals_is_pre_release(current_version)
-        )
-        if latest_version and pkg_version.parse(current_version) < pkg_version.parse(
-            latest_version
-        ):
-            release_type = (
-                "pre-release" if portals_is_pre_release(latest_version) else "version"
-            )
-            return (
-                f"A new {release_type} of {package_name} is available: {latest_version}"
-            )
+        latest_version = fetch_latest_version(package_name, include_prerelease=portals_is_pre_release(current_version))
+        if latest_version and pkg_version.parse(current_version) < pkg_version.parse(latest_version):
+            release_type = "pre-release" if portals_is_pre_release(latest_version) else "version"
+            return f"A new {release_type} of {package_name} is available: {latest_version}"
     return ""
 
 
@@ -655,9 +605,7 @@ def print_banner(host: str, port: int, protocol: str) -> None:
     version_info = get_version_info()
     portals_version = version_info["version"]
     package_name = version_info["package"]
-    is_pre_release |= portals_is_pre_release(
-        portals_version
-    )  # Update pre-release status
+    is_pre_release |= portals_is_pre_release(portals_version)  # Update pre-release status
 
     notice = build_version_notice(portals_version, package_name)
 
@@ -705,8 +653,7 @@ def print_banner(host: str, port: int, protocol: str) -> None:
             "We collect anonymous usage data to improve Portals.\n"
             "To opt out, set: [bold]DO_NOT_TRACK=true[/bold] in your environment."
         )
-        if os.getenv("DO_NOT_TRACK", os.getenv("PORTALS_DO_NOT_TRACK", "False")).lower()
-        != "true"
+        if os.getenv("DO_NOT_TRACK", os.getenv("PORTALS_DO_NOT_TRACK", "False")).lower() != "true"
         else (
             "We are [bold]not[/bold] collecting anonymous usage data to improve Portals.\n"
             "To contribute, set: [bold]DO_NOT_TRACK=false[/bold] in your environment."
@@ -732,9 +679,7 @@ def print_banner(host: str, port: int, protocol: str) -> None:
         )
         try:
             console.print()  # Add line break before fallback banner
-            console.print(
-                Panel.fit(fallback_message, border_style="#7528FC", padding=(1, 2))
-            )
+            console.print(Panel.fit(fallback_message, border_style="#7528FC", padding=(1, 2)))
         except UnicodeEncodeError:
             # Last resort: use logger instead of print
             logger.info(f"Welcome to {package_name}")
@@ -753,9 +698,7 @@ def superuser(
         None,
         help="Password for the superuser. Defaults to 'portals' when AUTO_LOGIN is enabled.",
     ),
-    log_level: str = typer.Option(
-        "error", help="Logging level.", envvar="PORTALS_LOG_LEVEL"
-    ),
+    log_level: str = typer.Option("error", help="Logging level.", envvar="PORTALS_LOG_LEVEL"),
     auth_token: str = typer.Option(
         None,
         help="Authentication token of existing superuser.",
@@ -806,12 +749,8 @@ async def _create_superuser(username: str, password: str, auth_token: str | None
     # If AUTO_LOGIN is true, only allow default superuser creation
     if settings_service.auth_settings.AUTO_LOGIN:
         if not is_first_setup:
-            typer.echo(
-                "Error: Cannot create additional superusers when AUTO_LOGIN is enabled."
-            )
-            typer.echo(
-                "AUTO_LOGIN mode is for development with only the default superuser."
-            )
+            typer.echo("Error: Cannot create additional superusers when AUTO_LOGIN is enabled.")
+            typer.echo("AUTO_LOGIN mode is for development with only the default superuser.")
             typer.echo("To create additional superusers:")
             typer.echo("1. Set PORTALS_AUTO_LOGIN=false")
             typer.echo("2. Run this command again with --auth-token")
@@ -826,9 +765,7 @@ async def _create_superuser(username: str, password: str, auth_token: str | None
         # Authentication is required in production mode
         if not auth_token:
             typer.echo("Error: Creating a superuser requires authentication.")
-            typer.echo(
-                "Please provide --auth-token with a valid superuser API key or JWT token."
-            )
+            typer.echo("Please provide --auth-token with a valid superuser API key or JWT token.")
             typer.echo("To get a token, use: `uv run portals api_key`")
             raise typer.Exit(1)
 
@@ -888,9 +825,7 @@ async def _create_superuser(username: str, password: str, auth_token: str | None
             typer.echo("Superuser created successfully.")
 
         else:
-            logger.error(
-                f"SECURITY AUDIT: Failed attempt to create superuser '{username}' via CLI"
-            )
+            logger.error(f"SECURITY AUDIT: Failed attempt to create superuser '{username}' via CLI")
             typer.echo("Superuser creation failed.")
 
 
@@ -975,9 +910,7 @@ def api_key(
         auth_settings = settings_service.auth_settings
         if not auth_settings.AUTO_LOGIN:
             # TODO: Allow non-auto-login users to create API keys via CLI
-            typer.echo(
-                "Auto login is disabled. API keys cannot be created through the CLI."
-            )
+            typer.echo("Auto login is disabled. API keys cannot be created through the CLI.")
             return None
 
         async with session_scope() as session:
@@ -1053,11 +986,7 @@ def api_key_banner(unmasked_api_key) -> None:
         expand=False,
     )
     # Use Windows-safe console initialization
-    banner_console = (
-        Console(legacy_windows=True, emoji=False)
-        if platform.system() == "Windows"
-        else Console()
-    )
+    banner_console = Console(legacy_windows=True, emoji=False) if platform.system() == "Windows" else Console()
 
     try:
         banner_console.print(panel)
@@ -1068,9 +997,7 @@ def api_key_banner(unmasked_api_key) -> None:
         logger.info("This is the only time the API key will be displayed.")
         logger.info("Make sure to store it in a secure location.")
         ctrl_cmd = "Ctrl" if not is_mac else "Cmd"
-        logger.info(
-            f"The API key has been copied to your clipboard. {ctrl_cmd} + V to paste it."
-        )
+        logger.info(f"The API key has been copied to your clipboard. {ctrl_cmd} + V to paste it.")
 
 
 def main() -> None:

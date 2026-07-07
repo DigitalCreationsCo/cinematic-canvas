@@ -5,6 +5,9 @@ from typing import TYPE_CHECKING
 
 from px.log.logger import logger
 from px.services.adapters.deployment.schema import DEPLOYMENT_DESCRIPTION_MAX_LENGTH
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import col, delete, func, select
+
 from portals.services.database.models.deployment.model import Deployment
 from portals.services.database.models.deployment.orm_guards import (
     ensure_deployment_immutable_fields,
@@ -14,8 +17,6 @@ from portals.services.database.models.flow_version_deployment_attachment.model i
     FlowVersionDeploymentAttachment,
 )
 from portals.services.database.utils import parse_uuid
-from sqlalchemy.exc import IntegrityError
-from sqlmodel import col, delete, func, select
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -134,9 +135,7 @@ async def update_deployment(
     description: str | None | object = _UNSET,
 ) -> Deployment:
     next_project_id = project_id if project_id is not None else deployment.project_id
-    next_deployment_type = (
-        deployment.deployment_type if deployment_type is _UNSET else deployment_type
-    )
+    next_deployment_type = deployment.deployment_type if deployment_type is _UNSET else deployment_type
     ensure_deployment_immutable_fields(
         old_project_id=deployment.project_id,
         new_project_id=next_project_id,
@@ -162,9 +161,7 @@ async def update_deployment(
         await db.flush()
     except IntegrityError as exc:
         await db.rollback()
-        await logger.aerror(
-            "IntegrityError updating deployment id=%s: %s", deployment.id, exc
-        )
+        await logger.aerror("IntegrityError updating deployment id=%s: %s", deployment.id, exc)
         msg = "Deployment update conflicts with an existing record"
         raise ValueError(msg) from exc
     await db.refresh(deployment)
@@ -197,9 +194,7 @@ async def list_deployments_page(
     attachment_counts_subquery = (
         select(
             col(FlowVersionDeploymentAttachment.deployment_id).label("deployment_id"),
-            func.count(
-                func.distinct(FlowVersionDeploymentAttachment.flow_version_id)
-            ).label("attached_count"),
+            func.count(func.distinct(FlowVersionDeploymentAttachment.flow_version_id)).label("attached_count"),
         )
         # Join FlowVersion so stale attachment rows with missing version parent
         # do not inflate attached_count in deployment list responses.
@@ -214,9 +209,7 @@ async def list_deployments_page(
     stmt = (
         select(
             Deployment,
-            func.coalesce(attachment_counts_subquery.c.attached_count, 0).label(
-                "attached_count"
-            ),
+            func.coalesce(attachment_counts_subquery.c.attached_count, 0).label("attached_count"),
         )
         .outerjoin(
             attachment_counts_subquery,
@@ -234,9 +227,7 @@ async def list_deployments_page(
             select(FlowVersionDeploymentAttachment.deployment_id)
             .where(
                 FlowVersionDeploymentAttachment.user_id == user_id,
-                col(FlowVersionDeploymentAttachment.flow_version_id).in_(
-                    flow_version_ids
-                ),
+                col(FlowVersionDeploymentAttachment.flow_version_id).in_(flow_version_ids),
             )
             .group_by(FlowVersionDeploymentAttachment.deployment_id)
             .subquery()
@@ -245,20 +236,11 @@ async def list_deployments_page(
             matched_deployments_subquery,
             matched_deployments_subquery.c.deployment_id == Deployment.id,
         )
-    stmt = (
-        stmt.order_by(col(Deployment.created_at).desc(), col(Deployment.id).desc())
-        .offset(offset)
-        .limit(limit)
-    )
+    stmt = stmt.order_by(col(Deployment.created_at).desc(), col(Deployment.id).desc()).offset(offset).limit(limit)
     rows = (await db.exec(stmt)).all()
-    deployment_rows = [
-        (deployment, int(attached_count or 0)) for deployment, attached_count in rows
-    ]
+    deployment_rows = [(deployment, int(attached_count or 0)) for deployment, attached_count in rows]
     if not flow_version_ids or not deployment_rows:
-        return [
-            (deployment, attached_count, [])
-            for deployment, attached_count in deployment_rows
-        ]
+        return [(deployment, attached_count, []) for deployment, attached_count in deployment_rows]
 
     deployment_ids = [deployment.id for deployment, _ in deployment_rows]
     matched_rows = (
@@ -270,9 +252,7 @@ async def list_deployments_page(
             ).where(
                 FlowVersionDeploymentAttachment.user_id == user_id,
                 col(FlowVersionDeploymentAttachment.deployment_id).in_(deployment_ids),
-                col(FlowVersionDeploymentAttachment.flow_version_id).in_(
-                    flow_version_ids
-                ),
+                col(FlowVersionDeploymentAttachment.flow_version_id).in_(flow_version_ids),
             )
         )
     ).all()
@@ -341,9 +321,7 @@ async def list_deployments_for_flows_with_provider_info(
         )
     )
     if provider_account_id is not None:
-        stmt = stmt.where(
-            Deployment.deployment_provider_account_id == provider_account_id
-        )
+        stmt = stmt.where(Deployment.deployment_provider_account_id == provider_account_id)
     return list((await db.exec(stmt)).all())
 
 
@@ -376,9 +354,7 @@ async def list_project_deployments_with_provider_info(
         )
     )
     if provider_account_id is not None:
-        stmt = stmt.where(
-            Deployment.deployment_provider_account_id == provider_account_id
-        )
+        stmt = stmt.where(Deployment.deployment_provider_account_id == provider_account_id)
     return list((await db.exec(stmt)).all())
 
 
@@ -401,9 +377,7 @@ async def count_deployments_by_provider(
             select(FlowVersionDeploymentAttachment.deployment_id)
             .where(
                 FlowVersionDeploymentAttachment.user_id == user_id,
-                col(FlowVersionDeploymentAttachment.flow_version_id).in_(
-                    flow_version_ids
-                ),
+                col(FlowVersionDeploymentAttachment.flow_version_id).in_(flow_version_ids),
             )
             .group_by(FlowVersionDeploymentAttachment.deployment_id)
             .subquery()
@@ -430,8 +404,7 @@ async def delete_deployment_by_resource_key(
         await db.exec(
             select(Deployment.id).where(
                 Deployment.user_id == user_id,
-                Deployment.deployment_provider_account_id
-                == deployment_provider_account_id,
+                Deployment.deployment_provider_account_id == deployment_provider_account_id,
                 Deployment.resource_key == resource_key_s,
             )
         )

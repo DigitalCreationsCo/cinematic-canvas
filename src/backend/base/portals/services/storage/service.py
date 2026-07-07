@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 import anyio
+
 from portals.services.base import Service
 
 if TYPE_CHECKING:
@@ -20,9 +21,7 @@ class StorageService(Service):
 
     name = "storage_service"
 
-    def __init__(
-        self, session_service: SessionService, settings_service: SettingsService
-    ):
+    def __init__(self, session_service: SessionService, settings_service: SettingsService):
         self.settings_service = settings_service
         self.session_service = session_service
         self.data_dir: anyio.Path = anyio.Path(settings_service.settings.config_dir)
@@ -51,9 +50,7 @@ class StorageService(Service):
         self.ready = True
 
     @abstractmethod
-    async def save_file(
-        self, flow_id: str, file_name: str, data: bytes, *, append: bool = False
-    ) -> None:
+    async def save_file(self, flow_id: str, file_name: str, data: bytes, *, append: bool = False) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -61,9 +58,7 @@ class StorageService(Service):
         raise NotImplementedError
 
     @abstractmethod
-    def get_file_stream(
-        self, flow_id: str, file_name: str, chunk_size: int = 8192
-    ) -> AsyncIterator[bytes]:
+    def get_file_stream(self, flow_id: str, file_name: str, chunk_size: int = 8192) -> AsyncIterator[bytes]:
         """Retrieve a file as a stream of chunks.
 
         Args:

@@ -12,7 +12,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from px.cli.validate import (
     ValidationResult,
     _check_missing_credentials,
@@ -286,9 +285,7 @@ class TestEdgeTypeCheck:
         flow = {**_MINIMAL_VALID, "data": {"nodes": [_NODE, node_b], "edges": [edge]}}
         p = _write_flow(tmp_path, "flow.json", flow)
         result = validate_flow_file(p, level=3, skip_components=True)
-        type_warnings = [
-            i for i in result.warnings if "type mismatch" in i.message.lower()
-        ]
+        type_warnings = [i for i in result.warnings if "type mismatch" in i.message.lower()]
         assert not type_warnings
 
     def test_incompatible_types_gives_warning(self, tmp_path):
@@ -304,9 +301,7 @@ class TestEdgeTypeCheck:
         flow = {**_MINIMAL_VALID, "data": {"nodes": [_NODE, node_b], "edges": [edge]}}
         p = _write_flow(tmp_path, "flow.json", flow)
         result = validate_flow_file(p, level=3, skip_components=True)
-        type_warnings = [
-            i for i in result.warnings if "type mismatch" in i.message.lower()
-        ]
+        type_warnings = [i for i in result.warnings if "type mismatch" in i.message.lower()]
         assert type_warnings
 
 
@@ -334,9 +329,7 @@ class TestRequiredInputs:
         node = self._node_with_required_field(has_value=True)
         flow = {**_MINIMAL_VALID, "data": {"nodes": [node], "edges": []}}
         p = _write_flow(tmp_path, "flow.json", flow)
-        result = validate_flow_file(
-            p, level=4, skip_components=True, skip_edge_types=True
-        )
+        result = validate_flow_file(p, level=4, skip_components=True, skip_edge_types=True)
         req_errors = [e for e in result.errors if "Required input" in e.message]
         assert not req_errors
 
@@ -344,9 +337,7 @@ class TestRequiredInputs:
         node = self._node_with_required_field(has_value=False)
         flow = {**_MINIMAL_VALID, "data": {"nodes": [node], "edges": []}}
         p = _write_flow(tmp_path, "flow.json", flow)
-        result = validate_flow_file(
-            p, level=4, skip_components=True, skip_edge_types=True
-        )
+        result = validate_flow_file(p, level=4, skip_components=True, skip_edge_types=True)
         req_errors = [e for e in result.errors if "Required input" in e.message]
         assert req_errors
 
@@ -360,9 +351,7 @@ class TestRequiredInputs:
         src = {**_NODE, "id": "other"}
         flow = {**_MINIMAL_VALID, "data": {"nodes": [node, src], "edges": [edge]}}
         p = _write_flow(tmp_path, "flow.json", flow)
-        result = validate_flow_file(
-            p, level=4, skip_components=True, skip_edge_types=True
-        )
+        result = validate_flow_file(p, level=4, skip_components=True, skip_edge_types=True)
         req_errors = [e for e in result.errors if "Required input" in e.message]
         assert not req_errors
 
@@ -721,9 +710,7 @@ class TestVersionMismatch:
         flow = {**_MINIMAL_VALID, "data": {"nodes": [_NODE_WITH_VERSION], "edges": []}}
         p = _write_flow(tmp_path, "flow.json", flow)
         with patch("px.cli.validation.core._get_lf_version", return_value="1.9.0"):
-            result = validate_flow_file(
-                p, level=1, skip_components=True, skip_version_check=True
-            )
+            result = validate_flow_file(p, level=1, skip_components=True, skip_version_check=True)
         assert not result.warnings
 
     def test_version_warning_strict_mode_causes_exit_1(self, tmp_path):

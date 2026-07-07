@@ -58,9 +58,7 @@ def _launch_with_exec():
     os.environ["no_proxy"] = "*"
 
     try:
-        os.execv(
-            sys.executable, [sys.executable, "-m", "portals.__main__", *sys.argv[1:]]
-        )  # noqa: S606
+        os.execv(sys.executable, [sys.executable, "-m", "portals.__main__", *sys.argv[1:]])
     except OSError as e:
         # If exec fails, we need to exit since the process replacement failed
         typer.echo(f"Failed to exec portals: {e}", file=sys.stderr)

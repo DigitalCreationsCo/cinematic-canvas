@@ -1,6 +1,7 @@
 from fastapi import BackgroundTasks
-from portals.services.deps import get_settings_service
 from px.graph.utils import log_vertex_build
+
+from portals.services.deps import get_settings_service
 
 
 class LimitVertexBuildBackgroundTasks(BackgroundTasks):
@@ -18,15 +19,9 @@ class LimitVertexBuildBackgroundTasks(BackgroundTasks):
             if vertex_id is not None:
                 # Filter tasks that are log_vertex_build calls with the same vertex_id
                 relevant_tasks = [
-                    t
-                    for t in self.tasks
-                    if t.func == log_vertex_build
-                    and t.kwargs.get("vertex_id") == vertex_id
+                    t for t in self.tasks if t.func == log_vertex_build and t.kwargs.get("vertex_id") == vertex_id
                 ]
-                if (
-                    len(relevant_tasks)
-                    >= get_settings_service().settings.max_vertex_builds_per_vertex
-                ):
+                if len(relevant_tasks) >= get_settings_service().settings.max_vertex_builds_per_vertex:
                     # Remove the oldest task for this vertex_id
                     oldest_task = relevant_tasks[0]
                     self.tasks.remove(oldest_task)

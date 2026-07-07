@@ -6,7 +6,6 @@ from unittest.mock import Mock, patch
 
 import orjson
 import pytest
-
 from px.interface.components import (
     _get_cache_path,
     _parse_dev_mode,
@@ -134,9 +133,7 @@ class TestReadComponentIndex:
         index["sha256"] = hashlib.sha256(payload).hexdigest()
 
         index_file = tmp_path / "component_index.json"
-        index_file.write_bytes(
-            orjson.dumps(index, option=orjson.OPT_SORT_KEYS | orjson.OPT_INDENT_2)
-        )
+        index_file.write_bytes(orjson.dumps(index, option=orjson.OPT_SORT_KEYS | orjson.OPT_INDENT_2))
 
         # Mock the path resolution
         with (
@@ -179,9 +176,7 @@ class TestReadComponentIndex:
             mock_version.return_value = "0.1.12"
 
             (tmp_path / "px" / "_assets").mkdir(parents=True)
-            (tmp_path / "px" / "_assets" / "component_index.json").write_bytes(
-                orjson.dumps(index)
-            )
+            (tmp_path / "px" / "_assets" / "component_index.json").write_bytes(orjson.dumps(index))
 
             result = _read_component_index()
 
@@ -252,9 +247,7 @@ class TestReadComponentIndex:
         index["sha256"] = hashlib.sha256(payload).hexdigest()
 
         custom_file = tmp_path / "custom_index.json"
-        custom_file.write_bytes(
-            orjson.dumps(index, option=orjson.OPT_SORT_KEYS | orjson.OPT_INDENT_2)
-        )
+        custom_file.write_bytes(orjson.dumps(index, option=orjson.OPT_SORT_KEYS | orjson.OPT_INDENT_2))
 
         with patch("importlib.metadata.version") as mock_version:
             mock_version.return_value = "0.1.12"
@@ -307,9 +300,7 @@ class TestSaveGeneratedIndex:
         }
 
         cache_file = tmp_path / "component_index.json"
-        monkeypatch.setattr(
-            "px.interface.components._get_cache_path", lambda: cache_file
-        )
+        monkeypatch.setattr("px.interface.components._get_cache_path", lambda: cache_file)
 
         with patch("importlib.metadata.version", return_value="0.1.12"):
             _save_generated_index(modules_dict)
@@ -325,9 +316,7 @@ class TestSaveGeneratedIndex:
     def test_save_generated_index_empty_dict(self, tmp_path, monkeypatch):
         """Test saving empty modules dict."""
         cache_file = tmp_path / "component_index.json"
-        monkeypatch.setattr(
-            "px.interface.components._get_cache_path", lambda: cache_file
-        )
+        monkeypatch.setattr("px.interface.components._get_cache_path", lambda: cache_file)
 
         with patch("importlib.metadata.version", return_value="0.1.12"):
             _save_generated_index({})
@@ -390,9 +379,7 @@ class TestImportPortalsComponents:
         """Test import with missing index falls back to dynamic and caches."""
         monkeypatch.delenv("PX_DEV", raising=False)
         cache_file = tmp_path / "component_index.json"
-        monkeypatch.setattr(
-            "px.interface.components._get_cache_path", lambda: cache_file
-        )
+        monkeypatch.setattr("px.interface.components._get_cache_path", lambda: cache_file)
 
         with (
             patch("px.interface.components._read_component_index") as mock_read,

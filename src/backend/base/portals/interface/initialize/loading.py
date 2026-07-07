@@ -8,15 +8,17 @@ from typing import TYPE_CHECKING, Any
 import orjson
 from px.custom.eval import eval_custom_component_code
 from px.log.logger import logger
+from pydantic import PydanticDeprecatedSince20
+
 from portals.schema.artifact import get_artifact_type, post_process_raw
 from portals.schema.data import Data
 from portals.services.deps import get_tracing_service, session_scope
-from pydantic import PydanticDeprecatedSince20
 
 if TYPE_CHECKING:
     from px.custom.custom_component.component import Component
     from px.custom.custom_component.custom_component import CustomComponent
     from px.graph.vertex.base import Vertex
+
     from portals.events.event_manager import EventManager
 
 
@@ -66,13 +68,9 @@ async def get_instance_results(
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
         if base_type == "custom_components":
-            return await build_custom_component(
-                params=custom_params, custom_component=custom_component
-            )
+            return await build_custom_component(params=custom_params, custom_component=custom_component)
         if base_type == "component":
-            return await build_component(
-                params=custom_params, custom_component=custom_component
-            )
+            return await build_component(params=custom_params, custom_component=custom_component)
         msg = f"Base type {base_type} not found."
         raise ValueError(msg)
 
@@ -123,9 +121,7 @@ async def update_params_with_load_from_db_fields(
                 continue
 
             try:
-                key = await custom_component.get_variable(
-                    name=params[field], field=field, session=session
-                )
+                key = await custom_component.get_variable(name=params[field], field=field, session=session)
             except ValueError as e:
                 if "User id is not set" in str(e):
                     raise
@@ -137,19 +133,13 @@ async def update_params_with_load_from_db_fields(
             if fallback_to_env_vars and key is None:
                 key = os.getenv(params[field])
                 if key:
-                    await logger.ainfo(
-                        f"Using environment variable {params[field]} for {field}"
-                    )
+                    await logger.ainfo(f"Using environment variable {params[field]} for {field}")
                 else:
-                    await logger.aerror(
-                        f"Environment variable {params[field]} is not set."
-                    )
+                    await logger.aerror(f"Environment variable {params[field]} is not set.")
 
             params[field] = key if key is not None else None
             if key is None:
-                await logger.awarning(
-                    f"Could not get value for {field}. Setting it to None."
-                )
+                await logger.awarning(f"Could not get value for {field}. Setting it to None.")
 
         return params
 

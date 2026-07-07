@@ -3,10 +3,11 @@
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from portals.helpers.flow import get_flow_by_id_or_endpoint_name
 from px.graph.graph.ascii import draw_graph
 from px.graph.graph.base import Graph
 from px.log.logger import logger
+
+from portals.helpers.flow import get_flow_by_id_or_endpoint_name
 
 if TYPE_CHECKING:
     from portals.services.database.models.flow.model import FlowRead
@@ -39,9 +40,7 @@ async def get_flow_graph_representations(
     """
     try:
         # Get the flow
-        flow: FlowRead | None = await get_flow_by_id_or_endpoint_name(
-            flow_id_or_name, user_id
-        )
+        flow: FlowRead | None = await get_flow_by_id_or_endpoint_name(flow_id_or_name, user_id)
 
         if flow is None:
             return {
@@ -92,9 +91,7 @@ async def get_flow_graph_representations(
         }
 
     except Exception as e:  # noqa: BLE001
-        await logger.aerror(
-            f"Error getting flow graph representations for {flow_id_or_name}: {e}"
-        )
+        await logger.aerror(f"Error getting flow graph representations for {flow_id_or_name}: {e}")
         return {
             "error": str(e),
             "flow_id": flow_id_or_name,
@@ -174,9 +171,7 @@ async def get_flow_graph_summary(
         >>> print(f"Flow has {summary['vertex_count']} vertices")
     """
     try:
-        flow: FlowRead | None = await get_flow_by_id_or_endpoint_name(
-            flow_id_or_name, user_id
-        )
+        flow: FlowRead | None = await get_flow_by_id_or_endpoint_name(flow_id_or_name, user_id)
 
         if flow is None:
             return {"error": f"Flow {flow_id_or_name} not found"}
@@ -203,7 +198,5 @@ async def get_flow_graph_summary(
         }
 
     except Exception as e:  # noqa: BLE001
-        await logger.aerror(
-            f"Error getting flow graph summary for {flow_id_or_name}: {e}"
-        )
+        await logger.aerror(f"Error getting flow graph summary for {flow_id_or_name}: {e}")
         return {"error": str(e)}

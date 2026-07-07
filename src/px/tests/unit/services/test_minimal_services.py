@@ -3,7 +3,6 @@
 import os
 
 import pytest
-
 from px.services.storage.local import LocalStorageService
 from px.services.telemetry.service import TelemetryService
 from px.services.tracing.service import TracingService
@@ -298,9 +297,7 @@ class TestMinimalServicesIntegration:
     """Integration tests for minimal services working together."""
 
     @pytest.mark.asyncio
-    async def test_all_minimal_services_initialize(
-        self, mock_session_service, mock_settings_service
-    ):
+    async def test_all_minimal_services_initialize(self, mock_session_service, mock_settings_service):
         """Test that all minimal services can be initialized."""
         storage = LocalStorageService(mock_session_service, mock_settings_service)
         telemetry = TelemetryService()
@@ -313,9 +310,7 @@ class TestMinimalServicesIntegration:
         assert variables.ready
 
     @pytest.mark.asyncio
-    async def test_minimal_services_teardown_all(
-        self, mock_session_service, mock_settings_service
-    ):
+    async def test_minimal_services_teardown_all(self, mock_session_service, mock_settings_service):
         """Test tearing down all minimal services."""
         storage = LocalStorageService(mock_session_service, mock_settings_service)
         telemetry = TelemetryService()
@@ -329,9 +324,7 @@ class TestMinimalServicesIntegration:
         await variables.teardown()
 
     @pytest.mark.asyncio
-    async def test_storage_with_tracing(
-        self, mock_session_service, mock_settings_service
-    ):
+    async def test_storage_with_tracing(self, mock_session_service, mock_settings_service):
         """Test using storage with tracing."""
         storage = LocalStorageService(mock_session_service, mock_settings_service)
         tracing = TracingService()

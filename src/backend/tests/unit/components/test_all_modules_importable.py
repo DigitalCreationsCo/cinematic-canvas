@@ -34,9 +34,7 @@ class TestAllModulesImportable:
                 assert category_module is not None, f"Category {category_name} is None"
 
                 # Verify it's actually a module
-                assert hasattr(category_module, "__name__"), (
-                    f"Category {category_name} is not a module"
-                )
+                assert hasattr(category_module, "__name__"), f"Category {category_name} is not a module"
 
             except Exception as e:
                 failed_imports.append(f"{category_name}: {e!s}")
@@ -69,20 +67,14 @@ class TestAllModulesImportable:
 
                 if hasattr(category_module, "__all__"):
                     category_components = len(category_module.__all__)
-                    print(
-                        f"Testing {category_components} components in {category_name}"
-                    )  # noqa: T201
+                    print(f"Testing {category_components} components in {category_name}")
 
                     for component_name in category_module.__all__:
                         qualified = f"{category_name}.{component_name}"
                         try:
                             component = getattr(category_module, component_name)
-                            assert component is not None, (
-                                f"Component {component_name} is None"
-                            )
-                            assert callable(component), (
-                                f"Component {component_name} is not callable"
-                            )
+                            assert component is not None, f"Component {component_name} is None"
+                            assert callable(component), f"Component {component_name} is not callable"
                             successful_imports += 1
 
                         except Exception as e:
@@ -119,30 +111,22 @@ class TestAllModulesImportable:
             try:
                 category_module = getattr(components, category_name)
 
-                if hasattr(category_module, "__all__") and hasattr(
-                    category_module, "_dynamic_imports"
-                ):
+                if hasattr(category_module, "__all__") and hasattr(category_module, "_dynamic_imports"):
                     category_all = set(category_module.__all__)
                     dynamic_imports_keys = set(category_module._dynamic_imports.keys())
 
                     # Check that all items in __all__ have corresponding _dynamic_imports entries
                     missing_in_dynamic = category_all - dynamic_imports_keys
                     if missing_in_dynamic:
-                        failed_mappings.append(
-                            f"{category_name}: Missing in _dynamic_imports: {missing_in_dynamic}"
-                        )
+                        failed_mappings.append(f"{category_name}: Missing in _dynamic_imports: {missing_in_dynamic}")
 
                     # Check that all _dynamic_imports keys are in __all__
                     missing_in_all = dynamic_imports_keys - category_all
                     if missing_in_all:
-                        failed_mappings.append(
-                            f"{category_name}: Missing in __all__: {missing_in_all}"
-                        )
+                        failed_mappings.append(f"{category_name}: Missing in __all__: {missing_in_all}")
 
             except Exception as e:
-                failed_mappings.append(
-                    f"{category_name}: Error checking mappings: {e!s}"
-                )
+                failed_mappings.append(f"{category_name}: Error checking mappings: {e!s}")
 
         if failed_mappings:
             pytest.fail(f"Inconsistent mappings: {failed_mappings}")
@@ -193,18 +177,12 @@ class TestAllModulesImportable:
                 # Check that if it has dynamic imports, it has the pattern
                 if hasattr(category_module, "_dynamic_imports"):
                     if not hasattr(category_module, "__getattr__"):
-                        failed_modules.append(
-                            f"{category_name}: Has _dynamic_imports but no __getattr__"
-                        )
+                        failed_modules.append(f"{category_name}: Has _dynamic_imports but no __getattr__")
                     if not hasattr(category_module, "__dir__"):
-                        failed_modules.append(
-                            f"{category_name}: Has _dynamic_imports but no __dir__"
-                        )
+                        failed_modules.append(f"{category_name}: Has _dynamic_imports but no __dir__")
 
             except Exception as e:
-                failed_modules.append(
-                    f"{category_name}: Error checking attributes: {e!s}"
-                )
+                failed_modules.append(f"{category_name}: Error checking attributes: {e!s}")
 
         if failed_modules:
             pytest.fail(f"Module attribute issues: {failed_modules}")
@@ -250,9 +228,7 @@ class TestAllModulesImportable:
 
             # Second access should return the same object
             component2 = getattr(category_module, component_name)
-            assert component1 is component2, (
-                f"Caching failed for {category_name}.{component_name}"
-            )
+            assert component1 is component2, f"Caching failed for {category_name}.{component_name}"
 
     def test_error_handling_for_missing_components(self):
         """Test that appropriate errors are raised for missing components."""
@@ -264,9 +240,7 @@ class TestAllModulesImportable:
         for category_name, component_name in test_cases:
             category_module = getattr(components, category_name)
 
-            with pytest.raises(
-                AttributeError, match=f"has no attribute '{component_name}'"
-            ):
+            with pytest.raises(AttributeError, match=f"has no attribute '{component_name}'"):
                 getattr(category_module, component_name)
 
     def test_dir_functionality(self):
@@ -285,9 +259,7 @@ class TestAllModulesImportable:
             # Should include all components from __all__
             if hasattr(category_module, "__all__"):
                 for component_name in category_module.__all__:
-                    assert component_name in category_dir, (
-                        f"{component_name} missing from dir({category_name})"
-                    )
+                    assert component_name in category_dir, f"{component_name} missing from dir({category_name})"
 
     def test_module_metadata_preservation(self):
         """Test that module metadata is preserved after dynamic loading."""
@@ -330,9 +302,7 @@ class TestSpecificModulePatterns:
                     # Should be able to import even if empty
                     assert module is not None
                 except Exception as e:
-                    pytest.fail(
-                        f"Failed to import potentially empty module {module_name}: {e}"
-                    )
+                    pytest.fail(f"Failed to import potentially empty module {module_name}: {e}")
 
     def test_platform_specific_imports(self):
         """Test platform-specific imports like NVIDIA Windows components."""
@@ -361,9 +331,7 @@ class TestSpecificModulePatterns:
                 import_time = time.time() - start_time
 
                 # Initial import should be fast (just loading __init__.py)
-                assert import_time < 0.5, (
-                    f"Module {module_name} took too long to import: {import_time}s"
-                )
+                assert import_time < 0.5, f"Module {module_name} took too long to import: {import_time}s"
 
                 # Should have components available
                 assert hasattr(module, "__all__")
@@ -396,9 +364,7 @@ class TestDirectModuleImports:
 
         # Collect all module names
         module_names = []
-        for _, modname, _ in pkgutil.walk_packages(
-            components_pkg.__path__, prefix=components_pkg.__name__ + "."
-        ):
+        for _, modname, _ in pkgutil.walk_packages(components_pkg.__path__, prefix=components_pkg.__name__ + "."):
             # Skip deactivated components
             if "deactivated" in modname:
                 continue
@@ -452,9 +418,7 @@ class TestDirectModuleImports:
                 return ("success", modname, None)
 
         # Import all modules in parallel
-        results = await asyncio.gather(
-            *[import_module_async(modname) for modname in module_names]
-        )
+        results = await asyncio.gather(*[import_module_async(modname) for modname in module_names])
 
         # Process results
         failed_imports = []
@@ -474,9 +438,7 @@ class TestDirectModuleImports:
                 f"Failed to import {len(failed_imports)} component modules. "
                 f"Successfully imported {successful_imports} modules. "
                 f"Skipped {len(skipped_modules)} modules.\n\n"
-                f"Failed imports:\n"
-                + "\n".join(f"  • {f}" for f in failed_imports)
-                + "\n\n"
+                f"Failed imports:\n" + "\n".join(f"  • {f}" for f in failed_imports) + "\n\n"
                 "This may indicate deprecated imports, syntax errors, or other issues."
             )
             pytest.fail(failure_msg)
@@ -549,9 +511,7 @@ class TestDirectModuleImports:
         if deprecated_imports:
             failure_msg = (
                 f"Found {len(deprecated_imports)} deprecated langchain imports.\n\n"
-                f"Deprecated imports:\n"
-                + "\n".join(f"  • {imp}" for imp in deprecated_imports)
-                + "\n\n"
+                f"Deprecated imports:\n" + "\n".join(f"  • {imp}" for imp in deprecated_imports) + "\n\n"
                 "Please update to use current import paths."
             )
             pytest.fail(failure_msg)
@@ -608,12 +568,7 @@ class TestDirectModuleImports:
                 return ("success", module_name, class_name, None)
 
         # Test all vector stores in parallel
-        results = await asyncio.gather(
-            *[
-                test_vector_store_import(mod, cls)
-                for mod, cls in vector_store_components
-            ]
-        )
+        results = await asyncio.gather(*[test_vector_store_import(mod, cls) for mod, cls in vector_store_components])
 
         # Process results
         failed_imports = []
@@ -647,15 +602,11 @@ class TestDirectModuleImports:
 
         except ImportError as e:
             if "qdrant_client" in str(e) or "langchain_community" in str(e):
-                pytest.skip(
-                    "Qdrant dependencies not installed (expected in test environment)"
-                )
+                pytest.skip("Qdrant dependencies not installed (expected in test environment)")
             pytest.fail(f"Failed to import QdrantVectorStoreComponent: {e}")
         except AttributeError as e:
             if "Could not import" in str(e):
-                pytest.skip(
-                    "Qdrant dependencies not installed (expected in test environment)"
-                )
+                pytest.skip("Qdrant dependencies not installed (expected in test environment)")
             raise
 
 

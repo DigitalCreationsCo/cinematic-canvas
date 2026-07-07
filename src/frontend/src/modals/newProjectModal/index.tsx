@@ -27,6 +27,7 @@ import BaseModal from "../baseModal";
 interface NewProjectModalProps {
   open: boolean;
   setOpen: (open: boolean) => void;
+  onProjectCreated?: () => void;
 }
 
 type RepositorySelection =
@@ -37,6 +38,7 @@ type RepositorySelection =
 export default function NewProjectModal({
   open,
   setOpen,
+  onProjectCreated,
 }: NewProjectModalProps) {
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
@@ -65,7 +67,8 @@ export default function NewProjectModal({
   // Branch selection state — only relevant once an existing repository is chosen
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [branchSearchQuery, setBranchSearchQuery] = useState("");
-  const [debouncedBranchSearchQuery, setDebouncedBranchSearchQuery] = useState("");
+  const [debouncedBranchSearchQuery, setDebouncedBranchSearchQuery] =
+    useState("");
   const [isBranchSearchActive, setIsBranchSearchActive] = useState(false);
   const [branchHighlightedIndex, setBranchHighlightedIndex] = useState(-1);
   const branchSearchInputRef = useRef<HTMLInputElement>(null);
@@ -156,7 +159,9 @@ export default function NewProjectModal({
       { repositoryId: selectedRepoId ?? "", q: debouncedBranchSearchQuery },
       {
         enabled:
-          !!selectedRepoId && !!debouncedBranchSearchQuery && isBranchSearchActive,
+          !!selectedRepoId &&
+          !!debouncedBranchSearchQuery &&
+          isBranchSearchActive,
       },
     );
 
@@ -310,7 +315,9 @@ export default function NewProjectModal({
   const getFilteredBranchSearchResults = () => {
     const recentNames = getRecentBranchNames();
     return (
-      branchSearchResults?.filter((branch) => !recentNames.includes(branch.name)) || []
+      branchSearchResults?.filter(
+        (branch) => !recentNames.includes(branch.name),
+      ) || []
     );
   };
 
@@ -365,7 +372,10 @@ export default function NewProjectModal({
       setBranchHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (branchHighlightedIndex >= 0 && branchHighlightedIndex < results.length) {
+      if (
+        branchHighlightedIndex >= 0 &&
+        branchHighlightedIndex < results.length
+      ) {
         handleSelectBranch(results[branchHighlightedIndex].name);
       }
     } else if (e.key === "Escape") {
@@ -530,6 +540,7 @@ export default function NewProjectModal({
       });
       navigate(`/all/folder/${response.folder.id}`);
       setOpen(false);
+      onProjectCreated?.();
     } catch (err: any) {
       setErrorData({
         title: "Error creating project.",
@@ -768,8 +779,8 @@ export default function NewProjectModal({
               <div>
                 <Label htmlFor="repository-branch">Branch</Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Pins this project to a specific branch. Defaults to the latest commit.
-                  If specified, takes precedence over tag selection.
+                  Pins this project to a specific branch. Defaults to the latest
+                  commit. If specified, takes precedence over tag selection.
                 </p>
               </div>
 

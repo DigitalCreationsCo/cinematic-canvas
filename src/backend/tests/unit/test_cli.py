@@ -64,9 +64,7 @@ class TestSuperuserCommand:
     """Deterministic tests for the superuser CLI command."""
 
     @pytest.mark.asyncio
-    async def test_additional_superuser_requires_auth_production(
-        self, client, active_super_user
-    ):  # noqa: ARG002
+    async def test_additional_superuser_requires_auth_production(self, client, active_super_user):
         """Test additional superuser creation requires authentication in production."""
         # We already have active_super_user from the fixture, so we're not in first setup
         with (
@@ -89,9 +87,7 @@ class TestSuperuserCommand:
             assert exc_info.value.exit_code == 1
 
     @pytest.mark.asyncio
-    async def test_additional_superuser_blocked_in_auto_login_mode(
-        self, client, active_super_user
-    ):  # noqa: ARG002
+    async def test_additional_superuser_blocked_in_auto_login_mode(self, client, active_super_user):
         """Test additional superuser creation blocked when AUTO_LOGIN=true."""
         # We already have active_super_user from the fixture, so we're not in first setup
         with (
@@ -134,9 +130,7 @@ class TestSuperuserCommand:
 
             assert exc_info.value.exit_code == 1
 
-    @pytest.mark.skip(
-        reason="Skip -- default superuser is created by initialize_services() function"
-    )
+    @pytest.mark.skip(reason="Skip -- default superuser is created by initialize_services() function")
     @pytest.mark.asyncio
     async def test_auto_login_forces_default_credentials(self, client):
         """Test AUTO_LOGIN=true forces default credentials."""

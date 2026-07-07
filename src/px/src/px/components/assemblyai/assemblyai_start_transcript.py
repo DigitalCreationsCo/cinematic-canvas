@@ -2,6 +2,7 @@ from pathlib import Path
 
 import assemblyai as aai
 
+from px.base.data.utils import AUDIO_FILE_TYPES
 from px.custom.custom_component.component import Component
 from px.io import (
     BoolInput,
@@ -13,7 +14,7 @@ from px.io import (
 )
 from px.log.logger import logger
 from px.schema.data import Data
-from px.base.data.utils import AUDIO_FILE_TYPES
+
 
 class AssemblyAITranscriptionJobCreator(Component):
     display_name = "AssemblyAI Start Transcript"
@@ -113,14 +114,8 @@ class AssemblyAITranscriptionJobCreator(Component):
             try:
                 speakers_expected = int(self.speakers_expected)
             except ValueError:
-                self.status = (
-                    "Error: Expected Number of Speakers must be a valid integer"
-                )
-                return Data(
-                    data={
-                        "error": "Error: Expected Number of Speakers must be a valid integer"
-                    }
-                )
+                self.status = "Error: Expected Number of Speakers must be a valid integer"
+                return Data(data={"error": "Error: Expected Number of Speakers must be a valid integer"})
 
         language_code = self.language_code or None
 
@@ -137,9 +132,7 @@ class AssemblyAITranscriptionJobCreator(Component):
         audio = None
         if self.audio_file:
             if self.audio_file_url:
-                logger.warning(
-                    "Both an audio file an audio URL were specified. The audio URL was ignored."
-                )
+                logger.warning("Both an audio file an audio URL were specified. The audio URL was ignored.")
 
             # Check if the file exists
             if not Path(self.audio_file).exists():
@@ -149,14 +142,8 @@ class AssemblyAITranscriptionJobCreator(Component):
         elif self.audio_file_url:
             audio = self.audio_file_url
         else:
-            self.status = (
-                "Error: Either an audio file or an audio URL must be specified"
-            )
-            return Data(
-                data={
-                    "error": "Error: Either an audio file or an audio URL must be specified"
-                }
-            )
+            self.status = "Error: Either an audio file or an audio URL must be specified"
+            return Data(data={"error": "Error: Either an audio file or an audio URL must be specified"})
 
         try:
             transcript = aai.Transcriber().submit(audio, config=config)

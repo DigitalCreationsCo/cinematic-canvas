@@ -7,10 +7,11 @@ import nanoid
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from portals.schema.data import Data
-from portals.services.tracing.base import BaseTracer
 from px.log.logger import logger
 from typing_extensions import override
+
+from portals.schema.data import Data
+from portals.services.tracing.base import BaseTracer
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -18,22 +19,21 @@ if TYPE_CHECKING:
 
     from langchain_core.callbacks.base import BaseCallbackHandler
     from langwatch.tracer import ContextSpan
-    from portals.services.tracing.schema import Log
     from px.graph.vertex.base import Vertex
+
+    from portals.services.tracing.schema import Log
 
 
 class LangWatchTracer(BaseTracer):
     flow_id: str
     tracer_provider = None
 
-    def __init__(
-        self, trace_name: str, trace_type: str, project_name: str, trace_id: UUID
-    ):
+    def __init__(self, trace_name: str, trace_type: str, project_name: str, trace_id: UUID):
         self.trace_name = trace_name
         self.trace_type = trace_type
         self.project_name = project_name
         self.trace_id = trace_id
-        self.flow_id = trace_name.split(" - ")[-1]
+        self.flow_id = trace_name.rsplit(" - ", maxsplit=1)[-1]
 
         try:
             self._ready: bool = self.setup_langwatch()
@@ -41,16 +41,12 @@ class LangWatchTracer(BaseTracer):
                 return
 
             # Pass the dedicated tracer_provider here
-            self.trace = self._client.trace(
-                trace_id=str(self.trace_id), tracer_provider=self.tracer_provider
-            )
+            self.trace = self._client.trace(trace_id=str(self.trace_id), tracer_provider=self.tracer_provider)
             self.trace.__enter__()
             self.spans: dict[str, ContextSpan] = {}
 
             name_without_id = " - ".join(trace_name.split(" - ")[0:-1])
-            name_without_id = (
-                project_name if name_without_id == "None" else name_without_id
-            )
+            name_without_id = project_name if name_without_id == "None" else name_without_id
             self.trace.root_span.update(
                 # nanoid to make the span_id globally unique, which is required for LangWatch for now
                 span_id=f"{self.flow_id}-{nanoid.generate(size=6)}",
@@ -77,9 +73,7 @@ class LangWatchTracer(BaseTracer):
             # Initialize the shared provider if it doesn't exist
             if self.tracer_provider is None:
                 api_key = os.environ["LANGWATCH_API_KEY"]
-                endpoint = os.environ.get(
-                    "LANGWATCH_ENDPOINT", "https://app.langwatch.ai"
-                )
+                endpoint = os.environ.get("LANGWATCH_ENDPOINT", "https://app.langwatch.ai")
 
                 resource = Resource.create(attributes={"service.name": "portals"})
                 exporter = OTLPSpanExporter(
@@ -119,20 +113,12 @@ class LangWatchTracer(BaseTracer):
         # If user is not using session_id, then it becomes the same as flow_id, but
         # we don't want to have an infinite thread with all the flow messages
         if "session_id" in inputs and inputs["session_id"] != self.flow_id:
-            self.trace.update(
-                metadata=(self.trace.metadata or {})
-                | {"thread_id": inputs["session_id"]}
-            )
+            self.trace.update(metadata=(self.trace.metadata or {}) | {"thread_id": inputs["session_id"]})
 
         name_without_id = " (".join(trace_name.split(" (")[0:-1])
 
         previous_nodes = (
-            [
-                span
-                for key, span in self.spans.items()
-                for edge in vertex.incoming_edges
-                if key == edge.source_id
-            ]
+            [span for key, span in self.spans.items() for edge in vertex.incoming_edges if key == edge.source_id]
             if vertex and len(vertex.incoming_edges) > 0
             else []
         )
@@ -142,9 +128,7 @@ class LangWatchTracer(BaseTracer):
             span_id=f"{trace_id}-{nanoid.generate(size=6)}",
             name=name_without_id,
             type="component",
-            parent=(
-                previous_nodes[-1] if len(previous_nodes) > 0 else self.trace.root_span
-            ),
+            parent=(previous_nodes[-1] if len(previous_nodes) > 0 else self.trace.root_span),
             input=self._convert_to_langwatch_types(inputs),
         )
         self.trace.set_current_span(span)
@@ -162,9 +146,7 @@ class LangWatchTracer(BaseTracer):
         if not self._ready:
             return
         if self.spans.get(trace_id):
-            self.spans[trace_id].end(
-                output=self._convert_to_langwatch_types(outputs), error=error
-            )
+            self.spans[trace_id].end(output=self._convert_to_langwatch_types(outputs), error=error)
 
     def end(
         self,
@@ -176,27 +158,18 @@ class LangWatchTracer(BaseTracer):
         if not self._ready:
             return
         self.trace.root_span.end(
-            input=self._convert_to_langwatch_types(inputs)
-            if self.trace.root_span.input is None
-            else None,
-            output=self._convert_to_langwatch_types(outputs)
-            if self.trace.root_span.output is None
-            else None,
+            input=self._convert_to_langwatch_types(inputs) if self.trace.root_span.input is None else None,
+            output=self._convert_to_langwatch_types(outputs) if self.trace.root_span.output is None else None,
             error=error,
         )
 
         if metadata and "flow_name" in metadata:
-            self.trace.update(
-                metadata=(self.trace.metadata or {})
-                | {"labels": [f"Flow: {metadata['flow_name']}"]}
-            )
+            self.trace.update(metadata=(self.trace.metadata or {}) | {"labels": [f"Flow: {metadata['flow_name']}"]})
 
         if self.trace.api_key or self._client._api_key:
             try:
                 self.trace.__exit__(None, None, None)
-            except (
-                ValueError
-            ):  # ignoring token was created in a different Context errors
+            except ValueError:  # ignoring token was created in a different Context errors
                 return
 
     def _convert_to_langwatch_types(self, io_dict: dict[str, Any] | None):
@@ -218,20 +191,14 @@ class LangWatchTracer(BaseTracer):
         from px.schema.message import Message
 
         if isinstance(value, dict):
-            value = {
-                key: self._convert_to_langwatch_type(val) for key, val in value.items()
-            }
+            value = {key: self._convert_to_langwatch_type(val) for key, val in value.items()}
         elif isinstance(value, list):
             value = [self._convert_to_langwatch_type(v) for v in value]
         elif isinstance(value, Message):
             if "prompt" in value:
                 prompt = value.load_lc_prompt()
-                if len(prompt.input_variables) == 0 and all(
-                    isinstance(m, BaseMessage) for m in prompt.messages
-                ):
-                    value = langchain_messages_to_chat_messages(
-                        [cast("list[BaseMessage]", prompt.messages)]
-                    )
+                if len(prompt.input_variables) == 0 and all(isinstance(m, BaseMessage) for m in prompt.messages):
+                    value = langchain_messages_to_chat_messages([cast("list[BaseMessage]", prompt.messages)])
                 else:
                     value = cast("dict", value.load_lc_prompt())
             elif value.sender:

@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from px.cli.script_loader import (
     _load_module_from_script,
     _validate_graph_instance,
@@ -154,9 +153,7 @@ class TestGraphValidation:
         chat_output = ChatOutput()
         graph = Graph(start=chat_output, end=chat_output)
 
-        with pytest.raises(
-            ValueError, match="Graph does not contain any ChatInput component"
-        ):
+        with pytest.raises(ValueError, match="Graph does not contain any ChatInput component"):
             _validate_graph_instance(graph)
 
     def test_validate_graph_instance_missing_chat_output(self):
@@ -168,9 +165,7 @@ class TestGraphValidation:
         chat_input = ChatInput()
         graph = Graph(start=chat_input, end=chat_input)
 
-        with pytest.raises(
-            ValueError, match="Graph does not contain any ChatOutput component"
-        ):
+        with pytest.raises(ValueError, match="Graph does not contain any ChatOutput component"):
             _validate_graph_instance(graph)
 
 
@@ -188,9 +183,7 @@ class TestLoadGraphFromScript:
         assert isinstance(graph, Graph)
 
         # Verify it has the expected components
-        component_names = {
-            v.custom_component.__class__.__name__ for v in graph.vertices
-        }
+        component_names = {v.custom_component.__class__.__name__ for v in graph.vertices}
         assert "ChatInput" in component_names
         assert "ChatOutput" in component_names
 
@@ -224,9 +217,7 @@ class TestLoadGraphFromScript:
             f.write("\n")
             f.write("async def get_graph():\n")
             f.write("    chat_input = ChatInput()\n")
-            f.write(
-                "    chat_output = ChatOutput().set(input_value=chat_input.message_response)\n"
-            )
+            f.write("    chat_output = ChatOutput().set(input_value=chat_input.message_response)\n")
             f.write("    return Graph(chat_input, chat_output)\n")
             script_path = Path(f.name)
 
@@ -239,9 +230,7 @@ class TestLoadGraphFromScript:
             assert isinstance(graph, Graph)
 
             # Verify it has the expected components
-            component_names = {
-                v.custom_component.__class__.__name__ for v in graph.vertices
-            }
+            component_names = {v.custom_component.__class__.__name__ for v in graph.vertices}
             assert "ChatInput" in component_names
             assert "ChatOutput" in component_names
         finally:
@@ -255,9 +244,7 @@ class TestLoadGraphFromScript:
             f.write("\n")
             f.write("def get_graph():\n")
             f.write("    chat_input = ChatInput()\n")
-            f.write(
-                "    chat_output = ChatOutput().set(input_value=chat_input.message_response)\n"
-            )
+            f.write("    chat_output = ChatOutput().set(input_value=chat_input.message_response)\n")
             f.write("    return Graph(chat_input, chat_output)\n")
             script_path = Path(f.name)
 
@@ -270,9 +257,7 @@ class TestLoadGraphFromScript:
             assert isinstance(graph, Graph)
 
             # Verify it has the expected components
-            component_names = {
-                v.custom_component.__class__.__name__ for v in graph.vertices
-            }
+            component_names = {v.custom_component.__class__.__name__ for v in graph.vertices}
             assert "ChatInput" in component_names
             assert "ChatOutput" in component_names
         finally:
@@ -478,9 +463,7 @@ class TestResultExtraction:
         # the code returns the message object itself (no warning)
         assert structured["success"] is True
         assert "warning" not in structured  # No warning because hasattr is False
-        assert (
-            structured["result"] == result_data.results["message"]
-        )  # Returns the ErrorMessage instance
+        assert structured["result"] == result_data.results["message"]  # Returns the ErrorMessage instance
         assert structured["type"] == "message"
         assert structured["component"] == "Chat Output"
 
@@ -604,9 +587,7 @@ class TestIntegrationWithRealFlows:
         assert isinstance(graph, Graph)
 
         # Verify components
-        component_types = {
-            v.custom_component.__class__.__name__ for v in graph.vertices
-        }
+        component_types = {v.custom_component.__class__.__name__ for v in graph.vertices}
         assert "ChatInput" in component_types
         assert "ChatOutput" in component_types
 
@@ -619,12 +600,7 @@ class TestIntegrationWithRealFlows:
         from px.graph.schema import RunOutputs
 
         # Start the graph execution
-        results = [
-            result
-            async for result in graph.async_start(
-                inputs={"input_value": "Test message"}
-            )
-        ]
+        results = [result async for result in graph.async_start(inputs={"input_value": "Test message"})]
 
         # Extract results using our functions
         if isinstance(results, RunOutputs) and results.outputs:
@@ -632,9 +608,7 @@ class TestIntegrationWithRealFlows:
             result_list = []
             for output in results.outputs:
                 mock_result = MagicMock()
-                mock_result.vertex.custom_component.display_name = (
-                    output.component_display_name
-                )
+                mock_result.vertex.custom_component.display_name = output.component_display_name
                 mock_result.vertex.id = output.component_id
                 mock_result.result_dict = output
                 result_list.append(mock_result)

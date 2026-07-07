@@ -43,13 +43,9 @@ async def serve_command(
             "Optional when using --flow-json or --stdin."
         ),
     ),
-    host: str = typer.Option(
-        "127.0.0.1", "--host", "-h", help="Host to bind the server to"
-    ),
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host to bind the server to"),
     port: int = typer.Option(8000, "--port", "-p", help="Port to bind the server to"),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Show diagnostic output and execution details"
-    ),  # noqa: FBT001, FBT003
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show diagnostic output and execution details"),
     env_file: Path | None = typer.Option(
         None,
         "--env-file",
@@ -103,13 +99,9 @@ async def serve_command(
     input_sources = [script_path is not None, flow_json is not None, stdin]
     if sum(input_sources) != 1:
         if sum(input_sources) == 0:
-            verbose_print(
-                "Error: Must provide either script_path, --flow-json, or --stdin"
-            )
+            verbose_print("Error: Must provide either script_path, --flow-json, or --stdin")
         else:
-            verbose_print(
-                "Error: Cannot use script_path, --flow-json, and --stdin together. Choose exactly one."
-            )
+            verbose_print("Error: Cannot use script_path, --flow-json, and --stdin together. Choose exactly one.")
         raise typer.Exit(1)
 
     # Load environment variables from .env file if provided
@@ -127,17 +119,13 @@ async def serve_command(
         verbose_print("✓ PORTALS_API_KEY is configured")
     except ValueError as e:
         typer.echo(f"✗ {e}", err=True)
-        typer.echo(
-            "Set the PORTALS_API_KEY environment variable before serving.", err=True
-        )
+        typer.echo("Set the PORTALS_API_KEY environment variable before serving.", err=True)
         raise typer.Exit(1) from e
 
     # Validate log level
     valid_log_levels = {"debug", "info", "warning", "error", "critical"}
     if log_level.lower() not in valid_log_levels:
-        verbose_print(
-            f"Error: Invalid log level '{log_level}'. Must be one of: {', '.join(sorted(valid_log_levels))}"
-        )
+        verbose_print(f"Error: Invalid log level '{log_level}'. Must be one of: {', '.join(sorted(valid_log_levels))}")
         raise typer.Exit(1)
 
     # Configure logging with the specified level
@@ -161,9 +149,7 @@ async def serve_command(
             logger.info("JSON content is valid")
 
             # Create a temporary file with the JSON content
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            ) as temp_file:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp_file:
                 json.dump(json_data, temp_file, indent=2)
                 temp_file_to_cleanup = temp_file.name
 
@@ -191,9 +177,7 @@ async def serve_command(
             logger.info("JSON content from stdin is valid")
 
             # Create a temporary file with the JSON content
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            ) as temp_file:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp_file:
                 json.dump(json_data, temp_file, indent=2)
                 temp_file_to_cleanup = temp_file.name
 
@@ -220,9 +204,7 @@ async def serve_command(
             raise typer.Exit(1)
 
         if resolved_path.suffix == ".json":
-            graph = await load_graph_from_path(
-                resolved_path, resolved_path.suffix, verbose_print, verbose=verbose
-            )
+            graph = await load_graph_from_path(resolved_path, resolved_path.suffix, verbose_print, verbose=verbose)
         elif resolved_path.suffix == ".py":
             verbose_print("Loading graph from Python script...")
             from px.cli.script_loader import load_graph_from_script
@@ -261,9 +243,7 @@ async def serve_command(
         if is_port_in_use(port, host):
             available_port = get_free_port(port)
             if verbose:
-                verbose_print(
-                    f"Port {port} is in use, using port {available_port} instead"
-                )
+                verbose_print(f"Port {port} is in use, using port {available_port} instead")
             port = available_port
 
         # Create single-flow metadata
@@ -283,12 +263,8 @@ async def serve_command(
         }
         graphs = {flow_id: graph}
 
-        source_display = (
-            "inline JSON" if flow_json else "stdin" if stdin else str(resolved_path)
-        )
-        verbose_print(
-            f"✓ Prepared single flow '{title}' from {source_display} (id={flow_id})"
-        )
+        source_display = "inline JSON" if flow_json else "stdin" if stdin else str(resolved_path)
+        verbose_print(f"✓ Prepared single flow '{title}' from {source_display} (id={flow_id})")
 
         # Create FastAPI app
         serve_app = create_multi_serve_app(
@@ -303,11 +279,7 @@ async def serve_command(
         protocol = "http"
         access_host = get_best_access_host(host)
 
-        masked_key = (
-            f"{api_key[:API_KEY_MASK_LENGTH]}..."
-            if len(api_key) > API_KEY_MASK_LENGTH
-            else "***"
-        )
+        masked_key = f"{api_key[:API_KEY_MASK_LENGTH]}..." if len(api_key) > API_KEY_MASK_LENGTH else "***"
 
         console.print()
         console.print(
@@ -357,6 +329,4 @@ async def serve_command(
                 Path(temp_file_to_cleanup).unlink()
                 verbose_print(f"✓ Cleaned up temporary file: {temp_file_to_cleanup}")
             except OSError as e:
-                verbose_print(
-                    f"Warning: Failed to clean up temporary file {temp_file_to_cleanup}: {e}"
-                )
+                verbose_print(f"Warning: Failed to clean up temporary file {temp_file_to_cleanup}: {e}")

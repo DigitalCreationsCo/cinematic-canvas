@@ -8,8 +8,6 @@ from unittest.mock import Mock, patch
 import pytest
 import typer
 from fastapi.testclient import TestClient
-from pydantic import ValidationError
-
 from px.cli.common import flow_id_from_path, load_graph_from_path, validate_script_path
 from px.cli.serve_app import (
     ErrorResponse,
@@ -21,6 +19,7 @@ from px.cli.serve_app import (
     create_multi_serve_app,
 )
 from px.graph import Graph
+from pydantic import ValidationError
 
 
 class TestDataModels:
@@ -213,9 +212,7 @@ class TestCommonFunctions:
             def verbose_print(msg):
                 pass  # Real function
 
-            graph = await load_graph_from_path(
-                Path(tmp.name), ".json", verbose_print, verbose=True
-            )
+            graph = await load_graph_from_path(Path(tmp.name), ".json", verbose_print, verbose=True)
             assert graph == mock_graph
             mock_load_flow.assert_called_once_with(Path(tmp.name), disable_logs=False)
 
@@ -233,9 +230,7 @@ class TestCommonFunctions:
                 pass  # Real function
 
             with pytest.raises(typer.Exit):
-                await load_graph_from_path(
-                    Path(tmp.name), ".json", verbose_print, verbose=False
-                )
+                await load_graph_from_path(Path(tmp.name), ".json", verbose_print, verbose=False)
             mock_load_flow.assert_called_once_with(Path(tmp.name), disable_logs=True)
 
 
@@ -264,11 +259,7 @@ class TestFastAPIAppCreation:
         """Test basic multi-serve app creation."""
         root_dir = tmp_path
         graphs = {"test-flow": create_real_graph()}
-        metas = {
-            "test-flow": FlowMeta(
-                id="test-flow", relative_path="test.json", title="Test Flow"
-            )
-        }
+        metas = {"test-flow": FlowMeta(id="test-flow", relative_path="test.json", title="Test Flow")}
 
         def verbose_print(msg):
             pass  # Real function
@@ -293,9 +284,7 @@ class TestFastAPIAppCreation:
         def verbose_print(msg):
             pass  # Real function
 
-        with pytest.raises(
-            ValueError, match="graphs and metas must contain the same keys"
-        ):
+        with pytest.raises(ValueError, match="graphs and metas must contain the same keys"):
             create_multi_serve_app(
                 root_dir=root_dir,
                 graphs=graphs,
@@ -407,9 +396,7 @@ class TestFastAPIEndpoints:
         if verify_api_key in self.app.dependency_overrides:
             del self.app.dependency_overrides[verify_api_key]
 
-        response = self.client.post(
-            "/flows/test-flow/run", json={"input_value": "test input"}
-        )
+        response = self.client.post("/flows/test-flow/run", json={"input_value": "test input"})
 
         # Should fail due to missing auth (exact status depends on verify_api_key implementation)
         assert response.status_code in [401, 403, 422]
@@ -424,9 +411,7 @@ class TestErrorHandling:
             app = create_multi_serve_app(
                 root_dir=tmp_path,
                 graphs={"test": create_real_graph()},
-                metas={
-                    "test": FlowMeta(id="test", relative_path="test.json", title="Test")
-                },
+                metas={"test": FlowMeta(id="test", relative_path="test.json", title="Test")},
                 verbose_print=lambda msg: None,  # noqa: ARG005
             )
             client = TestClient(app)
@@ -445,9 +430,7 @@ class TestErrorHandling:
             app = create_multi_serve_app(
                 root_dir=tmp_path,
                 graphs={"test": create_real_graph()},
-                metas={
-                    "test": FlowMeta(id="test", relative_path="test.json", title="Test")
-                },
+                metas={"test": FlowMeta(id="test", relative_path="test.json", title="Test")},
                 verbose_print=lambda msg: None,  # noqa: ARG005
             )
             client = TestClient(app)
@@ -484,9 +467,7 @@ class TestIntegration:
                 pass  # Real function
 
             mock_verbose_print = verbose_print
-            loaded_graph = await load_graph_from_path(
-                flow_path, ".json", mock_verbose_print
-            )
+            loaded_graph = await load_graph_from_path(flow_path, ".json", mock_verbose_print)
             assert loaded_graph == real_graph
 
             # Test flow ID generation

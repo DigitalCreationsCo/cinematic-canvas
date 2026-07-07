@@ -92,7 +92,7 @@ class TestComponentOutputs:
                 """Method that returns a string."""
                 return "custom output"
 
-            def update_outputs(self, frontend_node, field_name, field_value):  # noqa: ARG002
+            def update_outputs(self, frontend_node, field_name, field_value):
                 if field_name == "custom_field":
                     frontend_node["outputs"].append(
                         {
@@ -184,7 +184,7 @@ class TestComponentOutputs:
                 """Method that returns a string."""
                 return "output2"
 
-            def update_outputs(self, frontend_node, field_name, field_value):  # noqa: ARG002
+            def update_outputs(self, frontend_node, field_name, field_value):
                 if field_name == "add_output":
                     frontend_node["outputs"].extend(
                         [

@@ -11,11 +11,12 @@ from urllib.parse import urlparse
 from opentelemetry import trace
 from opentelemetry.trace import Span, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from portals.services.tracing.base import BaseTracer
 from px.log.logger import logger
 from traceloop.sdk import Traceloop
 from traceloop.sdk.instruments import Instruments
 from typing_extensions import override
+
+from portals.services.tracing.base import BaseTracer
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from langchain_core.callbacks.base import BaseCallbackHandler
     from opentelemetry.propagators.textmap import CarrierT
     from opentelemetry.trace import Span
+
     from portals.graph.vertex.base import Vertex
     from portals.services.tracing.schema import Log
 
@@ -59,9 +61,7 @@ class TraceloopTracer(BaseTracer):
                 app_name=project_name,
                 disable_batch=True,
                 api_key=api_key,
-                api_endpoint=os.getenv(
-                    "TRACELOOP_BASE_URL", "https://api.traceloop.com"
-                ),
+                api_endpoint=os.getenv("TRACELOOP_BASE_URL", "https://api.traceloop.com"),
             )
             self._ready = True
             self._tracer = trace.get_tracer("portals")
@@ -101,14 +101,12 @@ class TraceloopTracer(BaseTracer):
         """Recursively converts a value to a Traceloop compatible type."""
         from langchain_core.documents import Document
         from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+
         from portals.schema.message import Message
 
         try:
             if isinstance(value, dict):
-                value = {
-                    key: self._convert_to_traceloop_type(val)
-                    for key, val in value.items()
-                }
+                value = {key: self._convert_to_traceloop_type(val) for key, val in value.items()}
 
             elif isinstance(value, list):
                 value = [self._convert_to_traceloop_type(v) for v in value]
@@ -137,15 +135,9 @@ class TraceloopTracer(BaseTracer):
     def _convert_to_traceloop_dict(self, io_dict: Any) -> dict[str, Any]:
         """Ensure values are OTel-compatible. Dicts stay dicts, lists get JSON-serialized."""
         if isinstance(io_dict, dict):
-            return {
-                str(k): self._convert_to_traceloop_type(v) for k, v in io_dict.items()
-            }
+            return {str(k): self._convert_to_traceloop_type(v) for k, v in io_dict.items()}
         if isinstance(io_dict, list):
-            return {
-                "list": json.dumps(
-                    [self._convert_to_traceloop_type(v) for v in io_dict], default=str
-                )
-            }
+            return {"list": json.dumps([self._convert_to_traceloop_type(v) for v in io_dict], default=str)}
 
         return {"value": self._convert_to_traceloop_type(io_dict)}
 

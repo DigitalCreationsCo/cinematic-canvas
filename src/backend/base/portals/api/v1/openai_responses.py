@@ -13,6 +13,7 @@ from px.schema.openai_responses_schemas import (
     create_openai_error_chunk,
 )
 from px.utils.flow_validation import CustomComponentValidationError
+
 from portals.api.utils import extract_global_variables_from_headers
 from portals.api.v1.endpoints import (
     consume_and_yield,
@@ -44,10 +45,7 @@ def has_chat_input(flow_data: dict | None) -> bool:
     if not flow_data or "nodes" not in flow_data:
         return False
 
-    return any(
-        node.get("data", {}).get("type") in ["ChatInput", "Chat Input"]
-        for node in flow_data["nodes"]
-    )
+    return any(node.get("data", {}).get("type") in ["ChatInput", "Chat Input"] for node in flow_data["nodes"])
 
 
 def has_chat_output(flow_data: dict | None) -> bool:
@@ -55,10 +53,7 @@ def has_chat_output(flow_data: dict | None) -> bool:
     if not flow_data or "nodes" not in flow_data:
         return False
 
-    return any(
-        node.get("data", {}).get("type") in ["ChatOutput", "Chat Output"]
-        for node in flow_data["nodes"]
-    )
+    return any(node.get("data", {}).get("type") in ["ChatOutput", "Chat Output"] for node in flow_data["nodes"])
 
 
 async def run_flow_for_openai_responses(
@@ -87,9 +82,7 @@ async def run_flow_for_openai_responses(
     context = {}
     if variables:
         context["request_variables"] = variables
-        await logger.adebug(
-            f"Added request variables to context: {list(variables.keys())}"
-        )
+        await logger.adebug(f"Added request variables to context: {list(variables.keys())}")
 
     # Convert OpenAI request to SimplifiedAPIRequest
     # Note: We're moving away from tweaks to a context-based approach
@@ -103,9 +96,7 @@ async def run_flow_for_openai_responses(
 
     # Context will be passed separately to simple_run_flow
 
-    await logger.adebug(
-        f"SimplifiedAPIRequest created with context keys: {list(context.keys())}"
-    )
+    await logger.adebug(f"SimplifiedAPIRequest created with context keys: {list(context.keys())}")
 
     # Use session_id as response_id for OpenAI compatibility
     response_id = session_id
@@ -147,19 +138,13 @@ async def run_flow_for_openai_responses(
                 yield f"data: {initial_chunk.model_dump_json()}\n\n"
 
                 tool_call_counter = 0
-                processed_tools = (
-                    set()
-                )  # Track processed tool calls to avoid duplicates
+                processed_tools = set()  # Track processed tool calls to avoid duplicates
                 previous_content = ""  # Track content already sent to calculate deltas
                 stream_usage_data = None  # Track usage from completed message
 
-                async for event_data in consume_and_yield(
-                    asyncio_queue, asyncio_queue_client_consumed
-                ):
+                async for event_data in consume_and_yield(asyncio_queue, asyncio_queue_client_consumed):
                     if event_data is None:
-                        await logger.adebug(
-                            "[OpenAIResponses][stream] received None event_data; breaking loop"
-                        )
+                        await logger.adebug("[OpenAIResponses][stream] received None event_data; breaking loop")
                         break
 
                     content = ""
@@ -179,9 +164,7 @@ async def run_flow_for_openai_responses(
                                 await logger.adebug(
                                     "[OpenAIResponses][stream] event: %s keys=%s",
                                     event_type,
-                                    list(data.keys())
-                                    if isinstance(data, dict)
-                                    else type(data),
+                                    list(data.keys()) if isinstance(data, dict) else type(data),
                                 )
 
                                 # Handle add_message events
@@ -194,9 +177,7 @@ async def run_flow_for_openai_responses(
                                 if event_type == "error":
                                     # Error message is in 'text' field, not 'error' field
                                     # The 'error' field is a boolean flag
-                                    error_message = data.get("text") or data.get(
-                                        "error", "Unknown error"
-                                    )
+                                    error_message = data.get("text") or data.get("error", "Unknown error")
                                     # Ensure error_message is a string
                                     if not isinstance(error_message, str):
                                         error_message = str(error_message)
@@ -221,11 +202,7 @@ async def run_flow_for_openai_responses(
 
                                     # Get message state from properties
                                     properties = data.get("properties", {})
-                                    message_state = (
-                                        properties.get("state")
-                                        if isinstance(properties, dict)
-                                        else None
-                                    )
+                                    message_state = properties.get("state") if isinstance(properties, dict) else None
 
                                     await logger.adebug(
                                         (
@@ -245,28 +222,14 @@ async def run_flow_for_openai_responses(
                                             "[OpenAIResponses][stream] skipping add_message with state=complete"
                                         )
                                         # Extract usage from completed message properties
-                                        if (
-                                            isinstance(properties, dict)
-                                            and "usage" in properties
-                                        ):
+                                        if isinstance(properties, dict) and "usage" in properties:
                                             usage_obj = properties.get("usage")
-                                            if usage_obj and isinstance(
-                                                usage_obj, dict
-                                            ):
+                                            if usage_obj and isinstance(usage_obj, dict):
                                                 # Convert None values to 0 for compatibility
                                                 stream_usage_data = {
-                                                    "input_tokens": usage_obj.get(
-                                                        "input_tokens"
-                                                    )
-                                                    or 0,
-                                                    "output_tokens": usage_obj.get(
-                                                        "output_tokens"
-                                                    )
-                                                    or 0,
-                                                    "total_tokens": usage_obj.get(
-                                                        "total_tokens"
-                                                    )
-                                                    or 0,
+                                                    "input_tokens": usage_obj.get("input_tokens") or 0,
+                                                    "output_tokens": usage_obj.get("output_tokens") or 0,
+                                                    "total_tokens": usage_obj.get("total_tokens") or 0,
                                                 }
                                                 await logger.adebug(
                                                     "[OpenAIResponses][stream] captured usage: %s",
@@ -283,38 +246,25 @@ async def run_flow_for_openai_responses(
                                                 # Look for tool_use type items
                                                 if step.get("type") == "tool_use":
                                                     tool_name = step.get("name", "")
-                                                    tool_input = step.get(
-                                                        "tool_input", {}
-                                                    )
+                                                    tool_input = step.get("tool_input", {})
                                                     tool_output = step.get("output")
 
                                                     # Only emit tool calls with explicit tool names and
                                                     # meaningful arguments
-                                                    if (
-                                                        tool_name
-                                                        and tool_input is not None
-                                                        and tool_output is not None
-                                                    ):
+                                                    if tool_name and tool_input is not None and tool_output is not None:
                                                         # Create unique identifier for this tool call
-                                                        tool_signature = f"{tool_name}:{hash(str(sorted(tool_input.items())))}"
+                                                        tool_signature = (
+                                                            f"{tool_name}:{hash(str(sorted(tool_input.items())))}"
+                                                        )
 
                                                         # Skip if we've already processed this tool call
-                                                        if (
-                                                            tool_signature
-                                                            in processed_tools
-                                                        ):
+                                                        if tool_signature in processed_tools:
                                                             continue
 
-                                                        processed_tools.add(
-                                                            tool_signature
-                                                        )
+                                                        processed_tools.add(tool_signature)
                                                         tool_call_counter += 1
-                                                        call_id = (
-                                                            f"call_{tool_call_counter}"
-                                                        )
-                                                        tool_id = (
-                                                            f"fc_{tool_call_counter}"
-                                                        )
+                                                        call_id = f"call_{tool_call_counter}"
+                                                        tool_id = f"fc_{tool_call_counter}"
                                                         tool_call_event = {
                                                             "type": "response.output_item.added",
                                                             "item": {
@@ -332,9 +282,7 @@ async def run_flow_for_openai_responses(
                                                         )
 
                                                         # Send function call arguments as delta events (like OpenAI)
-                                                        arguments_str = json.dumps(
-                                                            tool_input
-                                                        )
+                                                        arguments_str = json.dumps(tool_input)
                                                         arg_delta_event = {
                                                             "type": "response.function_call_arguments.delta",
                                                             "delta": arguments_str,
@@ -367,8 +315,7 @@ async def run_flow_for_openai_responses(
                                                             # Check if include parameter requests tool_call.results
                                                             include_results = (
                                                                 request.include
-                                                                and "tool_call.results"
-                                                                in request.include
+                                                                and "tool_call.results" in request.include
                                                             )
 
                                                             if include_results:
@@ -384,8 +331,7 @@ async def run_flow_for_openai_responses(
                                                                         "results": tool_output,  # Raw output as-is
                                                                     },
                                                                     "output_index": 0,
-                                                                    "sequence_number": tool_call_counter
-                                                                    + 5,
+                                                                    "sequence_number": tool_call_counter + 5,
                                                                 }
                                                             else:
                                                                 # Regular function call format
@@ -436,9 +382,7 @@ async def run_flow_for_openai_responses(
                                             )
 
                         except (json.JSONDecodeError, UnicodeDecodeError):
-                            await logger.adebug(
-                                "[OpenAIResponses][stream] failed to decode event bytes; skipping"
-                            )
+                            await logger.adebug("[OpenAIResponses][stream] failed to decode event bytes; skipping")
                             continue
 
                     # Only send chunks with actual content
@@ -533,13 +477,9 @@ async def run_flow_for_openai_responses(
     usage_data: dict[str, int] | None = None
     try:
         outputs_len = len(result.outputs) if getattr(result, "outputs", None) else 0
-        await logger.adebug(
-            "[OpenAIResponses][non-stream] result.outputs len=%d", outputs_len
-        )
+        await logger.adebug("[OpenAIResponses][non-stream] result.outputs len=%d", outputs_len)
     except Exception:  # noqa: BLE001
-        await logger.adebug(
-            "[OpenAIResponses][non-stream] unable to read result.outputs len"
-        )
+        await logger.adebug("[OpenAIResponses][non-stream] unable to read result.outputs len")
 
     if result.outputs:
         for run_output in result.outputs:
@@ -547,10 +487,7 @@ async def run_flow_for_openai_responses(
                 for component_output in run_output.outputs:
                     if component_output:
                         # First, try to extract usage from results (contains actual Message objects)
-                        if (
-                            hasattr(component_output, "results")
-                            and component_output.results
-                        ):
+                        if hasattr(component_output, "results") and component_output.results:
                             for value in component_output.results.values():
                                 # Extract usage from Message properties if available
                                 if (
@@ -561,35 +498,19 @@ async def run_flow_for_openai_responses(
                                 ):
                                     usage_obj = value.properties.usage
                                     usage_data = {
-                                        "input_tokens": getattr(
-                                            usage_obj, "input_tokens", None
-                                        )
-                                        or 0,
-                                        "output_tokens": getattr(
-                                            usage_obj, "output_tokens", None
-                                        )
-                                        or 0,
-                                        "total_tokens": getattr(
-                                            usage_obj, "total_tokens", None
-                                        )
-                                        or 0,
+                                        "input_tokens": getattr(usage_obj, "input_tokens", None) or 0,
+                                        "output_tokens": getattr(usage_obj, "output_tokens", None) or 0,
+                                        "total_tokens": getattr(usage_obj, "total_tokens", None) or 0,
                                     }
                                     break
                         # Handle messages (final chat outputs) for text extraction
-                        if (
-                            hasattr(component_output, "messages")
-                            and component_output.messages
-                        ):
+                        if hasattr(component_output, "messages") and component_output.messages:
                             for msg in component_output.messages:
                                 if hasattr(msg, "message"):
                                     output_text = msg.message
                                     break
                         # Handle results for text extraction if not found in messages
-                        if (
-                            not output_text
-                            and hasattr(component_output, "results")
-                            and component_output.results
-                        ):
+                        if not output_text and hasattr(component_output, "results") and component_output.results:
                             for value in component_output.results.values():
                                 if hasattr(value, "get_text"):
                                     output_text = value.get_text()
@@ -598,13 +519,8 @@ async def run_flow_for_openai_responses(
                                     output_text = value
                                     break
 
-                        if (
-                            hasattr(component_output, "results")
-                            and component_output.results
-                        ):
-                            for blocks in component_output.results.get(
-                                "message", {}
-                            ).content_blocks:
+                        if hasattr(component_output, "results") and component_output.results:
+                            for blocks in component_output.results.get("message", {}).content_blocks:
                                 tool_calls.extend(
                                     {
                                         "name": content.name,
@@ -644,9 +560,7 @@ async def run_flow_for_openai_responses(
                 "status": "completed",
                 "tool_name": f"{tool_call['name']}",
                 "type": "tool_call",
-                "results": tool_call["output"]
-                if tool_call["output"] is not None
-                else [],
+                "results": tool_call["output"] if tool_call["output"] is not None else [],
             }
         else:
             # Format as basic function call
@@ -655,9 +569,7 @@ async def run_flow_for_openai_responses(
                 "type": "function_call",
                 "status": "completed",
                 "name": tool_call["name"],
-                "arguments": json.dumps(tool_call["input"])
-                if tool_call["input"] is not None
-                else "{}",
+                "arguments": json.dumps(tool_call["input"]) if tool_call["input"] is not None else "{}",
             }
 
         output_items.append(tool_call_item)
@@ -715,9 +627,7 @@ async def create_response(
     variables = extract_global_variables_from_headers(http_request.headers)
 
     await logger.adebug(f"All headers received: {list(http_request.headers.keys())}")
-    await logger.adebug(
-        f"Extracted global variables from headers: {list(variables.keys())}"
-    )
+    await logger.adebug(f"Extracted global variables from headers: {list(variables.keys())}")
 
     # Validate tools parameter - error out if tools are provided
     if request.tools is not None:
@@ -730,9 +640,7 @@ async def create_response(
 
     # Get flow using the model field (which contains flow_id)
     try:
-        flow = await get_flow_by_id_or_endpoint_name(
-            request.model, str(api_key_user.id)
-        )
+        flow = await get_flow_by_id_or_endpoint_name(request.model, str(api_key_user.id))
     except HTTPException:
         flow = None
 

@@ -3,7 +3,6 @@
 from unittest.mock import Mock, patch
 
 import pytest
-
 from px.custom.utils import (
     _generate_code_hash,
     build_component_metadata,
@@ -72,9 +71,7 @@ class TestMetadataInTemplateBuilders:
         test_component = Mock(spec=Component)
         test_component.__class__.__name__ = "TestComponent"
         test_component._code = "class TestComponent: pass"
-        test_component.code = (
-            "class TestComponent: pass"  # Ensure code is a string, not Mock
-        )
+        test_component.code = "class TestComponent: pass"  # Ensure code is a string, not Mock
         test_component.template_config = {"inputs": []}
 
         # Mock get_component_instance to return a mock instance
@@ -90,9 +87,7 @@ class TestMetadataInTemplateBuilders:
                 patch("px.custom.utils.reorder_fields"),
             ):
                 # Call the function
-                _, _ = build_custom_component_template_from_inputs(
-                    test_component, module_name="test.module"
-                )
+                _, _ = build_custom_component_template_from_inputs(test_component, module_name="test.module")
 
         # Verify metadata was added
         # assert "module" in mock_frontend.metadata
@@ -116,9 +111,7 @@ class TestMetadataInTemplateBuilders:
         test_component = Mock(spec=CustomComponent)
         test_component.__class__.__name__ = "CustomTestComponent"
         test_component._code = "class CustomTestComponent: pass"
-        test_component.code = (
-            "class CustomTestComponent: pass"  # Ensure code is a string, not Mock
-        )
+        test_component.code = "class CustomTestComponent: pass"  # Ensure code is a string, not Mock
         test_component.template_config = {"display_name": "Test"}
         test_component.get_function_entrypoint_args = []
         test_component._get_function_entrypoint_return_type = []
@@ -137,9 +130,7 @@ class TestMetadataInTemplateBuilders:
                 patch("px.custom.utils.reorder_fields"),
             ):
                 # Call the function
-                _, _ = build_custom_component_template(
-                    test_component, module_name="custom.test"
-                )
+                _, _ = build_custom_component_template(test_component, module_name="custom.test")
 
         # Verify metadata was added
         # assert "module" in mock_frontend.metadata
@@ -170,9 +161,7 @@ class TestMetadataInTemplateBuilders:
             _generate_code_hash(mock_code, "mod")
 
     @patch("px.custom.utils.ComponentFrontendNode")
-    def test_build_from_inputs_without_module_generates_default(
-        self, mock_frontend_class
-    ):
+    def test_build_from_inputs_without_module_generates_default(self, mock_frontend_class):
         """Test that build_custom_component_template_from_inputs generates default module when module_name is None."""
 
 
@@ -283,9 +272,7 @@ class TestComponent(CustomComponent):
 
         # Verify no duplicate packages in dependencies
         package_names = [pkg["name"] for pkg in result["dependencies"]]
-        assert len(package_names) == len(set(package_names)), (
-            "No duplicate packages should exist"
-        )
+        assert len(package_names) == len(set(package_names)), "No duplicate packages should exist"
 
     def test_analyze_component_dependencies_error_handling(self):
         """Test error handling in component dependency analysis."""
@@ -415,9 +402,7 @@ class TestComponent:
 """
 
         # Call the function
-        build_component_metadata(
-            mock_frontend, test_component, "test.module", "TestComponent"
-        )
+        build_component_metadata(mock_frontend, test_component, "test.module", "TestComponent")
 
         # Verify metadata was added
         assert "module" in mock_frontend.metadata
@@ -444,9 +429,7 @@ class TestComponent:
         test_component._code = "import os\nthis is not valid python syntax!!!"
 
         # Call the function - should not raise exception
-        build_component_metadata(
-            mock_frontend, test_component, "test.module", "TestComponent"
-        )
+        build_component_metadata(mock_frontend, test_component, "test.module", "TestComponent")
 
         # Should not raise exception and should set minimal dependency info
         assert "dependencies" in mock_frontend.metadata
@@ -474,15 +457,11 @@ class TestComponent(CustomComponent):
 """
 
         # Call the function
-        build_component_metadata(
-            mock_frontend, test_component, "test.module", "TestComponent"
-        )
+        build_component_metadata(mock_frontend, test_component, "test.module", "TestComponent")
 
         # Verify dependency analysis results
         dep_info = mock_frontend.metadata["dependencies"]
-        assert (
-            dep_info["total_dependencies"] == 1
-        )  # Only portals (os is stdlib, filtered out)
+        assert dep_info["total_dependencies"] == 1  # Only portals (os is stdlib, filtered out)
 
         # Check for dependencies
         package_names = [pkg["name"] for pkg in dep_info["dependencies"]]
@@ -513,15 +492,11 @@ class TestComponent:
 """
 
         # Call the function
-        build_component_metadata(
-            mock_frontend, test_component, "test.module", "TestComponent"
-        )
+        build_component_metadata(mock_frontend, test_component, "test.module", "TestComponent")
 
         # Verify dependency analysis results
         dep_info = mock_frontend.metadata["dependencies"]
-        assert (
-            dep_info["total_dependencies"] == 1
-        )  # Only some_optional_package (os is stdlib, filtered out)
+        assert dep_info["total_dependencies"] == 1  # Only some_optional_package (os is stdlib, filtered out)
 
         # Verify the dependencies are found
         package_names = [pkg["name"] for pkg in dep_info["dependencies"]]
@@ -614,9 +589,7 @@ class LMStudioModelComponent(LCModelComponent):
                 patch("px.custom.utils.reorder_fields"),
             ):
                 # Call the function without module_name
-                _, _ = build_custom_component_template_from_inputs(
-                    test_component, module_name=None
-                )
+                _, _ = build_custom_component_template_from_inputs(test_component, module_name=None)
 
         # Verify metadata was added with generated module name
         # assert "module" in mock_frontend.metadata

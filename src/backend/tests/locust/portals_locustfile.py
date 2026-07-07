@@ -52,9 +52,7 @@ TEST_MESSAGES = {
     "minimal": "Hi",
     "simple": "Can you help me?",
     "medium": "I need help understanding how machine learning works in this context.",
-    "complex": "Please analyze this data: "
-    + "x" * 500
-    + " and provide detailed insights.",
+    "complex": "Please analyze this data: " + "x" * 500 + " and provide detailed insights.",
     "large": "Here's a complex scenario: " + "data " * 1000,
     "realistic": "Hey, Could you check https://docs.portals.org for me? Later, could you calculate 1390 / 192 ?",
 }
@@ -140,12 +138,10 @@ def log_detailed_error(
         "method": method,
         "url": url,
         "status_code": status_code,
-        "response_text": response_text[:1000]
-        if response_text
-        else None,  # Limit response size
+        "response_text": response_text[:1000] if response_text else None,  # Limit response size
         "request_data": request_data,
         "exception": str(exception) if exception else None,
-        "traceback": traceback if traceback else None,
+        "traceback": traceback or None,
     }
 
     DETAILED_ERRORS.append(error_info)
@@ -302,9 +298,7 @@ def on_test_start(environment, **_kwargs):
 
 
 @events.request.add_listener
-def on_request(
-    request_type, name, response_time, response_length, exception, context, **kwargs
-):  # noqa: ARG001
+def on_request(request_type, name, response_time, response_length, exception, context, **kwargs):
     """Track slow requests using Locust's built-in timing."""
     # response_time is in milliseconds from Locust
     bag = _env_bags.get(context.get("environment") if context else None)
@@ -358,15 +352,9 @@ def on_test_stop(environment, **_kwargs):
     print(f"\n{'=' * 60}")
     print(f"PORTALS API LOAD TEST RESULTS - GRADE: {grade}")
     print(f"{'=' * 60}")
-    print(
-        f"Requests: {stats.num_requests:,} | Failures: {stats.num_failures:,} ({fail_ratio:.1%})"
-    )
-    print(
-        f"Response Times: p50={p50 / 1000:.2f}s p95={p95 / 1000:.2f}s p99={p99 / 1000:.2f}s"
-    )
-    print(
-        f"RPS: {current_rps:.1f} | Slow requests: >10s={bag['slow_10s']} >20s={bag['slow_20s']}"
-    )
+    print(f"Requests: {stats.num_requests:,} | Failures: {stats.num_failures:,} ({fail_ratio:.1%})")
+    print(f"Response Times: p50={p50 / 1000:.2f}s p95={p95 / 1000:.2f}s p99={p99 / 1000:.2f}s")
+    print(f"RPS: {current_rps:.1f} | Slow requests: >10s={bag['slow_10s']} >20s={bag['slow_20s']}")
 
     if issues:
         print(f"Issues: {', '.join(issues)}")
@@ -411,18 +399,12 @@ class BasePortalsUser(FastHttpUser):
         self.flow_id = os.getenv("FLOW_ID")
 
         if not self.api_key:
-            raise ValueError(
-                "API_KEY environment variable is required. Run setup_portals_test.py first."
-            )
+            raise ValueError("API_KEY environment variable is required. Run setup_portals_test.py first.")
 
         if not self.flow_id:
-            raise ValueError(
-                "FLOW_ID environment variable is required. Run setup_portals_test.py first."
-            )
+            raise ValueError("FLOW_ID environment variable is required. Run setup_portals_test.py first.")
 
-        self.session_id = (
-            f"locust_{self.__class__.__name__}_{id(self)}_{int(time.time())}"
-        )
+        self.session_id = f"locust_{self.__class__.__name__}_{id(self)}_{int(time.time())}"
         self.request_count = 0
 
         # Test connection and auth
@@ -514,9 +496,7 @@ class BasePortalsUser(FastHttpUser):
 
                 # Handle specific error cases
                 if response.status_code in (429, 503):
-                    return response.failure(
-                        f"Backpressure/capacity: {response.status_code}"
-                    )
+                    return response.failure(f"Backpressure/capacity: {response.status_code}")
                 if response.status_code == 401:
                     return response.failure("Unauthorized - API key issue")
                 if response.status_code == 404:
@@ -533,8 +513,7 @@ class BasePortalsUser(FastHttpUser):
                 "error_message": str(e),
                 "is_timeout": "timeout" in str(e).lower(),
                 "is_connection_error": "connection" in str(e).lower(),
-                "is_dns_error": "name resolution" in str(e).lower()
-                or "dns" in str(e).lower(),
+                "is_dns_error": "name resolution" in str(e).lower() or "dns" in str(e).lower(),
             }
 
             # Log any exceptions that occur during the request
@@ -565,7 +544,7 @@ class NormalUser(BasePortalsUser):
             [w[0] for w in MESSAGE_WEIGHTS],
             weights=[w[1] for w in MESSAGE_WEIGHTS],
             k=1,
-        )[0]  # noqa: S311
+        )[0]
         self.make_request(message_type=message_type)
 
     @task(15)

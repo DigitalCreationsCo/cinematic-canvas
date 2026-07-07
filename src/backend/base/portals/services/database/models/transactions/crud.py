@@ -1,6 +1,9 @@
 from uuid import UUID
 
 from px.log.logger import logger
+from sqlmodel import col, delete, select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from portals.services.database.models.transactions.model import (
     TransactionBase,
     TransactionLogsResponse,
@@ -8,8 +11,6 @@ from portals.services.database.models.transactions.model import (
     TransactionTable,
 )
 from portals.services.deps import get_settings_service
-from sqlmodel import col, delete, select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 
 async def get_transactions_by_flow_id(
@@ -26,9 +27,7 @@ async def get_transactions_by_flow_id(
     return list(transactions)
 
 
-async def log_transaction(
-    db: AsyncSession, transaction: TransactionBase
-) -> TransactionTable | None:
+async def log_transaction(db: AsyncSession, transaction: TransactionBase) -> TransactionTable | None:
     """Log a transaction and maintain a maximum number of transactions in the database.
 
     This function logs a new transaction into the database and ensures that the number of transactions
@@ -61,9 +60,7 @@ async def log_transaction(
                 select(TransactionTable.id)
                 .where(TransactionTable.flow_id == transaction.flow_id)
                 .order_by(col(TransactionTable.timestamp).desc())
-                .offset(
-                    max_entries - 1
-                )  # Keep newest max_entries-1 plus the one we're adding
+                .offset(max_entries - 1)  # Keep newest max_entries-1 plus the one we're adding
             ),
         )
 
@@ -82,10 +79,7 @@ def transform_transaction_table(
     transaction: list[TransactionTable] | TransactionTable,
 ) -> list[TransactionReadResponse] | TransactionReadResponse:
     if isinstance(transaction, list):
-        return [
-            TransactionReadResponse.model_validate(t, from_attributes=True)
-            for t in transaction
-        ]
+        return [TransactionReadResponse.model_validate(t, from_attributes=True) for t in transaction]
     return TransactionReadResponse.model_validate(transaction, from_attributes=True)
 
 
@@ -94,8 +88,5 @@ def transform_transaction_table_for_logs(
 ) -> list[TransactionLogsResponse] | TransactionLogsResponse:
     """Transform transaction data for logs view, excluding error and flow_id."""
     if isinstance(transaction, list):
-        return [
-            TransactionLogsResponse.model_validate(t, from_attributes=True)
-            for t in transaction
-        ]
+        return [TransactionLogsResponse.model_validate(t, from_attributes=True) for t in transaction]
     return TransactionLogsResponse.model_validate(transaction, from_attributes=True)

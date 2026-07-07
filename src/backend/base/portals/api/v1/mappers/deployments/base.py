@@ -31,25 +31,6 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from portals.api.v1.schemas.deployments import (
-    DeploymentConfigListResponse,
-    DeploymentCreateRequest,
-    DeploymentCreateResponse,
-    DeploymentFlowVersionListItem,
-    DeploymentFlowVersionListResponse,
-    DeploymentListItem,
-    DeploymentListResponse,
-    DeploymentLlmListResponse,
-    DeploymentProviderAccountCreateRequest,
-    DeploymentProviderAccountGetResponse,
-    DeploymentProviderAccountUpdateRequest,
-    DeploymentSnapshotListResponse,
-    DeploymentUpdateRequest,
-    DeploymentUpdateResponse,
-    RunCreateRequest,
-    RunCreateResponse,
-    RunStatusResponse,
-)
 from px.services.adapters.deployment.payloads import DeploymentPayloadFields
 from px.services.adapters.deployment.schema import (
     BaseDeploymentData,
@@ -77,6 +58,26 @@ from px.services.adapters.deployment.schema import (
 )
 from px.services.adapters.payload import AdapterPayload, PayloadSlot
 
+from portals.api.v1.schemas.deployments import (
+    DeploymentConfigListResponse,
+    DeploymentCreateRequest,
+    DeploymentCreateResponse,
+    DeploymentFlowVersionListItem,
+    DeploymentFlowVersionListResponse,
+    DeploymentListItem,
+    DeploymentListResponse,
+    DeploymentLlmListResponse,
+    DeploymentProviderAccountCreateRequest,
+    DeploymentProviderAccountGetResponse,
+    DeploymentProviderAccountUpdateRequest,
+    DeploymentSnapshotListResponse,
+    DeploymentUpdateRequest,
+    DeploymentUpdateResponse,
+    RunCreateRequest,
+    RunCreateResponse,
+    RunStatusResponse,
+)
+
 from .contracts import (
     CreatedSnapshotIds,
     CreateFlowArtifactProviderData,
@@ -88,6 +89,8 @@ from .contracts import (
 from .helpers import page_offset
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from portals.services.database.models.deployment.model import Deployment
     from portals.services.database.models.deployment_provider_account.model import (
         DeploymentProviderAccount,
@@ -97,7 +100,6 @@ if TYPE_CHECKING:
     from portals.services.database.models.flow_version_deployment_attachment.model import (
         FlowVersionDeploymentAttachment,
     )
-    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @dataclass(frozen=True)
@@ -141,14 +143,10 @@ class BaseDeploymentMapper:
 
     api_payloads: ClassVar[DeploymentApiPayloads] = DeploymentApiPayloads()
 
-    async def resolve_deployment_spec(
-        self, raw: dict[str, Any] | None, db: AsyncSession
-    ) -> dict[str, Any] | None:
+    async def resolve_deployment_spec(self, raw: dict[str, Any] | None, db: AsyncSession) -> dict[str, Any] | None:
         return self._validate_slot(self.api_payloads.deployment_spec, raw)
 
-    async def resolve_deployment_config(
-        self, raw: dict[str, Any] | None, db: AsyncSession
-    ) -> dict[str, Any] | None:
+    async def resolve_deployment_config(self, raw: dict[str, Any] | None, db: AsyncSession) -> dict[str, Any] | None:
         return self._validate_slot(self.api_payloads.deployment_config, raw)
 
     async def resolve_deployment_create(
@@ -160,9 +158,7 @@ class BaseDeploymentMapper:
         payload: DeploymentCreateRequest,
     ) -> AdapterDeploymentCreate:
         _ = (user_id, project_id)
-        provider_data = self._validate_slot(
-            self.api_payloads.deployment_create, payload.provider_data
-        )
+        provider_data = self._validate_slot(self.api_payloads.deployment_create, payload.provider_data)
         return AdapterDeploymentCreate(
             spec=BaseDeploymentData(
                 name=payload.name,
@@ -212,17 +208,13 @@ class BaseDeploymentMapper:
             if payload.name is not None or payload.description is not None
             else None
         )
-        provider_data = self._validate_slot(
-            self.api_payloads.deployment_update, payload.provider_data
-        )
+        provider_data = self._validate_slot(self.api_payloads.deployment_update, payload.provider_data)
         return AdapterDeploymentUpdate(
             spec=adapter_spec,
             provider_data=provider_data,
         )
 
-    async def resolve_execution_input(
-        self, raw: dict[str, Any] | None, db: AsyncSession
-    ) -> dict[str, Any] | None:
+    async def resolve_execution_input(self, raw: dict[str, Any] | None, db: AsyncSession) -> dict[str, Any] | None:
         return self._validate_slot(self.api_payloads.execution_input, raw)
 
     async def resolve_execution_create(
@@ -251,14 +243,10 @@ class BaseDeploymentMapper:
         """
         return None
 
-    async def resolve_config_list_params(
-        self, raw: dict[str, Any] | None, db: AsyncSession
-    ) -> dict[str, Any] | None:
+    async def resolve_config_list_params(self, raw: dict[str, Any] | None, db: AsyncSession) -> dict[str, Any] | None:
         return self._validate_slot(self.api_payloads.config_list_params, raw)
 
-    async def resolve_snapshot_list_params(
-        self, raw: dict[str, Any] | None, db: AsyncSession
-    ) -> dict[str, Any] | None:
+    async def resolve_snapshot_list_params(self, raw: dict[str, Any] | None, db: AsyncSession) -> dict[str, Any] | None:
         return self._validate_slot(self.api_payloads.snapshot_list_params, raw)
 
     def resolve_snapshot_update_artifact(
@@ -311,13 +299,9 @@ class BaseDeploymentMapper:
         provider_params: dict[str, Any] | None,
         db: AsyncSession,
     ) -> ConfigListParams:
-        resolved_provider_params = await self.resolve_config_list_params(
-            provider_params, db
-        )
+        resolved_provider_params = await self.resolve_config_list_params(provider_params, db)
         return ConfigListParams(
-            deployment_ids=[deployment_resource_key]
-            if deployment_resource_key is not None
-            else None,
+            deployment_ids=[deployment_resource_key] if deployment_resource_key is not None else None,
             provider_params=resolved_provider_params,
         )
 
@@ -329,13 +313,9 @@ class BaseDeploymentMapper:
         provider_params: dict[str, Any] | None,
         db: AsyncSession,
     ) -> SnapshotListParams:
-        resolved_provider_params = await self.resolve_snapshot_list_params(
-            provider_params, db
-        )
+        resolved_provider_params = await self.resolve_snapshot_list_params(provider_params, db)
         return SnapshotListParams(
-            deployment_ids=[deployment_resource_key]
-            if deployment_resource_key is not None
-            else None,
+            deployment_ids=[deployment_resource_key] if deployment_resource_key is not None else None,
             snapshot_names=snapshot_names or None,
             provider_params=resolved_provider_params,
         )
@@ -359,9 +339,7 @@ class BaseDeploymentMapper:
                 attached_count=attached_count,
                 created_at=row.created_at,
                 updated_at=row.updated_at,
-                flow_version_ids=[fv_id for fv_id, _ in matched_attachments]
-                if has_flow_filter
-                else None,
+                flow_version_ids=[fv_id for fv_id, _ in matched_attachments] if has_flow_filter else None,
             )
             for row, attached_count, matched_attachments in rows_with_counts
         ]
@@ -383,8 +361,7 @@ class BaseDeploymentMapper:
                 flow_name=flow_name,
                 version_number=flow_version.version_number,
                 attached_at=attachment.created_at,
-                provider_snapshot_id=(attachment.provider_snapshot_id or "").strip()
-                or None,
+                provider_snapshot_id=(attachment.provider_snapshot_id or "").strip() or None,
                 provider_data=None,
             )
             for attachment, flow_version, flow_name in rows
@@ -403,9 +380,7 @@ class BaseDeploymentMapper:
         *,
         provider_key: str,
     ) -> DeploymentCreateResponse:
-        provider_data = (
-            result.provider_result if isinstance(result.provider_result, dict) else None
-        )
+        provider_data = result.provider_result if isinstance(result.provider_result, dict) else None
         return DeploymentCreateResponse(
             id=deployment_row.id,
             provider_id=deployment_row.deployment_provider_account_id,
@@ -426,9 +401,7 @@ class BaseDeploymentMapper:
         *,
         provider_key: str,
     ) -> DeploymentUpdateResponse:
-        provider_data = (
-            result.provider_result if isinstance(result.provider_result, dict) else None
-        )
+        provider_data = result.provider_result if isinstance(result.provider_result, dict) else None
         return DeploymentUpdateResponse(
             id=deployment_row.id,
             provider_id=deployment_row.deployment_provider_account_id,
@@ -468,7 +441,9 @@ class BaseDeploymentMapper:
         *resource* and *resource_name* to produce targeted messages.
         """
         _ = raw_message, resource, resource_name
-        return "A resource conflict occurred in the deployment provider. The requested operation could not be completed."
+        return (
+            "A resource conflict occurred in the deployment provider. The requested operation could not be completed."
+        )
 
     def resolve_credentials(
         self,
@@ -519,9 +494,7 @@ class BaseDeploymentMapper:
             if payload.provider_data is None:
                 msg = "'provider_data' cannot be null when provided."
                 raise ValueError(msg)
-            update_kwargs.update(
-                self.resolve_credentials(provider_data=payload.provider_data)
-            )
+            update_kwargs.update(self.resolve_credentials(provider_data=payload.provider_data))
         return update_kwargs
 
     def resolve_verify_credentials_for_create(
@@ -589,9 +562,7 @@ class BaseDeploymentMapper:
         _ = project_id
         return CreateFlowArtifactProviderData(source_ref=str(flow_version_id))
 
-    def util_create_flow_version_ids(
-        self, payload: DeploymentCreateRequest
-    ) -> list[UUID]:
+    def util_create_flow_version_ids(self, payload: DeploymentCreateRequest) -> list[UUID]:
         """Resolve flow-version ids referenced by create payload."""
         _ = payload
         return []
@@ -674,9 +645,7 @@ class BaseDeploymentMapper:
         _ = result
         return UpdateSnapshotBindings()
 
-    def util_flow_version_patch(
-        self, payload: DeploymentUpdateRequest
-    ) -> FlowVersionPatch:
+    def util_flow_version_patch(self, payload: DeploymentUpdateRequest) -> FlowVersionPatch:
         """Reconcile attachment patch operation from update payload.
 
         Contract schema: ``FlowVersionPatch``.
@@ -740,9 +709,7 @@ class BaseDeploymentMapper:
         _ = (user_id, deployment_db_id, deployment_resource_key, db)
         return None
 
-    def shape_deployment_operation_result(
-        self, provider_result: dict[str, Any] | None
-    ) -> dict[str, Any] | None:
+    def shape_deployment_operation_result(self, provider_result: dict[str, Any] | None) -> dict[str, Any] | None:
         return provider_result
 
     def shape_deployment_list_result(
@@ -755,9 +722,7 @@ class BaseDeploymentMapper:
             if not item_id:
                 continue
             item_provider_data = (
-                self.shape_deployment_item_data(
-                    item.provider_data if isinstance(item.provider_data, dict) else None
-                )
+                self.shape_deployment_item_data(item.provider_data if isinstance(item.provider_data, dict) else None)
                 or {}
             )
             entries.append(
@@ -779,13 +744,9 @@ class BaseDeploymentMapper:
             provider_data={"entries": entries},
         )
 
-    def shape_llm_list_result(
-        self, result: DeploymentListLlmsResult
-    ) -> DeploymentLlmListResponse:
+    def shape_llm_list_result(self, result: DeploymentListLlmsResult) -> DeploymentLlmListResponse:
         """Shape adapter LLM listing into the API response model."""
-        provider_data = (
-            result.provider_result if isinstance(result.provider_result, dict) else None
-        )
+        provider_data = result.provider_result if isinstance(result.provider_result, dict) else None
         return DeploymentLlmListResponse(provider_data=provider_data)
 
     def shape_config_list_result(
@@ -797,18 +758,12 @@ class BaseDeploymentMapper:
     ) -> DeploymentConfigListResponse:
         _ = self._validate_slot(
             self.api_payloads.config_list_result,
-            result.provider_result
-            if isinstance(result.provider_result, dict)
-            else None,
+            result.provider_result if isinstance(result.provider_result, dict) else None,
         )
-        items_all = [
-            item.model_dump(mode="json", exclude_none=True) for item in result.configs
-        ]
+        items_all = [item.model_dump(mode="json", exclude_none=True) for item in result.configs]
         total = len(items_all)
         offset = page_offset(page, size)
-        provider_result = (
-            result.provider_result if isinstance(result.provider_result, dict) else {}
-        )
+        provider_result = result.provider_result if isinstance(result.provider_result, dict) else {}
         provider_data: dict[str, Any] = {
             **provider_result,
             "configs": items_all[offset : offset + size],
@@ -829,18 +784,12 @@ class BaseDeploymentMapper:
     ) -> DeploymentSnapshotListResponse:
         _ = self._validate_slot(
             self.api_payloads.snapshot_list_result,
-            result.provider_result
-            if isinstance(result.provider_result, dict)
-            else None,
+            result.provider_result if isinstance(result.provider_result, dict) else None,
         )
-        items_all = [
-            item.model_dump(mode="json", exclude_none=True) for item in result.snapshots
-        ]
+        items_all = [item.model_dump(mode="json", exclude_none=True) for item in result.snapshots]
         total = len(items_all)
         offset = page_offset(page, size)
-        provider_result = (
-            result.provider_result if isinstance(result.provider_result, dict) else {}
-        )
+        provider_result = result.provider_result if isinstance(result.provider_result, dict) else {}
         provider_data: dict[str, Any] = {
             **provider_result,
             "snapshots": items_all[offset : offset + size],
@@ -852,15 +801,11 @@ class BaseDeploymentMapper:
             total=total,
         )
 
-    def shape_execution_create_provider_data(
-        self, provider_result: dict[str, Any] | None
-    ) -> dict[str, Any] | None:
+    def shape_execution_create_provider_data(self, provider_result: dict[str, Any] | None) -> dict[str, Any] | None:
         """Shape provider_data for execution create responses."""
         return provider_result
 
-    def shape_execution_status_provider_data(
-        self, provider_result: dict[str, Any] | None
-    ) -> dict[str, Any] | None:
+    def shape_execution_status_provider_data(self, provider_result: dict[str, Any] | None) -> dict[str, Any] | None:
         """Shape provider_data for execution status responses."""
         return provider_result
 
@@ -903,14 +848,10 @@ class BaseDeploymentMapper:
         """
         return str(result.deployment_id or "").strip() or None
 
-    def shape_deployment_item_data(
-        self, provider_data: dict[str, Any] | None
-    ) -> dict[str, Any] | None:
+    def shape_deployment_item_data(self, provider_data: dict[str, Any] | None) -> dict[str, Any] | None:
         return provider_data
 
-    def shape_deployment_get_data(
-        self, provider_data: AdapterPayload | None
-    ) -> dict[str, Any] | None:
+    def shape_deployment_get_data(self, provider_data: AdapterPayload | None) -> dict[str, Any] | None:
         """Shape provider_data for single-deployment GET responses."""
         _ = provider_data
         msg = (
@@ -920,9 +861,7 @@ class BaseDeploymentMapper:
         )
         raise NotImplementedError(msg)
 
-    def shape_deployment_status_data(
-        self, provider_data: dict[str, Any] | None
-    ) -> dict[str, Any] | None:
+    def shape_deployment_status_data(self, provider_data: dict[str, Any] | None) -> dict[str, Any] | None:
         return provider_data
 
     @staticmethod

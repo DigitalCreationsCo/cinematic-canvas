@@ -3,9 +3,10 @@ import inspect
 from typing import get_type_hints
 
 from cachetools import LRUCache, cached
+from px.log.logger import logger
+
 from portals.services.base import Service
 from portals.services.schema import ServiceType
-from px.log.logger import logger
 
 
 class ServiceFactory:
@@ -31,18 +32,14 @@ def hash_dict(d: dict) -> str:
     return str(d)
 
 
-def hash_infer_service_types_args(
-    factory: ServiceFactory, available_services=None
-) -> str:
+def hash_infer_service_types_args(factory: ServiceFactory, available_services=None) -> str:
     factory_hash = hash_factory(factory)
     services_hash = hash_dict(available_services)
     return f"{factory_hash}_{services_hash}"
 
 
 @cached(cache=LRUCache(maxsize=10), key=hash_infer_service_types_args)
-def infer_service_types(
-    factory: ServiceFactory, available_services=None
-) -> list["ServiceType"]:
+def infer_service_types(factory: ServiceFactory, available_services=None) -> list["ServiceType"]:
     create_method = factory.create
 
     type_hints = get_type_hints(create_method, globalns=available_services)
@@ -90,9 +87,7 @@ def import_all_services_into_a_dict():
                 {
                     name: obj
                     for name, obj in inspect.getmembers(module, inspect.isclass)
-                    if isinstance(obj, type)
-                    and issubclass(obj, Service)
-                    and obj is not Service
+                    if isinstance(obj, type) and issubclass(obj, Service) and obj is not Service
                 }
             )
         except Exception as exc:

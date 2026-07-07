@@ -49,8 +49,12 @@ export const useRepositoryBranchesSearch: useQueryFunctionType<
     return res.data;
   };
 
-  return query(["useRepositoryBranchesSearch", repositoryId, trimmedQuery], fn, {
-    ...options,
-    enabled: !!repositoryId && !!trimmedQuery && (options?.enabled ?? true),
-  });
+  return query(
+    ["useRepositoryBranchesSearch", repositoryId, trimmedQuery],
+    fn,
+    {
+      ...options,
+      enabled: !!repositoryId && !!trimmedQuery && (options?.enabled ?? true),
+    },
+  );
 };

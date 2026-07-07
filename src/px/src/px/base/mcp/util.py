@@ -181,9 +181,7 @@ def validate_headers(headers: dict[str, str]) -> dict[str, str]:
         sanitized_value = sanitized_value.strip()
 
         if not sanitized_value:
-            logger.warning(
-                f"Header '{name}' has empty value after sanitization, skipping"
-            )
+            logger.warning(f"Header '{name}' has empty value after sanitization, skipping")
             continue
 
         sanitized_headers[normalized_name] = sanitized_value
@@ -271,9 +269,7 @@ def _camel_to_snake(name: str) -> str:
     return s1.lower()
 
 
-def _convert_camel_case_to_snake_case(
-    provided_args: dict[str, Any], arg_schema: type[BaseModel]
-) -> dict[str, Any]:
+def _convert_camel_case_to_snake_case(provided_args: dict[str, Any], arg_schema: type[BaseModel]) -> dict[str, Any]:
     """Convert camelCase field names to snake_case if the schema expects snake_case fields."""
     schema_fields = set(arg_schema.model_fields.keys())
     converted_args = {}
@@ -339,15 +335,11 @@ def _is_pydantic_model_type(annotation: Any) -> bool:
     return isinstance(ann, type) and issubclass(ann, BaseModel)
 
 
-def _try_convert_value(
-    value: Any, expected_type: type, field_name: str, tool_name: str
-) -> Any:
+def _try_convert_value(value: Any, expected_type: type, field_name: str, tool_name: str) -> Any:
     """Try to convert value to expected type. Raise ValueError with clear message on failure."""
 
     def _err(type_desc: str, detail: str) -> ValueError:
-        msg = (
-            f"Tool '{tool_name}': Parameter '{field_name}' expects {type_desc} {detail}"
-        )
+        msg = f"Tool '{tool_name}': Parameter '{field_name}' expects {type_desc} {detail}"
         return ValueError(msg)
 
     expected_type_desc = expected_type.__name__
@@ -358,9 +350,7 @@ def _try_convert_value(
     # return correctly typed value, but handle the
     # special case of bool as this is a subclass of int
     # we'll NOT return but raise an error
-    if isinstance(value, expected_type) and not (
-        expected_type is int and isinstance(value, bool)
-    ):
+    if isinstance(value, expected_type) and not (expected_type is int and isinstance(value, bool)):
         return value
 
     # return custom classes as is
@@ -368,9 +358,7 @@ def _try_convert_value(
         return value
 
     if expected_type in (dict, list):
-        expected_type_desc = (
-            "object (dict)" if expected_type is dict else "array (list)"
-        )
+        expected_type_desc = "object (dict)" if expected_type is dict else "array (list)"
         if isinstance(value, str):
             try:
                 parsed = json.loads(value)
@@ -380,9 +368,7 @@ def _try_convert_value(
                     f"but received invalid JSON string {value!r}; {e}",
                 ) from e
             if not isinstance(parsed, expected_type):
-                raise _err(
-                    expected_type_desc, f"but JSON parsed to {type(parsed).__name__}."
-                )
+                raise _err(expected_type_desc, f"but JSON parsed to {type(parsed).__name__}.")
             return parsed
 
     elif expected_type is int:
@@ -440,12 +426,8 @@ def _normalize_arguments_for_mcp(
                 continue
             expected = _resolve_expected_type(model_field.annotation)
             if expected in (list, dict, str) and model_field.is_required():
-                result[field_name] = (
-                    [] if expected is list else ({} if expected is dict else "")
-                )
-            elif expected in (list, dict, str) and _annotation_accepts_none(
-                model_field.annotation
-            ):
+                result[field_name] = [] if expected is list else ({} if expected is dict else "")
+            elif expected in (list, dict, str) and _annotation_accepts_none(model_field.annotation):
                 result[field_name] = None
             else:
                 result[field_name] = value
@@ -453,9 +435,7 @@ def _normalize_arguments_for_mcp(
         expected = _resolve_expected_type(model_field.annotation)
         if expected is None:
             # Nested Pydantic model (object with properties): UI/API often sends as JSON string
-            if _is_pydantic_model_type(model_field.annotation) and isinstance(
-                value, str
-            ):
+            if _is_pydantic_model_type(model_field.annotation) and isinstance(value, str):
                 try:
                     parsed = json.loads(value)
                 except json.JSONDecodeError as e:
@@ -492,11 +472,7 @@ def _handle_tool_validation_error(
     """Handle validation errors for tool arguments with detailed error messages."""
     # Check if this is a case where the tool was called with no arguments
     if not provided_args and hasattr(arg_schema, "model_fields"):
-        required_fields = [
-            name
-            for name, field in arg_schema.model_fields.items()
-            if field.is_required()
-        ]
+        required_fields = [name for name, field in arg_schema.model_fields.items() if field.is_required()]
         if required_fields:
             msg = (
                 f"Tool '{tool_name}' requires arguments but none were provided. "
@@ -546,11 +522,7 @@ def _convert_mcp_result(result: Any) -> Any:
 
     if not needs_list:
         # Text-only: join all text blocks into a single string (backward compat)
-        return "\n".join(
-            getattr(block, "text", "")
-            for block in content
-            if getattr(block, "type", None) == "text"
-        )
+        return "\n".join(getattr(block, "text", "") for block in content if getattr(block, "type", None) == "text")
 
     # Mixed or non-text: build a list of LangChain content blocks
     blocks: list[dict] = []
@@ -573,16 +545,12 @@ def _convert_mcp_result(result: Any) -> Any:
             try:
                 raw_text = json.dumps(block.model_dump(), ensure_ascii=False)
             except AttributeError:
-                raw_text = json.dumps(
-                    {"type": block_type, "raw": str(block)}, ensure_ascii=False
-                )
+                raw_text = json.dumps({"type": block_type, "raw": str(block)}, ensure_ascii=False)
             blocks.append({"type": "text", "text": raw_text})
     return blocks
 
 
-def create_tool_coroutine(
-    tool_name: str, arg_schema: type[BaseModel], client
-) -> Callable[..., Awaitable]:
+def create_tool_coroutine(tool_name: str, arg_schema: type[BaseModel], client) -> Callable[..., Awaitable]:
     async def tool_coroutine(*args, **kwargs):
         # Get field names from the model (preserving order)
         field_names = list(arg_schema.model_fields.keys())
@@ -597,9 +565,7 @@ def create_tool_coroutine(
         provided_args.update(kwargs)
         provided_args = _convert_camel_case_to_snake_case(provided_args, arg_schema)
         original_args = provided_args
-        provided_args = _normalize_arguments_for_mcp(
-            provided_args, arg_schema, tool_name
-        )
+        provided_args = _normalize_arguments_for_mcp(provided_args, arg_schema, tool_name)
         # Validate input and fill defaults for missing optional fields
         try:
             validated = arg_schema.model_validate(provided_args)
@@ -618,9 +584,7 @@ def create_tool_coroutine(
     return tool_coroutine
 
 
-def create_tool_func(
-    tool_name: str, arg_schema: type[BaseModel], client
-) -> Callable[..., str]:
+def create_tool_func(tool_name: str, arg_schema: type[BaseModel], client) -> Callable[..., str]:
     def tool_func(*args, **kwargs):
         field_names = list(arg_schema.model_fields.keys())
         provided_args = {}
@@ -632,9 +596,7 @@ def create_tool_func(
         provided_args.update(kwargs)
         provided_args = _convert_camel_case_to_snake_case(provided_args, arg_schema)
         original_args = provided_args
-        provided_args = _normalize_arguments_for_mcp(
-            provided_args, arg_schema, tool_name
-        )
+        provided_args = _normalize_arguments_for_mcp(provided_args, arg_schema, tool_name)
         try:
             validated = arg_schema.model_validate(provided_args)
         except Exception as e:  # noqa: BLE001
@@ -666,9 +628,7 @@ def get_unique_name(base_name, max_length, existing_names):
         i += 1
 
 
-async def get_flow_snake_case(
-    flow_name: str, user_id: str, session, *, is_action: bool | None = None
-):
+async def get_flow_snake_case(flow_name: str, user_id: str, session, *, is_action: bool | None = None):
     try:
         from portals.services.database.models.flow.model import Flow
         from sqlmodel import select
@@ -678,11 +638,7 @@ async def get_flow_snake_case(
 
     uuid_user_id = UUID(user_id) if isinstance(user_id, str) else user_id
 
-    stmt = (
-        select(Flow)
-        .where(Flow.user_id == uuid_user_id)
-        .where(Flow.is_component == False)
-    )  # noqa: E712
+    stmt = select(Flow).where(Flow.user_id == uuid_user_id).where(Flow.is_component == False)
     flows = (await session.exec(stmt)).all()
 
     for flow in flows:
@@ -701,9 +657,7 @@ def _is_valid_key_value_item(item: Any) -> bool:
     return isinstance(item, dict) and "key" in item and "value" in item
 
 
-def _process_headers(
-    headers: Any, request_variables: dict[str, str] | None = None
-) -> dict:
+def _process_headers(headers: Any, request_variables: dict[str, str] | None = None) -> dict:
     """Process the headers input into a valid dictionary and resolve global variables.
 
     Args:
@@ -715,9 +669,7 @@ def _process_headers(
     if headers is None:
         return {}
     if isinstance(headers, dict):
-        resolved_headers = _resolve_global_variables_in_headers(
-            headers, request_variables
-        )
+        resolved_headers = _resolve_global_variables_in_headers(headers, request_variables)
         return validate_headers(resolved_headers)
     if isinstance(headers, list):
         processed_headers = {}
@@ -730,16 +682,12 @@ def _process_headers(
                 processed_headers[key] = value
         except (KeyError, TypeError, ValueError):
             return {}  # Return empty dictionary instead of None
-        resolved_headers = _resolve_global_variables_in_headers(
-            processed_headers, request_variables
-        )
+        resolved_headers = _resolve_global_variables_in_headers(processed_headers, request_variables)
         return validate_headers(resolved_headers)
     return {}
 
 
-def _resolve_global_variables_in_headers(
-    headers: dict, request_variables: dict[str, str] | None
-) -> dict:
+def _resolve_global_variables_in_headers(headers: dict, request_variables: dict[str, str] | None) -> dict:
     """Resolve global variable names in header values to their actual values.
 
     Args:
@@ -770,14 +718,10 @@ def _validate_node_installation(command: str) -> str:
     return command
 
 
-async def _validate_connection_params(
-    mode: str, command: str | None = None, url: str | None = None
-) -> None:
+async def _validate_connection_params(mode: str, command: str | None = None, url: str | None = None) -> None:
     """Validate connection parameters based on mode."""
     if mode not in ["Stdio", "Streamable_HTTP", "SSE"]:
-        msg = (
-            f"Invalid mode: {mode}. Must be either 'Stdio', 'Streamable_HTTP', or 'SSE'"
-        )
+        msg = f"Invalid mode: {mode}. Must be either 'Stdio', 'Streamable_HTTP', or 'SSE'"
         raise ValueError(msg)
 
     if mode == "Stdio" and not command:
@@ -850,17 +794,12 @@ class MCPSessionManager:
             sessions_to_remove = []
 
             for session_id, session_info in list(sessions.items()):
-                if (
-                    current_time - session_info["last_used"]
-                    > get_session_idle_timeout()
-                ):
+                if current_time - session_info["last_used"] > get_session_idle_timeout():
                     sessions_to_remove.append(session_id)
 
             # Clean up idle sessions
             for session_id in sessions_to_remove:
-                await logger.ainfo(
-                    f"Cleaning up idle session {session_id} for server {server_key}"
-                )
+                await logger.ainfo(f"Cleaning up idle session {session_id} for server {server_key}")
                 await self._cleanup_session_by_id(server_key, session_id)
 
             # Remove server entry if no sessions left
@@ -899,9 +838,7 @@ class MCPSessionManager:
             # Use a shorter timeout for the connectivity test to fail fast
             response = await asyncio.wait_for(session.list_tools(), timeout=3.0)
         except (asyncio.TimeoutError, ConnectionError, OSError, ValueError) as e:
-            await logger.adebug(
-                f"Session connectivity test failed (standard error): {e}"
-            )
+            await logger.adebug(f"Session connectivity test failed (standard error): {e}")
             return False
         except Exception as e:
             # Handle MCP-specific errors that might not be in the standard list
@@ -914,9 +851,7 @@ class MCPSessionManager:
                 or "Transport closed" in error_str
                 or "Stream closed" in error_str
             ):
-                await logger.adebug(
-                    f"Session connectivity test failed (MCP connection error): {e}"
-                )
+                await logger.adebug(f"Session connectivity test failed (MCP connection error): {e}")
                 return False
             # Re-raise unexpected errors
             await logger.awarning(f"Unexpected error in connectivity test: {e}")
@@ -924,32 +859,22 @@ class MCPSessionManager:
         else:
             # Validate that we got a meaningful response
             if response is None:
-                await logger.adebug(
-                    "Session connectivity test failed: received None response"
-                )
+                await logger.adebug("Session connectivity test failed: received None response")
                 return False
             try:
                 # Check if we can access the tools list (even if empty)
                 tools = getattr(response, "tools", None)
                 if tools is None:
-                    await logger.adebug(
-                        "Session connectivity test failed: no tools attribute in response"
-                    )
+                    await logger.adebug("Session connectivity test failed: no tools attribute in response")
                     return False
             except (AttributeError, TypeError) as e:
-                await logger.adebug(
-                    f"Session connectivity test failed while validating response: {e}"
-                )
+                await logger.adebug(f"Session connectivity test failed while validating response: {e}")
                 return False
             else:
-                await logger.adebug(
-                    f"Session connectivity test passed: found {len(tools)} tools"
-                )
+                await logger.adebug(f"Session connectivity test passed: found {len(tools)} tools")
                 return True
 
-    async def get_session(
-        self, context_id: str, connection_params, transport_type: str
-    ):
+    async def get_session(self, context_id: str, connection_params, transport_type: str):
         """Get or create a session with improved reuse strategy.
 
         The key insight is that we should reuse sessions based on the server
@@ -980,32 +905,24 @@ class MCPSessionManager:
 
                 # Quick health check
                 if await self._validate_session_connectivity(session):
-                    await logger.adebug(
-                        f"Reusing existing session {session_id} for server {server_key}"
-                    )
+                    await logger.adebug(f"Reusing existing session {session_id} for server {server_key}")
                     # record mapping & bump ref-count for backwards compatibility
                     self._context_to_session[context_id] = (server_key, session_id)
                     self._session_refcount[(server_key, session_id)] = (
                         self._session_refcount.get((server_key, session_id), 0) + 1
                     )
                     return session
-                await logger.ainfo(
-                    f"Session {session_id} for server {server_key} failed health check, cleaning up"
-                )
+                await logger.ainfo(f"Session {session_id} for server {server_key} failed health check, cleaning up")
                 await self._cleanup_session_by_id(server_key, session_id)
             else:
                 # Task is done, clean up
-                await logger.ainfo(
-                    f"Session {session_id} for server {server_key} task is done, cleaning up"
-                )
+                await logger.ainfo(f"Session {session_id} for server {server_key} task is done, cleaning up")
                 await self._cleanup_session_by_id(server_key, session_id)
 
         # Check if we've reached the maximum number of sessions for this server
         if len(sessions) >= get_max_sessions_per_server():
             # Remove the oldest session
-            oldest_session_id = min(
-                sessions.keys(), key=lambda x: sessions[x]["last_used"]
-            )
+            oldest_session_id = min(sessions.keys(), key=lambda x: sessions[x]["last_used"])
             await logger.ainfo(
                 f"Maximum sessions reached for server {server_key}, removing oldest session {oldest_session_id}"
             )
@@ -1016,9 +933,7 @@ class MCPSessionManager:
         await logger.ainfo(f"Creating new session {session_id} for server {server_key}")
 
         if transport_type == "stdio":
-            session, task = await self._create_stdio_session(
-                session_id, connection_params
-            )
+            session, task = await self._create_stdio_session(session_id, connection_params)
             actual_transport = "stdio"
         elif transport_type == "streamable_http":
             # Pass the cached transport preference if available
@@ -1027,9 +942,7 @@ class MCPSessionManager:
                 session,
                 task,
                 actual_transport,
-            ) = await self._create_streamable_http_session(
-                session_id, connection_params, preferred_transport
-            )
+            ) = await self._create_streamable_http_session(session_id, connection_params, preferred_transport)
             # Cache the transport that worked for future connections
             self._transport_preference[server_key] = actual_transport
         else:
@@ -1148,9 +1061,7 @@ class MCPSessionManager:
             if preferred_transport != "sse":
                 # Try Streamable HTTP first with a quick timeout
                 try:
-                    await logger.adebug(
-                        f"Attempting Streamable HTTP connection for session {session_id}"
-                    )
+                    await logger.adebug(f"Attempting Streamable HTTP connection for session {session_id}")
                     # Use a shorter timeout for the initial connection attempt (2 seconds)
                     async with streamablehttp_client(
                         url=connection_params["url"],
@@ -1163,9 +1074,7 @@ class MCPSessionManager:
                             # Initialize with a timeout to fail fast
                             await asyncio.wait_for(session.initialize(), timeout=2.0)
                             used_transport.append("streamable_http")
-                            await logger.ainfo(
-                                f"Session {session_id} connected via Streamable HTTP"
-                            )
+                            await logger.ainfo(f"Session {session_id} connected via Streamable HTTP")
                             # Signal that session is ready
                             session_future.set_result(session)
 
@@ -1176,33 +1085,23 @@ class MCPSessionManager:
                             try:
                                 await event.wait()
                             except asyncio.CancelledError:
-                                await logger.ainfo(
-                                    f"Session {session_id} (Streamable HTTP) is shutting down"
-                                )
+                                await logger.ainfo(f"Session {session_id} (Streamable HTTP) is shutting down")
                 except (asyncio.TimeoutError, Exception) as e:  # noqa: BLE001
                     # If Streamable HTTP fails or times out, try SSE as fallback immediately
                     streamable_error = e
-                    error_type = (
-                        "timed out" if isinstance(e, asyncio.TimeoutError) else "failed"
-                    )
+                    error_type = "timed out" if isinstance(e, asyncio.TimeoutError) else "failed"
                     await logger.awarning(
                         f"Streamable HTTP {error_type} for session {session_id}: {e}. Falling back to SSE..."
                     )
             else:
-                await logger.adebug(
-                    f"Skipping Streamable HTTP for session {session_id}, using cached SSE preference"
-                )
+                await logger.adebug(f"Skipping Streamable HTTP for session {session_id}, using cached SSE preference")
 
             # Try SSE if Streamable HTTP failed or if SSE is preferred
             if streamable_error is not None or preferred_transport == "sse":
                 try:
-                    await logger.adebug(
-                        f"Attempting SSE connection for session {session_id}"
-                    )
+                    await logger.adebug(f"Attempting SSE connection for session {session_id}")
                     # Extract SSE read timeout from connection params, default to 30s if not present
-                    sse_read_timeout = connection_params.get(
-                        "sse_read_timeout_seconds", 30
-                    )
+                    sse_read_timeout = connection_params.get("sse_read_timeout_seconds", 30)
 
                     async with sse_client(
                         connection_params["url"],
@@ -1215,12 +1114,8 @@ class MCPSessionManager:
                         async with session:
                             await session.initialize()
                             used_transport.append("sse")
-                            fallback_msg = (
-                                " (fallback)" if streamable_error else " (preferred)"
-                            )
-                            await logger.ainfo(
-                                f"Session {session_id} connected via SSE{fallback_msg}"
-                            )
+                            fallback_msg = " (fallback)" if streamable_error else " (preferred)"
+                            await logger.ainfo(f"Session {session_id} connected via SSE{fallback_msg}")
                             # Signal that session is ready
                             if not session_future.done():
                                 session_future.set_result(session)
@@ -1232,9 +1127,7 @@ class MCPSessionManager:
                             try:
                                 await event.wait()
                             except asyncio.CancelledError:
-                                await logger.ainfo(
-                                    f"Session {session_id} (SSE) is shutting down"
-                                )
+                                await logger.ainfo(f"Session {session_id} (SSE) is shutting down")
                 except Exception as sse_error:  # noqa: BLE001
                     # Both transports failed (or just SSE if it was preferred)
                     if streamable_error:
@@ -1249,13 +1142,9 @@ class MCPSessionManager:
                                 )
                             )
                     else:
-                        await logger.aerror(
-                            f"SSE connection failed for session {session_id}: {sse_error}"
-                        )
+                        await logger.aerror(f"SSE connection failed for session {session_id}: {sse_error}")
                         if not session_future.done():
-                            session_future.set_exception(
-                                ValueError(f"Failed to connect via SSE: {sse_error}")
-                            )
+                            session_future.set_exception(ValueError(f"Failed to connect via SSE: {sse_error}"))
 
         # Start the background task
         task = asyncio.create_task(session_task())
@@ -1268,9 +1157,7 @@ class MCPSessionManager:
             # Log which transport was used
             if used_transport:
                 transport_used = used_transport[0]
-                await logger.ainfo(
-                    f"Session {session_id} successfully established using {transport_used}"
-                )
+                await logger.ainfo(f"Session {session_id} successfully established using {transport_used}")
                 return session, task, transport_used
             # This shouldn't happen, but handle it just in case
             msg = f"Session {session_id} established but transport not recorded"
@@ -1314,13 +1201,9 @@ class MCPSessionManager:
                 if hasattr(session, "aclose"):
                     try:
                         await session.aclose()
-                        await logger.adebug(
-                            "Successfully closed session %s using aclose()", session_id
-                        )
+                        await logger.adebug("Successfully closed session %s using aclose()", session_id)
                     except Exception as e:  # noqa: BLE001
-                        await logger.adebug(
-                            "Error closing session %s with aclose(): %s", session_id, e
-                        )
+                        await logger.adebug("Error closing session %s with aclose(): %s", session_id, e)
 
                 # If no aclose, try regular close method
                 elif hasattr(session, "close"):
@@ -1349,9 +1232,7 @@ class MCPSessionManager:
                                     session_id,
                                 )
                     except Exception as e:  # noqa: BLE001
-                        await logger.adebug(
-                            "Error closing session %s with close(): %s", session_id, e
-                        )
+                        await logger.adebug("Error closing session %s with close(): %s", session_id, e)
 
             # Cancel the background task which will properly close the session
             if "task" in session_info:
@@ -1441,9 +1322,7 @@ class MCPStdioClient:
         self._session_context: str | None = None
         self._component_cache = component_cache
 
-    async def _connect_to_server(
-        self, command_str: str, env: dict[str, str] | None = None
-    ) -> list[StructuredTool]:
+    async def _connect_to_server(self, command_str: str, env: dict[str, str] | None = None) -> list[StructuredTool]:
         """Connect to MCP server using stdio transport (SDK style).
 
         .. todo:: Remove the ``bash -c`` / ``cmd /c`` shell wrapper and pass
@@ -1506,9 +1385,7 @@ class MCPStdioClient:
         self._connected = True
         return response.tools
 
-    async def connect_to_server(
-        self, command_str: str, env: dict[str, str] | None = None
-    ) -> list[StructuredTool]:
+    async def connect_to_server(self, command_str: str, env: dict[str, str] | None = None) -> list[StructuredTool]:
         """Connect to MCP server using stdio transport (SDK style)."""
         return await asyncio.wait_for(
             self._connect_to_server(command_str, env),
@@ -1543,9 +1420,7 @@ class MCPStdioClient:
 
         # Use cached session manager to get/create persistent session
         session_manager = self._get_session_manager()
-        return await session_manager.get_session(
-            self._session_context, self._connection_params, "stdio"
-        )
+        return await session_manager.get_session(self._session_context, self._connection_params, "stdio")
 
     async def run_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Run a tool with the given arguments using context-specific session.
@@ -1561,9 +1436,7 @@ class MCPStdioClient:
             ValueError: If session is not initialized or tool execution fails
         """
         if not self._connected or not self._connection_params:
-            msg = (
-                "Session not initialized or disconnected. Call connect_to_server first."
-            )
+            msg = "Session not initialized or disconnected. Call connect_to_server first."
             raise ValueError(msg)
 
         # If no session context is set, create a default one
@@ -1579,9 +1452,7 @@ class MCPStdioClient:
 
         for attempt in range(max_retries):
             try:
-                await logger.adebug(
-                    f"Attempting to run tool '{tool_name}' (attempt {attempt + 1}/{max_retries})"
-                )
+                await logger.adebug(f"Attempting to run tool '{tool_name}' (attempt {attempt + 1}/{max_retries})")
                 # Get or create persistent session
                 session = await self._get_or_create_session()
 
@@ -1591,16 +1462,12 @@ class MCPStdioClient:
                 )
             except Exception as e:
                 current_error_type = type(e).__name__
-                await logger.awarning(
-                    f"Tool '{tool_name}' failed on attempt {attempt + 1}: {current_error_type} - {e}"
-                )
+                await logger.awarning(f"Tool '{tool_name}' failed on attempt {attempt + 1}: {current_error_type} - {e}")
 
                 # Import specific MCP error types for detection
                 try:
                     is_closed_resource_error = isinstance(e, ClosedResourceError)
-                    is_mcp_connection_error = isinstance(
-                        e, McpError
-                    ) and "Connection closed" in str(e)
+                    is_mcp_connection_error = isinstance(e, McpError) and "Connection closed" in str(e)
                 except ImportError:
                     is_closed_resource_error = "ClosedResourceError" in str(type(e))
                     is_mcp_connection_error = "Connection closed" in str(e)
@@ -1610,17 +1477,13 @@ class MCPStdioClient:
 
                 # If we're getting the same error type repeatedly, don't retry
                 if last_error_type == current_error_type and attempt > 0:
-                    await logger.aerror(
-                        f"Repeated {current_error_type} error for tool '{tool_name}', not retrying"
-                    )
+                    await logger.aerror(f"Repeated {current_error_type} error for tool '{tool_name}', not retrying")
                     break
 
                 last_error_type = current_error_type
 
                 # If it's a connection error (ClosedResourceError or MCP connection closed) and we have retries left
-                if (
-                    is_closed_resource_error or is_mcp_connection_error
-                ) and attempt < max_retries - 1:
+                if (is_closed_resource_error or is_mcp_connection_error) and attempt < max_retries - 1:
                     await logger.awarning(
                         f"MCP session connection issue for tool '{tool_name}', retrying with fresh session..."
                     )
@@ -1824,9 +1687,7 @@ class MCPStreamableHttpClient:
         session_id = None
         if getattr(self, "session", None) is not None:
             # Common attributes in MCP python SDK: `session_id` or `id`
-            session_id = getattr(self.session, "session_id", None) or getattr(
-                self.session, "id", None
-            )
+            session_id = getattr(self.session, "session_id", None) or getattr(self.session, "id", None)
 
         headers: dict[str, str] = dict(self._connection_params.get("headers", {}))
         if session_id:
@@ -1853,9 +1714,7 @@ class MCPStreamableHttpClient:
             ValueError: If session is not initialized or tool execution fails
         """
         if not self._connected or not self._connection_params:
-            msg = (
-                "Session not initialized or disconnected. Call connect_to_server first."
-            )
+            msg = "Session not initialized or disconnected. Call connect_to_server first."
             raise ValueError(msg)
 
         # If no session context is set, create a default one
@@ -1871,9 +1730,7 @@ class MCPStreamableHttpClient:
 
         for attempt in range(max_retries):
             try:
-                await logger.adebug(
-                    f"Attempting to run tool '{tool_name}' (attempt {attempt + 1}/{max_retries})"
-                )
+                await logger.adebug(f"Attempting to run tool '{tool_name}' (attempt {attempt + 1}/{max_retries})")
                 # Get or create persistent session
                 session = await self._get_or_create_session()
 
@@ -1883,9 +1740,7 @@ class MCPStreamableHttpClient:
                 )
             except Exception as e:
                 current_error_type = type(e).__name__
-                await logger.awarning(
-                    f"Tool '{tool_name}' failed on attempt {attempt + 1}: {current_error_type} - {e}"
-                )
+                await logger.awarning(f"Tool '{tool_name}' failed on attempt {attempt + 1}: {current_error_type} - {e}")
 
                 # Import specific MCP error types for detection
                 try:
@@ -1893,9 +1748,7 @@ class MCPStreamableHttpClient:
                     from mcp.shared.exceptions import McpError
 
                     is_closed_resource_error = isinstance(e, ClosedResourceError)
-                    is_mcp_connection_error = isinstance(
-                        e, McpError
-                    ) and "Connection closed" in str(e)
+                    is_mcp_connection_error = isinstance(e, McpError) and "Connection closed" in str(e)
                 except ImportError:
                     is_closed_resource_error = "ClosedResourceError" in str(type(e))
                     is_mcp_connection_error = "Connection closed" in str(e)
@@ -1905,17 +1758,13 @@ class MCPStreamableHttpClient:
 
                 # If we're getting the same error type repeatedly, don't retry
                 if last_error_type == current_error_type and attempt > 0:
-                    await logger.aerror(
-                        f"Repeated {current_error_type} error for tool '{tool_name}', not retrying"
-                    )
+                    await logger.aerror(f"Repeated {current_error_type} error for tool '{tool_name}', not retrying")
                     break
 
                 last_error_type = current_error_type
 
                 # If it's a connection error (ClosedResourceError or MCP connection closed) and we have retries left
-                if (
-                    is_closed_resource_error or is_mcp_connection_error
-                ) and attempt < max_retries - 1:
+                if (is_closed_resource_error or is_mcp_connection_error) and attempt < max_retries - 1:
                     await logger.awarning(
                         f"MCP session connection issue for tool '{tool_name}', retrying with fresh session..."
                     )
@@ -2015,21 +1864,13 @@ async def update_tools(
 
     # Backward compatibility: accept mcp_sse_client parameter
     if mcp_streamable_http_client is None:
-        mcp_streamable_http_client = (
-            mcp_sse_client if mcp_sse_client is not None else MCPStreamableHttpClient()
-        )
+        mcp_streamable_http_client = mcp_sse_client if mcp_sse_client is not None else MCPStreamableHttpClient()
 
     # Fetch server config from backend
     # Determine mode from config, defaulting to Streamable_HTTP if URL present
     mode = server_config.get("mode", "")
     if not mode:
-        mode = (
-            "Stdio"
-            if "command" in server_config
-            else "Streamable_HTTP"
-            if "url" in server_config
-            else ""
-        )
+        mode = "Stdio" if "command" in server_config else "Streamable_HTTP" if "url" in server_config else ""
 
     command = server_config.get("command", "")
     url = server_config.get("url", "")
@@ -2087,11 +1928,7 @@ async def update_tools(
                         i += 1
 
                 if last_positional_idx is not None:
-                    args = (
-                        args[:last_positional_idx]
-                        + extra_args
-                        + args[last_positional_idx:]
-                    )
+                    args = args[:last_positional_idx] + extra_args + args[last_positional_idx:]
                 else:
                     args.extend(extra_args)
         full_command = shlex.join([*shlex.split(command), *args])
@@ -2100,18 +1937,14 @@ async def update_tools(
     elif mode in ["Streamable_HTTP", "SSE"]:
         # Streamable HTTP connection with SSE fallback
         verify_ssl = server_config.get("verify_ssl", True)
-        tools = await mcp_streamable_http_client.connect_to_server(
-            url, headers=headers, verify_ssl=verify_ssl
-        )
+        tools = await mcp_streamable_http_client.connect_to_server(url, headers=headers, verify_ssl=verify_ssl)
         client = mcp_streamable_http_client
     else:
         logger.error(f"Invalid MCP server mode for '{server_name}': {mode}")
         return "", [], {}
 
     if not tools or not client or not client._connected:
-        logger.warning(
-            f"No tools available from MCP server '{server_name}' or connection failed"
-        )
+        logger.warning(f"No tools available from MCP server '{server_name}' or connection failed")
         return "", [], {}
 
     tool_list = []
@@ -2122,9 +1955,7 @@ async def update_tools(
         try:
             args_schema = create_input_schema_from_json_schema(tool.inputSchema)
             if not args_schema:
-                logger.warning(
-                    f"Could not create schema for tool '{tool.name}' from server '{server_name}'"
-                )
+                logger.warning(f"Could not create schema for tool '{tool.name}' from server '{server_name}'")
                 continue
 
             # Create a custom StructuredTool that bypasses schema validation
@@ -2144,9 +1975,7 @@ async def update_tools(
                         parsed_input = tool_input or {}
 
                     converted_input = self._convert_parameters(parsed_input)
-                    tool_args, tool_kwargs = super()._to_args_and_kwargs(
-                        converted_input, tool_call_id
-                    )
+                    tool_args, tool_kwargs = super()._to_args_and_kwargs(converted_input, tool_call_id)
                     if tool_call_id is not None:
                         tool_kwargs[self._tool_call_id_key] = tool_call_id
                     return tool_args, tool_kwargs
@@ -2160,14 +1989,8 @@ async def update_tools(
                 ) -> tuple[Any, Any]:
                     """Return converted content plus the raw MCP result as artifact."""
                     tool_call_id = kwargs.pop(self._tool_call_id_key, None)
-                    raw = super()._run(
-                        *args, config=config, run_manager=run_manager, **kwargs
-                    )
-                    content = (
-                        _convert_mcp_result(raw)
-                        if tool_call_id and hasattr(raw, "content")
-                        else raw
-                    )
+                    raw = super()._run(*args, config=config, run_manager=run_manager, **kwargs)
+                    content = _convert_mcp_result(raw) if tool_call_id and hasattr(raw, "content") else raw
                     return content, raw
 
                 async def _arun(
@@ -2179,14 +2002,8 @@ async def update_tools(
                 ) -> tuple[Any, Any]:
                     """Return converted content plus the raw MCP result as artifact."""
                     tool_call_id = kwargs.pop(self._tool_call_id_key, None)
-                    raw = await super()._arun(
-                        *args, config=config, run_manager=run_manager, **kwargs
-                    )
-                    content = (
-                        _convert_mcp_result(raw)
-                        if tool_call_id and hasattr(raw, "content")
-                        else raw
-                    )
+                    raw = await super()._arun(*args, config=config, run_manager=run_manager, **kwargs)
+                    content = _convert_mcp_result(raw) if tool_call_id and hasattr(raw, "content") else raw
                     return content, raw
 
                 def _convert_parameters(self, input_dict):
@@ -2211,9 +2028,7 @@ async def update_tools(
 
                     unflattened = maybe_unflatten_dict(converted_dict)
                     # Normalize: convert JSON strings to dict for nested model params
-                    normalized = _normalize_arguments_for_mcp(
-                        unflattened, self.args_schema, self.name
-                    )
+                    normalized = _normalize_arguments_for_mcp(unflattened, self.args_schema, self.name)
                     # Preserve extra keys not in schema (e.g. flattened keys)
                     schema_fields = set(self.args_schema.model_fields.keys())
                     for key, value in unflattened.items():
@@ -2238,12 +2053,8 @@ async def update_tools(
             tool_list.append(tool_obj)
             tool_cache[tool.name] = tool_obj
         except (ConnectionError, TimeoutError, OSError, ValueError) as e:
-            logger.error(
-                f"Failed to create tool '{tool.name}' from server '{server_name}': {e}"
-            )
-            msg = (
-                f"Failed to create tool '{tool.name}' from server '{server_name}': {e}"
-            )
+            logger.error(f"Failed to create tool '{tool.name}' from server '{server_name}': {e}")
+            msg = f"Failed to create tool '{tool.name}' from server '{server_name}': {e}"
             raise ValueError(msg) from e
         except (TypeError, AttributeError, KeyError, NameError, RecursionError) as e:
             # Per-tool resilience (#11229): isolate one bad schema, keep the rest of the toolset.
@@ -2254,7 +2065,5 @@ async def update_tools(
             )
             continue
 
-    logger.info(
-        f"Successfully loaded {len(tool_list)} tools from MCP server '{server_name}'"
-    )
+    logger.info(f"Successfully loaded {len(tool_list)} tools from MCP server '{server_name}'")
     return mode, tool_list, tool_cache

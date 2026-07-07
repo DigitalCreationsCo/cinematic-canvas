@@ -11,8 +11,6 @@ from unittest.mock import patch
 
 import pytest
 import typer
-from typer.testing import CliRunner
-
 from px.__main__ import app
 from px.cli.init import (
     _ENVIRONMENTS_YAML,
@@ -23,6 +21,7 @@ from px.cli.init import (
     _write,
     init_command,
 )
+from typer.testing import CliRunner
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -288,15 +287,11 @@ class TestInitCommandGitignore:
         content = (tmp_path / ".gitignore").read_text(encoding="utf-8")
         assert content == _GITIGNORE
 
-    def test_appends_rule_to_existing_gitignore_without_entry(
-        self, tmp_path: Path
-    ) -> None:
+    def test_appends_rule_to_existing_gitignore_without_entry(self, tmp_path: Path) -> None:
         gitignore = tmp_path / ".gitignore"
         gitignore.write_text("*.pyc\n__pycache__/\n", encoding="utf-8")
         # Directory already has .gitignore so use overwrite=True to bypass the non-empty guard
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=True, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=True, example=False)
         content = gitignore.read_text(encoding="utf-8")
         assert "*.pyc" in content
         assert "__pycache__/" in content
@@ -306,9 +301,7 @@ class TestInitCommandGitignore:
         gitignore = tmp_path / ".gitignore"
         gitignore.write_text("portals-environments.toml\n", encoding="utf-8")
         # Directory already has .gitignore so use overwrite=True to bypass the non-empty guard
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=True, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=True, example=False)
         content = gitignore.read_text(encoding="utf-8")
         # Should appear exactly once
         assert content.count("portals-environments.toml") == 1
@@ -318,9 +311,7 @@ class TestInitCommandGitignore:
         original = "node_modules/\ndist/\n"
         gitignore.write_text(original, encoding="utf-8")
         # Directory already has .gitignore so use overwrite=True to bypass the non-empty guard
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=True, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=True, example=False)
         content = gitignore.read_text(encoding="utf-8")
         # Original content is kept
         assert "node_modules/" in content
@@ -332,9 +323,7 @@ class TestInitCommandGitignore:
         gitignore = tmp_path / ".gitignore"
         gitignore.write_text("*.pyc\n", encoding="utf-8")
         # Directory already has .gitignore so use overwrite=True to bypass the non-empty guard
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=True, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=True, example=False)
         content = gitignore.read_text(encoding="utf-8")
         # The separator between existing content and appended block should be \n\n
         assert "\n\n" in content
@@ -347,17 +336,13 @@ class TestInitCommandGitignore:
 
 class TestInitCommandExampleTrue:
     def test_creates_hello_world_json(self, tmp_path: Path) -> None:
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=False, example=True
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=False, example=True)
         assert (tmp_path / "flows" / "hello-world.json").exists()
 
     def test_hello_world_is_valid_json(self, tmp_path: Path) -> None:
         import json
 
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=False, example=True
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=False, example=True)
         content = (tmp_path / "flows" / "hello-world.json").read_text(encoding="utf-8")
         flow = json.loads(content)
         assert isinstance(flow, dict)
@@ -365,26 +350,18 @@ class TestInitCommandExampleTrue:
     def test_hello_world_has_id_and_name(self, tmp_path: Path) -> None:
         import json
 
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=False, example=True
-        )
-        flow = json.loads(
-            (tmp_path / "flows" / "hello-world.json").read_text(encoding="utf-8")
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=False, example=True)
+        flow = json.loads((tmp_path / "flows" / "hello-world.json").read_text(encoding="utf-8"))
         assert "id" in flow
         assert "name" in flow
         assert flow["name"] == "hello-world"
 
     def test_no_gitkeep_when_example_is_true(self, tmp_path: Path) -> None:
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=False, example=True
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=False, example=True)
         assert not (tmp_path / "flows" / ".gitkeep").exists()
 
     def test_other_files_still_created_with_example(self, tmp_path: Path) -> None:
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=False, example=True
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=False, example=True)
         assert (tmp_path / ".px" / "environments.yaml").exists()
         assert (tmp_path / "tests" / "test_flows.py").exists()
         assert (tmp_path / "tests" / "__init__.py").exists()
@@ -438,48 +415,34 @@ class TestInitCommandGitHubActions:
     def test_creates_github_workflows_dir_when_gha_true(self, tmp_path: Path) -> None:
         if not _GHA_SRC.exists():
             pytest.skip("GitHub Actions templates not bundled")
-        init_command(
-            project_dir=tmp_path, github_actions=True, overwrite=False, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=True, overwrite=False, example=False)
         assert (tmp_path / ".github" / "workflows").is_dir()
 
     def test_copies_all_yml_templates(self, tmp_path: Path) -> None:
         if not _GHA_SRC.exists():
             pytest.skip("GitHub Actions templates not bundled")
         expected = sorted(t.name for t in _GHA_SRC.glob("*.yml"))
-        init_command(
-            project_dir=tmp_path, github_actions=True, overwrite=False, example=False
-        )
-        created = sorted(
-            p.name for p in (tmp_path / ".github" / "workflows").glob("*.yml")
-        )
+        init_command(project_dir=tmp_path, github_actions=True, overwrite=False, example=False)
+        created = sorted(p.name for p in (tmp_path / ".github" / "workflows").glob("*.yml"))
         assert created == expected
 
     def test_workflow_files_are_non_empty(self, tmp_path: Path) -> None:
         if not _GHA_SRC.exists():
             pytest.skip("GitHub Actions templates not bundled")
-        init_command(
-            project_dir=tmp_path, github_actions=True, overwrite=False, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=True, overwrite=False, example=False)
         for yml in (tmp_path / ".github" / "workflows").glob("*.yml"):
             assert yml.stat().st_size > 0, f"{yml.name} should not be empty"
 
     def test_workflow_file_content_matches_template(self, tmp_path: Path) -> None:
         if not _GHA_SRC.exists():
             pytest.skip("GitHub Actions templates not bundled")
-        init_command(
-            project_dir=tmp_path, github_actions=True, overwrite=False, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=True, overwrite=False, example=False)
         for src_tmpl in _GHA_SRC.glob("*.yml"):
             dest = tmp_path / ".github" / "workflows" / src_tmpl.name
-            assert dest.read_text(encoding="utf-8") == src_tmpl.read_text(
-                encoding="utf-8"
-            )
+            assert dest.read_text(encoding="utf-8") == src_tmpl.read_text(encoding="utf-8")
 
     def test_skips_github_workflows_when_gha_false(self, tmp_path: Path) -> None:
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=False, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=False, example=False)
         assert not (tmp_path / ".github").exists()
 
     def test_warns_when_gha_templates_dir_missing(self, tmp_path: Path) -> None:
@@ -533,9 +496,7 @@ class TestInitCommandShellScripts:
         _run_init(tmp_path)
         for src_tmpl in _SHELL_SRC.glob("*.sh"):
             dest = tmp_path / "ci" / src_tmpl.name
-            assert dest.read_text(encoding="utf-8") == src_tmpl.read_text(
-                encoding="utf-8"
-            )
+            assert dest.read_text(encoding="utf-8") == src_tmpl.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -544,9 +505,7 @@ class TestInitCommandShellScripts:
 
 
 class TestInitCommandNonEmptyGuard:
-    def test_exits_with_code_1_on_non_empty_dir_without_overwrite(
-        self, tmp_path: Path
-    ) -> None:
+    def test_exits_with_code_1_on_non_empty_dir_without_overwrite(self, tmp_path: Path) -> None:
         (tmp_path / "existing.txt").write_text("data", encoding="utf-8")
         with pytest.raises(typer.Exit) as exc_info:
             init_command(
@@ -561,31 +520,23 @@ class TestInitCommandNonEmptyGuard:
         target = tmp_path / "empty"
         target.mkdir()
         # Should not raise
-        init_command(
-            project_dir=target, github_actions=False, overwrite=False, example=False
-        )
+        init_command(project_dir=target, github_actions=False, overwrite=False, example=False)
 
     def test_nonexistent_dir_does_not_raise(self, tmp_path: Path) -> None:
         target = tmp_path / "brand-new"
         # Should not raise
-        init_command(
-            project_dir=target, github_actions=False, overwrite=False, example=False
-        )
+        init_command(project_dir=target, github_actions=False, overwrite=False, example=False)
 
     def test_git_dir_only_is_not_considered_non_empty(self, tmp_path: Path) -> None:
         """A directory containing only .git is treated as empty by the guard."""
         (tmp_path / ".git").mkdir()
         # Should not raise — .git is excluded from the check
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=False, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=False, example=False)
 
     def test_overwrite_succeeds_on_non_empty_dir(self, tmp_path: Path) -> None:
         (tmp_path / "existing.txt").write_text("data", encoding="utf-8")
         # Should not raise
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=True, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=True, example=False)
         assert (tmp_path / ".px" / "environments.yaml").exists()
 
 
@@ -599,9 +550,7 @@ class TestInitCommandOverwrite:
         env_yaml = tmp_path / ".px" / "environments.yaml"
         env_yaml.parent.mkdir(parents=True)
         env_yaml.write_text("# old content\n", encoding="utf-8")
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=True, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=True, example=False)
         content = env_yaml.read_text(encoding="utf-8")
         assert content == _ENVIRONMENTS_YAML
 
@@ -610,9 +559,7 @@ class TestInitCommandOverwrite:
         tests_dir.mkdir(parents=True)
         test_file = tests_dir / "test_flows.py"
         test_file.write_text("# old tests\n", encoding="utf-8")
-        init_command(
-            project_dir=tmp_path, github_actions=False, overwrite=True, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=False, overwrite=True, example=False)
         content = test_file.read_text(encoding="utf-8")
         assert content == _TEST_FLOWS_PY
 
@@ -623,30 +570,22 @@ class TestInitCommandOverwrite:
         dest = tmp_path / ".px" / "environments.yaml"
         dest.parent.mkdir(parents=True)
         dest.write_text("# custom content\n", encoding="utf-8")
-        _write(
-            dest, _ENVIRONMENTS_YAML, "label", created, target=target, overwrite=False
-        )
+        _write(dest, _ENVIRONMENTS_YAML, "label", created, target=target, overwrite=False)
         # Original content must be preserved
         assert dest.read_text(encoding="utf-8") == "# custom content\n"
         assert created == []
 
-    def test_overwrite_with_github_actions_replaces_workflows(
-        self, tmp_path: Path
-    ) -> None:
+    def test_overwrite_with_github_actions_replaces_workflows(self, tmp_path: Path) -> None:
         if not _GHA_SRC.exists():
             pytest.skip("GitHub Actions templates not bundled")
         # First init
-        init_command(
-            project_dir=tmp_path, github_actions=True, overwrite=False, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=True, overwrite=False, example=False)
         # Corrupt one workflow file
         wf_dir = tmp_path / ".github" / "workflows"
         first_wf = next(wf_dir.glob("*.yml"))
         first_wf.write_text("# corrupted\n", encoding="utf-8")
         # Overwrite init
-        init_command(
-            project_dir=tmp_path, github_actions=True, overwrite=True, example=False
-        )
+        init_command(project_dir=tmp_path, github_actions=True, overwrite=True, example=False)
         # Content should be restored from template
         src_content = (_GHA_SRC / first_wf.name).read_text(encoding="utf-8")
         assert first_wf.read_text(encoding="utf-8") == src_content
@@ -690,18 +629,14 @@ class TestInitCLI:
 
     def test_no_example_flag_creates_gitkeep(self, tmp_path: Path) -> None:
         proj = tmp_path / "proj"
-        result = runner.invoke(
-            app, ["init", str(proj), "--no-github-actions", "--no-example"]
-        )
+        result = runner.invoke(app, ["init", str(proj), "--no-github-actions", "--no-example"])
         assert result.exit_code == 0, result.output
         assert (proj / "flows" / ".gitkeep").exists()
         assert not (proj / "flows" / "hello-world.json").exists()
 
     def test_example_flag_creates_hello_world(self, tmp_path: Path) -> None:
         proj = tmp_path / "proj"
-        result = runner.invoke(
-            app, ["init", str(proj), "--no-github-actions", "--example"]
-        )
+        result = runner.invoke(app, ["init", str(proj), "--no-github-actions", "--example"])
         assert result.exit_code == 0, result.output
         assert (proj / "flows" / "hello-world.json").exists()
 
@@ -716,18 +651,14 @@ class TestInitCLI:
         assert result.exit_code == 0, result.output
         assert (proj / ".px" / "environments.yaml").exists()
 
-    def test_non_empty_dir_without_overwrite_exits_nonzero(
-        self, tmp_path: Path
-    ) -> None:
+    def test_non_empty_dir_without_overwrite_exits_nonzero(self, tmp_path: Path) -> None:
         proj = tmp_path / "proj"
         proj.mkdir()
         (proj / "some-file.txt").write_text("existing", encoding="utf-8")
         result = runner.invoke(app, ["init", str(proj), "--no-github-actions"])
         assert result.exit_code != 0
 
-    def test_default_project_dir_is_current_directory(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_default_project_dir_is_current_directory(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """When no project_dir argument is given the CLI defaults to '.'."""
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["init", "--no-github-actions", "--no-example"])
@@ -735,8 +666,6 @@ class TestInitCLI:
         assert (tmp_path / ".px" / "environments.yaml").exists()
 
     def test_init_output_mentions_next_steps(self, tmp_path: Path) -> None:
-        result = runner.invoke(
-            app, ["init", str(tmp_path / "proj"), "--no-github-actions"]
-        )
+        result = runner.invoke(app, ["init", str(tmp_path / "proj"), "--no-github-actions"])
         assert result.exit_code == 0, result.output
         assert "Next steps" in result.output

@@ -5,9 +5,10 @@ import {
   findLastBotMessage,
   updateMessageProperties,
 } from "@/components/core/playgroundComponent/chat-view/utils/message-utils";
-import i18n from "../i18n";
 import { POLLING_MESSAGES } from "@/constants/constants";
 import { performStreamingRequest } from "@/controllers/API/api";
+import { persistMessageProperties } from "@/controllers/API/helpers/persist-message-properties";
+import { transformBuildErrorMessages } from "@/customization/utils/custom-build-error-transform";
 import {
   customBuildUrl,
   customCancelBuildUrl,
@@ -15,11 +16,10 @@ import {
 } from "@/customization/utils/custom-buildUtils";
 import { customPollBuildEvents } from "@/customization/utils/custom-poll-build-events";
 import { getFetchCredentials } from "@/customization/utils/get-fetch-credentials";
-import { transformBuildErrorMessages } from "@/customization/utils/custom-build-error-transform";
 import { BuildStatus, EventDeliveryType } from "../constants/enums";
 import { getVerticesOrder, postBuildVertex } from "../controllers/API";
+import i18n from "../i18n";
 import useAlertStore from "../stores/alertStore";
-import { persistMessageProperties } from "@/controllers/API/helpers/persist-message-properties";
 import useFlowStore from "../stores/flowStore";
 import { useMessagesStore } from "../stores/messagesStore";
 import type { VertexBuildTypeAPI } from "../types/api";
@@ -51,6 +51,32 @@ type BuildVerticesParams = {
   session?: string;
   playgroundPage?: boolean;
   eventDelivery: EventDeliveryType;
+  /**
+   * Narrative entity payload injected by the frontend.
+   *
+   * On **desktop**, the frontend reads entities from the local NAP
+   * repository via the platform layer and injects them here.
+   *
+   * On **web**, entities are loaded from the backend API.
+   *
+   * The backend's `generate_flow_events` extracts this from
+   * `inputs.model_dump()` and sets it on `graph.flow_state["nap_payload"]`
+   * which the Python `BaseStateAwareComponent` reads.
+   *
+   * @see BaseStateAwareComponent
+   */
+  nap_payload?: {
+    universe: string;
+    entities: Array<{
+      uri: string;
+      name: string;
+      type: string;
+      version: number;
+      properties: Record<string, unknown>;
+      references: Record<string, unknown>;
+      representations: Record<string, unknown>;
+    }>;
+  };
 };
 
 // Events that can be processed synchronously (no await). These are batched
@@ -221,6 +247,7 @@ export async function buildFlowVertices({
   session,
   playgroundPage,
   eventDelivery,
+  nap_payload,
 }: BuildVerticesParams) {
   const inputs = {};
 
@@ -262,6 +289,12 @@ export async function buildFlowVertices({
   }
   if (session) {
     inputs["session"] = session;
+  }
+  // Inject NAP narrative payload (frontend reads from local repo on desktop).
+  // The backend extracts this from inputs.model_dump() and places it on
+  // graph.flow_state["nap_payload"] for BaseStateAwareComponent to consume.
+  if (nap_payload) {
+    inputs["nap_payload"] = nap_payload;
   }
   // Add client timestamp for accurate duration tracking
   inputs["client_request_time"] = Date.now();
@@ -414,22 +447,21 @@ export async function buildFlowVertices({
         },
         buildController,
       });
-    } else {
-      const callbacks = {
-        onBuildStart,
-        onBuildUpdate,
-        onBuildComplete,
-        onBuildError,
-        onGetOrderSuccess,
-        onValidateNodes,
-      };
-      return await pollBuildEvents(
-        eventsUrl,
-        buildResults,
-        callbacks,
-        buildController,
-      );
     }
+    const callbacks = {
+      onBuildStart,
+      onBuildUpdate,
+      onBuildComplete,
+      onBuildError,
+      onGetOrderSuccess,
+      onValidateNodes,
+    };
+    return await pollBuildEvents(
+      eventsUrl,
+      buildResults,
+      callbacks,
+      buildController,
+    );
   } catch (error: unknown) {
     console.error("Build process error:", error);
     if (error instanceof Error && error.name === "AbortError") {
@@ -489,10 +521,9 @@ export function processEndVertexEvent(
       onBuildUpdate(buildData, BuildStatus.ERROR, "");
       buildResults.push(false);
       return false;
-    } else {
-      onBuildUpdate(buildData, BuildStatus.BUILT, "");
-      buildResults.push(true);
     }
+    onBuildUpdate(buildData, BuildStatus.BUILT, "");
+    buildResults.push(true);
   }
 
   // Check if this vertex is a ChatOutput - if so, save segment duration and reset timer
@@ -819,7 +850,7 @@ export async function onEvent(
     }
     case "log": {
       const { component_id, output, name, message, type: logType } = data ?? {};
-      if (!component_id || !output) {
+      if (!(component_id && output)) {
         console.error(
           "[buildUtils] Received malformed log event; missing component_id or output",
           data,
@@ -912,12 +943,14 @@ export async function buildVertices({
       currentLayer.map(async (element) => {
         // Check if id is in the list of inactive nodes
         if (
-          !useFlowStore
-            .getState()
-            .verticesBuild?.verticesIds.includes(element.id) &&
-          !useFlowStore
-            .getState()
-            .verticesBuild?.verticesIds.includes(element.reference ?? "") &&
+          !(
+            useFlowStore
+              .getState()
+              .verticesBuild?.verticesIds.includes(element.id) ||
+            useFlowStore
+              .getState()
+              .verticesBuild?.verticesIds.includes(element.reference ?? "")
+          ) &&
           onBuildUpdate
         ) {
           // If it is, skip building and set the state to inactive

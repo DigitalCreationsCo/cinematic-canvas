@@ -8,6 +8,8 @@ from mcp import types
 from mcp.server import NotificationOptions, Server
 from mcp.server.sse import SseServerTransport
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+from px.log.logger import logger
+
 from portals.api.utils import CurrentActiveMCPUser, raise_error_if_astra_cloud_env
 from portals.api.v1.mcp_utils import (
     current_user_ctx,
@@ -17,7 +19,6 @@ from portals.api.v1.mcp_utils import (
     handle_mcp_errors,
     handle_read_resource,
 )
-from px.log.logger import logger
 
 router = APIRouter(prefix="/mcp", tags=["mcp"], include_in_schema=False)
 
@@ -49,9 +50,7 @@ async def handle_global_tools():
 
 @server.call_tool()
 @handle_mcp_errors
-async def handle_global_call_tool(
-    name: str, arguments: dict
-) -> list[types.TextContent]:
+async def handle_global_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     """Handle tool execution requests for global MCP server."""
     return await handle_call_tool(name, arguments, server)
 
@@ -105,9 +104,7 @@ async def handle_sse(request: Request, current_user: CurrentActiveMCPUser):
     await logger.ainfo(msg)
     token = current_user_ctx.set(current_user)
     try:
-        async with sse.connect_sse(
-            request.scope, request.receive, request._send
-        ) as streams:  # noqa: SLF001
+        async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
             try:
                 msg = "Starting SSE connection"
                 await logger.adebug(msg)
@@ -117,9 +114,7 @@ async def handle_sse(request: Request, current_user: CurrentActiveMCPUser):
                 notification_options = NotificationOptions(
                     prompts_changed=True, resources_changed=True, tools_changed=True
                 )
-                init_options = server.create_initialization_options(
-                    notification_options
-                )
+                init_options = server.create_initialization_options(notification_options)
                 msg = f"Initialization options: {init_options}"
                 await logger.adebug(msg)
 
@@ -154,14 +149,10 @@ async def handle_messages(request: Request):
         await sse.handle_post_message(request.scope, request.receive, request._send)  # noqa: SLF001
     except (BrokenResourceError, BrokenPipeError) as e:
         await logger.ainfo("MCP Server disconnected")
-        raise HTTPException(
-            status_code=404, detail=f"MCP Server disconnected, error: {e}"
-        ) from e
+        raise HTTPException(status_code=404, detail=f"MCP Server disconnected, error: {e}") from e
     except Exception as e:
         await logger.aerror(f"Internal server error: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Internal server error: {e}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}") from e
 
 
 ################################################################################
@@ -197,14 +188,10 @@ class StreamableHTTP:
         """Create and enter the Streamable HTTP session manager lifecycle."""
         async with self._start_stop_lock:
             if self._started:
-                await logger.adebug(
-                    "Streamable HTTP session manager already running; skipping start"
-                )
+                await logger.adebug("Streamable HTTP session manager already running; skipping start")
                 return
             try:
-                self.session_manager = StreamableHTTPSessionManager(
-                    server, stateless=stateless
-                )
+                self.session_manager = StreamableHTTPSessionManager(server, stateless=stateless)
                 self._mgr_ready = asyncio.Event()
                 self._mgr_close = asyncio.Event()
                 self._mgr_task = asyncio.create_task(self._start_session_manager())
@@ -213,9 +200,7 @@ class StreamableHTTP:
                     await self._mgr_task  # await to surface the exception
             except Exception as e:
                 self._cleanup()
-                await logger.aexception(
-                    f"Error starting Streamable HTTP session manager: {e}"
-                )
+                await logger.aexception(f"Error starting Streamable HTTP session manager: {e}")
                 raise
 
     def get_manager(self) -> StreamableHTTPSessionManager:
@@ -236,9 +221,7 @@ class StreamableHTTP:
                 self._mgr_close.set()  # type: ignore[union-attr]
                 await self._mgr_task  # type: ignore[misc]
             except Exception as e:
-                await logger.aexception(
-                    f"Error stopping Streamable HTTP session manager: {e}"
-                )
+                await logger.aexception(f"Error stopping Streamable HTTP session manager: {e}")
                 raise
             finally:
                 self._cleanup()
@@ -306,9 +289,7 @@ async def _dispatch_streamable_http(
         raise
     except Exception as exc:
         await logger.aexception(f"Error handling Streamable HTTP request: {exc!s}")
-        raise HTTPException(
-            status_code=500, detail="Internal server error in Streamable HTTP transport"
-        ) from exc
+        raise HTTPException(status_code=500, detail="Internal server error in Streamable HTTP transport") from exc
     finally:
         current_user_ctx.reset(context_token)
 

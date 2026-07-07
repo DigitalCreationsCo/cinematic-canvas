@@ -1,6 +1,7 @@
 from pathlib import Path
 from urllib.parse import urlparse
 
+from loguru import logger
 from portals.custom.custom_component.component import Component
 from portals.io import (
     DropdownInput,
@@ -11,7 +12,6 @@ from portals.io import (
     SecretStrInput,
 )
 from portals.schema.data import Data
-from loguru import logger
 
 
 class VLMRunTranscription(Component):

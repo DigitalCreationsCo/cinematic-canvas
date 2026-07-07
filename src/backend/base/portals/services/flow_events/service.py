@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal, get_args
 
 from diskcache import Cache
+
 from portals.services.base import Service
 
 FLOW_EVENT_TYPES = Literal[

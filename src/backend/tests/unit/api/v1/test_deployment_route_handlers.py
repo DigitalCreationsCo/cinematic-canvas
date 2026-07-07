@@ -16,6 +16,19 @@ from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
+from portals.api.v1.deployments import DeploymentTelemetryCtx
+from portals.api.v1.mappers.deployments.contracts import ProviderSnapshotBinding
+from portals.api.v1.schemas.deployments import (
+    DeploymentLlmListResponse,
+    DeploymentProviderAccountCreateRequest,
+    DeploymentProviderAccountUpdateRequest,
+    DeploymentUpdateRequest,
+    SnapshotUpdateRequest,
+)
+from portals.services.database.models.deployment.exceptions import DeploymentGuardError
+from portals.services.database.models.deployment_provider_account.schemas import (
+    DeploymentProviderKey,
+)
 from px.services.adapters.deployment.exceptions import (
     AuthenticationError,
     DeploymentNotFoundError,
@@ -32,19 +45,6 @@ from px.services.adapters.deployment.schema import (
     ItemResult,
     SnapshotItem,
     SnapshotListResult,
-)
-from portals.api.v1.deployments import DeploymentTelemetryCtx
-from portals.api.v1.mappers.deployments.contracts import ProviderSnapshotBinding
-from portals.api.v1.schemas.deployments import (
-    DeploymentLlmListResponse,
-    DeploymentProviderAccountCreateRequest,
-    DeploymentProviderAccountUpdateRequest,
-    DeploymentUpdateRequest,
-    SnapshotUpdateRequest,
-)
-from portals.services.database.models.deployment.exceptions import DeploymentGuardError
-from portals.services.database.models.deployment_provider_account.schemas import (
-    DeploymentProviderKey,
 )
 
 ROUTES_MODULE = "portals.api.v1.deployments"
@@ -79,9 +79,7 @@ def _fake_deployment_row(**overrides) -> SimpleNamespace:
         name=overrides.get("name", "test-deployment"),
         description=overrides.get("description"),
         deployment_type=overrides.get("deployment_type", "agent"),
-        deployment_provider_account_id=overrides.get(
-            "deployment_provider_account_id", uuid4()
-        ),
+        deployment_provider_account_id=overrides.get("deployment_provider_account_id", uuid4()),
         project_id=overrides.get("project_id", uuid4()),
         created_at=overrides.get("created_at"),
         updated_at=overrides.get("updated_at"),
@@ -121,9 +119,7 @@ class TestQueryParameterValidators:
     def test_dedupe_snapshot_names_preserves_order(self):
         from portals.api.v1.deployments import _dedupe_snapshot_names
 
-        assert _dedupe_snapshot_names(
-            ["my_tool", "other_tool", "my_tool", "third_tool"]
-        ) == [
+        assert _dedupe_snapshot_names(["my_tool", "other_tool", "my_tool", "third_tool"]) == [
             "my_tool",
             "other_tool",
             "third_tool",
@@ -217,10 +213,7 @@ class TestCreateDeploymentRollback:
 
         mock_rollback.assert_awaited_once()
         assert mock_rollback.call_args.kwargs["resource_id"] == create_result.id
-        assert (
-            mock_rollback.call_args.kwargs["provider_result"]
-            == create_result.provider_result
-        )
+        assert mock_rollback.call_args.kwargs["provider_result"] == create_result.provider_result
 
     @pytest.mark.asyncio
     @patch(f"{ROUTES_MODULE}.rollback_provider_create", new_callable=AsyncMock)
@@ -339,30 +332,20 @@ class TestCreateDeploymentRollback:
         pa = _fake_provider_account()
         mock_get_pa.return_value = pa
         adapter = AsyncMock()
-        adapter.update.return_value = DeploymentUpdateResult(
-            id="existing-agent-1", provider_result={"ok": True}
-        )
+        adapter.update.return_value = DeploymentUpdateResult(id="existing-agent-1", provider_result={"ok": True})
         mock_resolve_adapter.return_value = adapter
         mapper = MagicMock()
-        mapper.util_existing_deployment_resource_key_for_create.return_value = (
-            "existing-agent-1"
-        )
+        mapper.util_existing_deployment_resource_key_for_create.return_value = "existing-agent-1"
         mapper.util_should_mutate_provider_for_existing_deployment_create.return_value = True
         mapper.util_create_flow_version_ids.return_value = []
-        mapper.resolve_deployment_update_for_existing_create = AsyncMock(
-            return_value=MagicMock()
-        )
-        mapper.util_create_result_from_existing_update.return_value = (
-            DeploymentCreateResult(
-                id="existing-agent-1",
-                provider_result={"app_ids": ["app-1"]},
-            )
+        mapper.resolve_deployment_update_for_existing_create = AsyncMock(return_value=MagicMock())
+        mapper.util_create_result_from_existing_update.return_value = DeploymentCreateResult(
+            id="existing-agent-1",
+            provider_result={"app_ids": ["app-1"]},
         )
         mock_get_mapper.return_value = mapper
         mock_resolve_project.return_value = uuid4()
-        mock_create_db.return_value = _fake_deployment_row(
-            resource_key="existing-agent-1"
-        )
+        mock_create_db.return_value = _fake_deployment_row(resource_key="existing-agent-1")
 
         session = AsyncMock()
         session.commit.side_effect = RuntimeError("DB commit failed")
@@ -435,14 +418,10 @@ class TestCreateDeploymentExistingAgent:
         adapter = AsyncMock()
         mock_resolve_adapter.return_value = adapter
         mapper = MagicMock()
-        mapper.util_existing_deployment_resource_key_for_create.return_value = (
-            "existing-agent-1"
-        )
+        mapper.util_existing_deployment_resource_key_for_create.return_value = "existing-agent-1"
         mapper.util_should_mutate_provider_for_existing_deployment_create.return_value = False
         mapper.util_create_flow_version_ids.return_value = []
-        mapper.util_create_result_from_existing_resource.return_value = (
-            DeploymentCreateResult(id="existing-agent-1")
-        )
+        mapper.util_create_result_from_existing_resource.return_value = DeploymentCreateResult(id="existing-agent-1")
         mock_get_mapper.return_value = mapper
         mock_resolve_project.return_value = uuid4()
         dep_row = _fake_deployment_row(resource_key="existing-agent-1")
@@ -514,14 +493,10 @@ class TestCreateDeploymentExistingAgent:
         pa = _fake_provider_account()
         mock_get_pa.return_value = pa
         adapter = AsyncMock()
-        adapter.update.return_value = DeploymentUpdateResult(
-            id="existing-agent-1", provider_result={"ok": True}
-        )
+        adapter.update.return_value = DeploymentUpdateResult(id="existing-agent-1", provider_result={"ok": True})
         mock_resolve_adapter.return_value = adapter
         mapper = MagicMock()
-        mapper.util_existing_deployment_resource_key_for_create.return_value = (
-            "existing-agent-1"
-        )
+        mapper.util_existing_deployment_resource_key_for_create.return_value = "existing-agent-1"
         mapper.util_should_mutate_provider_for_existing_deployment_create.return_value = True
         mapper.util_create_flow_version_ids.return_value = []
         mapper.resolve_deployment_update_for_existing_create = AsyncMock(
@@ -602,20 +577,14 @@ class TestCreateDeploymentExistingAgent:
         )
         mock_resolve_adapter.return_value = adapter
         mapper = MagicMock()
-        mapper.util_existing_deployment_resource_key_for_create.return_value = (
-            "existing-agent-1"
-        )
+        mapper.util_existing_deployment_resource_key_for_create.return_value = "existing-agent-1"
         mapper.util_should_mutate_provider_for_existing_deployment_create.return_value = True
         mapper.util_create_flow_version_ids.return_value = []
         mapper.resolve_deployment_update_for_existing_create = AsyncMock(
             return_value=MagicMock(provider_data={"upsert_flows": []})
         )
-        mapped_create_result = DeploymentCreateResult(
-            id="existing-agent-1", provider_result={"ok": True}
-        )
-        mapper.util_create_result_from_existing_update.return_value = (
-            mapped_create_result
-        )
+        mapped_create_result = DeploymentCreateResult(id="existing-agent-1", provider_result={"ok": True})
+        mapper.util_create_result_from_existing_update.return_value = mapped_create_result
         mock_get_mapper.return_value = mapper
         mock_resolve_project.return_value = uuid4()
         dep_row = _fake_deployment_row(resource_key="existing-agent-1")
@@ -677,15 +646,11 @@ class TestCreateDeploymentExistingAgent:
 
         pa = _fake_provider_account()
         mock_get_pa.return_value = pa
-        mock_get_by_resource_key.return_value = _fake_deployment_row(
-            resource_key="existing-agent-1"
-        )
+        mock_get_by_resource_key.return_value = _fake_deployment_row(resource_key="existing-agent-1")
         adapter = AsyncMock()
         mock_resolve_adapter.return_value = adapter
         mapper = MagicMock()
-        mapper.util_existing_deployment_resource_key_for_create.return_value = (
-            "existing-agent-1"
-        )
+        mapper.util_existing_deployment_resource_key_for_create.return_value = "existing-agent-1"
         mock_get_mapper.return_value = mapper
 
         payload = MagicMock()
@@ -739,9 +704,7 @@ class TestListDeploymentsLoadFromProvider:
         mapper = MagicMock()
         expected = MagicMock()
         mapper.shape_deployment_list_result.return_value = expected
-        mapper.resolve_load_from_provider_deployment_list_params.return_value = {
-            "environment": "draft"
-        }
+        mapper.resolve_load_from_provider_deployment_list_params.return_value = {"environment": "draft"}
         mock_get_mapper.return_value = mapper
 
         result = await list_deployments(
@@ -1015,9 +978,7 @@ class TestConfigAndSnapshotListRoutes:
         mapper = MagicMock()
         adapter_params = MagicMock()
         expected_response = MagicMock()
-        mapper.resolve_config_list_adapter_params = AsyncMock(
-            return_value=adapter_params
-        )
+        mapper.resolve_config_list_adapter_params = AsyncMock(return_value=adapter_params)
         mapper.shape_config_list_result.return_value = expected_response
         mock_get_mapper.return_value = mapper
 
@@ -1075,9 +1036,7 @@ class TestConfigAndSnapshotListRoutes:
         mapper = MagicMock()
         adapter_params = MagicMock()
         expected_response = MagicMock()
-        mapper.resolve_snapshot_list_adapter_params = AsyncMock(
-            return_value=adapter_params
-        )
+        mapper.resolve_snapshot_list_adapter_params = AsyncMock(return_value=adapter_params)
         mapper.shape_snapshot_list_result.return_value = expected_response
         mock_get_mapper.return_value = mapper
 
@@ -1126,10 +1085,7 @@ class TestConfigAndSnapshotListRoutes:
             )
 
         assert exc_info.value.status_code == 422
-        assert (
-            exc_info.value.detail
-            == "filtering by both deployment_id and names is not supported."
-        )
+        assert exc_info.value.detail == "filtering by both deployment_id and names is not supported."
         mock_get_pa.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -1154,9 +1110,7 @@ class TestConfigAndSnapshotListRoutes:
         mapper = MagicMock()
         adapter_params = MagicMock()
         expected_response = MagicMock()
-        mapper.resolve_snapshot_list_adapter_params = AsyncMock(
-            return_value=adapter_params
-        )
+        mapper.resolve_snapshot_list_adapter_params = AsyncMock(return_value=adapter_params)
         mapper.shape_snapshot_list_result.return_value = expected_response
         mock_get_mapper.return_value = mapper
 
@@ -1234,9 +1188,7 @@ class TestUpdateSnapshotRoute:
 
         mock_get_attachment.return_value = attachment
         mock_get_deployment_row.return_value = deployment
-        mock_get_flow_version.return_value = SimpleNamespace(
-            id=target_flow_version_id, flow_id=flow_id, data={}
-        )
+        mock_get_flow_version.return_value = SimpleNamespace(id=target_flow_version_id, flow_id=flow_id, data={})
         mock_get_pa.return_value = provider_account
         adapter = AsyncMock()
         mock_resolve_adapter.return_value = adapter
@@ -1320,12 +1272,8 @@ class TestUpdateSnapshotRoute:
         provider_account = _fake_provider_account()
         provider_account.id = deployment.deployment_provider_account_id
 
-        target_version = SimpleNamespace(
-            id=target_flow_version_id, flow_id=flow_id, data={"nodes": []}
-        )
-        previous_version = SimpleNamespace(
-            id=previous_flow_version_id, flow_id=flow_id, data={"nodes": []}
-        )
+        target_version = SimpleNamespace(id=target_flow_version_id, flow_id=flow_id, data={"nodes": []})
+        previous_version = SimpleNamespace(id=previous_flow_version_id, flow_id=flow_id, data={"nodes": []})
         mock_get_flow_version.side_effect = [target_version, previous_version]
         mock_get_attachment.return_value = attachment
         mock_get_deployment_row.return_value = deployment
@@ -1366,9 +1314,7 @@ class TestUpdateSnapshotRoute:
 
 class TestListDeploymentFlowVersionsRoute:
     @pytest.mark.asyncio
-    @patch(
-        f"{ROUTES_MODULE}.list_deployment_flow_versions_synced", new_callable=AsyncMock
-    )
+    @patch(f"{ROUTES_MODULE}.list_deployment_flow_versions_synced", new_callable=AsyncMock)
     @patch(
         f"{ROUTES_MODULE}.resolve_adapter_mapper_from_deployment",
         new_callable=AsyncMock,
@@ -1437,10 +1383,7 @@ class TestListDeploymentFlowVersionsRoute:
 
         mock_list_flow_versions_synced.assert_awaited_once()
         helper_kwargs = mock_list_flow_versions_synced.call_args.kwargs
-        assert (
-            helper_kwargs["provider_id"]
-            == deployment_row.deployment_provider_account_id
-        )
+        assert helper_kwargs["provider_id"] == deployment_row.deployment_provider_account_id
         assert helper_kwargs["deployment_id"] == deployment_row.id
         assert helper_kwargs["page"] == 2
         assert helper_kwargs["size"] == 5
@@ -1528,9 +1471,7 @@ class TestProviderAccountRoutes:
             await update_provider_account(
                 provider_id=existing_account.id,
                 session=AsyncMock(),
-                payload=DeploymentProviderAccountUpdateRequest(
-                    provider_data={"api_key": "new-api-key"}
-                ),
+                payload=DeploymentProviderAccountUpdateRequest(provider_data={"api_key": "new-api-key"}),
                 current_user=_fake_user(),
                 telemetry=_fake_telemetry(),
             )
@@ -1558,9 +1499,7 @@ class TestProviderAccountRoutes:
 
         adapter = AsyncMock()
         mock_resolve_adapter.return_value = adapter
-        mock_create_provider_account.side_effect = ValueError(
-            "Provider account already exists"
-        )
+        mock_create_provider_account.side_effect = ValueError("Provider account already exists")
 
         payload = DeploymentProviderAccountCreateRequest(
             name="prod",
@@ -1641,9 +1580,7 @@ class TestProviderAccountRoutes:
 
         mapper = MagicMock()
         mapper.resolve_verify_credentials_for_update.return_value = None
-        mapper.resolve_provider_account_update.return_value = {
-            "provider_data": {"tenant_id": "tenant-renamed"}
-        }
+        mapper.resolve_provider_account_update.return_value = {"provider_data": {"tenant_id": "tenant-renamed"}}
         mock_get_mapper.return_value = mapper
         mock_resolve_adapter.return_value = AsyncMock()
         mock_update_provider_account.side_effect = Exception(
@@ -1660,9 +1597,7 @@ class TestProviderAccountRoutes:
             await update_provider_account(
                 provider_id=existing_account.id,
                 session=AsyncMock(),
-                payload=DeploymentProviderAccountUpdateRequest(
-                    provider_data={"tenant_id": "tenant-renamed"}
-                ),
+                payload=DeploymentProviderAccountUpdateRequest(provider_data={"tenant_id": "tenant-renamed"}),
                 current_user=_fake_user(),
                 telemetry=_fake_telemetry(),
             )
@@ -1687,9 +1622,7 @@ class TestProviderAccountRoutes:
 
         mapper = MagicMock()
         mapper.resolve_verify_credentials_for_update.return_value = None
-        mapper.resolve_provider_account_update.return_value = {
-            "provider_data": {"tenant_id": "tenant-renamed"}
-        }
+        mapper.resolve_provider_account_update.return_value = {"provider_data": {"tenant_id": "tenant-renamed"}}
         mock_get_mapper.return_value = mapper
         mock_resolve_adapter.return_value = AsyncMock()
         mock_update_provider_account.side_effect = DeploymentGuardError(
@@ -1705,9 +1638,7 @@ class TestProviderAccountRoutes:
             await update_provider_account(
                 provider_id=existing_account.id,
                 session=AsyncMock(),
-                payload=DeploymentProviderAccountUpdateRequest(
-                    provider_data={"tenant_id": "tenant-renamed"}
-                ),
+                payload=DeploymentProviderAccountUpdateRequest(provider_data={"tenant_id": "tenant-renamed"}),
                 current_user=_fake_user(),
                 telemetry=_fake_telemetry(),
             )
@@ -1850,9 +1781,7 @@ class TestProviderAccountRoutes:
 
         async def capture_scope(*_args, **_kwargs):
             current = DeploymentProviderIDContext.get_current()
-            observed_provider_ids.append(
-                None if current is None else current.provider_id
-            )
+            observed_provider_ids.append(None if current is None else current.provider_id)
             return ([], 0)
 
         mock_list_synced.side_effect = capture_scope
@@ -1897,10 +1826,10 @@ class TestProviderAccountRoutes:
         The handler must surface the safe 409 (rather than crash) and must NOT delete the
         provider account row while local deployments are still tracked.
         """
+        from portals.api.v1.deployments import delete_provider_account
         from px.services.adapters.deployment.exceptions import (
             CredentialResolutionError,
         )
-        from portals.api.v1.deployments import delete_provider_account
 
         existing_account = _fake_provider_account()
         mock_get_provider_account.return_value = existing_account
@@ -1975,19 +1904,13 @@ class TestUpdateDeploymentRollback:
     @pytest.mark.asyncio
     @patch(f"{ROUTES_MODULE}.rollback_provider_update", new_callable=AsyncMock)
     @patch(f"{ROUTES_MODULE}.update_deployment_db", new_callable=AsyncMock)
-    @patch(
-        f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock
-    )
-    @patch(
-        f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[]
-    )
+    @patch(f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock)
+    @patch(f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[])
     @patch(
         f"{ROUTES_MODULE}.validate_project_scoped_flow_version_ids",
         new_callable=AsyncMock,
     )
-    @patch(
-        f"{ROUTES_MODULE}.resolve_flow_version_patch_for_update", return_value=([], [])
-    )
+    @patch(f"{ROUTES_MODULE}.resolve_flow_version_patch_for_update", return_value=([], []))
     @patch(
         f"{ROUTES_MODULE}.resolve_adapter_mapper_from_deployment",
         new_callable=AsyncMock,
@@ -2038,31 +1961,21 @@ class TestUpdateDeploymentRollback:
 
         mock_rollback.assert_awaited_once()
         assert mock_rollback.call_args.kwargs["deployment_db_id"] == dep_row.id
+        assert mock_rollback.call_args.kwargs["deployment_resource_key"] == dep_row.resource_key
         assert (
-            mock_rollback.call_args.kwargs["deployment_resource_key"]
-            == dep_row.resource_key
-        )
-        assert (
-            mock_rollback.call_args.kwargs["deployment_provider_account_id"]
-            == dep_row.deployment_provider_account_id
+            mock_rollback.call_args.kwargs["deployment_provider_account_id"] == dep_row.deployment_provider_account_id
         )
 
     @pytest.mark.asyncio
     @patch(f"{ROUTES_MODULE}.rollback_provider_update", new_callable=AsyncMock)
     @patch(f"{ROUTES_MODULE}.update_deployment_db", new_callable=AsyncMock)
-    @patch(
-        f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock
-    )
-    @patch(
-        f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[]
-    )
+    @patch(f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock)
+    @patch(f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[])
     @patch(
         f"{ROUTES_MODULE}.validate_project_scoped_flow_version_ids",
         new_callable=AsyncMock,
     )
-    @patch(
-        f"{ROUTES_MODULE}.resolve_flow_version_patch_for_update", return_value=([], [])
-    )
+    @patch(f"{ROUTES_MODULE}.resolve_flow_version_patch_for_update", return_value=([], []))
     @patch(
         f"{ROUTES_MODULE}.resolve_adapter_mapper_from_deployment",
         new_callable=AsyncMock,
@@ -2121,12 +2034,8 @@ class TestUpdateDeploymentAlreadyAttachedFiltering:
     """
 
     @pytest.mark.asyncio
-    @patch(
-        f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock
-    )
-    @patch(
-        f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[]
-    )
+    @patch(f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock)
+    @patch(f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[])
     @patch(
         f"{ROUTES_MODULE}.list_deployment_attachments_for_flow_version_ids",
         new_callable=AsyncMock,
@@ -2176,9 +2085,7 @@ class TestUpdateDeploymentAlreadyAttachedFiltering:
         mock_resolve_fvp.return_value = ([reused_fv_id, new_fv_id], [])
 
         mock_list_attachments.return_value = [
-            SimpleNamespace(
-                flow_version_id=reused_fv_id, provider_snapshot_id="existing-tool-1"
-            ),
+            SimpleNamespace(flow_version_id=reused_fv_id, provider_snapshot_id="existing-tool-1"),
         ]
 
         session = AsyncMock()
@@ -2201,12 +2108,8 @@ class TestUpdateDeploymentAlreadyAttachedFiltering:
         assert resolved_fv_ids == [new_fv_id]
 
     @pytest.mark.asyncio
-    @patch(
-        f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock
-    )
-    @patch(
-        f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[]
-    )
+    @patch(f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock)
+    @patch(f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[])
     @patch(
         f"{ROUTES_MODULE}.list_deployment_attachments_for_flow_version_ids",
         new_callable=AsyncMock,
@@ -2279,12 +2182,8 @@ class TestUpdateDeploymentAlreadyAttachedFiltering:
         assert resolved_fv_ids == []
 
     @pytest.mark.asyncio
-    @patch(
-        f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock
-    )
-    @patch(
-        f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[]
-    )
+    @patch(f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock)
+    @patch(f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[])
     @patch(
         f"{ROUTES_MODULE}.list_deployment_attachments_for_flow_version_ids",
         new_callable=AsyncMock,
@@ -2353,19 +2252,13 @@ class TestUpdateDeploymentAlreadyAttachedFiltering:
 class TestUpdateDeploymentMetadataPersistence:
     @pytest.mark.asyncio
     @patch(f"{ROUTES_MODULE}.update_deployment_db", new_callable=AsyncMock)
-    @patch(
-        f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock
-    )
-    @patch(
-        f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[]
-    )
+    @patch(f"{ROUTES_MODULE}.apply_flow_version_patch_attachments", new_callable=AsyncMock)
+    @patch(f"{ROUTES_MODULE}.resolve_added_snapshot_bindings_for_update", return_value=[])
     @patch(
         f"{ROUTES_MODULE}.validate_project_scoped_flow_version_ids",
         new_callable=AsyncMock,
     )
-    @patch(
-        f"{ROUTES_MODULE}.resolve_flow_version_patch_for_update", return_value=([], [])
-    )
+    @patch(f"{ROUTES_MODULE}.resolve_flow_version_patch_for_update", return_value=([], []))
     @patch(
         f"{ROUTES_MODULE}.resolve_adapter_mapper_from_deployment",
         new_callable=AsyncMock,
@@ -2473,14 +2366,10 @@ class TestGetDeploymentSync:
         session = AsyncMock()
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_deployment(
-                deployment_id=dep_row.id, session=session, current_user=user
-            )
+            await get_deployment(deployment_id=dep_row.id, session=session, current_user=user)
 
         assert exc_info.value.status_code == 404
-        mock_delete_row.assert_awaited_once_with(
-            session, user_id=user.id, deployment_id=dep_row.id
-        )
+        mock_delete_row.assert_awaited_once_with(session, user_id=user.id, deployment_id=dep_row.id)
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -2500,9 +2389,7 @@ class TestGetDeploymentSync:
 
         dep_row = _fake_deployment_row()
         adapter = AsyncMock()
-        adapter.get.side_effect = AuthenticationError(
-            message="bad creds", error_code="authentication_error"
-        )
+        adapter.get.side_effect = AuthenticationError(message="bad creds", error_code="authentication_error")
         mock_resolve.return_value = (
             dep_row,
             adapter,
@@ -2514,9 +2401,7 @@ class TestGetDeploymentSync:
         session = AsyncMock()
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_deployment(
-                deployment_id=dep_row.id, session=session, current_user=_fake_user()
-            )
+            await get_deployment(deployment_id=dep_row.id, session=session, current_user=_fake_user())
 
         assert exc_info.value.status_code == 401
         mock_delete_row.assert_not_awaited()
@@ -2550,9 +2435,7 @@ class TestGetDeploymentSync:
         session = AsyncMock()
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_deployment(
-                deployment_id=dep_row.id, session=session, current_user=_fake_user()
-            )
+            await get_deployment(deployment_id=dep_row.id, session=session, current_user=_fake_user())
 
         assert exc_info.value.status_code == 503
         mock_delete_row.assert_not_awaited()
@@ -2616,9 +2499,7 @@ class TestGetDeploymentSync:
         )
 
         session = AsyncMock()
-        result = await get_deployment(
-            deployment_id=dep_row.id, session=session, current_user=_fake_user()
-        )
+        result = await get_deployment(deployment_id=dep_row.id, session=session, current_user=_fake_user())
 
         assert result.resource_key == "provider-rk-1"
         assert result.name == "db-owned-name"
@@ -2627,9 +2508,7 @@ class TestGetDeploymentSync:
         assert result.created_at == created_at
         assert result.updated_at == updated_at
         assert "tool_ids" not in result.provider_data
-        assert result.provider_data == {
-            "llm": "virtual-model/bedrock/openai.gpt-oss-120b-1:0"
-        }
+        assert result.provider_data == {"llm": "virtual-model/bedrock/openai.gpt-oss-120b-1:0"}
 
     @pytest.mark.asyncio
     @patch(f"{ROUTES_MODULE}.delete_unbound_attachments", new_callable=AsyncMock)
@@ -2659,9 +2538,7 @@ class TestGetDeploymentSync:
         provider_deployment.model_dump.return_value = {}
         adapter.get.return_value = provider_deployment
         mapper.extract_snapshot_bindings_for_get.return_value = [
-            ProviderSnapshotBinding(
-                resource_key=dep_row.resource_key, snapshot_id="snap-1"
-            )
+            ProviderSnapshotBinding(resource_key=dep_row.resource_key, snapshot_id="snap-1")
         ]
         mapper.shape_deployment_get_data.return_value = None
         mock_resolve.return_value = (
@@ -2677,9 +2554,7 @@ class TestGetDeploymentSync:
 
         session = AsyncMock()
         session.begin_nested = MagicMock(return_value=_AsyncNoopSavepoint())
-        result = await get_deployment(
-            deployment_id=dep_row.id, session=session, current_user=_fake_user()
-        )
+        result = await get_deployment(deployment_id=dep_row.id, session=session, current_user=_fake_user())
 
         assert result.attached_count == 1
         mock_delete_unbound.assert_awaited_once()
@@ -2711,9 +2586,7 @@ class TestGetDeploymentSync:
         provider_deployment.updated_at = None
         provider_deployment.model_dump.return_value = {}
         adapter.get.return_value = provider_deployment
-        mapper.extract_snapshot_bindings_for_get.side_effect = NotImplementedError(
-            "not supported"
-        )
+        mapper.extract_snapshot_bindings_for_get.side_effect = NotImplementedError("not supported")
         mapper.shape_deployment_get_data.return_value = None
         mock_resolve.return_value = (
             dep_row,
@@ -2725,9 +2598,7 @@ class TestGetDeploymentSync:
         mock_list_att.return_value = [_fake_attachment(provider_snapshot_id=None)]
 
         session = AsyncMock()
-        result = await get_deployment(
-            deployment_id=dep_row.id, session=session, current_user=_fake_user()
-        )
+        result = await get_deployment(deployment_id=dep_row.id, session=session, current_user=_fake_user())
 
         assert result.attached_count == 1
         session.rollback.assert_not_awaited()
@@ -2761,9 +2632,7 @@ class TestGetDeploymentSync:
         provider_deployment.model_dump.return_value = {}
         adapter.get.return_value = provider_deployment
         mapper.extract_snapshot_bindings_for_get.return_value = [
-            ProviderSnapshotBinding(
-                resource_key=dep_row.resource_key, snapshot_id="snap-1"
-            )
+            ProviderSnapshotBinding(resource_key=dep_row.resource_key, snapshot_id="snap-1")
         ]
         mapper.shape_deployment_get_data.return_value = None
         mock_resolve.return_value = (
@@ -2781,9 +2650,7 @@ class TestGetDeploymentSync:
 
         session = AsyncMock()
         session.begin_nested = MagicMock(return_value=_AsyncNoopSavepoint())
-        result = await get_deployment(
-            deployment_id=dep_row.id, session=session, current_user=_fake_user()
-        )
+        result = await get_deployment(deployment_id=dep_row.id, session=session, current_user=_fake_user())
 
         assert result.attached_count == 2
         session.rollback.assert_awaited_once()
@@ -2825,9 +2692,7 @@ class TestGetDeploymentSync:
 
         session = AsyncMock()
         session.begin_nested = MagicMock(return_value=_AsyncNoopSavepoint())
-        result = await get_deployment(
-            deployment_id=dep_row.id, session=session, current_user=_fake_user()
-        )
+        result = await get_deployment(deployment_id=dep_row.id, session=session, current_user=_fake_user())
 
         assert result.attached_count == 1
         mock_delete_unbound.assert_awaited_once_with(
@@ -2835,9 +2700,7 @@ class TestGetDeploymentSync:
             user_id=ANY,
             provider_account_id=dep_row.deployment_provider_account_id,
             deployment_ids=[dep_row.id],
-            bindings=[
-                ProviderSnapshotBinding(resource_key="agent-rk-1", snapshot_id="snap-1")
-            ],
+            bindings=[ProviderSnapshotBinding(resource_key="agent-rk-1", snapshot_id="snap-1")],
         )
 
 
@@ -2879,9 +2742,7 @@ class TestDeleteDeployment:
         )
 
         assert response.status_code == 204
-        mock_delete_row.assert_awaited_once_with(
-            session, user_id=user.id, deployment_id=dep_row.id
-        )
+        mock_delete_row.assert_awaited_once_with(session, user_id=user.id, deployment_id=dep_row.id)
         session.commit.assert_awaited_once()
         session.rollback.assert_not_awaited()
 
@@ -2898,9 +2759,7 @@ class TestDeleteDeployment:
 
         dep_row = _fake_deployment_row()
         adapter = AsyncMock()
-        adapter.delete.side_effect = AuthenticationError(
-            message="bad creds", error_code="authentication_error"
-        )
+        adapter.delete.side_effect = AuthenticationError(message="bad creds", error_code="authentication_error")
         mock_resolve.return_value = (
             dep_row,
             adapter,
@@ -3383,9 +3242,7 @@ class TestUpdateDeploymentProjectValidation:
         remove_ids = [uuid4()]
         mock_resolve_fvp.return_value = (add_ids, remove_ids)
 
-        mock_validate_fv.side_effect = HTTPException(
-            status_code=404, detail="out of project"
-        )
+        mock_validate_fv.side_effect = HTTPException(status_code=404, detail="out of project")
 
         payload = MagicMock()
 
@@ -3427,18 +3284,14 @@ class TestListDeploymentLlms:
 
         adapter = AsyncMock()
         llm_result = SimpleNamespace(
-            provider_result={
-                "models": [{"model_name": "model-a"}, {"model_name": "model-b"}]
-            },
+            provider_result={"models": [{"model_name": "model-a"}, {"model_name": "model-b"}]},
         )
         adapter.list_llms.return_value = llm_result
         mock_resolve_adapter.return_value = adapter
 
         mapper = MagicMock()
         mapper.shape_llm_list_result.return_value = DeploymentLlmListResponse(
-            provider_data={
-                "models": [{"model_name": "model-a"}, {"model_name": "model-b"}]
-            }
+            provider_data={"models": [{"model_name": "model-a"}, {"model_name": "model-b"}]}
         )
         mock_get_mapper.return_value = mapper
 
@@ -3449,9 +3302,7 @@ class TestListDeploymentLlms:
         )
 
         assert response == DeploymentLlmListResponse(
-            provider_data={
-                "models": [{"model_name": "model-a"}, {"model_name": "model-b"}]
-            }
+            provider_data={"models": [{"model_name": "model-a"}, {"model_name": "model-b"}]}
         )
         adapter.list_llms.assert_awaited_once()
         mapper.shape_llm_list_result.assert_called_once_with(llm_result)
@@ -3567,9 +3418,7 @@ class TestHandleAdapterErrors:
         from portals.api.v1.mappers.deployments.helpers import handle_adapter_errors
 
         with pytest.raises(HTTPException) as exc_info, handle_adapter_errors():
-            raise AuthenticationError(
-                message="bad creds", error_code="authentication_error"
-            )
+            raise AuthenticationError(message="bad creds", error_code="authentication_error")
 
         assert exc_info.value.status_code == 401
         assert "bad creds" in exc_info.value.detail
@@ -3620,9 +3469,7 @@ class TestHandleAdapterErrors:
             pytest.raises(HTTPException) as exc_info,
             handle_adapter_errors(mapper=deployment_mapper),
         ):
-            raise ResourceConflictError(
-                message="raw provider conflict", resource="tool"
-            )
+            raise ResourceConflictError(message="raw provider conflict", resource="tool")
 
         assert exc_info.value.status_code == 409
         assert exc_info.value.detail == "friendly detail"

@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import openai
 import pytest
-from px.components.llm_operations.structured_output import StructuredOutputComponent
 from portals.helpers.base_model import build_model_from_schema
 from portals.inputs.inputs import TableInput
+from px.components.llm_operations.structured_output import StructuredOutputComponent
 from pydantic import BaseModel
 
 from tests.base import ComponentTestBaseWithoutClient
@@ -42,9 +42,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             "api_key": "test-api-key",
             "input_value": "Test input",
             "schema_name": "TestSchema",
-            "output_schema": [
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            "output_schema": [{"name": "field", "type": "str", "description": "A test field"}],
             "multiple": False,
             "system_prompt": "Test system prompt",
         }
@@ -79,12 +77,8 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         ]
 
     @patch("px.base.models.unified_models.get_model_class")
-    def test_successful_structured_output_generation_with_patch_with_config(
-        self, mock_get_model_class, mock_llm
-    ):
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+    def test_successful_structured_output_generation_with_patch_with_config(self, mock_get_model_class, mock_llm):
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
                     return {"objects": [{"field": "value"}]}
@@ -116,9 +110,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             multiple=False,
             system_prompt="Test system prompt",
         )
@@ -132,9 +124,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             assert result == [{"field": "value"}]
 
     @patch("px.base.models.unified_models.get_model_class")
-    def test_raises_value_error_for_unsupported_language_model(
-        self, mock_get_model_class
-    ):
+    def test_raises_value_error_for_unsupported_language_model(self, mock_get_model_class):
         # Mocking an incompatible language model that doesn't support with_structured_output
         class IncompatibleModel:
             pass
@@ -159,9 +149,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             multiple=False,
         )
 
@@ -202,9 +190,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
                 "description": "Set to True if this output field should be a list of the specified type.",
             },
         ]
-        component.output_schema = TableInput(
-            name="output_schema", display_name="Output Schema", table_schema=schema
-        )
+        component.output_schema = TableInput(name="output_schema", display_name="Output Schema", table_schema=schema)
 
         # Assertion
         output_model = build_model_from_schema(schema)
@@ -241,9 +227,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
                 "description": "Set to True if this output field should be a list of the specified type.",
             },
         ]
-        component.output_schema = TableInput(
-            name="output_schema", display_name="Output Schema", table_schema=schema
-        )
+        component.output_schema = TableInput(name="output_schema", display_name="Output Schema", table_schema=schema)
         component.multiple = True
 
         # Assertion
@@ -251,9 +235,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         assert isinstance(output_model, type)
 
     @patch("px.base.models.unified_models.get_model_class")
-    def test_empty_output_schema(
-        self, mock_get_model_class, mock_llm, mock_model_classes
-    ):
+    def test_empty_output_schema(self, mock_get_model_class, mock_llm, mock_model_classes):
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
         component = StructuredOutputComponent(
@@ -279,9 +261,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             component.build_structured_output()
 
     @patch("px.base.models.unified_models.get_model_class")
-    def test_invalid_output_schema_type(
-        self, mock_get_model_class, mock_llm, mock_model_classes
-    ):
+    def test_invalid_output_schema_type(self, mock_get_model_class, mock_llm, mock_model_classes):
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
         component = StructuredOutputComponent(
@@ -351,9 +331,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
                     "name": "parent",
                     "type": "dict",
                     "description": "Parent field",
-                    "fields": [
-                        {"name": "child", "type": "str", "description": "Child field"}
-                    ],
+                    "fields": [{"name": "child", "type": "str", "description": "Child field"}],
                 }
             ],
             multiple=False,
@@ -396,9 +374,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value=large_input,
             schema_name="LargeInputSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             multiple=False,
             system_prompt="Test system prompt",
         )
@@ -517,9 +493,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that multiple patterns are extracted while removing exact duplicates but keeping variations."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
                     return {
@@ -869,15 +843,11 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that when trustcall returns a dict without 'objects' key, we return the dict directly."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             # Return trustcall-style response but without BaseModel that creates "objects" key
             return {
                 "messages": ["mock_message"],
-                "responses": [
-                    {"field": "value", "another_field": "another_value"}
-                ],  # Direct dict, not BaseModel
+                "responses": [{"field": "value", "another_field": "another_value"}],  # Direct dict, not BaseModel
                 "response_metadata": [{"id": "mock_id"}],
                 "attempts": 1,
             }
@@ -887,9 +857,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             multiple=False,
             system_prompt="Test system prompt",
         )
@@ -910,9 +878,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that when trustcall returns a non-dict response, we return it directly."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             # Return a string response (edge case)
             return "Simple string response"
 
@@ -921,9 +887,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             multiple=False,
             system_prompt="Test system prompt",
         )
@@ -944,18 +908,14 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that when trustcall returns empty responses array, we return the result dict."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             # Return trustcall-style response with empty responses
             return {
                 "messages": ["mock_message"],
                 "responses": [],  # Empty responses array
                 "response_metadata": [],
                 "attempts": 1,
-                "fallback_data": {
-                    "field": "fallback_value"
-                },  # Some other data in the result
+                "fallback_data": {"field": "fallback_value"},  # Some other data in the result
             }
 
         component = StructuredOutputComponent(
@@ -963,9 +923,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             multiple=False,
             system_prompt="Test system prompt",
         )
@@ -988,9 +946,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that build_structured_output() fails when base method returns non-list."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             # Return a dict instead of list with objects
             return {
                 "messages": ["mock_message"],
@@ -1004,9 +960,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             multiple=False,
             system_prompt="Test system prompt",
         )
@@ -1027,14 +981,10 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that build_structured_output() returns Data object with dict data."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
-                    return {
-                        "objects": [{"field": "value2", "number": 24}]
-                    }  # Return only one object
+                    return {"objects": [{"field": "value2", "number": 24}]}  # Return only one object
 
             # Return trustcall-style response structure
             return {
@@ -1087,9 +1037,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that build_structured_output() returns Data object with multiple objects wrapped in results."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
                     return {
@@ -1148,9 +1096,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that build_structured_output() returns Data object when only one item in objects."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
                     return {"objects": [{"name": "John Doe", "age": 30}]}
@@ -1199,16 +1145,10 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that the returned Data object has proper properties."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
-                    return {
-                        "objects": [
-                            {"product": "iPhone", "price": 999.99, "available": True}
-                        ]
-                    }
+                    return {"objects": [{"product": "iPhone", "price": 999.99, "available": True}]}
 
             return {
                 "messages": ["mock_message"],
@@ -1270,9 +1210,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that build_structured_dataframe() returns DataFrame object with single Data item."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
                     return {"objects": [{"field": "value2", "number": 24}]}
@@ -1323,9 +1261,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that build_structured_dataframe() returns DataFrame object with multiple Data items."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
                     return {
@@ -1388,9 +1324,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that build_structured_dataframe() fails when base method returns non-list."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             return {
                 "messages": ["mock_message"],
                 "responses": [{"single_item": "value"}],
@@ -1403,9 +1337,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             multiple=False,
             system_prompt="Test system prompt",
         )
@@ -1426,9 +1358,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that build_structured_dataframe() fails when base method returns empty list."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
                     return {"objects": []}
@@ -1445,9 +1375,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             multiple=False,
             system_prompt="Test system prompt",
         )
@@ -1473,16 +1401,12 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             system_prompt="Test system prompt",
         )
 
         with (
-            patch.object(
-                component, "_extract_output_with_trustcall", return_value=None
-            ) as mock_trustcall,
+            patch.object(component, "_extract_output_with_trustcall", return_value=None) as mock_trustcall,
             patch.object(
                 component,
                 "_extract_output_with_langchain",
@@ -1511,18 +1435,14 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             system_prompt="Test system prompt",
         )
 
         # Mock trustcall to return None (indicating failure)
         # Mock langchain to raise an exception
         with (
-            patch.object(
-                component, "_extract_output_with_trustcall", return_value=None
-            ),
+            patch.object(component, "_extract_output_with_trustcall", return_value=None),
             patch.object(
                 component,
                 "_extract_output_with_langchain",
@@ -1554,18 +1474,14 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             system_prompt="Test system prompt",
         )
 
         # Mock trustcall to return None (fail)
         # Mock langchain to return list with dict
         with (
-            patch.object(
-                component, "_extract_output_with_trustcall", return_value=None
-            ),
+            patch.object(component, "_extract_output_with_trustcall", return_value=None),
             patch.object(
                 component,
                 "_extract_output_with_langchain",
@@ -1590,18 +1506,14 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             system_prompt="Test system prompt",
         )
 
         # Mock trustcall to return None (fail)
         # Mock langchain to return dict directly
         with (
-            patch.object(
-                component, "_extract_output_with_trustcall", return_value=None
-            ),
+            patch.object(component, "_extract_output_with_trustcall", return_value=None),
             patch.object(
                 component,
                 "_extract_output_with_langchain",
@@ -1625,18 +1537,14 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             system_prompt="Test system prompt",
         )
 
         # Mock trustcall to return None (fail)
         # Mock langchain to raise an exception with full error message
         with (
-            patch.object(
-                component, "_extract_output_with_trustcall", return_value=None
-            ),
+            patch.object(component, "_extract_output_with_trustcall", return_value=None),
             patch.object(
                 component,
                 "_extract_output_with_langchain",
@@ -1663,9 +1571,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
         """Test that when trustcall succeeds, langchain fallback is not attempted."""
         mock_get_model_class.return_value = mock_model_classes(mock_llm)
 
-        def mock_get_chat_result(
-            runnable, system_message, input_value, config, **kwargs
-        ):  # noqa: ARG001
+        def mock_get_chat_result(runnable, system_message, input_value, config, **kwargs):
             class MockBaseModel(BaseModel):
                 def model_dump(self, **__):
                     return {"objects": [{"field": "trustcall_value"}]}
@@ -1682,9 +1588,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
             api_key="test-api-key",
             input_value="Test input",
             schema_name="TestSchema",
-            output_schema=[
-                {"name": "field", "type": "str", "description": "A test field"}
-            ],
+            output_schema=[{"name": "field", "type": "str", "description": "A test field"}],
             system_prompt="Test system prompt",
         )
 
@@ -1693,9 +1597,7 @@ class TestStructuredOutputComponent(ComponentTestBaseWithoutClient):
                 "px.components.llm_operations.structured_output.get_chat_result",
                 mock_get_chat_result,
             ),
-            patch.object(
-                component, "_extract_output_with_langchain"
-            ) as mock_lc_fallback,
+            patch.object(component, "_extract_output_with_langchain") as mock_lc_fallback,
         ):
             result = component.build_structured_output_base()
 
