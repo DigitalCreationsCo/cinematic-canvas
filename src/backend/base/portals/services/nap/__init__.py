@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 from portals.services.nap.mock_repository import MockNapRepository
 from portals.services.nap.protocol import (
+    BranchSummary,
     CommitRef,
     CommitSummary,
     Conflict,
@@ -268,6 +269,16 @@ class NapService:
 
         return await run_in_threadpool(self._repo.resolve_tag, universe, tag)
 
+    async def list_branches(self, universe: str) -> list[BranchSummary]:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.list_branches, universe)
+
+    async def resolve_branch(self, universe: str, branch: str) -> str:
+        from fastapi.concurrency import run_in_threadpool
+
+        return await run_in_threadpool(self._repo.resolve_branch, universe, branch)
+
     async def clone_commit(
         self,
         remote_url: str,
@@ -380,6 +391,7 @@ def initialize_nap_service(repo: NapRepository) -> NapService:
 
 # Re-export protocol types for convenience
 __all__ = [
+    "BranchSummary",
     "CommitRef",
     "Conflict",
     "DiffChange",

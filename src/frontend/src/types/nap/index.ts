@@ -167,6 +167,10 @@ export type RepositorySelection = {
   tag?: string;
   /** Tag to pin the project to (defaults to "latest" on the backend).
    * Ignored when mode='new'. */
+  branch?: string;
+  /** Branch to pin the project to when mode='existing'. If specified,
+   * takes precedence over tag. Defaults to None for tag-based pinning.
+   * Ignored when mode='new'. */
 };
 
 export type CreateProjectWithRepoRequest = {

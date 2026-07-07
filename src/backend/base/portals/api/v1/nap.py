@@ -28,6 +28,7 @@ from portals.services.database.models.nap_repository.model import (
     ProjectRepositoryLink,
 )
 from portals.services.nap import (
+    BranchSummary,
     CommitRef,
     ManifestRef,
     NapService,
@@ -503,6 +504,12 @@ class TagRead(BaseModel):
     updated_at: float | None = None
 
 
+class BranchRead(BaseModel):
+    name: str
+    commit_hash: str
+    updated_at: float | None = None
+
+
 async def _get_nap_repo_or_404(
     repo_id: UUID,
     session: DbSession,
@@ -857,6 +864,52 @@ async def search_repository_tags(
 
 
 @router.get(
+    "/repositories/{repo_id}/branches/recent",
+    response_model=list[BranchRead],
+    summary="List the most recently updated branches for a repository",
+)
+async def recent_repository_branches(
+    repo_id: UUID,
+    nap: NapDep,
+    session: DbSession,
+    current_user: CurrentActiveUser,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> list[BranchRead]:
+    """Return recently updated branches for a repository, most-recent first."""
+    repo = await _get_nap_repo_or_404(repo_id, session, current_user)
+    try:
+        branches = await nap.list_branches(repo.name)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return [BranchRead(name=b.name, commit_hash=b.commit_hash, updated_at=b.updated_at) for b in branches[:limit]]
+
+
+@router.get(
+    "/repositories/{repo_id}/branches/search",
+    response_model=list[BranchRead],
+    summary="Search a repository's branches by name",
+)
+async def search_repository_branches(
+    repo_id: UUID,
+    nap: NapDep,
+    session: DbSession,
+    current_user: CurrentActiveUser,
+    q: Annotated[str, Query(min_length=1)] = "",
+) -> list[BranchRead]:
+    """Search a repository's branches by name (case-insensitive partial match)."""
+    repo = await _get_nap_repo_or_404(repo_id, session, current_user)
+    try:
+        branches = await nap.list_branches(repo.name)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    needle = q.lower()
+    matches = [b for b in branches if needle in b.name.lower()]
+    return [BranchRead(name=b.name, commit_hash=b.commit_hash, updated_at=b.updated_at) for b in matches]
+
+
+@router.get(
     "/repositories/by-folder/{folder_id}",
     response_model=NapRepositoryRead | None,
     summary="Get the NAP repository linked to a folder, if any",
@@ -944,6 +997,11 @@ class RepositorySelection(BaseModel):
     recent commit. Ignored when mode='new' (a brand-new repository has no
     tags or commits yet)."""
 
+    branch: str | None = None
+    """Branch to pin the project to when mode='existing'. If specified,
+    takes precedence over tag. Defaults to None for tag-based pinning.
+    Ignored when mode='new'."""
+
 
 class CreateProjectWithRepoRequest(BaseModel):
     name: str
@@ -1017,10 +1075,15 @@ async def create_project_with_repo(
             raise HTTPException(status_code=404, detail="Repository not found")
 
         tag = body.repository.tag or "latest"
+        branch = body.repository.branch
 
-        # Resolve the requested tag (or "latest") to a concrete commit hash
+        # Resolve the requested branch or tag to a concrete commit hash
+        # Branch takes precedence over tag if both are specified
         try:
-            pinned_commit_hash = await nap.resolve_tag(existing_repo.name, tag)
+            if branch:
+                pinned_commit_hash = await nap.resolve_branch(existing_repo.name, branch)
+            else:
+                pinned_commit_hash = await nap.resolve_tag(existing_repo.name, tag)
         except ValueError as exc:
             await session.delete(folder)
             await session.flush()
@@ -1051,7 +1114,8 @@ async def create_project_with_repo(
         link = ProjectRepositoryLink(
             folder_id=folder.id,
             repository_id=existing_repo.id,
-            tag=tag,
+            tag=tag if not branch else "latest",  # Default to latest if branch is specified
+            branch=branch,
             pinned_commit_hash=pinned_commit_hash,
         )
         session.add(link)

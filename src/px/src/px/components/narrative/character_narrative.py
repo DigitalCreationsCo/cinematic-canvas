@@ -42,6 +42,7 @@ _ALIASES = "aliases"
 _PHYSICAL_TRAITS = "physical_traits"
 _STATE = "state"
 _GUIDANCE_LEVEL = "guidance_level"
+_GENERATION_PROMPT = "generation_prompt"
 
 # Profile fields that can be edited.
 _PROFILE_FIELDS = (
@@ -95,7 +96,11 @@ class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
     def build_config(self):
         return {
             _SELECTED_ENTITY: {
-                "display_name": "Select Character",
+                "display_name": "Character Name",
+                "info": (
+                    "Type a character name. Existing characters appear as suggestions — "
+                    "select to load. Type a new name to create."
+                ),
                 "options": self.get_entity_options,
                 "refresh_button": True,
             },
@@ -106,6 +111,14 @@ class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
                     "In Gen3 architecture, writes go through the NAP persistence pipeline."
                 ),
                 "advanced": False,
+            },
+            _GENERATION_PROMPT: {
+                "display_name": "Generation Prompt",
+                "info": (
+                    "Optional prompt for LLM-based character draft generation. "
+                    "When set, typing a new character name will generate a draft character manifest."
+                ),
+                "advanced": True,
             },
             _CHARACTER_NAME: {
                 "display_name": "Name",
@@ -166,7 +179,7 @@ class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
     ]
 
     inputs = [
-        DropdownInput(name=_SELECTED_ENTITY, display_name="Select Character"),
+        DropdownInput(name=_SELECTED_ENTITY, display_name="Character Name", combobox=True, value=""),
         BoolInput(name=_UPDATE_DB, display_name="Patch NAP Manifest?", value=False),
         ModelInput(
             name="model",
@@ -261,7 +274,7 @@ class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
     # OUTPUT METHODS
     # ═══════════════════════════════════════════════════════════════════════
 
-    def build(self, selected_entity: str, *, update_database: bool = False) -> Data:
+    def build(self, selected_entity: str = "", *, update_database: bool = False) -> Data:
         """Read the selected character from the NAP universe and return it as structured Data.
 
         Results are cached per entity name so that a subsequent call to
@@ -276,33 +289,48 @@ class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
         manifest record so that downstream consumers always receive the most
         current view.
         """
-        # 1. Collect any profile-field overrides supplied via inputs.
+        # 1. Ensure cache exists
+        if not hasattr(self, "_character_cache") or self._character_cache is None:
+            self._character_cache = {}
+
+        # 2. Collect any profile-field overrides supplied via inputs.
         updated_data = self._collect_profile_overrides()
 
-        # 2. When the caller signals a mutation, log (nap persistence pipeline handles writes).
-        if update_database:
-            model_updates = self._to_manifest_patch(updated_data)
+        # 3. Evict cache entry if caller signals update (existing chars only)
+        if update_database and selected_entity:
+            self._character_cache.pop(selected_entity, None)
 
-            if model_updates:
-                self._character_cache.pop(selected_entity, None)
-                logger.info(
-                    "Character update requested — forwarding to NAP persistence pipeline. "
-                    "Updates must go through the NAP API (POST /nap/publish). "
-                    f"Entity='{selected_entity}', updates={model_updates}"
-                )
+        # 4. Existing character path — resolve via URI mapping
+        if selected_entity:
+            if not hasattr(self, "_name_to_uri") or not self._name_to_uri:
+                self.get_entity_options()
+            uri = self._name_to_uri.get(selected_entity)
+            if uri:
+                # Known existing character — read NAP + serve from cache
+                if selected_entity not in self._character_cache:
+                    try:
+                        character_manifest = self._fetch_character_data(selected_entity)
+                        if "error" in character_manifest:
+                            return Data(data=character_manifest)
+                        self._character_cache[selected_entity] = character_manifest
+                    except ValueError as exc:
+                        logger.error(f"Failed to fetch character '{selected_entity}': {exc}")
+                        return Data(data={"error": str(exc)})
+                manifest = dict(self._character_cache[selected_entity])
+                if updated_data:
+                    manifest.update(self._to_manifest_patch(updated_data))
+                return Data(data=manifest)
+            # Typed new name not in URI mapping → fall through to draft
 
-        # 3. Read from NAP universe (fresh or cached).
-        try:
-            character_manifest = self._fetch_character_data(selected_entity)
-        except ValueError as exc:
-            logger.error(f"Failed to fetch character '{selected_entity}': {exc}")
-            return Data(data={"error": str(exc)})
+        # 5. Draft generation via LLM
+        generation_prompt = getattr(self, _GENERATION_PROMPT, None) or ""
+        if generation_prompt:
+            if selected_entity:
+                generation_prompt = f"Character name: {selected_entity}\n\n{generation_prompt}"
+            return self._generate_character_draft(generation_prompt)
 
-        # 4. Overlay any input-driven overrides so the output reflects the
-        #    user's edits even when the manifest has not been patched yet.
-        character_manifest.update(self._to_manifest_patch(updated_data))
-
-        return Data(data=character_manifest)
+        # 6. Nothing to produce
+        return Data(data={"info": "No character selected and no generation prompt provided."})
 
     async def character_response(self) -> Message:
         """Generate a persona-driven LLM response as the selected character.
@@ -393,12 +421,17 @@ class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
         try:
             characters = self.get_entities("character")
             if not characters:
-                return ["No characters found in universe"]
-            names = [c.get("name", c.get("id", "(unnamed)")) for c in characters]
+                return []
+            # Build name-to-URI mapping for existing character detection
+            self._name_to_uri = {
+                c.get("name", c.get("id", "(unnamed)")): c.get("uri", "")
+                for c in characters
+            }
+            names = list(self._name_to_uri.keys())
             return sorted(names)
         except Exception as exc:
             logger.warning(f"Failed to fetch character options: {exc}")
-            return ["No characters found"]
+            return []
 
     def _collect_profile_overrides(self) -> dict[str, object]:
         """Gather non-empty profile-field values from the component's input ports.
@@ -433,6 +466,55 @@ class NarrativeCharacterComponent(BaseStateAwareComponent, LCModelComponent):
             else:
                 patch[manifest_field] = value
         return patch
+
+    def _generate_character_draft(self, generation_prompt: str) -> Data:
+        """Generate a character draft using LLM based on the provided prompt.
+
+        Args:
+            generation_prompt: The prompt to send to the LLM for character generation.
+
+        Returns:
+            Data containing the generated character draft manifest.
+        """
+        try:
+            model = getattr(self, "model", None)
+            if not model:
+                return Data(data={"error": "A Language Model must be connected to generate character drafts."})
+
+            # Build a simple system prompt for character generation
+            system_prompt = (
+                "You are a creative writing assistant. Generate a character manifest "
+                "based on the user's prompt. Return a JSON object with character details "
+                "including name, aliases (if any), physical_traits (as JSON), state (as JSON), "
+                "and any other relevant character information."
+            )
+
+            # Build the LLM runnable
+            runnable = self.build_model()
+
+            # Invoke the LLM
+            result = runnable.invoke(
+                input=generation_prompt,
+                config={"run_name": "character_draft_generation"},
+            )
+
+            # Try to parse the result as JSON
+            try:
+                draft_manifest = json.loads(result.content if hasattr(result, "content") else str(result))
+                logger.info(f"Generated character draft: {draft_manifest}")
+                return Data(data=draft_manifest)
+            except json.JSONDecodeError as exc:
+                logger.error(f"Failed to parse LLM response as JSON: {exc}")
+                # Return the raw text as a fallback
+                return Data(data={
+                    "name": "Draft Character",
+                    "description": result.content if hasattr(result, "content") else str(result),
+                    "info": "LLM response could not be parsed as JSON. Raw text returned."
+                })
+
+        except Exception as exc:
+            logger.error(f"Failed to generate character draft: {exc}")
+            return Data(data={"error": f"Failed to generate character draft: {str(exc)}"})
 
     def _fetch_character_data(self, entity_name: str) -> dict:
         """Fetch character data from the NAP universe with instance-level caching.

@@ -114,7 +114,7 @@ class CharacterComponent(BaseStateAwareComponent, LCModelComponent):
         return {
             _SELECTED_ENTITY: {
                 "display_name": "Character Name",
-                "info": "Type a character name. Existing characters appear as suggestions — select to load. Type a new name to create.",
+                "info": "Type a character name. Existing characters appear as suggestions. Type a new name to create.",
                 "options": self.get_entity_options,
                 "refresh_button": True,
             },
@@ -893,8 +893,5 @@ def _validate_selected_entity(entity_key: str | None) -> None:
         }
     )
     if entity_key in placeholder_messages:
-        msg = (
-            f"No character available ('{entity_key}'). Ensure the project "
-            "has characters before using this component."
-        )
+        msg = f"No character available ('{entity_key}'). Ensure the project has characters before using this component."
         raise ValueError(msg)

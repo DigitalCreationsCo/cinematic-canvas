@@ -128,6 +128,20 @@ class TagSummary:
     updated_at: float | None = None
 
 
+@dataclass
+class BranchSummary:
+    """Summary of a single branch in a universe.
+
+    A branch is a named pointer to a mutable commit within a universe,
+    used to pin projects to a specific branch for ongoing development.
+    The default branch name is typically ``"main"``.
+    """
+
+    name: str
+    commit_hash: str
+    updated_at: float | None = None
+
+
 # ── Repository protocol ────────────────────────────────────────────────
 
 
@@ -389,6 +403,28 @@ class NapRepository(Protocol):
             ValueError: If *universe* doesn't exist, or *tag* is not
                 ``"latest"`` and no matching stored tag is found, or the
                 universe has no commits yet.
+        """
+        ...
+
+    def list_branches(self, universe: str) -> list[BranchSummary]:
+        """List all branches in a universe, most-recently-updated first.
+
+        Returns the list of available branches for a universe.
+        """
+        ...
+
+    def resolve_branch(self, universe: str, branch: str) -> str:
+        """Resolve a branch name to a concrete commit hash.
+
+        Args:
+            universe: Universe to resolve the branch within.
+            branch: A branch name (e.g. ``"main"``).
+
+        Returns:
+            The resolved commit hash (the tip of the branch).
+
+        Raises:
+            ValueError: If *universe* doesn't exist, or *branch* is not found.
         """
         ...
 

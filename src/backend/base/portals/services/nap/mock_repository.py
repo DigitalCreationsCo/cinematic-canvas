@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from portals.services.nap.protocol import (
+    BranchSummary,
     CommitRef,
     CommitSummary,
     Conflict,
@@ -137,6 +138,7 @@ class MockNapRepository:
         self._assets_dir = Path(assets_dir) if assets_dir else Path("/tmp/nap-assets")
         self._universes: dict[str, set[str]] = {}  # universe → set of URIs
         self._tags: dict[str, dict[str, TagSummary]] = {}  # universe → {tag name → TagSummary}
+        self._branches: dict[str, dict[str, BranchSummary]] = {}  # universe → {branch name → BranchSummary}
         self._local_commits: dict[str, set[str]] = {}  # universe → set of locally-cloned commit hashes
 
     # ── Protocol implementation ──────────────────────────────────────────
@@ -295,6 +297,12 @@ class MockNapRepository:
             msg = f"Universe '{name}' already exists"
             raise ValueError(msg)
         self._universes[name] = set()
+        # Initialize default "main" branch for new universes
+        self._branches.setdefault(name, {})["main"] = BranchSummary(
+            name="main",
+            commit_hash="",
+            updated_at=time.time_ns(),
+        )
 
     def list_entities(self, universe: str) -> list[EntitySummary]:
         prefix = f"nap://{universe}/"
@@ -402,6 +410,23 @@ class MockNapRepository:
             msg = f"Tag '{tag}' not found in universe '{universe}'"
             raise ValueError(msg)
         return tag_obj.commit_hash
+
+    def list_branches(self, universe: str) -> list[BranchSummary]:
+        """List all branches in a universe, most-recently-updated first."""
+        branches = self._branches.get(universe, {})
+        return sorted(branches.values(), key=lambda b: b.updated_at or 0, reverse=True)
+
+    def resolve_branch(self, universe: str, branch: str) -> str:
+        """Resolve a branch name to a concrete commit hash."""
+        if universe not in self._universes:
+            msg = f"Universe '{universe}' not found"
+            raise ValueError(msg)
+
+        branch_obj = self._branches.get(universe, {}).get(branch)
+        if branch_obj is None:
+            msg = f"Branch '{branch}' not found in universe '{universe}'"
+            raise ValueError(msg)
+        return branch_obj.commit_hash
 
     def clone_commit(
         self,

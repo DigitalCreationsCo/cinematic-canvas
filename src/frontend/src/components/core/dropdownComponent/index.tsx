@@ -648,7 +648,7 @@ export default function Dropdown({
       }
     >
       <Command className="flex flex-col">
-        {options?.length > 0 && renderSearchInput()}
+        {(options?.length > 0 || combobox) && renderSearchInput()}
         {renderOptionsList()}
         {!sourceOptions?.fields && hasRefreshButton && (
           <div className="border-t bg-background">

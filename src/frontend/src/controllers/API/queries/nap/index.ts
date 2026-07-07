@@ -1,6 +1,7 @@
 export { useCreateLoreProject } from "./useCreateLoreProject";
 export { useRecentRepositories } from "./useRecentRepositories";
 export { useRepositorySearch } from "./useRepositorySearch";
+export { useRepositoryBranchesRecent, useRepositoryBranchesSearch } from "./useRepositoryBranches";
 
 import type { useQueryFunctionType } from "@/types/api";
 import type { NapRepositoryRead } from "@/types/nap";
@@ -15,6 +16,12 @@ import { UseRequestProcessor } from "../../services/request-processor";
 //   pinned_commit_hash: string | null;
 
 export interface TagRead {
+  name: string;
+  commit_hash: string;
+  updated_at: number | null;
+}
+
+export interface BranchRead {
   name: string;
   commit_hash: string;
   updated_at: number | null;

@@ -1765,7 +1765,7 @@
                   },
                   {
                     "name": "fastapi",
-                    "version": "0.136.1"
+                    "version": "0.139.0"
                   },
                   {
                     "name": "px",
@@ -1781,7 +1781,7 @@
                   },
                   {
                     "name": "googleapiclient",
-                    "version": "2.196.0"
+                    "version": "2.198.0"
                   }
                 ],
                 "total_dependencies": 7

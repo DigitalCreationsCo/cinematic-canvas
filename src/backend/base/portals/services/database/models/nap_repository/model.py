@@ -17,8 +17,8 @@ class ProjectRepositoryLink(SQLModel, table=True):
     """Maps a project (folder) to a NAP repository.
 
     A single repository can be referenced by multiple projects, each
-    potentially pinned to a different tag or commit.  The ``tag`` and
-    ``pinned_commit_hash`` fields are **per-project** concerns — they
+    potentially pinned to a different tag, branch, or commit.  The ``tag``,
+    ``branch``, and ``pinned_commit_hash`` fields are **per-project** concerns — they
     live here rather than on ``NapRepository`` itself.
     """
 
@@ -28,8 +28,10 @@ class ProjectRepositoryLink(SQLModel, table=True):
     repository_id: UUID = Field(foreign_key="nap_repository.id", primary_key=True)
     tag: str = Field(default="latest")
     """The tag this project is pinned to (defaults to ``"latest"``)."""
+    branch: str | None = Field(default=None)
+    """The branch this project is pinned to (defaults to ``None`` for tag-based pinning)."""
     pinned_commit_hash: str | None = Field(default=None)
-    """The concrete commit hash ``tag`` resolved to when the link was
+    """The concrete commit hash ``tag`` or ``branch`` resolved to when the link was
     created.  ``None`` for brand-new repositories with no commits yet."""
 
     folder: "Folder" = Relationship(back_populates="repository_links")

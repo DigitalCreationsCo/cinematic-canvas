@@ -29,6 +29,7 @@ import { StrRenderComponent } from "./components/strRenderComponent";
 import ToolsComponent from "./components/ToolsComponent";
 import ToggleShadComponent from "./components/toggleShadComponent";
 import type { InputProps, NodeInfoType } from "./types";
+import DropdownComponent from "@/components/core/parameterRenderComponent/components/dropdownComponent";
 
 export function ParameterRenderComponent({
   handleOnNewValue,
@@ -142,6 +143,21 @@ export function ParameterRenderComponent({
           );
         }
       }
+      if (!templateData.list && templateData.options && templateData.combobox) {
+        return (
+          <DropdownComponent
+            name={ name }
+            nodeId={nodeId}
+            nodeClass={ nodeClass }
+            handleNodeClass={handleNodeClass}
+            { ...baseInputProps }
+            combobox={templateData.combobox}
+            options={templateData.options}
+            id={`dropdown_${id}`}
+          />
+        );
+      }
+
       return (
         <StrRenderComponent
           {...baseInputProps}

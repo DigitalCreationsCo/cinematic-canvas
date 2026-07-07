@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   useCreateLoreProject,
   useRecentRepositories,
+  useRepositoryBranchesRecent,
+  useRepositoryBranchesSearch,
   useRepositorySearch,
   useRepositoryTagsRecent,
   useRepositoryTagsSearch,
@@ -59,6 +61,15 @@ export default function NewProjectModal({
   const [tagHighlightedIndex, setTagHighlightedIndex] = useState(-1);
   const tagSearchInputRef = useRef<HTMLInputElement>(null);
   const tagDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Branch selection state — only relevant once an existing repository is chosen
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [branchSearchQuery, setBranchSearchQuery] = useState("");
+  const [debouncedBranchSearchQuery, setDebouncedBranchSearchQuery] = useState("");
+  const [isBranchSearchActive, setIsBranchSearchActive] = useState(false);
+  const [branchHighlightedIndex, setBranchHighlightedIndex] = useState(-1);
+  const branchSearchInputRef = useRef<HTMLInputElement>(null);
+  const branchDropdownRef = useRef<HTMLDivElement>(null);
 
   const navigate = useCustomNavigate();
   const setErrorData = useAlertStore((state) => state.setErrorData);
@@ -121,6 +132,34 @@ export default function NewProjectModal({
       },
     );
 
+  const {
+    data: recentBranches,
+    isLoading: recentBranchesLoading,
+    error: recentBranchesError,
+    refetch: refetchRecentBranches,
+  } = useRepositoryBranchesRecent(
+    { repositoryId: selectedRepoId ?? "", limit: 3 },
+    { enabled: !!selectedRepoId },
+  );
+
+  const debouncedSetBranchSearchQuery = useDebounce(
+    setDebouncedBranchSearchQuery,
+    300,
+  );
+
+  useEffect(() => {
+    debouncedSetBranchSearchQuery(branchSearchQuery);
+  }, [branchSearchQuery, debouncedSetBranchSearchQuery]);
+
+  const { data: branchSearchResults, isLoading: branchSearchLoading } =
+    useRepositoryBranchesSearch(
+      { repositoryId: selectedRepoId ?? "", q: debouncedBranchSearchQuery },
+      {
+        enabled:
+          !!selectedRepoId && !!debouncedBranchSearchQuery && isBranchSearchActive,
+      },
+    );
+
   // Tag choice is repo-specific — reset it whenever the selected
   // repository changes (including switching to "new" or clearing).
   useEffect(() => {
@@ -128,6 +167,15 @@ export default function NewProjectModal({
     setTagSearchQuery("");
     setIsTagSearchActive(false);
     setTagHighlightedIndex(-1);
+  }, [selectedRepoId]);
+
+  // Branch choice is repo-specific — reset it whenever the selected
+  // repository changes (including switching to "new" or clearing).
+  useEffect(() => {
+    setSelectedBranch(null);
+    setBranchSearchQuery("");
+    setIsBranchSearchActive(false);
+    setBranchHighlightedIndex(-1);
   }, [selectedRepoId]);
 
   useEffect(() => {
@@ -141,6 +189,12 @@ export default function NewProjectModal({
       tagSearchInputRef.current.focus();
     }
   }, [isTagSearchActive]);
+
+  useEffect(() => {
+    if (isBranchSearchActive && branchSearchInputRef.current) {
+      branchSearchInputRef.current.focus();
+    }
+  }, [isBranchSearchActive]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -186,6 +240,28 @@ export default function NewProjectModal({
     };
   }, [isTagSearchActive]);
 
+  useEffect(() => {
+    const handleClickOutsideBranch = (event: MouseEvent) => {
+      if (
+        branchDropdownRef.current &&
+        !branchDropdownRef.current.contains(event.target as Node) &&
+        branchSearchInputRef.current &&
+        !branchSearchInputRef.current.contains(event.target as Node)
+      ) {
+        setIsBranchSearchActive(false);
+        setBranchHighlightedIndex(-1);
+      }
+    };
+
+    if (isBranchSearchActive) {
+      document.addEventListener("mousedown", handleClickOutsideBranch);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideBranch);
+    };
+  }, [isBranchSearchActive]);
+
   // Reset state when modal opens/closes
   useEffect(() => {
     if (!open) {
@@ -200,6 +276,10 @@ export default function NewProjectModal({
       setTagSearchQuery("");
       setIsTagSearchActive(false);
       setTagHighlightedIndex(-1);
+      setSelectedBranch(null);
+      setBranchSearchQuery("");
+      setIsBranchSearchActive(false);
+      setBranchHighlightedIndex(-1);
     }
   }, [open]);
 
@@ -223,11 +303,31 @@ export default function NewProjectModal({
     );
   };
 
+  const getRecentBranchNames = () => {
+    return recentBranches?.map((branch) => branch.name) || [];
+  };
+
+  const getFilteredBranchSearchResults = () => {
+    const recentNames = getRecentBranchNames();
+    return (
+      branchSearchResults?.filter((branch) => !recentNames.includes(branch.name)) || []
+    );
+  };
+
   const handleSelectTag = (tagName: string) => {
     setSelectedTag(tagName);
+    setSelectedBranch(null); // Clear branch when tag is selected
     setTagSearchQuery("");
     setIsTagSearchActive(false);
     setTagHighlightedIndex(-1);
+  };
+
+  const handleSelectBranch = (branchName: string) => {
+    setSelectedBranch(branchName);
+    setSelectedTag("latest"); // Reset tag to latest when branch is selected
+    setBranchSearchQuery("");
+    setIsBranchSearchActive(false);
+    setBranchHighlightedIndex(-1);
   };
 
   const handleTagSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -249,6 +349,28 @@ export default function NewProjectModal({
     } else if (e.key === "Escape") {
       setIsTagSearchActive(false);
       setTagHighlightedIndex(-1);
+    }
+  };
+
+  const handleBranchSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    const results = getFilteredBranchSearchResults();
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setBranchHighlightedIndex((prev) =>
+        prev < results.length - 1 ? prev + 1 : prev,
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setBranchHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (branchHighlightedIndex >= 0 && branchHighlightedIndex < results.length) {
+        handleSelectBranch(results[branchHighlightedIndex].name);
+      }
+    } else if (e.key === "Escape") {
+      setIsBranchSearchActive(false);
+      setBranchHighlightedIndex(-1);
     }
   };
 
@@ -380,7 +502,8 @@ export default function NewProjectModal({
         repositoryPayload = {
           mode: "existing" as const,
           repository_id: repositorySelection.id,
-          tag: selectedTag,
+          tag: selectedBranch ? "latest" : selectedTag,
+          branch: selectedBranch,
         };
       } else if (repositorySelection?.mode === "new") {
         repositoryPayload = {
@@ -420,6 +543,9 @@ export default function NewProjectModal({
   const getOutcomeHint = () => {
     if (!repositorySelection) return null;
     if (repositorySelection.mode === "existing") {
+      if (selectedBranch) {
+        return `Links to the existing repository, pinned to the latest commit on branch "${selectedBranch}".`;
+      }
       return selectedTag === "latest"
         ? "Links to the existing repository, pinned to its latest commit."
         : `Links to the existing repository, pinned to the latest commit on tag "${selectedTag}".`;
@@ -431,6 +557,7 @@ export default function NewProjectModal({
   const hasCreateOption = searchQuery.trim() !== "";
   const totalOptions = filteredSearchResults.length + (hasCreateOption ? 1 : 0);
   const filteredTagSearchResults = getFilteredTagSearchResults();
+  const filteredBranchSearchResults = getFilteredBranchSearchResults();
 
   return (
     <BaseModal open={open} setOpen={setOpen} size="medium">
@@ -635,8 +762,128 @@ export default function NewProjectModal({
             </div>
           </div>
 
-          {/* Tag Field — only shown once an existing repository is selected */}
+          {/* Branch Field — only shown once an existing repository is selected */}
           {repositorySelection?.mode === "existing" && (
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="repository-branch">Branch</Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Pins this project to a specific branch. Defaults to the latest commit.
+                  If specified, takes precedence over tag selection.
+                </p>
+              </div>
+
+              {/* Recent Branch Chips */}
+              <div className="flex flex-wrap gap-2">
+                {recentBranchesLoading ? (
+                  <>
+                    <Skeleton className="h-8 w-20 rounded-full" />
+                    <Skeleton className="h-8 w-20 rounded-full" />
+                  </>
+                ) : recentBranchesError ? (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <span>Couldn't load branches.</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => refetchRecentBranches()}
+                      className="h-auto p-0 text-destructive underline"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : (
+                  recentBranches?.map((branch) => {
+                    const isSelected = selectedBranch === branch.name;
+                    return (
+                      <button
+                        key={branch.name}
+                        type="button"
+                        onClick={() => handleSelectBranch(branch.name)}
+                        className={`rounded-full border px-3 py-1.5 text-sm font-mono transition-colors ${
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background hover:bg-muted"
+                        }`}
+                      >
+                        {branch.name}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Branch Search Control */}
+              {!isBranchSearchActive ? (
+                <button
+                  type="button"
+                  onClick={() => setIsBranchSearchActive(true)}
+                  className="rounded-full border border-dashed px-3 py-1.5 text-sm text-muted-foreground hover:border-border hover:text-foreground transition-colors"
+                >
+                  Search branches
+                </button>
+              ) : (
+                <div className="relative" ref={branchDropdownRef}>
+                  <Input
+                    ref={branchSearchInputRef}
+                    placeholder="Search branches..."
+                    value={branchSearchQuery}
+                    onChange={(e) => {
+                      setBranchSearchQuery(e.target.value);
+                      setBranchHighlightedIndex(-1);
+                    }}
+                    onKeyDown={handleBranchSearchKeyDown}
+                    onBlur={() => {
+                      // Delay closing to allow click events to fire
+                      setTimeout(() => {
+                        if (
+                          !branchDropdownRef.current?.contains(
+                            document.activeElement,
+                          )
+                        ) {
+                          setIsBranchSearchActive(false);
+                          setBranchHighlightedIndex(-1);
+                        }
+                      }, 150);
+                    }}
+                    className="w-full"
+                    data-testid="branch-search-input"
+                    role="combobox"
+                    aria-expanded={filteredBranchSearchResults.length > 0}
+                    aria-controls="branch-dropdown"
+                  />
+
+                  {filteredBranchSearchResults.length > 0 && (
+                    <div
+                      id="branch-dropdown"
+                      className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-background shadow-md"
+                      role="listbox"
+                    >
+                      {filteredBranchSearchResults.map((branch, index) => (
+                        <button
+                          key={branch.name}
+                          type="button"
+                          role="option"
+                          aria-selected={branchHighlightedIndex === index}
+                          onClick={() => handleSelectBranch(branch.name)}
+                          className={`w-full px-3 py-2 text-left text-sm font-mono transition-colors ${
+                            branchHighlightedIndex === index
+                              ? "bg-accent"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          {branch.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tag Field — only shown once an existing repository is selected */}
+          {repositorySelection?.mode === "existing" && !selectedBranch && (
             <div className="space-y-3">
               <div>
                 <Label htmlFor="repository-tag">Tag</Label>
