@@ -9,20 +9,16 @@
 #   lore-server    — Custom loreserver with AWS plugin compiled in
 #
 # Prerequisites:
-#   Build the Lore base image first (required by lore-server).
-#   Uses host architecture suffix (e.g., latest-amd64, latest-arm64)
-#   so Dockerfile.loreserver resolves the correct arch via TARGETARCH:
-#     docker build -f infra/lore/Dockerfile.loreserver.base \
-#       -t portalshq/lore-server-base:latest-amd64 infra/lore/lore
+#   Pull the Lore server image from the registry:
+#     docker pull portalshq/lore-server:latest
 #
-#   Or use the Makefile (recommended — auto-detects host arch):
-#     make lore-base              # local single-arch build (dev)
-#     make lore-up                # builds base + starts all services
-#     make lore_base_push         # push host arch to registry (CI/CD)
-#     make lore_server_push       # push host arch to registry (CI/CD)
+#   Or use the Makefile (recommended):
+#     make lore-up                # pulls image + starts all services
+#
+# Build infrastructure (Dockerfiles, source) lives in cloud/infra/lore/.
 #
 # Usage:
-#   docker compose up --build
+#   docker compose up
 #
 # =============================================================================
 
@@ -149,9 +145,8 @@ services:
   # ---------------------------------------------------------------------------
   lore-server:
     image: portalshq/lore-server:latest
-    build:
-      context: .
-      dockerfile: infra/lore/Dockerfile.loreserver
+    # Build infrastructure (Dockerfiles, source) lives in cloud/infra/lore/.
+    # Studio pulls the pre-built image from the registry.
     restart: unless-stopped
     depends_on:
       localstack:

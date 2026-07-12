@@ -348,7 +348,8 @@ portals.db
 # docusaurus
 .docusaurus/
 
-# Lore server
+# Lore server — config and certs stay in studio for local dev.
+# Build infrastructure (Dockerfiles, source) moved to cloud/infra/lore/.
 infra/lore/config/local.toml
 infra/lore/cert.pem
 infra/lore/key.pem

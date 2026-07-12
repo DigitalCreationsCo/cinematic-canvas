@@ -1,4 +1,4 @@
-.PHONY: all init format_backend format lint build run_backend dev help tests coverage clean_python_cache clean_npm_cache clean_frontend_build clean_all run_clic load_test_setup load_test_setup_basic load_test_list_flows load_test_run load_test_portals_quick load_test_stress load_test_example load_test_clean load_test_remote_setup load_test_remote_run load_test_help docs docs_build docs_install api_examples_local api_examples_local_syntax lore-base lore_base lore_base_push lore_server_push lore_push_all lore_builder_setup lore_test lore-certs lore-up lore-up-d lore-down lore-logs lore-clean
+.PHONY: all init format_backend format lint build run_backend dev help tests coverage clean_python_cache clean_npm_cache clean_frontend_build clean_all run_clic load_test_setup load_test_setup_basic load_test_list_flows load_test_run load_test_portals_quick load_test_stress load_test_example load_test_clean load_test_remote_setup load_test_remote_run load_test_help docs docs_build docs_install api_examples_local api_examples_local_syntax lore_certs lore_up lore_up_d lore_down lore_logs lore_clean
 
 # Configurations
 VERSION=$(shell grep "^version" pyproject.toml | sed 's/.*\"\(.*\)\"$$/\1/')
@@ -1098,31 +1098,8 @@ include Makefile.frontend
 # Docker command for Lore images. Uses docker by default (unlike the
 # rest of the project which defaults to podman — see DOCKER=podman at
 # the top of this Makefile). Override on the command line to switch:
-#   make lore-base DOCKER=podman
+#   make lore-up DOCKER=podman
 DOCKER = docker
-
-# Detect host architecture and map to Docker's naming convention.
-# Used by all lore build/push targets for arch-specific image tags.
-#   x86_64  → amd64   (Intel / AMD)
-#   aarch64 → arm64   (Linux ARM64 / Graviton)
-#   arm64   → arm64   (macOS Apple Silicon — already matches Docker)
-# Override explicitly on the command line if cross-building:
-#   make lore_base HOST_ARCH=arm64
-HOST_ARCH := $(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-
-# Build the Lore server base image (compiles custom loreserver binary)
-# Tags with the host architecture suffix so Dockerfile.loreserver can
-# resolve the correct variant via its FROM ...-${TARGETARCH} line.
-lore_base: ## Build the Lore server base image from upstream source
-	@echo "$(GREEN)Building portalshq/lore-server-base:latest-$(HOST_ARCH) from infra/lore/lore...$(NC)"
-	$(DOCKER) build \
-		-f infra/lore/Dockerfile.loreserver.base \
-		-t portalshq/lore-server-base:latest-$(HOST_ARCH) \
-		infra/lore/lore
-	@echo "$(GREEN)Done. Image: portalshq/lore-server-base:latest-$(HOST_ARCH)$(NC)"
-
-# Alias for lore_base (preserves backward compatibility)
-lore-base: lore_base
 
 # Generate development self-signed certificates
 lore_certs: ## Generate self-signed TLS certificates for Lore development
@@ -1139,14 +1116,20 @@ lore_certs: ## Generate self-signed TLS certificates for Lore development
 	fi
 
 # Start the full Lore dev stack with compose
-lore_up: lore_base lore-certs ## Build Lore base image and start all services
+# Pulls the pre-built image from the registry. Build infrastructure
+# (Dockerfiles, lore source) lives in cloud/infra/lore/.
+lore_up: lore_certs ## Pull lore-server image and start all services
+	@echo "$(GREEN)Pulling latest lore-server image...$(NC)"
+	$(DOCKER) pull portalshq/lore-server:latest
 	@echo "$(GREEN)Starting Lore development stack...$(NC)"
-	$(DOCKER) compose up --build
+	$(DOCKER) compose up
 
 # Start Lore stack in background
-lore_up_d: lore_base lore-certs ## Build Lore base image and start services in background
+lore_up_d: lore_certs ## Pull lore-server image and start services in background
+	@echo "$(GREEN)Pulling latest lore-server image...$(NC)"
+	$(DOCKER) pull portalshq/lore-server:latest
 	@echo "$(GREEN)Starting Lore development stack (detached)...$(NC)"
-	$(DOCKER) compose up --build -d
+	$(DOCKER) compose up -d
 
 # Stop the Lore stack
 lore_down: ## Stop the Lore development stack
@@ -1175,64 +1158,3 @@ lore-aws: ## Run an AWS CLI command against the local LocalStack instance
 
 lore-list-tables: ## List DynamoDB tables in LocalStack
 	aws --endpoint-url=http://localhost:4566 --region=$(LORE_REGION) dynamodb list-tables
-
-# ---------------------------------------------------------------------------
-# Build & Push (CI/CD) — requires Docker buildx
-# Builds for the host architecture only. No QEMU cross-compilation.
-# Each CI node (Intel + ARM) pushes its own arch-specific tag.
-# ---------------------------------------------------------------------------
-
-# Idempotent buildx builder setup
-lore_builder_setup: ## Create/verify the buildx container driver for lore builds
-	@if $(DOCKER) buildx inspect lore-builder >/dev/null 2>&1; then \
-		echo "$(GREEN)Builder 'lore-builder' already exists — reusing.$(NC)"; \
-		$(DOCKER) buildx use lore-builder; \
-	else \
-		echo "$(GREEN)Creating and bootstrapping builder 'lore-builder'...$(NC)"; \
-		$(DOCKER) buildx create --use --name lore-builder --bootstrap; \
-	fi
-
-# Build & push lore-server-base for the host architecture only.
-# This avoids QEMU cross-compilation (which takes hours for Rust).
-# Run this target on EACH architecture's native CI runner:
-#   Intel CI  → pushes portalshq/lore-server-base:latest-amd64
-#   ARM CI    → pushes portalshq/lore-server-base:latest-arm64
-lore_base_push: lore_builder_setup ## Build & push portalshq/lore-server-base (host arch only)
-	@echo "$(GREEN)Building & pushing portalshq/lore-server-base:latest-$(HOST_ARCH)...$(NC)"
-	$(DOCKER) buildx build \
-		--platform linux/$(HOST_ARCH) \
-		-f infra/lore/Dockerfile.loreserver.base \
-		-t portalshq/lore-server-base:latest-$(HOST_ARCH) \
-		--cache-to=type=inline \
-		--cache-from=type=registry,ref=portalshq/lore-server-base:cache \
-		--push \
-		infra/lore/lore
-	@echo "$(GREEN)Done. Image pushed: portalshq/lore-server-base:latest-$(HOST_ARCH)$(NC)"
-
-# Build & push lore-server for the host architecture only.
-# The Dockerfile resolves the correct base image via
-# FROM ...-${TARGETARCH}, which matches the arch-specific tag pushed
-# by lore_base_push on the same architecture.
-# Run this target on EACH architecture's native CI runner:
-#   Intel CI  → pushes portalshq/lore-server:latest-amd64
-#   ARM CI    → pushes portalshq/lore-server:latest-arm64
-lore_server_push: lore_builder_setup ## Build & push portalshq/lore-server (host arch only)
-	@echo "$(GREEN)Building & pushing portalshq/lore-server:latest-$(HOST_ARCH)...$(NC)"
-	$(DOCKER) buildx build \
-		--platform linux/$(HOST_ARCH) \
-		-f infra/lore/Dockerfile.loreserver \
-		-t portalshq/lore-server:latest-$(HOST_ARCH) \
-		--cache-to=type=inline \
-		--cache-from=type=registry,ref=portalshq/lore-server:cache \
-		--push \
-		.
-	@echo "$(GREEN)Done. Image pushed: portalshq/lore-server:latest-$(HOST_ARCH)$(NC)"
-
-# Build & push both images in sequence (host arch only each)
-lore_push_all: lore_base_push lore_server_push ## Build & push both lore-server-base and lore-server (host arch only)
-	@echo "$(GREEN)All Lore images built and pushed successfully.$(NC)"
-
-# Run architecture tag detection unit tests
-lore_test: ## Run Lore arch detection unit tests
-	@echo "$(GREEN)Running Lore architecture tag detection tests...$(NC)"
-	@bash infra/lore/scripts/test-arch-detection.sh

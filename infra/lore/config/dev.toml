@@ -15,6 +15,11 @@
 #   - LocalStack (S3 + DynamoDB) at localstack:4566
 #   - PostgreSQL at db:5432 (used by the API, not Lore directly)
 #
+# Lore version: This config was last verified against 0.8.5-nightly.
+#   See cloud/infra/lore/versions.yaml for the canonical version mapping.
+#   When upgrading lore-server, verify that config keys in this file
+#   are still supported by the new version.
+#
 # =============================================================================
 
 # =============================================================================
